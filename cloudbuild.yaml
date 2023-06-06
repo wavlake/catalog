@@ -1,0 +1,16 @@
+steps:
+  - name: node:16.20.0
+    entrypoint: npm
+    args: ["install"]
+  - name: node:16.20.0
+    entrypoint: npm
+    args: ["run", "create-env"]
+    env:
+      - "PG_HOST=${_PG_HOST}"
+      - "PG_PORT=${_PG_PORT}"
+      - "PG_DATABASE=${_PG_DATABASE}"
+      - "PG_USER=${_PG_USER}"
+      - "PG_PASSWORD=${_PG_PASSWORD}"
+  - name: "gcr.io/cloud-builders/gcloud"
+    args: ["app", "deploy"]
+timeout: "1600s"
