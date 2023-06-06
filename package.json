@@ -8,7 +8,7 @@
   },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "node dist/index.js",
+    "start": "npx tsc && node dist/index.js",
     "dev": "NODE_ENV=dev concurrently \"npx tsc --watch\" \"nodemon dist/index.js --watch library --watch controllers --watch routes\"",
     "create-env": "printenv > .env"
   },
