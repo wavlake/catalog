@@ -11,8 +11,6 @@ steps:
       - "PG_DATABASE=${_PG_DATABASE}"
       - "PG_USER=${_PG_USER}"
       - "PG_PASSWORD=${_PG_PASSWORD}"
-  - name: "gcr.io/cloud-builders/npm"
-    args: ["install", "-g", "npx"]
   - name: "gcr.io/cloud-builders/gcloud"
     args: ["app", "deploy"]
 timeout: "1600s"

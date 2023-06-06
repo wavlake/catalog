@@ -11,7 +11,6 @@
     "start": "node dist/index.js",
     "dev": "NODE_ENV=dev concurrently \"npx tsc --watch\" \"nodemon dist/index.js --watch library --watch controllers --watch routes\"",
     "create-env": "printenv > .env",
-    "gcp-build": "npx tsc",
     "build": "npx tsc"
   },
   "author": "Michael Rhee",
