@@ -1,5 +1,6 @@
 // Import path module
-const path = require("path");
+import path from "path";
+import Knex from 'knex'
 
 // Get the location of database.sqlite file
 const dbPath = path.resolve(__dirname, "../data/db.sqlite");
@@ -13,11 +14,11 @@ const dbPath = path.resolve(__dirname, "../data/db.sqlite");
 //   useNullAsDefault: true
 // })
 
-const knex = require("knex")({
+const knex = Knex({
   client: "pg",
   connection: {
     host: process.env.PG_HOST,
-    port: process.env.PG_PORT,
+    port: Number(process.env.PG_PORT),
     user: process.env.PG_USER,
     password: process.env.PG_PASSWORD,
     database: process.env.PG_DATABASE,
@@ -27,6 +28,6 @@ const knex = require("knex")({
 const { attachPaginate } = require("knex-paginate");
 attachPaginate();
 
-module.exports = {
+export default {
   knex,
 };

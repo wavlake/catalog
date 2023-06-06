@@ -8,8 +8,8 @@
   },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "node index.js",
-    "dev": "NODE_ENV=dev nodemon index.js --watch library --watch controllers --watch routes",
+    "start": "npx tsc && node dist/index.js",
+    "dev": "NODE_ENV=dev concurrently \"npx tsc --watch\" \"nodemon dist/index.js --watch library --watch controllers --watch routes\"",
     "create-env": "printenv > .env"
   },
   "author": "Michael Rhee",
@@ -23,6 +23,10 @@
     "pg": "^8.7.1"
   },
   "devDependencies": {
-    "nodemon": "^2.0.22"
+    "@types/express": "^4.17.17",
+    "@types/node": "^20.2.5",
+    "concurrently": "^8.1.0",
+    "nodemon": "^2.0.22",
+    "typescript": "^5.1.3"
   }
 }

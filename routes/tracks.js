@@ -1,7 +1,7 @@
 const express = require("express");
 
 // Import controllers
-const tracksController = require("../controllers/tracks.js");
+import tracksController from "../controllers/tracks.js";
 
 // Create router
 const router = express.Router();
