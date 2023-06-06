@@ -9,7 +9,8 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "node index.js",
-    "dev": "NODE_ENV=dev nodemon index.js --watch library --watch controllers --watch routes"
+    "dev": "NODE_ENV=dev nodemon index.js --watch library --watch controllers --watch routes",
+    "create-env": "printenv > .env"
   },
   "author": "Michael Rhee",
   "license": "MIT",
