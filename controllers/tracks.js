@@ -1,5 +1,5 @@
-const log = require("loglevel");
-const db = require("../library/db");
+import log from "loglevel";
+import db from "../library/db";
 
 // const topFortyWindow = `${process.env.TOP_FORTY_WINDOW}`;
 const topFortyWindow = 30;
@@ -15,7 +15,7 @@ const handleErrorAsync = (fn) => async (req, res, next) => {
 };
 
 // Top 40
-exports.get_index_top = handleErrorAsync(async (req, res, next) => {
+const get_index_top = handleErrorAsync(async (req, res, next) => {
   const request = {
     limit: req.query.limit ? req.query.limit : 41,
     // sortBy: req.body.sortBy
@@ -58,3 +58,7 @@ exports.get_index_top = handleErrorAsync(async (req, res, next) => {
       next(err);
     });
 });
+
+export default {
+  get_index_top,
+};
