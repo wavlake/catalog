@@ -20,7 +20,7 @@ availableSecrets:
   secretManager:
     - versionName: projects/$PROJECT_ID/secrets/WAVLAKE_ALPHA_FIREBASE_ADMIN_CONFIG/versions/latest
       env: "GOOGLE_APPLICATION_CREDENTIALS"
-    - versionName: projects/$PROJECT_ID/secrets/WAVLAKE_PROD_PG_CATALOG_PASSWORD/versions/latest
+    - versionName: projects/$PROJECT_ID/secrets/WAVLAKE_SERVER_STAGING_ADMIN_PASSWORD/versions/latest
       env: "PG_PASSWORD"
 timeout: "1600s"
 options:
