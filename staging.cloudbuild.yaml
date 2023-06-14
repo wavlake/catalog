@@ -1,11 +1,14 @@
 steps:
   - name: node:16.20.0
+    id: install
     entrypoint: npm
     args: ["install"]
   - name: node:16.20.0
+    id: build
     entrypoint: npm
     args: ["run", "build"]
   - name: node:16.20.0
+    id: create env
     entrypoint: npm
     args: ["run", "create-env"]
     env:
@@ -16,6 +19,7 @@ steps:
       - "PG_USER=${_PG_USER}"
     secretEnv: ["PG_PASSWORD"]
   - name: node:16.20.0
+    id: migrate db
     entrypoint: npm
     args: ["run", "migrate"]
     env:
@@ -25,6 +29,10 @@ steps:
       - "PG_DATABASE=${_PG_DATABASE}"
       - "PG_USER=${_PG_USER}"
     secretEnv: ["PG_PASSWORD"]
+  - name: node:16.20.0
+    id: generate prisma
+    entrypoint: npm
+    args: ["run", "generate"]
   - name: "gcr.io/cloud-builders/gcloud"
     args: ["app", "deploy", "./staging.yaml"]
 availableSecrets:

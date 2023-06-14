@@ -13,7 +13,8 @@
     "create-env": "printenv > .env",
     "build": "npx tsc",
     "migrate": "knex --knexfile ./db/knexfile.js migrate:latest",
-    "rollback": "knex --knexfile ./db/knexfile.js migrate:rollback"
+    "rollback": "knex --knexfile ./db/knexfile.js migrate:rollback",
+    "generate": "npx prisma generate"
   },
   "author": "Michael Rhee",
   "license": "MIT",
