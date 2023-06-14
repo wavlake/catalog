@@ -1,5 +1,14 @@
 import log from "loglevel";
 import db from "../library/db";
+import { PrismaClient } from "@prisma/client";
+
+const prisma = new PrismaClient({
+  datasources: {
+    db: {
+      url: `postgresql://${process.env.PG_USER}:${process.env.PG_PASSWORD}@${process.env.PG_HOST}:${process.env.PG_PORT}/${process.env.PG_DATABASE}?schema=public`,
+    },
+  },
+});
 
 // const topFortyWindow = `${process.env.TOP_FORTY_WINDOW}`;
 const topFortyWindow = 30;
@@ -54,11 +63,27 @@ const get_index_top = handleErrorAsync(async (req, res, next) => {
       res.send(data);
     })
     .catch((err) => {
-      log.debug(`Error querying track table for Top 40: ${err}`);
+      log.debug(`Error querying track table in get_index_top: ${err}`);
       next(err);
     });
 });
 
+const get_track = handleErrorAsync(async (req, res, next) => {
+  const request = {
+    trackId: req.params.trackId,
+  };
+
+  const track = await prisma.track.findFirstOrThrow({
+    where: { id: request.trackId, deleted: false },
+    // @ts-ignore
+    // For some reason the artist relation here raises an error
+    include: { album: true, artist: true },
+  });
+
+  res.json(track);
+});
+
 export default {
   get_index_top,
+  get_track,
 };

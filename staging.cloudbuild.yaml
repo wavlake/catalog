@@ -1,0 +1,39 @@
+steps:
+  - name: node:16.20.0
+    entrypoint: npm
+    args: ["install"]
+  - name: node:16.20.0
+    entrypoint: npm
+    args: ["run", "build"]
+  - name: node:16.20.0
+    entrypoint: npm
+    args: ["run", "create-env"]
+    env:
+      - "LOGLEVEL=${_LOGLEVEL}"
+      - "PG_HOST=${_PG_HOST}"
+      - "PG_PORT=${_PG_PORT}"
+      - "PG_DATABASE=${_PG_DATABASE}"
+      - "PG_USER=${_PG_USER}"
+    secretEnv: ["PG_PASSWORD"]
+  - name: node:16.20.0
+    entrypoint: npm
+    args: ["run", "migrate"]
+    env:
+      - "NODE_ENV=staging"
+      - "PG_HOST=${_PG_HOST}"
+      - "PG_PORT=${_PG_PORT}"
+      - "PG_DATABASE=${_PG_DATABASE}"
+      - "PG_USER=${_PG_USER}"
+    secretEnv: ["PG_PASSWORD"]
+  - name: "gcr.io/cloud-builders/gcloud"
+    args: ["app", "deploy", "./staging.yaml"]
+availableSecrets:
+  secretManager:
+    - versionName: projects/$PROJECT_ID/secrets/WAVLAKE_SERVER_STAGING_ADMIN_PASSWORD/versions/latest
+      env: "PG_PASSWORD"
+timeout: "900s"
+options:
+  logging: CLOUD_LOGGING_ONLY
+  pool:
+    name: projects/$PROJECT_ID/locations/us-central1/workerPools/build-pool
+  dynamic_substitutions: true
