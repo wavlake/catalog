@@ -1,0 +1,240 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  // The following connection string does not work because interpolation of env vars is not supported.
+  // Connection string can be set when instantiating Prisma Client
+  // See: https://github.com/prisma/prisma/issues/3310
+  url      = "postgresql://${env(PG_USER)}:${env(PG_PASSWORD)}@${env(PG_HOST)}:${env(PG_PORT)}/${env(PG_DATABASE)}?schema=public"
+}
+
+model activity {
+  id         Int       @id @default(autoincrement())
+  user_id    String    @db.VarChar(64)
+  type       Int
+  type_key   Int
+  created_at DateTime? @default(now()) @db.Timestamptz(6)
+
+  @@index([user_id], map: "idx_activity_user_id")
+}
+
+model Album {
+  id          String    @id @unique(map: "album_id_unique") @db.Uuid
+  artist_id   String    @db.Uuid
+  title       String    @db.VarChar(255)
+  artwork_url String?   @db.VarChar(255)
+  created_at  DateTime? @default(now()) @db.Timestamptz(6)
+  updated_at  DateTime? @default(now()) @db.Timestamptz(6)
+  description String?   @db.VarChar(1000)
+  deleted     Boolean?  @default(false)
+  artist      Artist    @relation(fields: [artist_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "album_artist_id_foreign")
+  track       Track[]
+
+  @@index([artist_id], map: "idx_album_artist_id")
+  @@map("album")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model amp {
+  id            Int       @id @default(autoincrement())
+  track_id      String    @db.Uuid
+  user_id       String    @db.VarChar(255)
+  msat_amount   Int
+  created_at    DateTime? @default(now()) @db.Timestamptz(6)
+  source_region String?   @db.VarChar(255)
+  comment       Boolean   @default(false)
+  fee_msat      Int?      @default(0)
+  type          Int?
+  type_key      Int?
+
+  @@index([track_id], map: "idx_amp_track_id")
+  @@index([user_id], map: "idx_amp_user_id")
+}
+
+model amp_type {
+  id          Int       @id @default(autoincrement())
+  description String?   @db.VarChar(64)
+  created_at  DateTime? @default(now()) @db.Timestamptz(6)
+}
+
+model Artist {
+  id          String    @id @unique(map: "artist_id_unique") @db.Uuid
+  user_id     String    @db.VarChar(255)
+  name        String    @db.VarChar(255)
+  artwork_url String?   @db.VarChar(255)
+  artist_url  String    @unique(map: "artist_artist_url_unique") @db.VarChar(255)
+  created_at  DateTime? @default(now()) @db.Timestamptz(6)
+  updated_at  DateTime? @default(now()) @db.Timestamptz(6)
+  bio         String?   @db.VarChar(200)
+  twitter     String?   @db.VarChar(255)
+  instagram   String?   @db.VarChar(255)
+  youtube     String?   @db.VarChar(255)
+  website     String?   @db.VarChar(255)
+  deleted     Boolean?  @default(false)
+  verified    Boolean?  @default(false)
+  npub        String?   @db.VarChar(64)
+  album       Album[]
+  user        User      @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "artist_user_id_foreign")
+  track       Track[]
+
+  @@index([artist_url], map: "idx_artist_url")
+  @@index([user_id], map: "idx_artist_user_id")
+  @@map("artist")
+}
+
+model comment {
+  id         Int       @id @default(autoincrement())
+  user_id    String    @db.VarChar(255)
+  amp_id     Int
+  content    String    @db.VarChar(210)
+  parent_id  Int?
+  created_at DateTime? @default(now()) @db.Timestamptz(6)
+
+  @@index([parent_id], map: "idx_comment_parent_id")
+  @@index([user_id], map: "idx_comment_user_id")
+}
+
+model event_track {
+  event_id   String    @id @unique(map: "event_track_event_id_unique") @db.VarChar(64)
+  track_id   String    @db.Uuid
+  created_at DateTime? @default(now()) @db.Timestamptz(6)
+
+  @@index([event_id], map: "idx_event_id")
+}
+
+model external_receive {
+  id           Int       @id @default(autoincrement())
+  settle_index Int?
+  preimage     String?   @db.VarChar(64)
+  track_id     String?   @db.Uuid
+  created_at   DateTime? @default(now()) @db.Timestamptz(6)
+  payment_hash String?   @db.VarChar(255)
+}
+
+model knex_migrations {
+  id             Int       @id @default(autoincrement())
+  name           String?   @db.VarChar(255)
+  batch          Int?
+  migration_time DateTime? @db.Timestamptz(6)
+}
+
+model knex_migrations_lock {
+  index     Int  @id @default(autoincrement())
+  is_locked Int?
+}
+
+model play {
+  id         Int       @id @default(autoincrement())
+  track_id   String    @db.Uuid
+  user_id    String    @db.VarChar(255)
+  complete   Boolean
+  created_at DateTime? @default(now()) @db.Timestamptz(6)
+
+  @@index([track_id], map: "idx_play_track_id")
+  @@index([user_id], map: "idx_play_user_id")
+}
+
+model playlist {
+  id           String    @id @unique(map: "playlist_id_unique") @db.Uuid
+  user_id      String    @db.VarChar(64)
+  title        String    @db.VarChar(255)
+  is_favorites Boolean?  @default(false)
+  created_at   DateTime? @default(now()) @db.Timestamptz(6)
+  updated_at   DateTime? @default(now()) @db.Timestamptz(6)
+
+  @@index([user_id], map: "idx_playlist_user_id")
+}
+
+model playlist_track {
+  id          Int       @id @default(autoincrement())
+  track_id    String    @db.Uuid
+  playlist_id String    @db.Uuid
+  order       String    @db.VarChar(16)
+  created_at  DateTime? @default(now()) @db.Timestamptz(6)
+  updated_at  DateTime? @default(now()) @db.Timestamptz(6)
+
+  @@index([playlist_id], map: "idx_playlist_track_playlist_id")
+}
+
+model ranking_forty {
+  id         Int       @id @default(autoincrement())
+  track_id   String    @db.VarChar(255)
+  rank       Int       @default(1)
+  created_at DateTime? @default(now()) @db.Timestamptz(6)
+
+  @@index([track_id], map: "idx_ranking_forty_track_id")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model Track {
+  id         String    @id @unique(map: "track_id_unique") @db.Uuid
+  artist_id  String    @db.Uuid
+  album_id   String    @db.Uuid
+  title      String    @db.VarChar(255)
+  order      Int
+  play_count Int?      @default(0)
+  msat_total BigInt?   @default(0)
+  live_url   String    @db.VarChar(255)
+  raw_url    String?   @db.VarChar(128)
+  size       Int?
+  duration   Int?
+  deleted    Boolean?  @default(false)
+  created_at DateTime? @default(now()) @db.Timestamptz(6)
+  updated_at DateTime? @default(now()) @db.Timestamptz(6)
+  album      Album     @relation(fields: [album_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "track_album_id_foreign")
+  artist     Artist    @relation(fields: [artist_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "track_artist_id_foreign")
+
+  @@index([album_id], map: "idx_track_album_id")
+  @@index([artist_id], map: "idx_track_artist_id")
+  @@map("track")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model transaction {
+  id              Int       @id @default(autoincrement())
+  user_id         String    @db.VarChar(255)
+  pre_tx_balance  BigInt
+  payment_request String    @db.VarChar(700)
+  payment_hash    String    @db.VarChar(255)
+  fee_msat        Int
+  msat_amount     BigInt
+  withdraw        Boolean
+  success         Boolean
+  failure_reason  String?   @db.VarChar(255)
+  created_at      DateTime? @default(now()) @db.Timestamptz(6)
+  is_pending      Boolean   @default(false)
+  updated_at      DateTime? @default(now()) @db.Timestamptz(6)
+  user            User      @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "transaction_user_id_foreign")
+
+  @@index([user_id], map: "idx_transaction_user_id")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model User {
+  id                     String        @id @unique(map: "user_id_unique") @db.VarChar(64)
+  name                   String        @unique(map: "user_name_unique") @db.VarChar(255)
+  msat_balance           BigInt?       @default(0)
+  amp_msat               Int?          @default(1000)
+  created_at             DateTime?     @default(now()) @db.Timestamptz(6)
+  updated_at             DateTime?     @default(now()) @db.Timestamptz(6)
+  is_locked              Boolean       @default(false)
+  artwork_url            String?       @db.VarChar(255)
+  last_activity_check_at DateTime?     @default(now()) @db.Timestamptz(6)
+  profile_url            String?       @unique(map: "user_profile_url_unique") @db.VarChar(255)
+  artist                 Artist[]
+  transaction            transaction[]
+
+  @@index([profile_url], map: "idx_profile_url")
+  @@map("user")
+}
+
+model zap_request {
+  payment_hash String    @id @unique(map: "zap_request_payment_hash_unique") @db.VarChar(255)
+  event_id     String?   @db.VarChar(64)
+  event        String
+  created_at   DateTime? @default(now()) @db.Timestamptz(6)
+
+  @@index([payment_hash], map: "idx_zap_payment_hash")
+}
