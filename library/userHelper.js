@@ -35,7 +35,7 @@ async function getAlbumUser(albumId) {
     });
 }
 
-export async function getArtistUser(artistId) {
+export async function getArtistAccount(artistId) {
   return db
     .knex("artist")
     .join("user", "artist.user_id", "=", "user.id")
@@ -47,7 +47,7 @@ export async function getArtistUser(artistId) {
       return data;
     })
     .catch((err) => {
-      log.error(`Error finding user from artistId ${err}`);
+      log.error(`Error finding account from artistId ${err}`);
     });
 }
 
@@ -84,7 +84,7 @@ async function isPlaylistOwner(userId, playlistId) {
 module.exports = {
   getUser,
   getAlbumUser,
-  getArtistUser,
+  getArtistAccount,
   getCommentUser,
   isPlaylistOwner,
 };

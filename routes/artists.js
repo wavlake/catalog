@@ -1,5 +1,6 @@
 const express = require("express");
 const multer = require("multer");
+const { isAuthorized } = require("../middlewares/auth.js");
 
 var storage = multer.diskStorage({
   destination: function (req, file, callback) {
@@ -18,6 +19,23 @@ import artistsController from "../controllers/artists.js";
 const router = express.Router();
 
 router.get("/:artistUrl/url", artistsController.get_artist_by_url);
+router.get("/:artistId", artistsController.get_artist_by_id);
+
+router.post(
+  "/create",
+  upload.single("artwork"),
+  isAuthorized,
+  artistsController.create_artist
+);
+router.put("/update", isAuthorized, artistsController.update_artist);
+// TODO: Update art should probably be part of update
+router.put(
+  "/update-art",
+  upload.single("art"),
+  isAuthorized,
+  artistsController.update_artist_art
+);
+router.delete("/:artistId", isAuthorized, artistsController.delete_artist);
 
 // Export router
 module.exports = router;

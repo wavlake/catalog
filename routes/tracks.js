@@ -10,7 +10,7 @@ const router = express.Router();
 
 router.get("/top", tracksController.get_index_top); // TOP 40
 
-router.get("/:trackId", tracksController.get_track); // TOP 40
+router.get("/:trackId", tracksController.get_track);
 
 // Export router
 module.exports = router;
