@@ -79,7 +79,7 @@ const create_artist = handleErrorAsync(async (req, res, next) => {
     })
     // Upload to S3
     .then((img) => {
-      s3Client
+      return s3Client
         .uploadS3(convertPath, s3Key, "avatar")
         // Write metadata to db
         .then((data) => {
