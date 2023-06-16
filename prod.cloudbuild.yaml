@@ -23,7 +23,7 @@ steps:
     entrypoint: npm
     args: ["run", "migrate"]
     env:
-      - "NODE_ENV=staging"
+      - "NODE_ENV=production"
       - "PG_HOST=${_PG_HOST}"
       - "PG_PORT=${_PG_PORT}"
       - "PG_DATABASE=${_PG_DATABASE}"

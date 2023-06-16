@@ -12,8 +12,9 @@
     "dev": "NODE_ENV=dev DEBUG=express:router concurrently \"npx tsc --watch\" \"nodemon dist/index.js --watch\"",
     "create-env": "printenv > .env",
     "build": "npx tsc",
-    "migrate": "knex --knexfile ./db/knexfile.js migrate:latest",
+    "migration": "knex --knexfile ./db/knexfile.js migrate:latest",
     "rollback": "knex --knexfile ./db/knexfile.js migrate:rollback",
+    "pull": "npx prisma db pull",
     "generate": "npx prisma generate"
   },
   "author": "Michael Rhee",

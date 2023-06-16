@@ -1,13 +1,11 @@
 generator client {
-  provider = "prisma-client-js"
+  provider        = "prisma-client-js"
+  previewFeatures = ["views"]
 }
 
 datasource db {
   provider = "postgresql"
-  // The following connection string does not work because interpolation of env vars is not supported.
-  // Connection string can be set when instantiating Prisma Client
-  // See: https://github.com/prisma/prisma/issues/3310
-  url      = "postgresql://${env(PG_USER)}:${env(PG_PASSWORD)}@${env(PG_HOST)}:${env(PG_PORT)}/${env(PG_DATABASE)}?schema=public"
+  url      = env("DATABASE_URL")
 }
 
 model activity {
@@ -237,4 +235,22 @@ model zap_request {
   created_at   DateTime? @default(now()) @db.Timestamptz(6)
 
   @@index([payment_hash], map: "idx_zap_payment_hash")
+}
+
+view TrackInfo {
+  id                 String    @unique @db.Uuid
+  title              String?   @db.VarChar(255)
+  artist             String?   @db.VarChar(255)
+  artist_url         String?   @db.VarChar(255)
+  avatar_url         String?   @db.VarChar(255)
+  artwork_url        String?   @db.VarChar(255)
+  msat_total_30_days BigInt?
+  msat_total_7_days  BigInt?
+  msat_total_1_days  BigInt?
+  album_title        String?   @db.VarChar(255)
+  live_url           String?   @db.VarChar(255)
+  duration           Int?
+  created_at         DateTime? @db.Timestamptz(6)
+
+  @@map("track_info")
 }

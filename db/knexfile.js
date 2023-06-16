@@ -36,7 +36,7 @@ module.exports = {
       tableName: "knex_migrations",
     },
   },
-  prod: {
+  production: {
     client: "pg",
     connection: {
       host: process.env.PG_HOST,

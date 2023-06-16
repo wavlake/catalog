@@ -1,5 +1,8 @@
 import { PrismaClient } from "@prisma/client";
 
+// Instantiate Prisma client here using env vars because Prisma schema file
+// does not support string interpolation of env vars
+// Ref: https://github.com/prisma/prisma/issues/3310
 const prisma = new PrismaClient({
   datasources: {
     db: {
