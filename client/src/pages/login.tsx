@@ -1,20 +1,8 @@
 import React, { useContext, useState } from "react";
-import TwitterIcon from "./../icons/twitter.svg";
-import GoogleIcon from "./../icons/google.svg";
+import TwitterIcon from "../icons/twitter.svg";
+import GoogleIcon from "../icons/google.svg";
 import { useForm } from "react-hook-form";
 import { useAuthContext } from "@/auth/authContext";
-
-
-const options = [
-  {
-    name: "Twitter",
-    icon: TwitterIcon,
-  },
-  {
-    name: "Google",
-    icon: GoogleIcon,
-  },
-];
 
 const ErrorMessage = ({ error }: any) => {
   return (
@@ -196,29 +184,24 @@ export default function LoginPage() {
             </h2>
           </div>
           <div className="grid grid-cols-1 items-center justify-items-center space-y-2">
-            {options.map((item) => (
               <div
                 className="grid grid-cols-2 items-center justify-items-center bg-brand-black rounded-lg w-44 py-3 pr-4 cursor-pointer"
-                key={item.name}
-                onClick={() => {
-                  switch (item.name) {
-                    case "Twitter": {
-                      handleTwitterLogin();
-                      break;
-                    }
-                    case "Google": {
-                      handleGoogleLogin();
-                      break;
-                    }
-                  }
-                }}
+                onClick={handleTwitterLogin}
               >
-                <item.icon className="col-start-1 h-5 fill-brand-beige" />
+                {/* <TwitterIcon className="col-start-1 h-5 fill-brand-beige" /> */}
                 <div className="">
-                  <p className="col-start-2 text-brand-beige">{item.name}</p>
+                  <p className="col-start-2 text-brand-beige">Twitter</p>
                 </div>
               </div>
-            ))}
+              <div
+                className="grid grid-cols-2 items-center justify-items-center bg-brand-black rounded-lg w-44 py-3 pr-4 cursor-pointer"
+                onClick={handleGoogleLogin}
+              >
+                {/* <GoogleIcon className="col-start-1 h-5 fill-brand-beige" /> */}
+                <div className="">
+                  <p className="col-start-2 text-brand-beige">Google</p>
+                </div>
+              </div>
           </div>
         </div>
       </div>
