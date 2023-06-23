@@ -1,18 +1,6 @@
-// Import path module
-import path from "path";
-import Knex from 'knex'
+import Knex from "knex";
 
-// Get the location of database.sqlite file
-const dbPath = path.resolve(__dirname, "../data/db.sqlite");
-
-// Create connection to SQLite database
-// const knex = require('knex')({
-//   client: 'sqlite3',
-//   connection: {
-//     filename: dbPath,
-//   },
-//   useNullAsDefault: true
-// })
+const maxConnections = process.env.NODE_ENV === "production" ? 5 : 1;
 
 const knex = Knex({
   client: "pg",
@@ -22,6 +10,10 @@ const knex = Knex({
     user: process.env.PG_USER,
     password: process.env.PG_PASSWORD,
     database: process.env.PG_DATABASE,
+  },
+  pool: {
+    min: 0,
+    max: maxConnections,
   },
 });
 

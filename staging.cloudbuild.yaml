@@ -21,7 +21,7 @@ steps:
   - name: node:16.20.0
     id: migrate db
     entrypoint: npm
-    args: ["run", "migration"]
+    args: ["run", "migrate"]
     env:
       - "NODE_ENV=staging"
       - "PG_HOST=${_PG_HOST}"
