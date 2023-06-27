@@ -53,7 +53,7 @@ const get_artists_by_account = handleErrorAsync(async (req, res, next) => {
   };
 
   const artists = await prisma.artist.findMany({
-    where: { user_id: request.userId },
+    where: { user_id: request.userId, deleted: false },
   });
 
   res.json(artists);
@@ -305,9 +305,9 @@ const delete_artist = handleErrorAsync(async (req, res, next) => {
     `DELETE ARTIST request: getting owner for artist ${request.artistId}`
   );
   getArtistAccount(request.artistId)
-    .then((data) => {
-      log.debug(`Artist ${request.artistId} owner: ${data.userId}`);
-      if (request.userId === data.userId) {
+    .then((artistAccount) => {
+      log.debug(`Artist ${request.artistId} owner: ${artistAccount}`);
+      if (request.userId === artistAccount) {
         log.debug(`Checking albums for artist ${request.artistId}`);
         db.knex("album")
           .select("album.artist_id as artistId", "album.deleted")
