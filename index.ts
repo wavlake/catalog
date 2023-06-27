@@ -8,7 +8,7 @@ log.setLevel(process.env.LOGLEVEL);
 const port = process.env.EXPRESS_PORT;
 const corsHost = process.env.CORS_HOST;
 
-var corsOptions = {
+const corsOptions = {
   origin: { corsHost },
   optionsSuccessStatus: 200, // some legacy browsers (IE11, various SmartTVs) choke on 204
 };
