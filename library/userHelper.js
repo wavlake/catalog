@@ -38,11 +38,12 @@ export async function getAlbumAccount(albumId) {
 export async function getArtistAccount(artistId) {
   return db
     .knex("artist")
-    .select("user_id as userId")
+    .select("artist.user_id as userId")
     .where("id", "=", artistId)
+    .first()
     .then((data) => {
-      console.log(data);
-      return data;
+      // console.log(data);
+      return data.userId;
     })
     .catch((err) => {
       log.error(`Error finding account from artistId ${err}`);

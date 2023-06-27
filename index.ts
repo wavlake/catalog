@@ -4,6 +4,9 @@ const app = express();
 const log = require("loglevel");
 log.setLevel(process.env.LOGLEVEL);
 const port = process.env.EXPRESS_PORT;
+const compression = require("compression");
+const helmet = require("helmet");
+const bodyParser = require("body-parser");
 
 // BigInt handling issue in Prisma: https://github.com/prisma/studio/issues/614
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment      <-- Necessary for my ESLint setup
@@ -11,6 +14,14 @@ const port = process.env.EXPRESS_PORT;
 BigInt.prototype.toJSON = function (): string {
   return this.toString();
 };
+
+// Apply middleware
+// Note: Keep this at the top, above routes
+app.use(helmet());
+app.use(compression());
+app.use(express.urlencoded({ extended: true }));
+app.use(bodyParser.json());
+app.use(express.json());
 
 // Import routes
 const accounts = require("./routes/accounts");

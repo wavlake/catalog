@@ -166,24 +166,22 @@ const create_artist = handleErrorAsync(async (req, res, next) => {
 });
 
 const update_artist = handleErrorAsync(async (req, res, next) => {
-  console.log(req.params);
   const request = {
+    userId: req.uid,
     artistId: req.body.artistId,
-    // name: req.body.name,
-    // bio: req.body.bio,
-    // twitter: req.body.twitter,
-    // nostr: req.body.nostr,
-    // instagram: req.body.instagram,
-    // youtube: req.body.youtube,
-    // website: req.body.website,
+    name: req.body.name,
+    bio: req.body.bio ? req.body.bio : "",
+    twitter: req.body.twitter ? req.body.twitter : "",
+    nostr: req.body.nostr ? req.body.nostr : "",
+    instagram: req.body.instagram ? req.body.instagram : "",
+    youtube: req.body.youtube ? req.body.youtube : "",
+    website: req.body.website ? req.body.website : "",
   };
 
-  console.log(request.artistId);
+  // console.log(request.userId);
   const artistAccount = await getArtistAccount(request.artistId);
 
-  console.log(artistAccount);
-
-  if (artistAccount.userId !== req.params.uid) {
+  if (artistAccount != request.userId) {
     return res.status(403).send("Unauthorized");
   }
 
