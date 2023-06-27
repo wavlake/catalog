@@ -17,6 +17,7 @@ steps:
       - "PG_PORT=${_PG_PORT}"
       - "PG_DATABASE=${_PG_DATABASE}"
       - "PG_USER=${_PG_USER}"
+      - "CORS_HOST=${_CORS_HOST}"
     secretEnv: ["PG_PASSWORD"]
   - name: node:16.20.0
     id: migrate db
