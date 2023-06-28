@@ -1,3 +1,5 @@
+import { errorHandler } from "./middlewares/errorHandler";
+
 const config = require("dotenv").config();
 const express = require("express");
 const app = express();
@@ -49,6 +51,8 @@ app.get("/", (req, res) => {
   res.send("Testing!");
 });
 
+// override default html error page with custom error handler
+app.use(errorHandler);
 app.listen(port, () => {
   console.log(`Example app listening on port ${port}`);
 });
