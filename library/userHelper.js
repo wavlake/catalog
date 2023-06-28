@@ -1,7 +1,7 @@
 import db from "./db";
 const log = require("loglevel");
 
-async function getUser(trackId) {
+async function getTrackAccount(trackId) {
   return db
     .knex("track")
     .join("artist", "track.artist_id", "=", "artist.id")
@@ -18,7 +18,7 @@ async function getUser(trackId) {
     });
 }
 
-async function getAlbumUser(albumId) {
+export async function getAlbumAccount(albumId) {
   return db
     .knex("album")
     .join("artist", "album.artist_id", "=", "artist.id")
@@ -27,7 +27,7 @@ async function getAlbumUser(albumId) {
     .where("album.id", "=", albumId)
     .first()
     .then((data) => {
-      // console.log(data)
+      console.log(data);
       return data;
     })
     .catch((err) => {
@@ -38,13 +38,12 @@ async function getAlbumUser(albumId) {
 export async function getArtistAccount(artistId) {
   return db
     .knex("artist")
-    .join("user", "artist.user_id", "=", "user.id")
-    .select("user.id as userId")
-    .where("artist.id", "=", artistId)
+    .select("artist.user_id as userId")
+    .where("id", "=", artistId)
     .first()
     .then((data) => {
-      // console.log(data)
-      return data;
+      // console.log(data);
+      return data.userId;
     })
     .catch((err) => {
       log.error(`Error finding account from artistId ${err}`);
@@ -82,8 +81,8 @@ async function isPlaylistOwner(userId, playlistId) {
 }
 
 module.exports = {
-  getUser,
-  getAlbumUser,
+  getTrackAccount,
+  getAlbumAccount,
   getArtistAccount,
   getCommentUser,
   isPlaylistOwner,

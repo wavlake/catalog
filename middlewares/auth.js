@@ -15,6 +15,7 @@ const isAuthorized = (req, res, next) => {
     .verifyIdToken(authToken)
     .then((user) => {
       req.uid = user.uid;
+      req.params.uid = user.uid;
       next();
     })
     .catch((e) => res.status(401).send("Unauthorized"));

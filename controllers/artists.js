@@ -47,16 +47,36 @@ const get_artist_by_id = handleErrorAsync(async (req, res, next) => {
   res.json(artist);
 });
 
+const get_artists_by_account = handleErrorAsync(async (req, res, next) => {
+  const request = {
+    userId: req.params.uid,
+  };
+
+  const artists = await prisma.artist.findMany({
+    where: { user_id: request.userId, deleted: false },
+  });
+
+  res.json(artists);
+});
+
 const create_artist = handleErrorAsync(async (req, res, next) => {
   const newArtistId = randomUUID();
 
-  // TODO: Add other attributes like twitter handle, etc.
   const request = {
     artwork: req.file,
     userId: req.uid, //required, should come in with auth
     name: req.body.name, // required
     bio: req.body.bio,
+    twitter: req.body.twitter,
+    nostr: req.body.nostr,
+    instagram: req.body.instagram,
+    youtube: req.body.youtube,
+    website: req.body.website,
   };
+
+  if (!request.name) {
+    return res.status(403).send("Artist name is required");
+  }
 
   let uploadPath;
   let isKeeper = false;
@@ -79,77 +99,91 @@ const create_artist = handleErrorAsync(async (req, res, next) => {
     })
     // Upload to S3
     .then((img) => {
-      return s3Client
-        .uploadS3(convertPath, s3Key, "avatar")
-        // Write metadata to db
-        .then((data) => {
-          log.debug(
-            `Avatar for ${newArtistId} uploaded to S3 ${data.Location}`
-          );
-          const liveUrl = `${cdnDomain}/${s3Key}`;
-          db.knex("artist")
-            .insert(
-              {
-                id: newArtistId,
-                user_id: request.userId,
-                name: request.name,
-                bio: request.bio,
-                artwork_url: liveUrl,
-                artist_url: format.urlFriendly(request.name),
-              },
-              ["id"]
-            )
-            .then((data) => {
-              log.debug(
-                `Created new artist ${request.name} with id: ${data[0]["id"]}`
-              );
+      return (
+        s3Client
+          .uploadS3(convertPath, s3Key, "avatar")
+          // Write metadata to db
+          .then((data) => {
+            log.debug(
+              `Avatar for ${newArtistId} uploaded to S3 ${data.Location}`
+            );
+            const liveUrl = `${cdnDomain}/${s3Key}`;
+            db.knex("artist")
+              .insert(
+                {
+                  id: newArtistId,
+                  user_id: request.userId,
+                  name: request.name,
+                  bio: request.bio,
+                  twitter: request.twitter,
+                  instagram: request.instagram,
+                  npub: request.nostr,
+                  youtube: request.youtube,
+                  website: request.website,
+                  artist_url: format.urlFriendly(request.name),
+                },
+                ["id"]
+              )
+              .then((data) => {
+                log.debug(
+                  `Created new artist ${request.name} with id: ${data[0]["id"]}`
+                );
 
-              // Clean up with async calls to avoid blocking response
-              log.debug(
-                `Deleting local files : ${convertPath} & ${uploadPath}`
-              );
-              fs.unlink(`${convertPath}`, (err) => {
-                if (err) log.debug(`Error deleting local file : ${err}`);
-              });
-              isKeeper
-                ? null
-                : fs.unlink(`${uploadPath}`, (err) => {
-                    if (err) log.debug(`Error deleting local file : ${err}`);
-                  });
-              res.send(data);
-            })
-            .catch((err) => {
-              if (err instanceof multer.MulterError) {
-                log.debug(`MulterError creating new artist: ${err}`);
-                res.status(409).send("Something went wrong");
-              } else if (err) {
-                log.debug(`Error creating new artist: ${err}`);
-                if (err.message.includes("duplicate")) {
-                  res.status(409).send("Artist already exists");
-                } else {
+                // Clean up with async calls to avoid blocking response
+                log.debug(
+                  `Deleting local files : ${convertPath} & ${uploadPath}`
+                );
+                fs.unlink(`${convertPath}`, (err) => {
+                  if (err) log.debug(`Error deleting local file : ${err}`);
+                });
+                isKeeper
+                  ? null
+                  : fs.unlink(`${uploadPath}`, (err) => {
+                      if (err) log.debug(`Error deleting local file : ${err}`);
+                    });
+                res.send(data);
+              })
+              .catch((err) => {
+                if (err instanceof multer.MulterError) {
+                  log.debug(`MulterError creating new artist: ${err}`);
                   res.status(409).send("Something went wrong");
+                } else if (err) {
+                  log.debug(`Error creating new artist: ${err}`);
+                  if (err.message.includes("duplicate")) {
+                    res.status(409).send("Artist already exists");
+                  } else {
+                    res.status(409).send("Something went wrong");
+                  }
                 }
-              }
-            });
-        })
-        .catch((err) => {
-          log.debug(`Error encoding new artist: ${err}`);
-          next(err);
-        });
+              });
+          })
+          .catch((err) => {
+            log.debug(`Error encoding new artist: ${err}`);
+            next(err);
+          })
+      );
     });
 });
 
 const update_artist = handleErrorAsync(async (req, res, next) => {
   const request = {
+    userId: req.uid,
     artistId: req.body.artistId,
     name: req.body.name,
-    bio: req.body.bio,
-    twitter: req.body.twitter,
-    nostr: req.body.nostr,
-    instagram: req.body.instagram,
-    youtube: req.body.youtube,
-    website: req.body.website,
+    bio: req.body.bio ? req.body.bio : "",
+    twitter: req.body.twitter ? req.body.twitter : "",
+    nostr: req.body.nostr ? req.body.nostr : "",
+    instagram: req.body.instagram ? req.body.instagram : "",
+    youtube: req.body.youtube ? req.body.youtube : "",
+    website: req.body.website ? req.body.website : "",
   };
+
+  // console.log(request.userId);
+  const artistAccount = await getArtistAccount(request.artistId);
+
+  if (artistAccount != request.userId) {
+    return res.status(403).send("Unauthorized");
+  }
 
   log.debug(`Editing artist ${request.artistId}`);
   db.knex("artist")
@@ -271,9 +305,9 @@ const delete_artist = handleErrorAsync(async (req, res, next) => {
     `DELETE ARTIST request: getting owner for artist ${request.artistId}`
   );
   getArtistAccount(request.artistId)
-    .then((data) => {
-      log.debug(`Artist ${request.artistId} owner: ${data.userId}`);
-      if (request.userId === data.userId) {
+    .then((artistAccount) => {
+      log.debug(`Artist ${request.artistId} owner: ${artistAccount}`);
+      if (request.userId === artistAccount) {
         log.debug(`Checking albums for artist ${request.artistId}`);
         db.knex("album")
           .select("album.artist_id as artistId", "album.deleted")
@@ -334,6 +368,7 @@ async function getArtworkPath(artistId) {
 }
 
 export default {
+  get_artists_by_account,
   get_artist_by_url,
   get_artist_by_id,
   create_artist,
