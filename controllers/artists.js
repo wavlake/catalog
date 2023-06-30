@@ -66,12 +66,12 @@ const create_artist = handleErrorAsync(async (req, res, next) => {
     artwork: req.file,
     userId: req.uid, //required, should come in with auth
     name: req.body.name, // required
-    bio: req.body.bio,
-    twitter: req.body.twitter,
-    nostr: req.body.nostr,
-    instagram: req.body.instagram,
-    youtube: req.body.youtube,
-    website: req.body.website,
+    bio: req.body.bio ? req.body.bio : "",
+    twitter: req.body.twitter ? req.body.twitter : "",
+    nostr: req.body.nostr ? req.body.nostr : "",
+    instagram: req.body.instagram ? req.body.instagram : "",
+    youtube: req.body.youtube ? req.body.youtube : "",
+    website: req.body.website ? req.body.website : "",
   };
 
   if (!request.name) {

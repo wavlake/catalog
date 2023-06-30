@@ -18,6 +18,8 @@ steps:
       - "PG_DATABASE=${_PG_DATABASE}"
       - "PG_USER=${_PG_USER}"
       - "CORS_HOST=${_CORS_HOST}"
+      - "LOCAL_UPLOAD_PATH=${_LOCAL_UPLOAD_PATH}"
+      - "LOCAL_CONVERT_PATH=${_LOCAL_CONVERT_PATH}"
     secretEnv: ["PG_PASSWORD"]
   - name: node:16.20.0
     id: migrate db
