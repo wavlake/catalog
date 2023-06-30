@@ -1,6 +1,7 @@
 import { errorHandler } from "./middlewares/errorHandler";
 
 const config = require("dotenv").config();
+const fs = require("fs");
 const express = require("express");
 const app = express();
 const log = require("loglevel");
@@ -12,6 +13,17 @@ const corsHost = process.env.CORS_HOST;
 
 log.setLevel(process.env.LOGLEVEL);
 const port = process.env.EXPRESS_PORT;
+const localConvertPath = `${process.env.LOCAL_CONVERT_PATH}`;
+const localUploadPath = `${process.env.LOCAL_UPLOAD_PATH}`;
+
+// Creates temp folders if they don't exist
+fs.mkdirSync(localConvertPath, { recursive: true }, (err) => {
+  if (err) throw err;
+});
+
+fs.mkdirSync(localUploadPath, { recursive: true }, (err) => {
+  if (err) throw err;
+});
 
 const corsOptions = {
   origin: { corsHost },
