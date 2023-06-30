@@ -120,6 +120,7 @@ const create_artist = handleErrorAsync(async (req, res, next) => {
                   npub: request.nostr,
                   youtube: request.youtube,
                   website: request.website,
+                  artwork_url: liveUrl,
                   artist_url: format.urlFriendly(request.name),
                 },
                 ["id"]
