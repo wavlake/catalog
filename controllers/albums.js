@@ -22,6 +22,31 @@ const handleErrorAsync = (fn) => async (req, res, next) => {
   }
 };
 
+const get_albums_by_account = handleErrorAsync(async (req, res, next) => {
+  const request = {
+    userId: req.uid,
+  };
+
+  db.knex("user")
+    .join("artist", "user.id", "=", "artist.user_id")
+    .join("album", "artist.id", "=", "album.artist_id")
+    .select(
+      "album.id as id",
+      "album.title as title",
+      "album.artwork_url as artworkUrl",
+      "artist.name as name"
+    )
+    .where("user.id", "=", request.userId)
+    .andWhere("album.deleted", "=", false)
+    .then((data) => {
+      // console.log(data)
+      res.send(data);
+    })
+    .catch((err) => {
+      next(err);
+    });
+});
+
 const get_album_by_id = handleErrorAsync(async (req, res, next) => {
   const request = {
     albumId: req.params.albumId,
@@ -313,6 +338,7 @@ async function getArtworkPath(albumId) {
 }
 
 export default {
+  get_albums_by_account,
   get_album_by_id,
   delete_album,
   create_album,
