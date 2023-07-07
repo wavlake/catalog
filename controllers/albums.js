@@ -96,7 +96,7 @@ const create_album = handleErrorAsync(async (req, res, next) => {
                 description: request.description,
                 artwork_url: liveUrl,
               },
-              ["id"]
+              ["id", "artist_id", "title", "description", "artwork_url"]
             )
             .then((data) => {
               log.debug(
@@ -141,6 +141,10 @@ const update_album = handleErrorAsync(async (req, res, next) => {
     description: req.body.description,
   };
 
+  if (!request.albumId) {
+    res.status(400).send("albumId is required");
+  }
+
   log.debug(`Editing album ${request.albumId}`);
   db.knex("album")
     .where("id", "=", request.albumId)
@@ -150,7 +154,7 @@ const update_album = handleErrorAsync(async (req, res, next) => {
         description: request.description,
         updated_at: db.knex.fn.now(),
       },
-      ["id", "title"]
+      ["id", "artist_id", "title", "description", "artwork_url"]
     )
     .then((data) => {
       res.send(data);
@@ -168,6 +172,10 @@ const update_album_art = handleErrorAsync(async (req, res, next) => {
     artwork: req.file,
     albumId: req.body.albumId,
   };
+
+  if (!request.albumId) {
+    res.status(400).send("albumId is required");
+  }
 
   const uploadPath = request.artwork.path;
   let oldUrl;
@@ -250,6 +258,10 @@ const delete_album = handleErrorAsync(async (req, res, next) => {
     userId: req.uid,
     albumId: req.params.albumId,
   };
+
+  if (!request.albumId) {
+    res.status(400).send("albumId is required");
+  }
 
   log.debug(`DELETE ALBUM request: getting owner for track ${request.albumId}`);
   getAlbumAccount(request.albumId)
