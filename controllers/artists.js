@@ -123,7 +123,19 @@ const create_artist = handleErrorAsync(async (req, res, next) => {
                   artwork_url: liveUrl,
                   artist_url: format.urlFriendly(request.name),
                 },
-                ["id"]
+                [
+                  "id",
+                  "user_id",
+                  "name",
+                  "bio",
+                  "twitter",
+                  "instagram",
+                  "npub",
+                  "youtube",
+                  "website",
+                  "artwork_url",
+                  "artist_url",
+                ]
               )
               .then((data) => {
                 log.debug(
@@ -179,6 +191,10 @@ const update_artist = handleErrorAsync(async (req, res, next) => {
     website: req.body.website ? req.body.website : "",
   };
 
+  if (!request.artistId) {
+    return res.status(403).send("Artist id is required");
+  }
+
   // console.log(request.userId);
   const artistAccount = await getArtistAccount(request.artistId);
 
@@ -200,7 +216,19 @@ const update_artist = handleErrorAsync(async (req, res, next) => {
         website: request.website,
         artist_url: format.urlFriendly(request.name),
       },
-      ["id", "name"]
+      [
+        "id",
+        "user_id",
+        "name",
+        "bio",
+        "twitter",
+        "instagram",
+        "npub",
+        "youtube",
+        "website",
+        "artwork_url",
+        "artist_url",
+      ]
     )
     .then((data) => {
       res.send(data);
@@ -301,6 +329,10 @@ const delete_artist = handleErrorAsync(async (req, res, next) => {
     userId: req.uid,
     artistId: req.params.artistId,
   };
+
+  if (!request.artistId) {
+    return res.status(403).send("Artist id is required");
+  }
 
   log.debug(
     `DELETE ARTIST request: getting owner for artist ${request.artistId}`

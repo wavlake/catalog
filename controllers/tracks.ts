@@ -59,6 +59,10 @@ const delete_track = handleErrorAsync(async (req, res, next) => {
     trackId: req.params.trackId,
   };
 
+  if (!request.trackId) {
+    return res.status(400).send("trackId is required");
+  }
+
   log.debug(`DELETE TRACK request: getting owner for track ${request.trackId}`);
   getTrackAccount(request.trackId)
     .then((data) => {
@@ -100,9 +104,12 @@ const create_track = handleErrorAsync(async (req, res, next) => {
     order: req.body.order,
   };
 
+  if (!request.albumId) {
+    return res.status(400).send("albumId is required");
+  }
+
   const albumAccount = await getAlbumAccount(request.albumId);
 
-  console.log(albumAccount);
   if (!albumAccount == request.userId) {
     return res.status(403).send("Wrong owner");
   }
@@ -165,7 +172,16 @@ const create_track = handleErrorAsync(async (req, res, next) => {
                       duration: duration,
                       size: fileStats.size,
                     },
-                    ["id"]
+                    [
+                      "id",
+                      "artist_id",
+                      "album_id",
+                      "live_url",
+                      "title",
+                      "order",
+                      "duration",
+                      "size",
+                    ]
                   )
                   .then((data) => {
                     log.debug(
@@ -254,6 +270,10 @@ const update_track = handleErrorAsync(async (req, res, next) => {
     order: req.body.order,
   };
 
+  if (!request.trackId) {
+    return res.status(400).send("trackId is required");
+  }
+
   log.debug(`Editing track ${request.trackId}`);
   db.knex("track")
     .where("id", "=", request.trackId)
@@ -263,7 +283,16 @@ const update_track = handleErrorAsync(async (req, res, next) => {
         order: request.order,
         updated_at: db.knex.fn.now(),
       },
-      ["id", "title"]
+      [
+        "id",
+        "artist_id",
+        "album_id",
+        "live_url",
+        "title",
+        "order",
+        "duration",
+        "size",
+      ]
     )
     .then((data) => {
       res.send(data);
