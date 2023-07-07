@@ -21,6 +21,7 @@ const router = express.Router();
 
 //////// ROUTES ////////
 
+router.get("/account", isAuthorized, albumsController.get_albums_by_account);
 router.get("/:albumId", albumsController.get_album_by_id);
 router.get("/:artistId/artist", albumsController.get_albums_by_artist_id);
 router.post("/", upload.single("artwork"), albumsController.create_album);
