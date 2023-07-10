@@ -33,8 +33,8 @@ const get_index_top = handleErrorAsync(async (req, res, next) => {
   };
 
   const tracks = await prisma.trackInfo.findMany({
-    where: { msat_total_30_days: { gt: 0 } },
-    orderBy: { msat_total_30_days: "desc" },
+    where: { msatTotal30Days: { gt: 0 } },
+    orderBy: { msatTotal30Days: "desc" },
     take: request.limit,
   });
 
@@ -73,7 +73,7 @@ const delete_track = handleErrorAsync(async (req, res, next) => {
           .where("id", "=", request.trackId)
           .update({ deleted: true }, ["id", "title"])
           .then((data) => {
-            res.send(data);
+            res.send(data[0]);
           })
           .catch((err) => {
             log.debug(`Error deleting track ${request.trackId}: ${err}`);
@@ -172,16 +172,7 @@ const create_track = handleErrorAsync(async (req, res, next) => {
                       duration: duration,
                       size: fileStats.size,
                     },
-                    [
-                      "id",
-                      "artist_id",
-                      "album_id",
-                      "live_url",
-                      "title",
-                      "order",
-                      "duration",
-                      "size",
-                    ]
+                    ["*"]
                   )
                   .then((data) => {
                     log.debug(
@@ -242,7 +233,17 @@ const create_track = handleErrorAsync(async (req, res, next) => {
                         );
                       });
 
-                    res.send(data);
+                    res.send({
+                      id: data[0]["id"],
+                      artistId: data[0]["artist_id"],
+                      albumId: data[0]["album_id"],
+                      title: data[0]["title"],
+                      order: data[0]["order"],
+                      duration: data[0]["duration"],
+                      liveUrl: data[0]["liveUrl"],
+                      rawUrl: data[0]["raw_url"],
+                      size: data[0]["size"],
+                    });
                   });
               });
           })
@@ -283,19 +284,20 @@ const update_track = handleErrorAsync(async (req, res, next) => {
         order: request.order,
         updated_at: db.knex.fn.now(),
       },
-      [
-        "id",
-        "artist_id",
-        "album_id",
-        "live_url",
-        "title",
-        "order",
-        "duration",
-        "size",
-      ]
+      ["*"]
     )
     .then((data) => {
-      res.send(data);
+      res.send({
+        id: data[0]["id"],
+        artistId: data[0]["artist_id"],
+        albumId: data[0]["album_id"],
+        title: data[0]["title"],
+        order: data[0]["order"],
+        duration: data[0]["duration"],
+        liveUrl: data[0]["liveUrl"],
+        rawUrl: data[0]["raw_url"],
+        size: data[0]["size"],
+      });
     })
     .catch((err) => {
       log.debug(`Error editing track ${request.trackId}: ${err}`);

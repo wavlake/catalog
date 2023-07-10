@@ -29,7 +29,7 @@ const get_artist_by_url = handleErrorAsync(async (req, res, next) => {
   };
 
   const artist = await prisma.artist.findFirstOrThrow({
-    where: { artist_url: request.artistUrl },
+    where: { artistUrl: request.artistUrl },
   });
 
   res.json(artist);
@@ -53,7 +53,7 @@ const get_artists_by_account = handleErrorAsync(async (req, res, next) => {
   };
 
   const artists = await prisma.artist.findMany({
-    where: { user_id: request.userId, deleted: false },
+    where: { userId: request.userId, deleted: false },
   });
 
   res.json(artists);
@@ -123,19 +123,7 @@ const create_artist = handleErrorAsync(async (req, res, next) => {
                   artwork_url: liveUrl,
                   artist_url: format.urlFriendly(request.name),
                 },
-                [
-                  "id",
-                  "user_id",
-                  "name",
-                  "bio",
-                  "twitter",
-                  "instagram",
-                  "npub",
-                  "youtube",
-                  "website",
-                  "artwork_url",
-                  "artist_url",
-                ]
+                ["*"]
               )
               .then((data) => {
                 log.debug(
@@ -154,7 +142,19 @@ const create_artist = handleErrorAsync(async (req, res, next) => {
                   : fs.unlink(`${uploadPath}`, (err) => {
                       if (err) log.debug(`Error deleting local file : ${err}`);
                     });
-                res.send(data);
+                res.send({
+                  id: data[0]["id"],
+                  userId: data[0]["user_id"],
+                  name: data[0]["name"],
+                  bio: data[0]["bio"],
+                  twitter: data[0]["twitter"],
+                  instagram: data[0]["instagram"],
+                  npub: data[0]["npub"],
+                  youtube: data[0]["youtube"],
+                  website: data[0]["website"],
+                  artworkUrl: data[0]["artwork_url"],
+                  artistUrl: data[0]["artist_url"],
+                });
               })
               .catch((err) => {
                 if (err instanceof multer.MulterError) {
@@ -216,22 +216,22 @@ const update_artist = handleErrorAsync(async (req, res, next) => {
         website: request.website,
         artist_url: format.urlFriendly(request.name),
       },
-      [
-        "id",
-        "user_id",
-        "name",
-        "bio",
-        "twitter",
-        "instagram",
-        "npub",
-        "youtube",
-        "website",
-        "artwork_url",
-        "artist_url",
-      ]
+      ["*"]
     )
     .then((data) => {
-      res.send(data);
+      res.send({
+        id: data[0]["id"],
+        userId: data[0]["user_id"],
+        name: data[0]["name"],
+        bio: data[0]["bio"],
+        twitter: data[0]["twitter"],
+        instagram: data[0]["instagram"],
+        npub: data[0]["npub"],
+        youtube: data[0]["youtube"],
+        website: data[0]["website"],
+        artworkUrl: data[0]["artwork_url"],
+        artistUrl: data[0]["artist_url"],
+      });
     })
     .catch((err) => {
       log.debug(`Error editing artist ${request.artistId}: ${err}`);
@@ -358,7 +358,7 @@ const delete_artist = handleErrorAsync(async (req, res, next) => {
                 .where("id", "=", request.artistId)
                 .update({ deleted: true }, ["id", "name"])
                 .then((data) => {
-                  res.send(data);
+                  res.send(data[0]);
                 })
                 .catch((err) => {
                   log.debug(
