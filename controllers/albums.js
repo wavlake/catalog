@@ -67,7 +67,7 @@ const get_albums_by_artist_id = handleErrorAsync(async (req, res, next) => {
   };
 
   const albums = await prisma.album.findMany({
-    where: { artist_id: request.artistId, deleted: false },
+    where: { artistId: request.artistId, deleted: false },
   });
 
   res.json(albums);
@@ -121,7 +121,7 @@ const create_album = handleErrorAsync(async (req, res, next) => {
                 description: request.description,
                 artwork_url: liveUrl,
               },
-              ["id", "artist_id", "title", "description", "artwork_url"]
+              ["*"]
             )
             .then((data) => {
               log.debug(
@@ -140,7 +140,13 @@ const create_album = handleErrorAsync(async (req, res, next) => {
                 : fs.unlink(`${uploadPath}`, (err) => {
                     if (err) log.debug(`Error deleting local file : ${err}`);
                   });
-              res.send(data);
+              res.send({
+                id: data[0]["id"],
+                title: data[0]["title"],
+                artworkUrl: data[0]["artwork_url"],
+                artistId: data[0]["artist_id"],
+                description: data[0]["description"],
+              });
             })
             .catch((err) => {
               if (err instanceof multer.MulterError) {
@@ -179,10 +185,16 @@ const update_album = handleErrorAsync(async (req, res, next) => {
         description: request.description,
         updated_at: db.knex.fn.now(),
       },
-      ["id", "artist_id", "title", "description", "artwork_url"]
+      ["*"]
     )
     .then((data) => {
-      res.send(data);
+      res.send({
+        id: data[0]["id"],
+        title: data[0]["title"],
+        artworkUrl: data[0]["artwork_url"],
+        artistId: data[0]["artist_id"],
+        description: data[0]["description"],
+      });
     })
     .catch((err) => {
       log.debug(`Error editing album ${request.albumId}: ${err}`);
@@ -307,7 +319,7 @@ const delete_album = handleErrorAsync(async (req, res, next) => {
                 .where("id", "=", request.albumId)
                 .update({ deleted: true }, ["id", "title"])
                 .then((data) => {
-                  res.send(data);
+                  res.send(data[0]);
                 })
                 .catch((err) => {
                   log.debug(`Error deleting album ${request.albumId}: ${err}`);

@@ -20,17 +20,17 @@ model activity {
 
 model Album {
   id          String    @id @unique(map: "album_id_unique") @db.Uuid
-  artist_id   String    @db.Uuid
+  artistId    String    @db.Uuid @map("artist_id")
   title       String    @db.VarChar(255)
-  artwork_url String?   @db.VarChar(255)
-  created_at  DateTime? @default(now()) @db.Timestamptz(6)
-  updated_at  DateTime? @default(now()) @db.Timestamptz(6)
+  artworkUrl  String?   @db.VarChar(255) @map("artwork_url")
+  createdAt   DateTime? @default(now()) @db.Timestamptz(6) @map("created_at")
+  updatedAt   DateTime? @default(now()) @db.Timestamptz(6) @map("updated_at")
   description String?   @db.VarChar(1000)
   deleted     Boolean?  @default(false)
-  artist      Artist    @relation(fields: [artist_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "album_artist_id_foreign")
+  artist      Artist    @relation(fields: [artistId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "album_artist_id_foreign")
   track       Track[]
 
-  @@index([artist_id], map: "idx_album_artist_id")
+  @@index([artistId], map: "idx_album_artist_id")
   @@map("album")
 }
 
@@ -59,12 +59,12 @@ model amp_type {
 
 model Artist {
   id          String    @id @unique(map: "artist_id_unique") @db.Uuid
-  user_id     String    @db.VarChar(255)
+  userId      String    @db.VarChar(255) @map("user_id")
   name        String    @db.VarChar(255)
-  artwork_url String?   @db.VarChar(255)
-  artist_url  String    @unique(map: "artist_artist_url_unique") @db.VarChar(255)
-  created_at  DateTime? @default(now()) @db.Timestamptz(6)
-  updated_at  DateTime? @default(now()) @db.Timestamptz(6)
+  artworkUrl  String?   @db.VarChar(255) @map("artwork_url")
+  artistUrl   String    @unique(map: "artist_artist_url_unique") @db.VarChar(255) @map("artist_url")
+  createdAt   DateTime? @default(now()) @db.Timestamptz(6) @map("created_at")
+  updatedAt   DateTime? @default(now()) @db.Timestamptz(6) @map("updated_at")
   bio         String?   @db.VarChar(200)
   twitter     String?   @db.VarChar(255)
   instagram   String?   @db.VarChar(255)
@@ -74,11 +74,11 @@ model Artist {
   verified    Boolean?  @default(false)
   npub        String?   @db.VarChar(64)
   album       Album[]
-  user        User      @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "artist_user_id_foreign")
+  user        User      @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "artist_user_id_foreign")
   track       Track[]
 
-  @@index([artist_url], map: "idx_artist_url")
-  @@index([user_id], map: "idx_artist_user_id")
+  @@index([artistUrl], map: "idx_artist_url")
+  @@index([userId], map: "idx_artist_user_id")
   @@map("artist")
 }
 
@@ -168,24 +168,24 @@ model ranking_forty {
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 model Track {
   id         String    @id @unique(map: "track_id_unique") @db.Uuid
-  artist_id  String    @db.Uuid
-  album_id   String    @db.Uuid
+  artistId   String    @db.Uuid @map("artist_id")
+  albumId    String    @db.Uuid @map("album_id")
   title      String    @db.VarChar(255)
   order      Int
-  play_count Int?      @default(0)
-  msat_total BigInt?   @default(0)
-  live_url   String    @db.VarChar(255)
-  raw_url    String?   @db.VarChar(128)
+  playCount  Int?      @default(0) @map("play_count")
+  msatTotal  BigInt?   @default(0) @map("msat_total")
+  liveUrl    String    @db.VarChar(255) @map("live_url")
+  rawUrl     String?   @db.VarChar(128) @map("raw_url")
   size       Int?
   duration   Int?
   deleted    Boolean?  @default(false)
-  created_at DateTime? @default(now()) @db.Timestamptz(6)
-  updated_at DateTime? @default(now()) @db.Timestamptz(6)
-  album      Album     @relation(fields: [album_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "track_album_id_foreign")
-  artist     Artist    @relation(fields: [artist_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "track_artist_id_foreign")
+  createdAt  DateTime? @default(now()) @db.Timestamptz(6) @map("created_at")
+  updatedAt  DateTime? @default(now()) @db.Timestamptz(6) @map("updated_at")
+  album      Album     @relation(fields: [albumId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "track_album_id_foreign")
+  artist     Artist    @relation(fields: [artistId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "track_artist_id_foreign")
 
-  @@index([album_id], map: "idx_track_album_id")
-  @@index([artist_id], map: "idx_track_artist_id")
+  @@index([albumId], map: "idx_track_album_id")
+  @@index([artistId], map: "idx_track_artist_id")
   @@map("track")
 }
 
@@ -241,16 +241,16 @@ view TrackInfo {
   id                 String    @unique @db.Uuid
   title              String?   @db.VarChar(255)
   artist             String?   @db.VarChar(255)
-  artist_url         String?   @db.VarChar(255)
-  avatar_url         String?   @db.VarChar(255)
-  artwork_url        String?   @db.VarChar(255)
-  msat_total_30_days BigInt?
-  msat_total_7_days  BigInt?
-  msat_total_1_days  BigInt?
-  album_title        String?   @db.VarChar(255)
-  live_url           String?   @db.VarChar(255)
+  artistUrl          String?   @db.VarChar(255) @map("artist_url")
+  avatarUrl          String?   @db.VarChar(255) @map("avatar_url")
+  artworkUrl         String?   @db.VarChar(255) @map("artwork_url")
+  msatTotal30Days    BigInt? @map("msat_total_30_days")
+  msatTotal7Days     BigInt? @map("msat_total_7_days")
+  msatTotal1Days     BigInt? @map("msat_total_1_days")
+  albumTitle         String?   @db.VarChar(255) @map("album_title")
+  liveUrl            String?   @db.VarChar(255) @map("live_url")
   duration           Int?
-  created_at         DateTime? @db.Timestamptz(6)
+  createdAt          DateTime? @db.Timestamptz(6) @map("created_at")
 
   @@map("track_info")
 }
