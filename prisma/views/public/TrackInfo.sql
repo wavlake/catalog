@@ -11,7 +11,10 @@ SELECT
   album.title AS album_title,
   track.live_url,
   track.duration,
-  track.created_at
+  track.created_at,
+  track.album_id,
+  track.artist_id,
+  track."order"
 FROM
   (
     (

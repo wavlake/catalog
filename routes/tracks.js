@@ -22,6 +22,8 @@ const router = express.Router();
 //////// ROUTES ////////
 
 router.get("/top", tracksController.get_index_top); // TOP 40
+router.get("/:albumId/album", tracksController.get_tracks_by_album_id);
+router.get("/:artistId/artist", tracksController.get_tracks_by_artist_id);
 router.get("/:trackId", tracksController.get_track);
 router.post(
   "/",
