@@ -53,6 +53,34 @@ const get_track = handleErrorAsync(async (req, res, next) => {
   res.json(track);
 });
 
+const get_tracks_by_album_id = handleErrorAsync(async (req, res, next) => {
+  const request = {
+    albumId: req.params.albumId,
+  };
+
+  const tracks = await prisma.trackInfo.findMany({
+    where: { albumId: request.albumId },
+    orderBy: { order: "asc" },
+  });
+
+  res.json(tracks);
+});
+
+const get_tracks_by_artist_id = handleErrorAsync(async (req, res, next) => {
+  const request = {
+    artistId: req.params.artistId,
+    limit: req.query.limit ? parseInt(req.query.limit) : 10,
+  };
+
+  const tracks = await prisma.trackInfo.findMany({
+    where: { artistId: request.artistId },
+    orderBy: { msatTotal30Days: "desc" },
+    take: request.limit,
+  });
+
+  res.json(tracks);
+});
+
 const delete_track = handleErrorAsync(async (req, res, next) => {
   const request = {
     userId: req.uid,
@@ -111,7 +139,7 @@ const create_track = handleErrorAsync(async (req, res, next) => {
   const albumAccount = await getAlbumAccount(request.albumId);
 
   if (!albumAccount == request.userId) {
-    return res.status(403).send("Wrong owner");
+    return res.status(403).send("Account does not own this album");
   }
 
   const albumDetails = await getAlbumDetails(request.albumId);
@@ -324,6 +352,8 @@ async function getAlbumDetails(albumId) {
 export default {
   get_index_top,
   get_track,
+  get_tracks_by_album_id,
+  get_tracks_by_artist_id,
   delete_track,
   create_track,
   update_track,
