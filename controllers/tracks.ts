@@ -8,6 +8,8 @@ const fs = require("fs");
 const { s3 } = require("../library/s3Client");
 const multer = require("multer");
 const { getAlbumAccount, getTrackAccount } = require("../library/userHelper");
+const asyncHandler = require("express-async-handler");
+import { formatError } from "../library/errors";
 
 const s3BucketName = `${process.env.AWS_S3_BUCKET_NAME}`;
 const cdnDomain = `${process.env.AWS_CDN_DOMAIN}`;
@@ -16,18 +18,8 @@ const rawPrefix = `${process.env.AWS_S3_RAW_PREFIX}`;
 const localConvertPath = `${process.env.LOCAL_CONVERT_PATH}`;
 const localUploadPath = `${process.env.LOCAL_UPLOAD_PATH}`;
 
-// Error handling
-// Ref: https://stackoverflow.com/questions/43356705/node-js-express-error-handling-middleware-with-router
-const handleErrorAsync = (fn) => async (req, res, next) => {
-  try {
-    await fn(req, res, next);
-  } catch (error) {
-    next(error);
-  }
-};
-
 // Top 40
-const get_index_top = handleErrorAsync(async (req, res, next) => {
+const get_index_top = asyncHandler(async (req, res, next) => {
   const request = {
     limit: req.query.limit ? req.query.limit : 41,
   };
@@ -38,10 +30,10 @@ const get_index_top = handleErrorAsync(async (req, res, next) => {
     take: request.limit,
   });
 
-  res.json(tracks);
+  res.json({ success: true, data: tracks });
 });
 
-const get_track = handleErrorAsync(async (req, res, next) => {
+const get_track = asyncHandler(async (req, res, next) => {
   const request = {
     trackId: req.params.trackId,
   };
@@ -50,10 +42,10 @@ const get_track = handleErrorAsync(async (req, res, next) => {
     where: { id: request.trackId },
   });
 
-  res.json(track);
+  res.json({ success: true, data: track });
 });
 
-const get_tracks_by_album_id = handleErrorAsync(async (req, res, next) => {
+const get_tracks_by_album_id = asyncHandler(async (req, res, next) => {
   const request = {
     albumId: req.params.albumId,
   };
@@ -63,10 +55,10 @@ const get_tracks_by_album_id = handleErrorAsync(async (req, res, next) => {
     orderBy: { order: "asc" },
   });
 
-  res.json(tracks);
+  res.json({ success: true, data: tracks });
 });
 
-const get_tracks_by_artist_id = handleErrorAsync(async (req, res, next) => {
+const get_tracks_by_artist_id = asyncHandler(async (req, res, next) => {
   const request = {
     artistId: req.params.artistId,
     limit: req.query.limit ? parseInt(req.query.limit) : 10,
@@ -78,39 +70,36 @@ const get_tracks_by_artist_id = handleErrorAsync(async (req, res, next) => {
     take: request.limit,
   });
 
-  res.json(tracks);
+  res.json({ success: true, data: tracks });
 });
 
-const delete_track = handleErrorAsync(async (req, res, next) => {
+const delete_track = asyncHandler(async (req, res, next) => {
   const request = {
     userId: req.uid,
     trackId: req.params.trackId,
   };
 
   if (!request.trackId) {
-    return res.status(400).send("trackId is required");
+    const error = formatError(403, "trackId field is required");
+    throw error;
   }
 
-  log.debug(`DELETE TRACK request: getting owner for track ${request.trackId}`);
-  getTrackAccount(request.trackId)
+  // Check if user owns track
+  const isTrackOwner = await getTrackAccount(request.userId, request.trackId);
+
+  if (!isTrackOwner) {
+    const error = formatError(403, "User does not own this track");
+    throw error;
+  }
+
+  log.debug(`Deleting track ${request.trackId}`);
+  db.knex("track")
+    .where("id", "=", request.trackId)
+    .update({ deleted: true }, ["id", "title"])
     .then((data) => {
-      log.debug(`Track ${request.trackId} owner: ${data.userId}`);
-      if (request.userId === data.userId) {
-        log.debug(`Deleting track ${request.trackId}`);
-        db.knex("track")
-          .where("id", "=", request.trackId)
-          .update({ deleted: true }, ["id", "title"])
-          .then((data) => {
-            res.send(data[0]);
-          })
-          .catch((err) => {
-            log.debug(`Error deleting track ${request.trackId}: ${err}`);
-            next(err);
-          });
-      } else {
-        return res.status(403).send("Wrong owner");
-      }
+      res.send({ success: true, data: data[0] });
     })
+
     .catch((err) => {
       log.debug(`Error deleting track ${request.trackId}: ${err}`);
       next(err);
@@ -123,7 +112,7 @@ const delete_track = handleErrorAsync(async (req, res, next) => {
 // 2) server compresses file and uploads to S3
 // 3) server enters record into DB
 // Steps 2 and 3 can happen async in the background while client moves on
-const create_track = handleErrorAsync(async (req, res, next) => {
+const create_track = asyncHandler(async (req, res, next) => {
   const request = {
     audio: req.file,
     albumId: req.body.albumId,
@@ -133,13 +122,15 @@ const create_track = handleErrorAsync(async (req, res, next) => {
   };
 
   if (!request.albumId) {
-    return res.status(400).send("albumId is required");
+    const error = formatError(403, "albumId field is required");
+    throw error;
   }
 
   const albumAccount = await getAlbumAccount(request.albumId);
 
   if (!albumAccount == request.userId) {
-    return res.status(403).send("Account does not own this album");
+    const error = formatError(403, "User does not own this album");
+    throw error;
   }
 
   const albumDetails = await getAlbumDetails(request.albumId);
@@ -262,15 +253,18 @@ const create_track = handleErrorAsync(async (req, res, next) => {
                       });
 
                     res.send({
-                      id: data[0]["id"],
-                      artistId: data[0]["artist_id"],
-                      albumId: data[0]["album_id"],
-                      title: data[0]["title"],
-                      order: data[0]["order"],
-                      duration: data[0]["duration"],
-                      liveUrl: data[0]["liveUrl"],
-                      rawUrl: data[0]["raw_url"],
-                      size: data[0]["size"],
+                      success: true,
+                      data: {
+                        id: data[0]["id"],
+                        artistId: data[0]["artist_id"],
+                        albumId: data[0]["album_id"],
+                        title: data[0]["title"],
+                        order: data[0]["order"],
+                        duration: data[0]["duration"],
+                        liveUrl: data[0]["liveUrl"],
+                        rawUrl: data[0]["raw_url"],
+                        size: data[0]["size"],
+                      },
                     });
                   });
               });
@@ -292,15 +286,25 @@ const create_track = handleErrorAsync(async (req, res, next) => {
   });
 });
 
-const update_track = handleErrorAsync(async (req, res, next) => {
+const update_track = asyncHandler(async (req, res, next) => {
   const request = {
+    userId: req.uid,
     trackId: req.body.trackId,
     title: req.body.title,
     order: req.body.order,
   };
 
   if (!request.trackId) {
-    return res.status(400).send("trackId is required");
+    const error = formatError(403, "trackId field is required");
+    throw error;
+  }
+
+  // Check if user owns track
+  const isTrackOwner = await getTrackAccount(request.userId, request.trackId);
+
+  if (!isTrackOwner) {
+    const error = formatError(403, "User does not own this track");
+    throw error;
   }
 
   log.debug(`Editing track ${request.trackId}`);
@@ -316,15 +320,18 @@ const update_track = handleErrorAsync(async (req, res, next) => {
     )
     .then((data) => {
       res.send({
-        id: data[0]["id"],
-        artistId: data[0]["artist_id"],
-        albumId: data[0]["album_id"],
-        title: data[0]["title"],
-        order: data[0]["order"],
-        duration: data[0]["duration"],
-        liveUrl: data[0]["liveUrl"],
-        rawUrl: data[0]["raw_url"],
-        size: data[0]["size"],
+        success: true,
+        data: {
+          id: data[0]["id"],
+          artistId: data[0]["artist_id"],
+          albumId: data[0]["album_id"],
+          title: data[0]["title"],
+          order: data[0]["order"],
+          duration: data[0]["duration"],
+          liveUrl: data[0]["liveUrl"],
+          rawUrl: data[0]["raw_url"],
+          size: data[0]["size"],
+        },
       });
     })
     .catch((err) => {
@@ -341,7 +348,6 @@ async function getAlbumDetails(albumId) {
     .where("album.id", "=", albumId)
     .first()
     .then((data) => {
-      console.log(data);
       return data;
     })
     .catch((err) => {

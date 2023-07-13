@@ -9,8 +9,8 @@ const cors = require("cors");
 const compression = require("compression");
 const helmet = require("helmet");
 const bodyParser = require("body-parser");
-const corsHost = process.env.CORS_HOST;
 
+const corsHost = process.env.CORS_HOST;
 log.setLevel(process.env.LOGLEVEL);
 const port = process.env.EXPRESS_PORT;
 const localConvertPath = `${process.env.LOCAL_CONVERT_PATH}`;
@@ -59,12 +59,8 @@ app.use("/v1/albums", albums);
 app.use("/v1/artists", artists);
 app.use("/v1/tracks", tracks);
 
-app.get("/", (req, res) => {
-  res.send("Testing!");
-});
-
 // override default html error page with custom error handler
 app.use(errorHandler);
 app.listen(port, () => {
-  console.log(`Example app listening on port ${port}`);
+  log.debug(`Wavlake catalog is listening on port ${port}`);
 });

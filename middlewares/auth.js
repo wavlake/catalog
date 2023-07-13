@@ -1,25 +1,37 @@
+const log = require("loglevel");
 const { auth } = require("../library/firebaseService");
+import { formatError } from "../library/errors";
+import asyncHandler from "express-async-handler";
 
-const isAuthorized = (req, res, next) => {
+const isAuthorized = asyncHandler(async (req, res, next) => {
   let authToken;
   if (
     req.headers.authorization &&
     req.headers.authorization.split(" ")[0] === "Bearer"
   ) {
-    authToken = req.headers.authorization.split(" ")[1];
+    try {
+      authToken = req.headers.authorization.split(" ")[1];
+    } catch (err) {
+      const error = formatError(500, "Authentication failed");
+      throw error;
+    }
   } else {
-    authToken = null;
+    const error = formatError(500, "Missing authorization token");
+    throw error;
   }
 
-  auth()
+  await auth()
     .verifyIdToken(authToken)
     .then((user) => {
       req.uid = user.uid;
       req.params.uid = user.uid;
       next();
     })
-    .catch((e) => res.status(401).send("Unauthorized"));
-};
+    .catch((err) => {
+      const error = formatError(500, "Authentication failed");
+      throw error;
+    });
+});
 
 module.exports = {
   isAuthorized,
