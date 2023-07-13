@@ -6,23 +6,15 @@ const multer = require("multer");
 const Jimp = require("jimp");
 const s3Client = require("../library/s3Client");
 import prisma from "../prisma/client";
-const { getAlbumAccount } = require("../library/userHelper");
+const { getAlbumAccount, getArtistAccount } = require("../library/userHelper");
+const asyncHandler = require("express-async-handler");
+import { formatError } from "../library/errors";
 
 const imagePrefix = `${process.env.AWS_S3_IMAGE_PREFIX}`;
 const localConvertPath = `${process.env.LOCAL_CONVERT_PATH}`;
 const cdnDomain = `${process.env.AWS_CDN_DOMAIN}`;
 
-// Error handling
-// Ref: https://stackoverflow.com/questions/43356705/node-js-express-error-handling-middleware-with-router
-const handleErrorAsync = (fn) => async (req, res, next) => {
-  try {
-    await fn(req, res, next);
-  } catch (error) {
-    next(error);
-  }
-};
-
-const get_albums_by_account = handleErrorAsync(async (req, res, next) => {
+const get_albums_by_account = asyncHandler(async (req, res, next) => {
   const request = {
     userId: req.uid,
   };
@@ -40,14 +32,14 @@ const get_albums_by_account = handleErrorAsync(async (req, res, next) => {
     .andWhere("album.deleted", "=", false)
     .then((data) => {
       // console.log(data)
-      res.send(data);
+      res.send({ success: true, data: data });
     })
     .catch((err) => {
       next(err);
     });
 });
 
-const get_album_by_id = handleErrorAsync(async (req, res, next) => {
+const get_album_by_id = asyncHandler(async (req, res, next) => {
   const request = {
     albumId: req.params.albumId,
   };
@@ -56,10 +48,10 @@ const get_album_by_id = handleErrorAsync(async (req, res, next) => {
     where: { id: request.albumId },
   });
 
-  res.json(album);
+  res.json({ success: true, data: album });
 });
 
-const get_albums_by_artist_id = handleErrorAsync(async (req, res, next) => {
+const get_albums_by_artist_id = asyncHandler(async (req, res, next) => {
   const request = {
     artistId: req.params.artistId,
     // limit: req.query.limit ? req.query.limit : 10,
@@ -70,18 +62,30 @@ const get_albums_by_artist_id = handleErrorAsync(async (req, res, next) => {
     where: { artistId: request.artistId, deleted: false },
   });
 
-  res.json(albums);
+  res.json({ success: true, data: albums });
 });
 
-const create_album = handleErrorAsync(async (req, res, next) => {
+const create_album = asyncHandler(async (req, res, next) => {
   const newAlbumId = randomUUID();
 
   const request = {
+    userId: req.uid,
     artwork: req.file,
     artistId: req.body.artistId,
     title: req.body.title,
     description: req.body.description,
   };
+
+  // Check if user owns artist
+  const isArtistOwner = await getArtistAccount(
+    request.userId,
+    request.artistId
+  );
+
+  if (!isArtistOwner) {
+    const error = formatError(403, "User does not own this artist");
+    throw error;
+  }
 
   let uploadPath;
   let isKeeper = false;
@@ -141,11 +145,14 @@ const create_album = handleErrorAsync(async (req, res, next) => {
                     if (err) log.debug(`Error deleting local file : ${err}`);
                   });
               res.send({
-                id: data[0]["id"],
-                title: data[0]["title"],
-                artworkUrl: data[0]["artwork_url"],
-                artistId: data[0]["artist_id"],
-                description: data[0]["description"],
+                success: true,
+                data: {
+                  id: data[0]["id"],
+                  title: data[0]["title"],
+                  artworkUrl: data[0]["artwork_url"],
+                  artistId: data[0]["artist_id"],
+                  description: data[0]["description"],
+                },
               });
             })
             .catch((err) => {
@@ -165,15 +172,25 @@ const create_album = handleErrorAsync(async (req, res, next) => {
     });
 });
 
-const update_album = handleErrorAsync(async (req, res, next) => {
+const update_album = asyncHandler(async (req, res, next) => {
   const request = {
+    userId: req.uid,
     albumId: req.body.albumId,
     title: req.body.title,
     description: req.body.description,
   };
 
   if (!request.albumId) {
-    res.status(400).send("albumId is required");
+    const error = formatError(400, "albumId field is required");
+    throw error;
+  }
+
+  // Check if user owns album
+  const isAlbumOwner = await getAlbumAccount(request.userId, request.artistId);
+
+  if (!isAlbumOwner) {
+    const error = formatError(403, "User does not own this album");
+    throw error;
   }
 
   log.debug(`Editing album ${request.albumId}`);
@@ -189,11 +206,14 @@ const update_album = handleErrorAsync(async (req, res, next) => {
     )
     .then((data) => {
       res.send({
-        id: data[0]["id"],
-        title: data[0]["title"],
-        artworkUrl: data[0]["artwork_url"],
-        artistId: data[0]["artist_id"],
-        description: data[0]["description"],
+        success: true,
+        data: {
+          id: data[0]["id"],
+          title: data[0]["title"],
+          artworkUrl: data[0]["artwork_url"],
+          artistId: data[0]["artist_id"],
+          description: data[0]["description"],
+        },
       });
     })
     .catch((err) => {
@@ -202,16 +222,25 @@ const update_album = handleErrorAsync(async (req, res, next) => {
     });
 });
 
-const update_album_art = handleErrorAsync(async (req, res, next) => {
+const update_album_art = asyncHandler(async (req, res, next) => {
   const newImageId = randomUUID();
 
   const request = {
+    userId: req.uid,
     artwork: req.file,
     albumId: req.body.albumId,
   };
 
   if (!request.albumId) {
     res.status(400).send("albumId is required");
+  }
+
+  // Check if user owns album
+  const isAlbumOwner = await getAlbumAccount(request.userId, request.artistId);
+
+  if (!isAlbumOwner) {
+    const error = formatError(403, "User does not own this album");
+    throw error;
   }
 
   const uploadPath = request.artwork.path;
@@ -257,7 +286,7 @@ const update_album_art = handleErrorAsync(async (req, res, next) => {
               "id",
             ])
             .then((data) => {
-              res.send(data);
+              res.send({ success: true, data: data });
             });
         })
         .then(() => {
@@ -290,7 +319,7 @@ const update_album_art = handleErrorAsync(async (req, res, next) => {
     });
 });
 
-const delete_album = handleErrorAsync(async (req, res, next) => {
+const delete_album = asyncHandler(async (req, res, next) => {
   const request = {
     userId: req.uid,
     albumId: req.params.albumId,
@@ -300,39 +329,35 @@ const delete_album = handleErrorAsync(async (req, res, next) => {
     res.status(400).send("albumId is required");
   }
 
-  log.debug(`DELETE ALBUM request: getting owner for track ${request.albumId}`);
-  getAlbumAccount(request.albumId)
+  // Check if user owns album
+  const isAlbumOwner = await getAlbumAccount(request.userId, request.artistId);
+
+  if (!isAlbumOwner) {
+    const error = formatError(403, "User does not own this album");
+    throw error;
+  }
+
+  log.debug(`Checking tracks for album ${request.albumId}`);
+  db.knex("track")
+    .select("track.album_id as albumId", "track.deleted")
+    .where("track.album_id", "=", request.albumId)
+    .andWhere("track.deleted", false)
     .then((data) => {
-      log.debug(`Album ${request.albumId} owner: ${data.userId}`);
-      if (request.userId === data.userId) {
-        log.debug(`Checking tracks for album ${request.albumId}`);
-        db.knex("track")
-          .select("track.album_id as albumId", "track.deleted")
-          .where("track.album_id", "=", request.albumId)
-          .andWhere("track.deleted", false)
+      if (data.length > 0) {
+        const error = formatError(500, "Album must be empty to delete");
+        throw error;
+      } else {
+        log.debug(`Deleting album ${request.albumId}`);
+        db.knex("album")
+          .where("id", "=", request.albumId)
+          .update({ deleted: true }, ["id", "title"])
           .then((data) => {
-            if (data.length > 0) {
-              res.status(406).send("Album must be empty");
-            } else {
-              log.debug(`Deleting album ${request.albumId}`);
-              db.knex("album")
-                .where("id", "=", request.albumId)
-                .update({ deleted: true }, ["id", "title"])
-                .then((data) => {
-                  res.send(data[0]);
-                })
-                .catch((err) => {
-                  log.debug(`Error deleting album ${request.albumId}: ${err}`);
-                  next(err);
-                });
-            }
+            res.send({ success: true, data: data[0] });
           })
           .catch((err) => {
             log.debug(`Error deleting album ${request.albumId}: ${err}`);
             next(err);
           });
-      } else {
-        return res.status(403).send("Wrong owner");
       }
     })
     .catch((err) => {

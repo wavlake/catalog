@@ -1,7 +1,7 @@
 import db from "./db";
 const log = require("loglevel");
 
-async function getTrackAccount(trackId) {
+async function getTrackAccount(userId, trackId) {
   return db
     .knex("track")
     .join("artist", "track.artist_id", "=", "artist.id")
@@ -10,15 +10,14 @@ async function getTrackAccount(trackId) {
     .where("track.id", "=", trackId)
     .first()
     .then((data) => {
-      // console.log(data)
-      return data;
+      return data.userId == userId;
     })
     .catch((err) => {
       log.error(`Error finding user from trackId ${err}`);
     });
 }
 
-export async function getAlbumAccount(albumId) {
+export async function getAlbumAccount(userId, albumId) {
   return db
     .knex("album")
     .join("artist", "album.artist_id", "=", "artist.id")
@@ -27,15 +26,14 @@ export async function getAlbumAccount(albumId) {
     .where("album.id", "=", albumId)
     .first()
     .then((data) => {
-      console.log(data);
-      return data;
+      return data.userId == userId;
     })
     .catch((err) => {
       log.error(`Error finding user from albumId ${err}`);
     });
 }
 
-export async function getArtistAccount(artistId) {
+export async function getArtistAccount(userId, artistId) {
   return db
     .knex("artist")
     .select("artist.user_id as userId")
@@ -43,7 +41,7 @@ export async function getArtistAccount(artistId) {
     .first()
     .then((data) => {
       // console.log(data);
-      return data.userId;
+      return data.userId == userId;
     })
     .catch((err) => {
       log.error(`Error finding account from artistId ${err}`);
