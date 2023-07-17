@@ -23,7 +23,7 @@ const isAuthorized = asyncHandler(async (req, res, next) => {
   await auth()
     .verifyIdToken(authToken)
     .then((user) => {
-      req.uid = user.uid;
+      req["uid"] = user.uid;
       req.params.uid = user.uid;
       next();
     })
