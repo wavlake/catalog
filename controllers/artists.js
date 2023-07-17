@@ -8,22 +8,14 @@ const s3Client = require("../library/s3Client");
 const format = require("../library/format");
 const { getArtistAccount } = require("../library/userHelper");
 import prisma from "../prisma/client";
+const asyncHandler = require("express-async-handler");
+import { formatError } from "../library/errors";
 
 const imagePrefix = `${process.env.AWS_S3_IMAGE_PREFIX}`;
 const localConvertPath = `${process.env.LOCAL_CONVERT_PATH}`;
 const cdnDomain = `${process.env.AWS_CDN_DOMAIN}`;
 
-// Error handling
-// Ref: https://stackoverflow.com/questions/43356705/node-js-express-error-handling-middleware-with-router
-const handleErrorAsync = (fn) => async (req, res, next) => {
-  try {
-    await fn(req, res, next);
-  } catch (error) {
-    next(error);
-  }
-};
-
-const get_artist_by_url = handleErrorAsync(async (req, res, next) => {
+const get_artist_by_url = asyncHandler(async (req, res, next) => {
   const request = {
     artistUrl: req.params.artistUrl,
   };
@@ -32,10 +24,10 @@ const get_artist_by_url = handleErrorAsync(async (req, res, next) => {
     where: { artistUrl: request.artistUrl },
   });
 
-  res.json(artist);
+  res.json({ success: true, data: artist });
 });
 
-const get_artist_by_id = handleErrorAsync(async (req, res, next) => {
+const get_artist_by_id = asyncHandler(async (req, res, next) => {
   const request = {
     artistId: req.params.artistId,
   };
@@ -44,10 +36,10 @@ const get_artist_by_id = handleErrorAsync(async (req, res, next) => {
     where: { id: request.artistId },
   });
 
-  res.json(artist);
+  res.json({ success: true, data: artist });
 });
 
-const get_artists_by_account = handleErrorAsync(async (req, res, next) => {
+const get_artists_by_account = asyncHandler(async (req, res, next) => {
   const request = {
     userId: req.params.uid,
   };
@@ -56,10 +48,10 @@ const get_artists_by_account = handleErrorAsync(async (req, res, next) => {
     where: { userId: request.userId, deleted: false },
   });
 
-  res.json(artists);
+  res.json({ success: true, data: artists });
 });
 
-const create_artist = handleErrorAsync(async (req, res, next) => {
+const create_artist = asyncHandler(async (req, res, next) => {
   const newArtistId = randomUUID();
 
   const request = {
@@ -75,7 +67,8 @@ const create_artist = handleErrorAsync(async (req, res, next) => {
   };
 
   if (!request.name) {
-    return res.status(403).send("Artist name is required");
+    const error = formatError(403, "Artist name is required");
+    throw error;
   }
 
   let uploadPath;
@@ -143,17 +136,20 @@ const create_artist = handleErrorAsync(async (req, res, next) => {
                       if (err) log.debug(`Error deleting local file : ${err}`);
                     });
                 res.send({
-                  id: data[0]["id"],
-                  userId: data[0]["user_id"],
-                  name: data[0]["name"],
-                  bio: data[0]["bio"],
-                  twitter: data[0]["twitter"],
-                  instagram: data[0]["instagram"],
-                  npub: data[0]["npub"],
-                  youtube: data[0]["youtube"],
-                  website: data[0]["website"],
-                  artworkUrl: data[0]["artwork_url"],
-                  artistUrl: data[0]["artist_url"],
+                  success: true,
+                  data: {
+                    id: data[0]["id"],
+                    userId: data[0]["user_id"],
+                    name: data[0]["name"],
+                    bio: data[0]["bio"],
+                    twitter: data[0]["twitter"],
+                    instagram: data[0]["instagram"],
+                    npub: data[0]["npub"],
+                    youtube: data[0]["youtube"],
+                    website: data[0]["website"],
+                    artworkUrl: data[0]["artwork_url"],
+                    artistUrl: data[0]["artist_url"],
+                  },
                 });
               })
               .catch((err) => {
@@ -163,22 +159,30 @@ const create_artist = handleErrorAsync(async (req, res, next) => {
                 } else if (err) {
                   log.debug(`Error creating new artist: ${err}`);
                   if (err.message.includes("duplicate")) {
-                    res.status(409).send("Artist already exists");
+                    const error = formatError(
+                      409,
+                      "Artist with that name already exists"
+                    );
+                    throw error;
                   } else {
-                    res.status(409).send("Something went wrong");
+                    const error = formatError(
+                      500,
+                      "Something went wrong creating artist"
+                    );
+                    throw error;
                   }
                 }
               });
           })
           .catch((err) => {
-            log.debug(`Error encoding new artist: ${err}`);
+            log.debug(`Error creating new artist: ${err}`);
             next(err);
           })
       );
     });
 });
 
-const update_artist = handleErrorAsync(async (req, res, next) => {
+const update_artist = asyncHandler(async (req, res, next) => {
   const request = {
     userId: req.uid,
     artistId: req.body.artistId,
@@ -192,14 +196,19 @@ const update_artist = handleErrorAsync(async (req, res, next) => {
   };
 
   if (!request.artistId) {
-    return res.status(403).send("Artist id is required");
+    const error = formatError(403, "artistId field is required");
+    throw error;
   }
 
-  // console.log(request.userId);
-  const artistAccount = await getArtistAccount(request.artistId);
+  // Check if user owns artist
+  const isArtistOwner = await getArtistAccount(
+    request.userId,
+    request.artistId
+  );
 
-  if (artistAccount != request.userId) {
-    return res.status(403).send("Unauthorized");
+  if (!isArtistOwner) {
+    const error = formatError(403, "User does not own this artist");
+    throw error;
   }
 
   log.debug(`Editing artist ${request.artistId}`);
@@ -220,17 +229,20 @@ const update_artist = handleErrorAsync(async (req, res, next) => {
     )
     .then((data) => {
       res.send({
-        id: data[0]["id"],
-        userId: data[0]["user_id"],
-        name: data[0]["name"],
-        bio: data[0]["bio"],
-        twitter: data[0]["twitter"],
-        instagram: data[0]["instagram"],
-        npub: data[0]["npub"],
-        youtube: data[0]["youtube"],
-        website: data[0]["website"],
-        artworkUrl: data[0]["artwork_url"],
-        artistUrl: data[0]["artist_url"],
+        success: true,
+        data: {
+          id: data[0]["id"],
+          userId: data[0]["user_id"],
+          name: data[0]["name"],
+          bio: data[0]["bio"],
+          twitter: data[0]["twitter"],
+          instagram: data[0]["instagram"],
+          npub: data[0]["npub"],
+          youtube: data[0]["youtube"],
+          website: data[0]["website"],
+          artworkUrl: data[0]["artwork_url"],
+          artistUrl: data[0]["artist_url"],
+        },
       });
     })
     .catch((err) => {
@@ -239,13 +251,29 @@ const update_artist = handleErrorAsync(async (req, res, next) => {
     });
 });
 
-const update_artist_art = handleErrorAsync(async (req, res, next) => {
+const update_artist_art = asyncHandler(async (req, res, next) => {
   const newImageId = randomUUID();
 
   const request = {
     artwork: req.file,
     artistId: req.body.artistId,
   };
+
+  if (!request.artistId) {
+    const error = formatError(403, "artistId field is required");
+    throw error;
+  }
+
+  // Check if user owns artist
+  const isArtistOwner = await getArtistAccount(
+    request.userId,
+    request.artistId
+  );
+
+  if (!isArtistOwner) {
+    const error = formatError(403, "User does not own this artist");
+    throw error;
+  }
 
   const uploadPath = request.artwork.path;
 
@@ -290,7 +318,7 @@ const update_artist_art = handleErrorAsync(async (req, res, next) => {
               "id",
             ])
             .then((data) => {
-              res.send(data);
+              res.send({ success: true, data: data });
             });
         })
         .then(() => {
@@ -324,60 +352,53 @@ const update_artist_art = handleErrorAsync(async (req, res, next) => {
 });
 
 // TODO: Add clean up step for old artwork, see update_artist_art
-const delete_artist = handleErrorAsync(async (req, res, next) => {
+const delete_artist = asyncHandler(async (req, res, next) => {
   const request = {
     userId: req.uid,
     artistId: req.params.artistId,
   };
 
   if (!request.artistId) {
-    return res.status(403).send("Artist id is required");
+    const error = formatError(403, "artistId field is required");
+    throw error;
   }
 
-  log.debug(
-    `DELETE ARTIST request: getting owner for artist ${request.artistId}`
+  // Check if user owns artist
+  const isArtistOwner = await getArtistAccount(
+    request.userId,
+    request.artistId
   );
-  getArtistAccount(request.artistId)
-    .then((artistAccount) => {
-      log.debug(`Artist ${request.artistId} owner: ${artistAccount}`);
-      if (request.userId === artistAccount) {
-        log.debug(`Checking albums for artist ${request.artistId}`);
-        db.knex("album")
-          .select("album.artist_id as artistId", "album.deleted")
-          .where("album.artist_id", "=", request.artistId)
-          .andWhere("album.deleted", false)
+
+  if (!isArtistOwner) {
+    const error = formatError(403, "User does not own this artist");
+    throw error;
+  }
+
+  log.debug(`Checking albums for artist ${request.artistId}`);
+  db.knex("album")
+    .select("album.artist_id as artistId", "album.deleted")
+    .where("album.artist_id", "=", request.artistId)
+    .andWhere("album.deleted", false)
+    .then((data) => {
+      if (data.length > 0) {
+        const error = formatError(403, "Artist has undeleted albums");
+        throw error;
+      } else {
+        log.debug(`Deleting artist ${request.artistId}`);
+        db.knex("artist")
+          .where("id", "=", request.artistId)
+          .update({ deleted: true }, ["id", "name"])
           .then((data) => {
-            if (data.length > 0) {
-              log.debug(
-                `Canceling delete request, artist ${request.artistId} has undeleted albums`
-              );
-              res.status(406).send("Artist must have no albums");
-            } else {
-              log.debug(`Deleting artist ${request.artistId}`);
-              db.knex("artist")
-                .where("id", "=", request.artistId)
-                .update({ deleted: true }, ["id", "name"])
-                .then((data) => {
-                  res.send(data[0]);
-                })
-                .catch((err) => {
-                  log.debug(
-                    `Error deleting artist ${request.artistId}: ${err}`
-                  );
-                  next(err);
-                });
-            }
+            res.send({ success: true, data: data[0] });
           })
           .catch((err) => {
             log.debug(`Error deleting artist ${request.artistId}: ${err}`);
             next(err);
           });
-      } else {
-        return res.status(403).send("Wrong owner");
       }
     })
     .catch((err) => {
-      log.debug(`Error deleting album ${request.albumId}: ${err}`);
+      log.debug(`Error deleting artist ${request.artistId}: ${err}`);
       next(err);
     });
 });

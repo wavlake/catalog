@@ -1,13 +1,13 @@
 steps:
-  - name: node:16.20.0
+  - name: node:18
     id: install
     entrypoint: npm
     args: ["install"]
-  - name: node:16.20.0
+  - name: node:18
     id: build
     entrypoint: npm
     args: ["run", "build"]
-  - name: node:16.20.0
+  - name: node:18
     id: create env
     entrypoint: npm
     args: ["run", "create-env"]
@@ -28,7 +28,7 @@ steps:
       - "AWS_S3_IMAGE_PREFIX=${_AWS_S3_IMAGE_PREFIX}"
       - "AWS_S3_RAW_PREFIX=${_AWS_S3_RAW_PREFIX}"
     secretEnv: ["PG_PASSWORD", "AWS_SECRET_ACCESS_KEY"]
-  - name: node:16.20.0
+  - name: node:18
     id: migrate db
     entrypoint: npm
     args: ["run", "migrate"]
@@ -39,7 +39,7 @@ steps:
       - "PG_DATABASE=${_PG_DATABASE}"
       - "PG_USER=${_PG_USER}"
     secretEnv: ["PG_PASSWORD"]
-  - name: node:16.20.0
+  - name: node:18
     id: generate prisma
     entrypoint: npm
     args: ["run", "generate"]

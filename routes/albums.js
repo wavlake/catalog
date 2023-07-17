@@ -1,6 +1,5 @@
 const express = require("express");
 const multer = require("multer");
-
 var storage = multer.diskStorage({
   destination: function (req, file, callback) {
     callback(null, `${process.env.LOCAL_UPLOAD_PATH}`);
@@ -24,7 +23,12 @@ const router = express.Router();
 router.get("/account", isAuthorized, albumsController.get_albums_by_account);
 router.get("/:albumId", albumsController.get_album_by_id);
 router.get("/:artistId/artist", albumsController.get_albums_by_artist_id);
-router.post("/", upload.single("artwork"), albumsController.create_album);
+router.post(
+  "/",
+  isAuthorized,
+  upload.single("artwork"),
+  albumsController.create_album
+);
 router.put("/", isAuthorized, albumsController.update_album);
 router.put(
   "/album-art",
