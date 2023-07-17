@@ -3,7 +3,7 @@ const { auth } = require("../library/firebaseService");
 import { formatError } from "../library/errors";
 import asyncHandler from "express-async-handler";
 
-const isAuthorized = asyncHandler(async (req, res, next) => {
+export const isAuthorized = asyncHandler(async (req, res, next) => {
   let authToken;
   if (
     req.headers.authorization &&
@@ -23,7 +23,7 @@ const isAuthorized = asyncHandler(async (req, res, next) => {
   await auth()
     .verifyIdToken(authToken)
     .then((user) => {
-      req.uid = user.uid;
+      req["uid"] = user.uid;
       req.params.uid = user.uid;
       next();
     })
@@ -32,7 +32,3 @@ const isAuthorized = asyncHandler(async (req, res, next) => {
       throw error;
     });
 });
-
-module.exports = {
-  isAuthorized,
-};

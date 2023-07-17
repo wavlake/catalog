@@ -56,7 +56,7 @@ const create_artist = asyncHandler(async (req, res, next) => {
 
   const request = {
     artwork: req.file,
-    userId: req.uid, //required, should come in with auth
+    userId: req["uid"], //required, should come in with auth
     name: req.body.name, // required
     bio: req.body.bio ? req.body.bio : "",
     twitter: req.body.twitter ? req.body.twitter : "",
@@ -184,7 +184,7 @@ const create_artist = asyncHandler(async (req, res, next) => {
 
 const update_artist = asyncHandler(async (req, res, next) => {
   const request = {
-    userId: req.uid,
+    userId: req["uid"],
     artistId: req.body.artistId,
     name: req.body.name,
     bio: req.body.bio ? req.body.bio : "",
@@ -354,7 +354,7 @@ const update_artist_art = asyncHandler(async (req, res, next) => {
 // TODO: Add clean up step for old artwork, see update_artist_art
 const delete_artist = asyncHandler(async (req, res, next) => {
   const request = {
-    userId: req.uid,
+    userId: req["uid"],
     artistId: req.params.artistId,
   };
 

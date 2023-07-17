@@ -5,7 +5,7 @@ import { formatError } from "../library/errors";
 
 const get_account = asyncHandler(async (req, res, next) => {
   const request = {
-    accountId: req.uid,
+    accountId: req["uid"],
   };
 
   try {
