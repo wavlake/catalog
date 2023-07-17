@@ -16,7 +16,7 @@ const cdnDomain = `${process.env.AWS_CDN_DOMAIN}`;
 
 const get_albums_by_account = asyncHandler(async (req, res, next) => {
   const request = {
-    userId: req.uid,
+    userId: req["uid"],
   };
 
   db.knex("user")
@@ -69,7 +69,7 @@ const create_album = asyncHandler(async (req, res, next) => {
   const newAlbumId = randomUUID();
 
   const request = {
-    userId: req.uid,
+    userId: req["uid"],
     artwork: req.file,
     artistId: req.body.artistId,
     title: req.body.title,
@@ -174,7 +174,7 @@ const create_album = asyncHandler(async (req, res, next) => {
 
 const update_album = asyncHandler(async (req, res, next) => {
   const request = {
-    userId: req.uid,
+    userId: req["uid"],
     albumId: req.body.albumId,
     title: req.body.title,
     description: req.body.description,
@@ -226,7 +226,7 @@ const update_album_art = asyncHandler(async (req, res, next) => {
   const newImageId = randomUUID();
 
   const request = {
-    userId: req.uid,
+    userId: req["uid"],
     artwork: req.file,
     albumId: req.body.albumId,
   };
@@ -321,7 +321,7 @@ const update_album_art = asyncHandler(async (req, res, next) => {
 
 const delete_album = asyncHandler(async (req, res, next) => {
   const request = {
-    userId: req.uid,
+    userId: req["uid"],
     albumId: req.params.albumId,
   };
 
