@@ -4,7 +4,7 @@
   "description": "Express API for managing and accessing the Wavlake catalog",
   "main": "index.js",
   "engines": {
-    "node": "16.20"
+    "node": ">=16.20.0 <17.0.0"
   },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
