@@ -11,27 +11,14 @@ const { getAlbumAccount, getTrackAccount } = require("../library/userHelper");
 const asyncHandler = require("express-async-handler");
 import { formatError } from "../library/errors";
 
+const randomSampleSize = process.env.RANDOM_SAMPLE_SIZE;
+
 const s3BucketName = `${process.env.AWS_S3_BUCKET_NAME}`;
 const cdnDomain = `${process.env.AWS_CDN_DOMAIN}`;
 const trackPrefix = `${process.env.AWS_S3_TRACK_PREFIX}`;
 const rawPrefix = `${process.env.AWS_S3_RAW_PREFIX}`;
 const localConvertPath = `${process.env.LOCAL_CONVERT_PATH}`;
 const localUploadPath = `${process.env.LOCAL_UPLOAD_PATH}`;
-
-// Top 40
-const get_index_top = asyncHandler(async (req, res, next) => {
-  const request = {
-    limit: req.query.limit ? req.query.limit : 41,
-  };
-
-  const tracks = await prisma.trackInfo.findMany({
-    where: { msatTotal30Days: { gt: 0 } },
-    orderBy: { msatTotal30Days: "desc" },
-    take: request.limit,
-  });
-
-  res.json({ success: true, data: tracks });
-});
 
 const get_track = asyncHandler(async (req, res, next) => {
   const request = {
@@ -45,6 +32,28 @@ const get_track = asyncHandler(async (req, res, next) => {
   res.json({ success: true, data: track });
 });
 
+const get_tracks_by_account = asyncHandler(async (req, res, next) => {
+  const request = {
+    userId: req["uid"],
+  };
+
+  const tracks = await prisma.user.findMany({
+    where: { id: request.userId },
+    include: {
+      artist: {
+        include: {
+          album: {
+            where: { deleted: false },
+            include: { track: { where: { deleted: false } } },
+          },
+        },
+      },
+    },
+  });
+
+  res.json({ success: true, data: tracks });
+});
+
 const get_tracks_by_album_id = asyncHandler(async (req, res, next) => {
   const request = {
     albumId: req.params.albumId,
@@ -56,6 +65,86 @@ const get_tracks_by_album_id = asyncHandler(async (req, res, next) => {
   });
 
   res.json({ success: true, data: tracks });
+});
+
+const get_tracks_by_new = asyncHandler(async (req, res, next) => {
+  const request = {
+    limit: req.query.limit ? req.query.limit : 50,
+    // sortBy: req.body.sortBy
+  };
+
+  const albumTracks = db.knex
+    .select("track.id as id", "track.album_id as albumId")
+    .join("artist", "track.artist_id", "=", "artist.id")
+    .join("album", "album.id", "=", "track.album_id")
+    .rank("ranking", "track.id", "track.album_id")
+    .min("track.title as title")
+    .min("artist.name as artist")
+    .min("artist.artist_url as artistUrl")
+    .min("artist.artwork_url as avatarUrl")
+    .min("album.artwork_url as artworkUrl")
+    .min("album.title as albumTitle")
+    .min("track.live_url as liveUrl")
+    .min("track.duration as duration")
+    .min("track.created_at as createdAt")
+    .andWhere("track.deleted", "=", false)
+    .andWhere("track.order", "=", 1)
+    .from("track")
+    .groupBy("track.album_id", "track.id")
+    .as("a");
+
+  db.knex(albumTracks)
+    .orderBy("createdAt", "desc")
+    .where("ranking", "=", 1)
+    .limit(request.limit)
+    .then((data) => {
+      // console.log(data);
+      res.send({ success: true, data: data });
+    })
+    .catch((err) => {
+      log.debug(`Error querying track table for New: ${err}`);
+      next(err);
+    });
+});
+
+const get_tracks_by_random = asyncHandler(async (req, res, next) => {
+  const request = {
+    limit: req.query.limit ? req.query.limit : 100,
+  };
+
+  // NOTES: https://www.redpill-linpro.com/techblog/2021/05/07/getting-random-rows-faster.html
+
+  const randomTracks = db.knex
+    .select(
+      "track.id as id",
+      "track.title as title",
+      "artist.name as artist",
+      "artist.artist_url as artistUrl",
+      "artist.artwork_url as avatarUrl",
+      "artist.id as artistId",
+      "artist.user_id as ownerId",
+      "album.id as albumId",
+      "album.artwork_url as artworkUrl",
+      "album.title as albumTitle",
+      "track.live_url as liveUrl",
+      "track.duration as duration"
+    )
+    .from(db.knex.raw(`track TABLESAMPLE BERNOULLI(${randomSampleSize})`))
+    .join("amp", "amp.track_id", "=", "track.id")
+    .join("artist", "track.artist_id", "=", "artist.id")
+    .join("album", "album.id", "=", "track.album_id");
+
+  randomTracks
+    .distinct()
+    .where("track.deleted", "=", false)
+    // .limit(request.limit)
+    .then((data) => {
+      res.send(shuffle(data));
+    })
+    .catch((err) => {
+      log.debug(`Error querying track table for Boosted: ${err}`);
+      next(err);
+    });
 });
 
 const get_tracks_by_artist_id = asyncHandler(async (req, res, next) => {
@@ -355,9 +444,20 @@ async function getAlbumDetails(albumId) {
     });
 }
 
+// Durstenfeld Shuffle, via: https://stackoverflow.com/a/12646864
+function shuffle(array) {
+  for (let i = array.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [array[i], array[j]] = [array[j], array[i]];
+  }
+  return array;
+}
+
 export default {
-  get_index_top,
   get_track,
+  get_tracks_by_account,
+  get_tracks_by_new,
+  get_tracks_by_random,
   get_tracks_by_album_id,
   get_tracks_by_artist_id,
   delete_track,

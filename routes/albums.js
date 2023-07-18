@@ -29,9 +29,9 @@ router.post(
   upload.single("artwork"),
   albumsController.create_album
 );
-router.put("/", isAuthorized, albumsController.update_album);
+router.put("/update", isAuthorized, albumsController.update_album);
 router.put(
-  "/album-art",
+  "/update-art",
   upload.single("artwork"),
   isAuthorized,
   albumsController.update_album_art

@@ -35,7 +35,7 @@ model Album {
 }
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
-model amp {
+model Amp {
   id            Int       @id @default(autoincrement())
   track_id      String    @db.Uuid
   user_id       String    @db.VarChar(255)
@@ -49,6 +49,7 @@ model amp {
 
   @@index([track_id], map: "idx_amp_track_id")
   @@index([user_id], map: "idx_amp_user_id")
+  @@map("amp")
 }
 
 model amp_type {
@@ -123,7 +124,7 @@ model knex_migrations_lock {
   is_locked Int?
 }
 
-model play {
+model Play {
   id         Int       @id @default(autoincrement())
   track_id   String    @db.Uuid
   user_id    String    @db.VarChar(255)
@@ -132,6 +133,7 @@ model play {
 
   @@index([track_id], map: "idx_play_track_id")
   @@index([user_id], map: "idx_play_user_id")
+  @@map("play")
 }
 
 model playlist {
@@ -213,18 +215,18 @@ model transaction {
 model User {
   id                     String        @id @unique(map: "user_id_unique") @db.VarChar(64)
   name                   String        @unique(map: "user_name_unique") @db.VarChar(255)
-  msat_balance           BigInt?       @default(0)
-  amp_msat               Int?          @default(1000)
-  created_at             DateTime?     @default(now()) @db.Timestamptz(6)
-  updated_at             DateTime?     @default(now()) @db.Timestamptz(6)
-  is_locked              Boolean       @default(false)
-  artwork_url            String?       @db.VarChar(255)
-  last_activity_check_at DateTime?     @default(now()) @db.Timestamptz(6)
-  profile_url            String?       @unique(map: "user_profile_url_unique") @db.VarChar(255)
+  msatBalance            BigInt?       @map("msat_balance") @default(0)
+  ampMsat                Int?          @map("amp_msat") @default(1000)
+  createdAt              DateTime?     @map("created_at") @default(now()) @db.Timestamptz(6)
+  updatedAt              DateTime?     @map("updated_at") @default(now()) @db.Timestamptz(6)
+  isLocked               Boolean       @map("is_locked") @default(false)
+  artworkUrl             String?       @map("artwork_url") @db.VarChar(255)
+  lastActivityCheckAt    DateTime?     @map("last_activity_check_at") @default(now()) @db.Timestamptz(6)
+  profileUrl             String?       @map("profile_url") @unique(map: "user_profile_url_unique") @db.VarChar(255)
   artist                 Artist[]
   transaction            transaction[]
 
-  @@index([profile_url], map: "idx_profile_url")
+  @@index([profileUrl], map: "idx_profile_url")
   @@map("user")
 }
 
