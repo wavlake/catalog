@@ -21,7 +21,9 @@ const router = express.Router();
 
 //////// ROUTES ////////
 
-router.get("/top", tracksController.get_index_top); // TOP 40
+router.get("/account", isAuthorized, tracksController.get_tracks_by_account);
+router.get("/new", tracksController.get_tracks_by_new);
+router.get("/random", tracksController.get_tracks_by_random);
 router.get("/:albumId/album", tracksController.get_tracks_by_album_id);
 router.get("/:artistId/artist", tracksController.get_tracks_by_artist_id);
 router.get("/:trackId", tracksController.get_track);
@@ -31,7 +33,7 @@ router.post(
   upload.single("audio"),
   tracksController.create_track
 );
-router.put("/", isAuthorized, tracksController.update_track);
+router.put("/update", isAuthorized, tracksController.update_track);
 router.delete("/:trackId", isAuthorized, tracksController.delete_track);
 
 // Export router
