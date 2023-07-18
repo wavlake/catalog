@@ -49,6 +49,7 @@ app.use(express.json());
 const accounts = require("./routes/accounts");
 const albums = require("./routes/albums");
 const artists = require("./routes/artists");
+const meta = require("./routes/meta");
 const tracks = require("./routes/tracks");
 
 app.use(cors(corsOptions));
@@ -57,6 +58,7 @@ app.use(cors(corsOptions));
 app.use("/v1/accounts", accounts);
 app.use("/v1/albums", albums);
 app.use("/v1/artists", artists);
+app.use("/v1/meta", meta);
 app.use("/v1/tracks", tracks);
 
 // override default html error page with custom error handler

@@ -237,6 +237,27 @@ model zap_request {
   @@index([payment_hash], map: "idx_zap_payment_hash")
 }
 
+model MusicGenre {
+  id             Int              @id @default(autoincrement())
+  name           String           @unique(map: "music_genre_name_unique") @db.VarChar(64)
+  created_at     DateTime?        @default(now()) @db.Timestamptz(6)
+  music_subgenre MusicSubgenre[]
+
+  @@index([name], map: "idx_music_genre_name")
+  @@map("music_genre")
+}
+
+model MusicSubgenre {
+  id          Int         @id @default(autoincrement())
+  genre_id    Int
+  name        String      @unique(map: "music_subgenre_name_unique") @db.VarChar(64)
+  created_at  DateTime?   @default(now()) @db.Timestamptz(6)
+  music_genre MusicGenre @relation(fields: [genre_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "music_subgenre_genre_id_foreign")
+
+  @@index([name], map: "idx_music_subgenre_name")
+  @@map("music_subgenre")
+}
+
 view TrackInfo {
   id              String    @unique @db.Uuid
   title           String?   @db.VarChar(255)
