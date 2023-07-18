@@ -24,7 +24,17 @@ router.get(
   isAuthorized,
   statsController.get_earnings_by_tracks
 );
+router.get(
+  "/music/earnings/tracks/daily",
+  isAuthorized,
+  statsController.get_earnings_by_tracks_daily
+);
 router.get("/music/plays", isAuthorized, statsController.get_plays_by_account);
+router.get(
+  "/music/plays/daily",
+  isAuthorized,
+  statsController.get_plays_by_account_daily
+);
 router.get(
   "/music/plays/tracks",
   isAuthorized,
