@@ -22,10 +22,9 @@ const get_earnings_by_account = asyncHandler(async (req, res, next) => {
       const formatted = data.map((item) => {
         return {
           msatTotal: parseInt(item.msatTotal),
-          createdAt: item.created_at,
         };
       });
-      res.send({ success: true, data: formatted });
+      res.send({ success: true, data: formatted[0] });
     })
     .catch((err) => {
       const error = formatError(
@@ -163,7 +162,7 @@ const get_plays_by_account = asyncHandler(async (req, res, next) => {
     .andWhere("play.created_at", ">", d.toISOString().slice(0, 10))
     .groupBy("artist.user_id")
     .then((data) => {
-      res.send({ success: true, data: data });
+      res.send({ success: true, data: data[0] });
     })
     .catch((err) => {
       log.error(err);
