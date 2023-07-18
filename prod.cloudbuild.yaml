@@ -27,6 +27,7 @@ steps:
       - "AWS_S3_TRACK_PREFIX=${_AWS_S3_TRACK_PREFIX}"
       - "AWS_S3_IMAGE_PREFIX=${_AWS_S3_IMAGE_PREFIX}"
       - "AWS_S3_RAW_PREFIX=${_AWS_S3_RAW_PREFIX}"
+      - "RANDOM_SAMPLE_SIZE=${_RANDOM_SAMPLE_SIZE}"
     secretEnv: ["PG_PASSWORD", "AWS_SECRET_ACCESS_KEY"]
   - name: node:16
     id: migrate db
