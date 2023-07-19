@@ -330,7 +330,7 @@ const delete_album = asyncHandler(async (req, res, next) => {
   }
 
   // Check if user owns album
-  const isAlbumOwner = await getAlbumAccount(request.userId, request.artistId);
+  const isAlbumOwner = await getAlbumAccount(request.userId, request.albumId);
 
   if (!isAlbumOwner) {
     const error = formatError(403, "User does not own this album");
