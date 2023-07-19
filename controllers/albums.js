@@ -19,24 +19,12 @@ const get_albums_by_account = asyncHandler(async (req, res, next) => {
     userId: req["uid"],
   };
 
-  db.knex("user")
-    .join("artist", "user.id", "=", "artist.user_id")
-    .join("album", "artist.id", "=", "album.artist_id")
-    .select(
-      "album.id as id",
-      "album.title as title",
-      "album.artwork_url as artworkUrl",
-      "artist.name as name"
-    )
-    .where("user.id", "=", request.userId)
-    .andWhere("album.deleted", "=", false)
-    .then((data) => {
-      // console.log(data)
-      res.send({ success: true, data: data });
-    })
-    .catch((err) => {
-      next(err);
-    });
+  const albums = await prisma.artist.findMany({
+    where: { userId: request.userId, deleted: false },
+    include: { album: { where: { deleted: false } } },
+  });
+
+  res.send({ success: true, data: albums });
 });
 
 const get_album_by_id = asyncHandler(async (req, res, next) => {
