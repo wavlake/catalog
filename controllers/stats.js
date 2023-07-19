@@ -37,6 +37,36 @@ const get_earnings_by_account = asyncHandler(async (req, res, next) => {
     });
 });
 
+const get_earnings_all_time_by_account = asyncHandler(
+  async (req, res, next) => {
+    const request = {
+      userId: req["uid"],
+    };
+
+    db.knex("track")
+      .join("amp", "track.id", "=", "amp.track_id")
+      .join("artist", "artist.id", "=", "track.artist_id")
+      .sum("amp.msat_amount as msatTotal")
+      .where("artist.user_id", "=", request.userId)
+      .groupBy("artist.user_id")
+      .then((data) => {
+        const formatted = data.map((item) => {
+          return {
+            msatTotal: parseInt(item.msatTotal),
+          };
+        });
+        res.send({ success: true, data: formatted[0] });
+      })
+      .catch((err) => {
+        const error = formatError(
+          500,
+          "There was a problem retrieving earnings data"
+        );
+        throw error;
+      });
+  }
+);
+
 const get_earnings_by_account_daily = asyncHandler(async (req, res, next) => {
   const request = {
     userId: req["uid"],
@@ -164,6 +194,30 @@ const get_plays_by_account = asyncHandler(async (req, res, next) => {
     });
 });
 
+const get_plays_all_time_by_account = asyncHandler(async (req, res, next) => {
+  const request = {
+    userId: req["uid"],
+  };
+
+  db.knex("track")
+    .join("play", "track.id", "=", "play.track_id")
+    .join("artist", "artist.id", "=", "track.artist_id")
+    .count("play.id as playTotal")
+    .where("artist.user_id", "=", request.userId)
+    .groupBy("artist.user_id")
+    .then((data) => {
+      res.send({ success: true, data: data[0] });
+    })
+    .catch((err) => {
+      log.error(err);
+      const error = formatError(
+        500,
+        "There was a problem retrieving play data"
+      );
+      throw error;
+    });
+});
+
 const get_plays_by_account_daily = asyncHandler(async (req, res, next) => {
   const request = {
     userId: req["uid"],
@@ -269,10 +323,12 @@ const get_plays_by_tracks_daily = asyncHandler(async (req, res, next) => {
 
 export default {
   get_earnings_by_account,
+  get_earnings_all_time_by_account,
   get_earnings_by_account_daily,
   get_earnings_by_tracks,
   get_earnings_by_tracks_daily,
   get_plays_by_account,
+  get_plays_all_time_by_account,
   get_plays_by_account_daily,
   get_plays_by_tracks,
   get_plays_by_tracks_daily,
