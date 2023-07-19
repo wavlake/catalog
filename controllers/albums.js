@@ -22,11 +22,20 @@ const get_albums_by_account = asyncHandler(async (req, res, next) => {
   db.knex("user")
     .join("artist", "user.id", "=", "artist.user_id")
     .join("album", "artist.id", "=", "album.artist_id")
+    .leftOuterJoin("music_genre", "album.genre_id", "=", "music_genre.id")
+    .leftOuterJoin(
+      "music_subgenre",
+      "album.subgenre_id",
+      "=",
+      "music_subgenre.id"
+    )
     .select(
       "album.id as id",
       "album.title as title",
       "album.artwork_url as artworkUrl",
-      "artist.name as name"
+      "artist.name as name",
+      "music_genre.id as genreId",
+      "music_subgenre.id as subgenreId"
     )
     .where("user.id", "=", request.userId)
     .andWhere("album.deleted", "=", false)
@@ -73,6 +82,8 @@ const create_album = asyncHandler(async (req, res, next) => {
     artwork: req.file,
     artistId: req.body.artistId,
     title: req.body.title,
+    genreId: req.body.genreId,
+    subgenreId: req.body.subgenreId,
     description: req.body.description,
   };
 
@@ -124,6 +135,8 @@ const create_album = asyncHandler(async (req, res, next) => {
                 title: request.title,
                 description: request.description,
                 artwork_url: liveUrl,
+                genre_id: request.genreId,
+                subgenre_id: request.subgenreId,
               },
               ["*"]
             )
@@ -152,6 +165,8 @@ const create_album = asyncHandler(async (req, res, next) => {
                   artworkUrl: data[0]["artwork_url"],
                   artistId: data[0]["artist_id"],
                   description: data[0]["description"],
+                  genreId: data[0]["genre_id"],
+                  subgenreId: data[0]["subgenre_id"],
                 },
               });
             })
@@ -178,6 +193,8 @@ const update_album = asyncHandler(async (req, res, next) => {
     albumId: req.body.albumId,
     title: req.body.title,
     description: req.body.description,
+    genreId: req.body.genreId,
+    subgenreId: req.body.subgenreId,
   };
 
   if (!request.albumId) {
@@ -201,6 +218,8 @@ const update_album = asyncHandler(async (req, res, next) => {
         title: request.title,
         description: request.description,
         updated_at: db.knex.fn.now(),
+        genre_id: request.genreId,
+        subgenre_id: request.subgenreId,
       },
       ["*"]
     )
@@ -213,6 +232,8 @@ const update_album = asyncHandler(async (req, res, next) => {
           artworkUrl: data[0]["artwork_url"],
           artistId: data[0]["artist_id"],
           description: data[0]["description"],
+          genreId: data[0]["genre_id"],
+          subgenreId: data[0]["subgenre_id"],
         },
       });
     })
