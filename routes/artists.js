@@ -33,7 +33,7 @@ router.put("/update", isAuthorized, artistsController.update_artist);
 // TODO: Update art should probably be part of update
 router.put(
   "/update-art",
-  upload.single("art"),
+  upload.single("artwork"),
   isAuthorized,
   artistsController.update_artist_art
 );
