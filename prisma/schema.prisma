@@ -1,13 +1,11 @@
 generator client {
-  provider = "prisma-client-js"
+  provider        = "prisma-client-js"
+  previewFeatures = ["views"]
 }
 
 datasource db {
   provider = "postgresql"
-  // The following connection string does not work because interpolation of env vars is not supported.
-  // Connection string can be set when instantiating Prisma Client
-  // See: https://github.com/prisma/prisma/issues/3310
-  url      = "postgresql://${env(PG_USER)}:${env(PG_PASSWORD)}@${env(PG_HOST)}:${env(PG_PORT)}/${env(PG_DATABASE)}?schema=public"
+  url      = env("DATABASE_URL")
 }
 
 model activity {
@@ -21,23 +19,27 @@ model activity {
 }
 
 model Album {
-  id          String    @id @unique(map: "album_id_unique") @db.Uuid
-  artist_id   String    @db.Uuid
-  title       String    @db.VarChar(255)
-  artwork_url String?   @db.VarChar(255)
-  created_at  DateTime? @default(now()) @db.Timestamptz(6)
-  updated_at  DateTime? @default(now()) @db.Timestamptz(6)
-  description String?   @db.VarChar(1000)
-  deleted     Boolean?  @default(false)
-  artist      Artist    @relation(fields: [artist_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "album_artist_id_foreign")
-  track       Track[]
+  id             String         @id @unique(map: "album_id_unique") @db.Uuid
+  artistId       String         @map("artist_id") @db.Uuid
+  title          String         @db.VarChar(255)
+  artworkUrl     String?        @map("artwork_url") @db.VarChar(255)
+  createdAt      DateTime?      @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime?      @default(now()) @map("updated_at") @db.Timestamptz(6)
+  description    String?        @db.VarChar(1000)
+  deleted        Boolean?       @default(false)
+  genreId        Int?           @map("genre_id")
+  subgenreId     Int?           @map("subgenre_id")
+  artist         Artist         @relation(fields: [artistId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "album_artist_id_foreign")
+  music_genre    MusicGenre?    @relation(fields: [genreId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "album_genre_id_foreign")
+  music_subgenre MusicSubgenre? @relation(fields: [subgenreId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "album_subgenre_id_foreign")
+  track          Track[]
 
-  @@index([artist_id], map: "idx_album_artist_id")
+  @@index([artistId], map: "idx_album_artist_id")
   @@map("album")
 }
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
-model amp {
+model Amp {
   id            Int       @id @default(autoincrement())
   track_id      String    @db.Uuid
   user_id       String    @db.VarChar(255)
@@ -51,6 +53,7 @@ model amp {
 
   @@index([track_id], map: "idx_amp_track_id")
   @@index([user_id], map: "idx_amp_user_id")
+  @@map("amp")
 }
 
 model amp_type {
@@ -60,27 +63,27 @@ model amp_type {
 }
 
 model Artist {
-  id          String    @id @unique(map: "artist_id_unique") @db.Uuid
-  user_id     String    @db.VarChar(255)
-  name        String    @db.VarChar(255)
-  artwork_url String?   @db.VarChar(255)
-  artist_url  String    @unique(map: "artist_artist_url_unique") @db.VarChar(255)
-  created_at  DateTime? @default(now()) @db.Timestamptz(6)
-  updated_at  DateTime? @default(now()) @db.Timestamptz(6)
-  bio         String?   @db.VarChar(200)
-  twitter     String?   @db.VarChar(255)
-  instagram   String?   @db.VarChar(255)
-  youtube     String?   @db.VarChar(255)
-  website     String?   @db.VarChar(255)
-  deleted     Boolean?  @default(false)
-  verified    Boolean?  @default(false)
-  npub        String?   @db.VarChar(64)
-  album       Album[]
-  user        User      @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "artist_user_id_foreign")
-  track       Track[]
+  id         String    @id @unique(map: "artist_id_unique") @db.Uuid
+  userId     String    @map("user_id") @db.VarChar(255)
+  name       String    @db.VarChar(255)
+  artworkUrl String?   @map("artwork_url") @db.VarChar(255)
+  artistUrl  String    @unique(map: "artist_artist_url_unique") @map("artist_url") @db.VarChar(255)
+  createdAt  DateTime? @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt  DateTime? @default(now()) @map("updated_at") @db.Timestamptz(6)
+  bio        String?   @db.VarChar(200)
+  twitter    String?   @db.VarChar(255)
+  instagram  String?   @db.VarChar(255)
+  youtube    String?   @db.VarChar(255)
+  website    String?   @db.VarChar(255)
+  deleted    Boolean?  @default(false)
+  verified   Boolean?  @default(false)
+  npub       String?   @db.VarChar(64)
+  album      Album[]
+  user       User      @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "artist_user_id_foreign")
+  track      Track[]
 
-  @@index([artist_url], map: "idx_artist_url")
-  @@index([user_id], map: "idx_artist_user_id")
+  @@index([artistUrl], map: "idx_artist_url")
+  @@index([userId], map: "idx_artist_user_id")
   @@map("artist")
 }
 
@@ -125,7 +128,7 @@ model knex_migrations_lock {
   is_locked Int?
 }
 
-model play {
+model Play {
   id         Int       @id @default(autoincrement())
   track_id   String    @db.Uuid
   user_id    String    @db.VarChar(255)
@@ -134,6 +137,7 @@ model play {
 
   @@index([track_id], map: "idx_play_track_id")
   @@index([user_id], map: "idx_play_user_id")
+  @@map("play")
 }
 
 model playlist {
@@ -169,25 +173,25 @@ model ranking_forty {
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 model Track {
-  id         String    @id @unique(map: "track_id_unique") @db.Uuid
-  artist_id  String    @db.Uuid
-  album_id   String    @db.Uuid
-  title      String    @db.VarChar(255)
-  order      Int
-  play_count Int?      @default(0)
-  msat_total BigInt?   @default(0)
-  live_url   String    @db.VarChar(255)
-  raw_url    String?   @db.VarChar(128)
-  size       Int?
-  duration   Int?
-  deleted    Boolean?  @default(false)
-  created_at DateTime? @default(now()) @db.Timestamptz(6)
-  updated_at DateTime? @default(now()) @db.Timestamptz(6)
-  album      Album     @relation(fields: [album_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "track_album_id_foreign")
-  artist     Artist    @relation(fields: [artist_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "track_artist_id_foreign")
+  id        String    @id @unique(map: "track_id_unique") @db.Uuid
+  artistId  String    @map("artist_id") @db.Uuid
+  albumId   String    @map("album_id") @db.Uuid
+  title     String    @db.VarChar(255)
+  order     Int
+  playCount Int?      @default(0) @map("play_count")
+  msatTotal BigInt?   @default(0) @map("msat_total")
+  liveUrl   String    @map("live_url") @db.VarChar(255)
+  rawUrl    String?   @map("raw_url") @db.VarChar(128)
+  size      Int?
+  duration  Int?
+  deleted   Boolean?  @default(false)
+  createdAt DateTime? @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime? @default(now()) @map("updated_at") @db.Timestamptz(6)
+  album     Album     @relation(fields: [albumId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "track_album_id_foreign")
+  artist    Artist    @relation(fields: [artistId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "track_artist_id_foreign")
 
-  @@index([album_id], map: "idx_track_album_id")
-  @@index([artist_id], map: "idx_track_artist_id")
+  @@index([albumId], map: "idx_track_album_id")
+  @@index([artistId], map: "idx_track_artist_id")
   @@map("track")
 }
 
@@ -213,20 +217,20 @@ model transaction {
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 model User {
-  id                     String        @id @unique(map: "user_id_unique") @db.VarChar(64)
-  name                   String        @unique(map: "user_name_unique") @db.VarChar(255)
-  msat_balance           BigInt?       @default(0)
-  amp_msat               Int?          @default(1000)
-  created_at             DateTime?     @default(now()) @db.Timestamptz(6)
-  updated_at             DateTime?     @default(now()) @db.Timestamptz(6)
-  is_locked              Boolean       @default(false)
-  artwork_url            String?       @db.VarChar(255)
-  last_activity_check_at DateTime?     @default(now()) @db.Timestamptz(6)
-  profile_url            String?       @unique(map: "user_profile_url_unique") @db.VarChar(255)
-  artist                 Artist[]
-  transaction            transaction[]
+  id                  String        @id @unique(map: "user_id_unique") @db.VarChar(64)
+  name                String        @unique(map: "user_name_unique") @db.VarChar(255)
+  msatBalance         BigInt?       @default(0) @map("msat_balance")
+  ampMsat             Int?          @default(1000) @map("amp_msat")
+  createdAt           DateTime?     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt           DateTime?     @default(now()) @map("updated_at") @db.Timestamptz(6)
+  isLocked            Boolean       @default(false) @map("is_locked")
+  artworkUrl          String?       @map("artwork_url") @db.VarChar(255)
+  lastActivityCheckAt DateTime?     @default(now()) @map("last_activity_check_at") @db.Timestamptz(6)
+  profileUrl          String?       @unique(map: "user_profile_url_unique") @map("profile_url") @db.VarChar(255)
+  artist              Artist[]
+  transaction         transaction[]
 
-  @@index([profile_url], map: "idx_profile_url")
+  @@index([profileUrl], map: "idx_profile_url")
   @@map("user")
 }
 
@@ -237,4 +241,48 @@ model zap_request {
   created_at   DateTime? @default(now()) @db.Timestamptz(6)
 
   @@index([payment_hash], map: "idx_zap_payment_hash")
+}
+
+model MusicGenre {
+  id             Int             @id @default(autoincrement())
+  name           String          @unique(map: "music_genre_name_unique") @db.VarChar(64)
+  created_at     DateTime?       @default(now()) @db.Timestamptz(6)
+  album          Album[]
+  music_subgenre MusicSubgenre[]
+
+  @@index([name], map: "idx_music_genre_name")
+  @@map("music_genre")
+}
+
+model MusicSubgenre {
+  id          Int        @id @default(autoincrement())
+  genreId     Int        @map("genre_id")
+  name        String     @unique(map: "music_subgenre_name_unique") @db.VarChar(64)
+  created_at  DateTime?  @default(now()) @db.Timestamptz(6)
+  album       Album[]
+  music_genre MusicGenre @relation(fields: [genreId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "music_subgenre_genre_id_foreign")
+
+  @@index([name], map: "idx_music_subgenre_name")
+  @@map("music_subgenre")
+}
+
+view TrackInfo {
+  id              String    @unique @db.Uuid
+  title           String?   @db.VarChar(255)
+  artist          String?   @db.VarChar(255)
+  artistUrl       String?   @map("artist_url") @db.VarChar(255)
+  avatarUrl       String?   @map("avatar_url") @db.VarChar(255)
+  artworkUrl      String?   @map("artwork_url") @db.VarChar(255)
+  msatTotal30Days BigInt?   @map("msat_total_30_days")
+  msatTotal7Days  BigInt?   @map("msat_total_7_days")
+  msatTotal1Days  BigInt?   @map("msat_total_1_days")
+  albumTitle      String?   @map("album_title") @db.VarChar(255)
+  liveUrl         String?   @map("live_url") @db.VarChar(255)
+  duration        Int?
+  createdAt       DateTime? @map("created_at") @db.Timestamptz(6)
+  albumId         String?   @map("album_id") @db.Uuid
+  artistId        String?   @map("artist_id") @db.Uuid
+  order           Int?
+
+  @@map("track_info")
 }
