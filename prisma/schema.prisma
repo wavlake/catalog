@@ -19,16 +19,20 @@ model activity {
 }
 
 model Album {
-  id          String    @id @unique(map: "album_id_unique") @db.Uuid
-  artistId    String    @map("artist_id") @db.Uuid
-  title       String    @db.VarChar(255)
-  artworkUrl  String?   @map("artwork_url") @db.VarChar(255)
-  createdAt   DateTime? @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt   DateTime? @default(now()) @map("updated_at") @db.Timestamptz(6)
-  description String?   @db.VarChar(1000)
-  deleted     Boolean?  @default(false)
-  artist      Artist    @relation(fields: [artistId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "album_artist_id_foreign")
-  track       Track[]
+  id             String         @id @unique(map: "album_id_unique") @db.Uuid
+  artistId       String         @map("artist_id") @db.Uuid
+  title          String         @db.VarChar(255)
+  artworkUrl     String?        @map("artwork_url") @db.VarChar(255)
+  createdAt      DateTime?      @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime?      @default(now()) @map("updated_at") @db.Timestamptz(6)
+  description    String?        @db.VarChar(1000)
+  deleted        Boolean?       @default(false)
+  genreId        Int?           @map("genre_id")
+  subgenreId     Int?           @map("subgenre_id")
+  artist         Artist         @relation(fields: [artistId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "album_artist_id_foreign")
+  music_genre    MusicGenre?    @relation(fields: [genreId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "album_genre_id_foreign")
+  music_subgenre MusicSubgenre? @relation(fields: [subgenreId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "album_subgenre_id_foreign")
+  track          Track[]
 
   @@index([artistId], map: "idx_album_artist_id")
   @@map("album")
@@ -213,18 +217,18 @@ model transaction {
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 model User {
-  id                     String        @id @unique(map: "user_id_unique") @db.VarChar(64)
-  name                   String        @unique(map: "user_name_unique") @db.VarChar(255)
-  msatBalance            BigInt?       @map("msat_balance") @default(0)
-  ampMsat                Int?          @map("amp_msat") @default(1000)
-  createdAt              DateTime?     @map("created_at") @default(now()) @db.Timestamptz(6)
-  updatedAt              DateTime?     @map("updated_at") @default(now()) @db.Timestamptz(6)
-  isLocked               Boolean       @map("is_locked") @default(false)
-  artworkUrl             String?       @map("artwork_url") @db.VarChar(255)
-  lastActivityCheckAt    DateTime?     @map("last_activity_check_at") @default(now()) @db.Timestamptz(6)
-  profileUrl             String?       @map("profile_url") @unique(map: "user_profile_url_unique") @db.VarChar(255)
-  artist                 Artist[]
-  transaction            transaction[]
+  id                  String        @id @unique(map: "user_id_unique") @db.VarChar(64)
+  name                String        @unique(map: "user_name_unique") @db.VarChar(255)
+  msatBalance         BigInt?       @default(0) @map("msat_balance")
+  ampMsat             Int?          @default(1000) @map("amp_msat")
+  createdAt           DateTime?     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt           DateTime?     @default(now()) @map("updated_at") @db.Timestamptz(6)
+  isLocked            Boolean       @default(false) @map("is_locked")
+  artworkUrl          String?       @map("artwork_url") @db.VarChar(255)
+  lastActivityCheckAt DateTime?     @default(now()) @map("last_activity_check_at") @db.Timestamptz(6)
+  profileUrl          String?       @unique(map: "user_profile_url_unique") @map("profile_url") @db.VarChar(255)
+  artist              Artist[]
+  transaction         transaction[]
 
   @@index([profileUrl], map: "idx_profile_url")
   @@map("user")
@@ -240,9 +244,10 @@ model zap_request {
 }
 
 model MusicGenre {
-  id             Int              @id @default(autoincrement())
-  name           String           @unique(map: "music_genre_name_unique") @db.VarChar(64)
-  created_at     DateTime?        @default(now()) @db.Timestamptz(6)
+  id             Int             @id @default(autoincrement())
+  name           String          @unique(map: "music_genre_name_unique") @db.VarChar(64)
+  created_at     DateTime?       @default(now()) @db.Timestamptz(6)
+  album          Album[]
   music_subgenre MusicSubgenre[]
 
   @@index([name], map: "idx_music_genre_name")
@@ -250,11 +255,12 @@ model MusicGenre {
 }
 
 model MusicSubgenre {
-  id          Int         @id @default(autoincrement())
-  genre_id    Int
-  name        String      @unique(map: "music_subgenre_name_unique") @db.VarChar(64)
-  created_at  DateTime?   @default(now()) @db.Timestamptz(6)
-  music_genre MusicGenre @relation(fields: [genre_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "music_subgenre_genre_id_foreign")
+  id          Int        @id @default(autoincrement())
+  genreId     Int        @map("genre_id")
+  name        String     @unique(map: "music_subgenre_name_unique") @db.VarChar(64)
+  created_at  DateTime?  @default(now()) @db.Timestamptz(6)
+  album       Album[]
+  music_genre MusicGenre @relation(fields: [genreId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "music_subgenre_genre_id_foreign")
 
   @@index([name], map: "idx_music_subgenre_name")
   @@map("music_subgenre")
