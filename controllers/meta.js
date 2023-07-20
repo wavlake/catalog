@@ -21,7 +21,7 @@ const get_music_subgenre_list = asyncHandler(async (req, res, next) => {
 
   const genres = await prisma.musicSubgenre.findMany({
     where: {
-      genre_id: parseInt(genreId),
+      genreId: parseInt(genreId),
     },
     select: {
       id: true,
