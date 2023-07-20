@@ -255,6 +255,7 @@ const update_artist_art = asyncHandler(async (req, res, next) => {
   const newImageId = randomUUID();
 
   const request = {
+    userId: req["uid"],
     artwork: req.file,
     artistId: req.body.artistId,
   };
