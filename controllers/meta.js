@@ -17,7 +17,6 @@ const get_music_genre_list = asyncHandler(async (req, res, next) => {
 const get_music_subgenre_list = asyncHandler(async (req, res, next) => {
   const { genreId } = req.params;
 
-  console.log(genreId);
 
   const genres = await prisma.musicSubgenre.findMany({
     where: {
