@@ -9,12 +9,34 @@ const cors = require("cors");
 const compression = require("compression");
 const helmet = require("helmet");
 const bodyParser = require("body-parser");
+const Sentry = require("@sentry/node");
 
 const corsHost = process.env.CORS_HOST;
 log.setLevel(process.env.LOGLEVEL);
 const port = process.env.EXPRESS_PORT;
 const localConvertPath = `${process.env.LOCAL_CONVERT_PATH}`;
 const localUploadPath = `${process.env.LOCAL_UPLOAD_PATH}`;
+const sentryDsn = process.env.SENTRY_DSN;
+const sentryTracesSampleRate = process.env.SENTRY_TRACES_SAMPLE_RATE;
+
+Sentry.init({
+  dsn: sentryDsn,
+  integrations: [
+    // enable HTTP calls tracing
+    new Sentry.Integrations.Http({ tracing: true }),
+    // enable Express.js middleware tracing
+    new Sentry.Integrations.Express({ app }),
+    // Automatically instrument Node.js libraries and frameworks
+    ...Sentry.autoDiscoverNodePerformanceMonitoringIntegrations(),
+  ],
+  environment: process.env.NODE_ENV,
+  // Performance Monitoring
+  tracesSampleRate: parseFloat(sentryTracesSampleRate), // Capture 100% of the transactions, reduce in production!,
+});
+
+// Trace incoming requests
+app.use(Sentry.Handlers.requestHandler());
+app.use(Sentry.Handlers.tracingHandler());
 
 // Creates temp folders if they don't exist
 fs.mkdirSync(localConvertPath, { recursive: true }, (err) => {
@@ -64,6 +86,9 @@ app.use("/v1/charts", charts);
 app.use("/v1/meta", meta);
 app.use("/v1/stats", stats);
 app.use("/v1/tracks", tracks);
+
+// The error handler must be registered before any other error middleware and after all controllers
+app.use(Sentry.Handlers.errorHandler());
 
 // override default html error page with custom error handler
 app.use(errorHandler);
