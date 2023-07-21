@@ -2,7 +2,6 @@ const log = require("loglevel");
 import { NextFunction, Response, Request } from "express";
 import { PrismaClientKnownRequestError } from "@prisma/client/runtime";
 import { FirebaseError } from "firebase-admin";
-import { Prisma } from "@sentry/node/types/tracing/integrations";
 const Sentry = require("@sentry/node");
 
 // https://www.prisma.io/docs/reference/api-reference/error-reference
