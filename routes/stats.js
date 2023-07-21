@@ -35,6 +35,11 @@ router.get(
   statsController.get_earnings_by_tracks
 );
 router.get(
+  "/music/earnings/tracks/all",
+  isAuthorized,
+  statsController.get_earnings_all_time_by_tracks
+);
+router.get(
   "/music/earnings/tracks/daily",
   isAuthorized,
   statsController.get_earnings_by_tracks_daily
