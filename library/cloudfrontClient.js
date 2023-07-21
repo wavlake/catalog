@@ -1,5 +1,4 @@
 const AWS = require("aws-sdk");
-const fs = require("fs");
 const log = require("loglevel");
 
 const awsCdn = new AWS.CloudFront({

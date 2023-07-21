@@ -9,6 +9,7 @@ import prisma from "../prisma/client";
 const { getAlbumAccount, getArtistAccount } = require("../library/userHelper");
 const asyncHandler = require("express-async-handler");
 import { formatError } from "../library/errors";
+const { invalidateCdn } = require("../library/cloudfrontClient");
 
 const imagePrefix = `${process.env.AWS_S3_IMAGE_PREFIX}`;
 const localConvertPath = `${process.env.LOCAL_CONVERT_PATH}`;
@@ -244,8 +245,6 @@ const update_album = asyncHandler(async (req, res, next) => {
 });
 
 const update_album_art = asyncHandler(async (req, res, next) => {
-  const newImageId = randomUUID();
-
   const request = {
     userId: req["uid"],
     artwork: req.file,
@@ -265,78 +264,60 @@ const update_album_art = asyncHandler(async (req, res, next) => {
   }
 
   const uploadPath = request.artwork.path;
-  let oldUrl;
 
   const convertPath = `${localConvertPath}/${request.albumId}.jpg`;
-  const s3Key = `${imagePrefix}/${newImageId}.jpg`;
+  const s3Key = `${imagePrefix}/${request.albumId}.jpg`;
 
   log.debug(`Editing album artwork ${request.albumId}`);
-  // Get old url
-  getArtworkPath(request.albumId)
-    .then((old) => {
-      oldUrl = old;
+
+  // Upload new image
+  Jimp.read(uploadPath)
+    .then((img) => {
+      return img
+        .resize(500, 500) // resize
+        .quality(60) // set JPEG quality
+        .writeAsync(convertPath); // save
     })
-    .catch((err) =>
-      log.debug(
-        `Error retrieiving current artwork_url for ${request.albumId}: ${err}`
-      )
-    )
+    // Upload to S3
+    .then((img) => {
+      s3Client.uploadS3(convertPath, s3Key, "artwork").then((data) => {
+        log.trace(data);
+        log.debug(
+          `Artwork for ${request.albumId} uploaded to S3 ${data.Location}, refreshing cache...`
+        );
+        invalidateCdn(s3Key);
+      });
+    })
     .then(() => {
-      // Upload new image
-      Jimp.read(uploadPath)
-        .then((img) => {
-          return img
-            .resize(500, 500) // resize
-            .quality(60) // set JPEG quality
-            .writeAsync(convertPath); // save
-        })
-        // Upload to S3
-        .then((img) => {
-          s3Client.uploadS3(convertPath, s3Key, "artwork").then((data) => {
-            log.trace(data);
-            log.debug(
-              `Artwork for ${request.albumId} uploaded to S3 ${data.Location}`
-            );
-          });
-        })
-        .then(() => {
-          const liveUrl = `${cdnDomain}/${s3Key}`;
-          db.knex("album")
-            .where("id", "=", request.albumId)
-            .update({ artwork_url: liveUrl, updated_at: db.knex.fn.now() }, [
-              "id",
-            ])
-            .then((data) => {
-              res.send({ success: true, data: data });
-            });
-        })
-        .then(() => {
-          log.debug(`Updated album artwork ${request.albumId}`);
-
-          // Clean up with async calls to avoid blocking response
-          log.info(`Running clean up...`);
-          log.debug(`Deleting local files : ${convertPath} & ${uploadPath}`);
-          fs.unlink(`${convertPath}`, (err) => {
-            if (err) log.debug(`Error deleting local file : ${err}`);
-          });
-          fs.unlink(`${uploadPath}`, (err) => {
-            if (err) log.debug(`Error deleting local file : ${err}`);
-          });
-
-          // Clean up S3
-          s3Client
-            .deleteFromS3(oldUrl)
-            .catch((err) => log.debug(`Error deleting from S3: ${err}`));
-        })
-        .catch((err) => {
-          if (err instanceof multer.MulterError) {
-            log.debug(`MulterError creating new album: ${err}`);
-            next(err);
-          } else if (err) {
-            log.debug(`Error creating new album: ${err}`);
-            next(err);
-          }
+      const liveUrl = `${cdnDomain}/${s3Key}`;
+      db.knex("album")
+        .where("id", "=", request.albumId)
+        .update({ artwork_url: liveUrl, updated_at: db.knex.fn.now() }, ["id"])
+        .then((data) => {
+          res.send({ success: true, data: data[0] });
         });
+    })
+    .then(() => {
+      log.debug(`Updated album artwork ${request.albumId}`);
+
+      // Clean up with async calls to avoid blocking response
+      log.info(`Running clean up...`);
+      log.debug(`Deleting local files : ${convertPath} & ${uploadPath}`);
+      fs.unlink(`${convertPath}`, (err) => {
+        if (err) log.debug(`Error deleting local file : ${err}`);
+      });
+      fs.unlink(`${uploadPath}`, (err) => {
+        if (err) log.debug(`Error deleting local file : ${err}`);
+      });
+    })
+    .catch((err) => {
+      if (err instanceof multer.MulterError) {
+        log.debug(`MulterError creating new album: ${err}`);
+        next(err);
+      } else if (err) {
+        log.debug(`Error creating new album: ${err}`);
+        next(err);
+      }
     });
 });
 
@@ -390,18 +371,13 @@ const delete_album = asyncHandler(async (req, res, next) => {
 ////////// HELPERS //////////
 
 async function getArtworkPath(albumId) {
-  const regexp =
-    /^(([^:\/?#]+):)?(\/\/([^\/?#]*))?([^?#]*)(\?([^#]*))?(#(.*))?/;
-
   return new Promise((resolve, reject) => {
     return db
       .knex("album")
       .select("artwork_url")
       .where("id", "=", albumId)
       .then((data) => {
-        const match = data[0].artwork_url.match(regexp);
-        // console.log(match[5])
-        resolve(match[5]);
+        resolve(data[0].artwork_url);
       })
       .catch((e) => log.error(`Error looking up album artwork_url: ${e}`));
   });
