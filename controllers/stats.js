@@ -2,6 +2,7 @@ const log = require("loglevel");
 import db from "../library/db";
 const asyncHandler = require("express-async-handler");
 import { formatError } from "../library/errors";
+import prisma from "../prisma/client";
 
 const d = new Date();
 const d30 = new Date();
@@ -162,6 +163,33 @@ const get_earnings_by_tracks = asyncHandler(async (req, res, next) => {
         };
       });
       res.send({ success: true, data: formatted });
+    })
+    .catch((err) => {
+      log.error(err);
+      const error = formatError(
+        500,
+        "There was a problem retrieving earnings data"
+      );
+      throw error;
+    });
+});
+
+const get_earnings_all_time_by_tracks = asyncHandler(async (req, res, next) => {
+  const request = {
+    userId: req["uid"],
+  };
+
+  db.knex("track")
+    .join("amp", "track.id", "=", "amp.track_id")
+    .join("artist", "artist.id", "=", "track.artist_id")
+    .select(
+      "track.id as trackId",
+      "track.msat_total as msatTotal",
+      "track.title as title"
+    )
+    .where("artist.user_id", "=", request.userId)
+    .then((data) => {
+      res.send({ success: true, data: data });
     })
     .catch((err) => {
       log.error(err);
@@ -409,6 +437,7 @@ export default {
   get_earnings_all_time_by_account_weekly,
   get_earnings_by_account_daily,
   get_earnings_by_tracks,
+  get_earnings_all_time_by_tracks,
   get_earnings_by_tracks_daily,
   get_plays_by_account,
   get_plays_all_time_by_account,
