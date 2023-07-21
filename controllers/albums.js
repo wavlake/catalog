@@ -368,21 +368,6 @@ const delete_album = asyncHandler(async (req, res, next) => {
     });
 });
 
-////////// HELPERS //////////
-
-async function getArtworkPath(albumId) {
-  return new Promise((resolve, reject) => {
-    return db
-      .knex("album")
-      .select("artwork_url")
-      .where("id", "=", albumId)
-      .then((data) => {
-        resolve(data[0].artwork_url);
-      })
-      .catch((e) => log.error(`Error looking up album artwork_url: ${e}`));
-  });
-}
-
 export default {
   get_albums_by_account,
   get_album_by_id,

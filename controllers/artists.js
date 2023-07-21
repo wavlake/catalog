@@ -304,7 +304,7 @@ const update_artist_art = asyncHandler(async (req, res, next) => {
         .where("id", "=", request.artistId)
         .update({ artwork_url: liveUrl, updated_at: db.knex.fn.now() }, ["id"])
         .then((data) => {
-          res.send({ success: true, data: data });
+          res.send({ success: true, data: data[0] });
         });
     })
     .then(() => {
