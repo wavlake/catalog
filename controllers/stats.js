@@ -180,7 +180,6 @@ const get_earnings_all_time_by_tracks = asyncHandler(async (req, res, next) => {
   };
 
   db.knex("track")
-    .join("amp", "track.id", "=", "amp.track_id")
     .join("artist", "artist.id", "=", "track.artist_id")
     .select(
       "track.id as trackId",
@@ -188,6 +187,8 @@ const get_earnings_all_time_by_tracks = asyncHandler(async (req, res, next) => {
       "track.title as title"
     )
     .where("artist.user_id", "=", request.userId)
+    .andWhere("track.deleted", "=", false)
+    .orderBy("track.msat_total", "desc")
     .then((data) => {
       res.send({ success: true, data: data });
     })
