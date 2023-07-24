@@ -130,13 +130,14 @@ model knex_migrations_lock {
 
 model Play {
   id         Int       @id @default(autoincrement())
-  track_id   String    @db.Uuid
-  user_id    String    @db.VarChar(255)
+  trackId    String    @db.Uuid @map("track_id")
+  userId     String    @db.VarChar(255) @map("user_id")
   complete   Boolean
   created_at DateTime? @default(now()) @db.Timestamptz(6)
+  userAgent  String?   @map("user_agent")
 
-  @@index([track_id], map: "idx_play_track_id")
-  @@index([user_id], map: "idx_play_user_id")
+  @@index([trackId], map: "idx_play_track_id")
+  @@index([userId], map: "idx_play_user_id")
   @@map("play")
 }
 
@@ -187,6 +188,7 @@ model Track {
   deleted   Boolean?  @default(false)
   createdAt DateTime? @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt DateTime? @default(now()) @map("updated_at") @db.Timestamptz(6)
+  lyrics    String?
   album     Album     @relation(fields: [albumId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "track_album_id_foreign")
   artist    Artist    @relation(fields: [artistId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "track_artist_id_foreign")
 

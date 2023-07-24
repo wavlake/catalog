@@ -208,6 +208,7 @@ const create_track = asyncHandler(async (req, res, next) => {
     title: req.body.title,
     userId: req.uid,
     order: req.body.order,
+    lyrics: req.body.lyrics,
   };
 
   if (!request.albumId) {
@@ -279,6 +280,7 @@ const create_track = asyncHandler(async (req, res, next) => {
                       order: request.order,
                       duration: duration,
                       size: fileStats.size,
+                      lyrics: request.lyrics,
                     },
                     ["*"]
                   )
@@ -353,6 +355,7 @@ const create_track = asyncHandler(async (req, res, next) => {
                         liveUrl: data[0]["liveUrl"],
                         rawUrl: data[0]["raw_url"],
                         size: data[0]["size"],
+                        lyrics: data[0]["lyrics"],
                       },
                     });
                   });
@@ -381,6 +384,7 @@ const update_track = asyncHandler(async (req, res, next) => {
     trackId: req.body.trackId,
     title: req.body.title,
     order: req.body.order,
+    lyrics: req.body.lyrics,
   };
 
   if (!request.trackId) {
@@ -403,6 +407,7 @@ const update_track = asyncHandler(async (req, res, next) => {
       {
         title: request.title,
         order: request.order,
+        lyrics: request.lyrics,
         updated_at: db.knex.fn.now(),
       },
       ["*"]
@@ -420,6 +425,7 @@ const update_track = asyncHandler(async (req, res, next) => {
           liveUrl: data[0]["liveUrl"],
           rawUrl: data[0]["raw_url"],
           size: data[0]["size"],
+          lyrics: data[0]["lyrics"],
         },
       });
     })
