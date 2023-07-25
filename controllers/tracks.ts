@@ -1,12 +1,8 @@
 import prisma from "../prisma/client";
 import db from "../library/db";
 const log = require("loglevel");
-const mp3Duration = require("mp3-duration");
 const { randomUUID } = require("crypto");
-const Lame = require("node-lame").Lame;
-const fs = require("fs");
 const s3Client = require("../library/s3Client");
-const multer = require("multer");
 const { getAlbumAccount, getTrackAccount } = require("../library/userHelper");
 const asyncHandler = require("express-async-handler");
 import { formatError } from "../library/errors";
@@ -17,8 +13,6 @@ const s3BucketName = `${process.env.AWS_S3_BUCKET_NAME}`;
 const cdnDomain = `${process.env.AWS_CDN_DOMAIN}`;
 const trackPrefix = `${process.env.AWS_S3_TRACK_PREFIX}`;
 const rawPrefix = `${process.env.AWS_S3_RAW_PREFIX}`;
-const localConvertPath = `${process.env.LOCAL_CONVERT_PATH}`;
-const localUploadPath = `${process.env.LOCAL_UPLOAD_PATH}`;
 
 const get_track = asyncHandler(async (req, res, next) => {
   const request = {

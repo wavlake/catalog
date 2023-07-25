@@ -14,7 +14,8 @@ SELECT
   track.created_at,
   track.album_id,
   track.artist_id,
-  track."order"
+  track."order",
+  track.is_processing
 FROM
   (
     (
@@ -72,7 +73,4 @@ FROM
     JOIN artist ON ((artist.id = track.artist_id))
   )
 WHERE
-  (
-    (track.deleted = false)
-    AND (track.is_processing = false)
-  );
+  (track.deleted = false);
