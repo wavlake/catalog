@@ -96,7 +96,7 @@ const create_album = asyncHandler(async (req, res, next) => {
 
   if (!isArtistOwner) {
     const error = formatError(403, "User does not own this artist");
-    throw error;
+    next(error);
   }
 
   let uploadPath;
@@ -200,7 +200,7 @@ const update_album = asyncHandler(async (req, res, next) => {
 
   if (!request.albumId) {
     const error = formatError(400, "albumId field is required");
-    throw error;
+    next(error);
   }
 
   // Check if user owns album
@@ -208,7 +208,7 @@ const update_album = asyncHandler(async (req, res, next) => {
 
   if (!isAlbumOwner) {
     const error = formatError(403, "User does not own this album");
-    throw error;
+    next(error);
   }
 
   log.debug(`Editing album ${request.albumId}`);
@@ -260,7 +260,7 @@ const update_album_art = asyncHandler(async (req, res, next) => {
 
   if (!isAlbumOwner) {
     const error = formatError(403, "User does not own this album");
-    throw error;
+    next(error);
   }
 
   const uploadPath = request.artwork.path;
@@ -336,7 +336,7 @@ const delete_album = asyncHandler(async (req, res, next) => {
 
   if (!isAlbumOwner) {
     const error = formatError(403, "User does not own this album");
-    throw error;
+    next(error);
   }
 
   log.debug(`Checking tracks for album ${request.albumId}`);
@@ -347,7 +347,7 @@ const delete_album = asyncHandler(async (req, res, next) => {
     .then((data) => {
       if (data.length > 0) {
         const error = formatError(500, "Album must be empty to delete");
-        throw error;
+        next(error);
       } else {
         log.debug(`Deleting album ${request.albumId}`);
         db.knex("album")

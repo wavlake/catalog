@@ -34,7 +34,7 @@ const get_earnings_by_account = asyncHandler(async (req, res, next) => {
         500,
         "There was a problem retrieving earnings data"
       );
-      throw error;
+      next(error);
     });
 });
 
@@ -63,7 +63,7 @@ const get_earnings_all_time_by_account = asyncHandler(
           500,
           "There was a problem retrieving earnings data"
         );
-        throw error;
+        next(error);
       });
   }
 );
@@ -102,7 +102,7 @@ const get_earnings_all_time_by_account_weekly = asyncHandler(
           500,
           "There was a problem retrieving earnings data"
         );
-        throw error;
+        next(error);
       });
   }
 );
@@ -138,7 +138,7 @@ const get_earnings_by_account_daily = asyncHandler(async (req, res, next) => {
         500,
         "There was a problem retrieving earnings data"
       );
-      throw error;
+      next(error);
     });
 });
 
@@ -170,7 +170,7 @@ const get_earnings_by_tracks = asyncHandler(async (req, res, next) => {
         500,
         "There was a problem retrieving earnings data"
       );
-      throw error;
+      next(error);
     });
 });
 
@@ -198,7 +198,7 @@ const get_earnings_all_time_by_tracks = asyncHandler(async (req, res, next) => {
         500,
         "There was a problem retrieving earnings data"
       );
-      throw error;
+      next(error);
     });
 });
 
@@ -233,7 +233,7 @@ const get_earnings_by_tracks_daily = asyncHandler(async (req, res, next) => {
         500,
         "There was a problem retrieving earnings data"
       );
-      throw error;
+      next(error);
     });
 });
 
@@ -258,7 +258,7 @@ const get_plays_by_account = asyncHandler(async (req, res, next) => {
         500,
         "There was a problem retrieving play data"
       );
-      throw error;
+      next(error);
     });
 });
 
@@ -282,7 +282,7 @@ const get_plays_all_time_by_account = asyncHandler(async (req, res, next) => {
         500,
         "There was a problem retrieving play data"
       );
-      throw error;
+      next(error);
     });
 });
 
@@ -319,7 +319,7 @@ const get_plays_all_time_by_account_weekly = asyncHandler(
           500,
           "There was a problem retrieving play data"
         );
-        throw error;
+        next(error);
       });
   }
 );
@@ -354,7 +354,7 @@ const get_plays_by_account_daily = asyncHandler(async (req, res, next) => {
         500,
         "There was a problem retrieving play data"
       );
-      throw error;
+      next(error);
     });
 });
 
@@ -386,7 +386,7 @@ const get_plays_by_tracks = asyncHandler(async (req, res, next) => {
         500,
         "There was a problem retrieving play data"
       );
-      throw error;
+      next(error);
     });
 });
 
@@ -423,7 +423,7 @@ const get_plays_by_tracks_daily = asyncHandler(async (req, res, next) => {
         500,
         "There was a problem retrieving play data"
       );
-      throw error;
+      next(error);
     });
 });
 

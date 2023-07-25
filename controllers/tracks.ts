@@ -5,7 +5,7 @@ const mp3Duration = require("mp3-duration");
 const { randomUUID } = require("crypto");
 const Lame = require("node-lame").Lame;
 const fs = require("fs");
-const { s3 } = require("../library/s3Client");
+const s3Client = require("../library/s3Client");
 const multer = require("multer");
 const { getAlbumAccount, getTrackAccount } = require("../library/userHelper");
 const asyncHandler = require("express-async-handler");
@@ -170,7 +170,7 @@ const delete_track = asyncHandler(async (req, res, next) => {
 
   if (!request.trackId) {
     const error = formatError(403, "trackId field is required");
-    throw error;
+    next(error);
   }
 
   // Check if user owns track
@@ -178,7 +178,7 @@ const delete_track = asyncHandler(async (req, res, next) => {
 
   if (!isTrackOwner) {
     const error = formatError(403, "User does not own this track");
-    throw error;
+    next(error);
   }
 
   log.debug(`Deleting track ${request.trackId}`);
@@ -195,15 +195,8 @@ const delete_track = asyncHandler(async (req, res, next) => {
     });
 });
 
-// TODO: Refactor this completely. Temp fix is to bump up the timeout on NGINX so
-// that these long uploads don't end on 504 errors. New approach should be to:
-// 1) client uploads directly to S3
-// 2) server compresses file and uploads to S3
-// 3) server enters record into DB
-// Steps 2 and 3 can happen async in the background while client moves on
 const create_track = asyncHandler(async (req, res, next) => {
   const request = {
-    audio: req.file,
     albumId: req.body.albumId,
     title: req.body.title,
     userId: req.uid,
@@ -213,169 +206,70 @@ const create_track = asyncHandler(async (req, res, next) => {
 
   if (!request.albumId) {
     const error = formatError(403, "albumId field is required");
-    throw error;
+    next(error);
   }
 
   const albumAccount = await getAlbumAccount(request.userId, request.albumId);
 
   if (!albumAccount == request.userId) {
     const error = formatError(403, "User does not own this album");
-    throw error;
+    next(error);
   }
 
   const albumDetails = await getAlbumDetails(request.albumId);
 
   const newTrackId = randomUUID();
 
-  const localUploadFilename = request.audio.filename;
+  const s3RawKey = `${rawPrefix}/${newTrackId}`;
+  const s3RawUrl = `https://${s3BucketName}.s3.us-east-2.amazonaws.com/${rawPrefix}/${newTrackId}`;
+  const s3Key = `${trackPrefix}/${newTrackId}`;
 
-  // Encode audio file to standard MP3
-  const encoder = new Lame({
-    output: `${localConvertPath}/${newTrackId}.mp3`,
-    bitrate: 128,
-    mode: "j",
-    meta: {
-      title: request.title,
-      // artist: request.artistName, TODO: Add artist name to track metadata
-      album: albumDetails.albumTitle,
-      comment: "Wavlake",
-    },
-  }).setFile(`${localUploadPath}/${localUploadFilename}`);
+  const presignedUrl = await s3Client.generatePresignedUrl(s3RawKey);
 
-  let duration;
-  const s3Key = `${trackPrefix}/${newTrackId}.mp3`;
+  const liveUrl = `${cdnDomain}/${s3Key}`;
 
-  encoder.encode().then(() => {
-    mp3Duration(`${localUploadPath}/${localUploadFilename}`)
-      .then((d) => {
-        // Upload to S3
-        duration = parseInt(d);
-        const object = {
-          Bucket: s3BucketName,
-          Key: s3Key,
-          Body: fs.readFileSync(`${localConvertPath}/${newTrackId}.mp3`),
-          ContentType: "audio/mpeg",
-        };
-        s3.upload(object, (err, data) => {
-          if (err) {
-            log.debug(`Error uploading ${newTrackId} to S3: ${err}`);
-          }
-        })
-          .promise()
-          // Write metadata to db
-          .then((data) => {
-            log.debug(`Track ${newTrackId} uploaded to S3 ${data.Location}`);
-            const liveUrl = `${cdnDomain}/${s3Key}`;
-            fs.promises
-              .stat(`${localConvertPath}/${newTrackId}.mp3`)
-              .then((fileStats) => {
-                db.knex("track")
-                  .insert(
-                    {
-                      id: newTrackId,
-                      artist_id: albumDetails.artistId,
-                      album_id: request.albumId,
-                      live_url: liveUrl,
-                      title: request.title,
-                      order: request.order,
-                      duration: duration,
-                      size: fileStats.size,
-                      lyrics: request.lyrics,
-                    },
-                    ["*"]
-                  )
-                  .then((data) => {
-                    log.debug(
-                      `Created new track ${request.title} with id: ${data[0]["id"]}`
-                    );
+  if (presignedUrl == null) {
+    const error = formatError(403, "Error generating presigned URL");
+    next(error);
+  }
 
-                    const extension = localUploadFilename.split(".").pop();
-                    // Upload original file to S3 with another async call
-                    const original = {
-                      Bucket: s3BucketName,
-                      Key: `${rawPrefix}/${newTrackId}.${extension}`,
-                      Body: fs.readFileSync(
-                        `${localUploadPath}/${localUploadFilename}`
-                      ),
-                    };
-                    s3.upload(original, (err, data) => {
-                      if (err) {
-                        log.debug(
-                          `Error uploading raw version of ${newTrackId} to S3: ${err}`
-                        );
-                      }
-                    })
-                      .promise()
-                      .then((data) => {
-                        log.debug(
-                          `Uploaded raw version of ${newTrackId} uploaded to S3 ${data.Location}`
-                        );
-                        db.knex("track")
-                          .where({ id: newTrackId })
-                          .update({ raw_url: data.Location })
-                          .then((data) => {
-                            log.debug(
-                              `Added raw_url for ${newTrackId} to track table`
-                            );
-                          })
-                          .catch((err) => {
-                            log.debug(
-                              `Error adding raw_url for ${newTrackId} to track table: ${err}`
-                            );
-                          });
-                        // Clean up with async calls to avoid blocking response
-                        log.debug(
-                          `Deleting local files : ${localConvertPath}/${newTrackId}.mp3 & ${localUploadPath}/${localUploadFilename}`
-                        );
-                        fs.unlink(
-                          `${localConvertPath}/${newTrackId}.mp3`,
-                          (err) => {
-                            if (err)
-                              log.debug(`Error deleting local file : ${err}`);
-                          }
-                        );
-                        fs.unlink(
-                          `${localUploadPath}/${localUploadFilename}`,
-                          (err) => {
-                            if (err)
-                              log.debug(`Error deleting local file : ${err}`);
-                          }
-                        );
-                      });
+  db.knex("track")
+    .insert(
+      {
+        id: newTrackId,
+        artist_id: albumDetails.artistId,
+        album_id: request.albumId,
+        live_url: liveUrl,
+        title: request.title,
+        order: request.order,
+        lyrics: request.lyrics,
+        raw_url: s3RawUrl,
+        is_processing: true,
+      },
+      ["*"]
+    )
+    .then((data) => {
+      log.debug(`Created new track ${request.title} with id: ${data[0]["id"]}`);
 
-                    res.send({
-                      success: true,
-                      data: {
-                        id: data[0]["id"],
-                        artistId: data[0]["artist_id"],
-                        albumId: data[0]["album_id"],
-                        title: data[0]["title"],
-                        order: data[0]["order"],
-                        duration: data[0]["duration"],
-                        liveUrl: data[0]["liveUrl"],
-                        rawUrl: data[0]["raw_url"],
-                        size: data[0]["size"],
-                        lyrics: data[0]["lyrics"],
-                      },
-                    });
-                  });
-              });
-          })
-          .catch((err) => {
-            if (err instanceof multer.MulterError) {
-              log.debug(`MulterError creating new track: ${err}`);
-              next(err);
-            } else if (err) {
-              log.debug(`Error creating new track: ${err}`);
-              next(err);
-            }
-          });
-      })
-      .catch((err) => {
-        log.debug(`Error encoding new track: ${err}`);
-        next(err);
+      res.send({
+        success: true,
+        data: {
+          id: data[0]["id"],
+          artistId: data[0]["artist_id"],
+          albumId: data[0]["album_id"],
+          title: data[0]["title"],
+          order: data[0]["order"],
+          liveUrl: data[0]["liveUrl"],
+          rawUrl: data[0]["raw_url"],
+          lyrics: data[0]["lyrics"],
+          presignedUrl: presignedUrl,
+        },
       });
-  });
+    })
+    .catch((err) => {
+      const error = formatError(403, "Error creating new ");
+      next(error);
+    });
 });
 
 const update_track = asyncHandler(async (req, res, next) => {
@@ -389,7 +283,7 @@ const update_track = asyncHandler(async (req, res, next) => {
 
   if (!request.trackId) {
     const error = formatError(403, "trackId field is required");
-    throw error;
+    next(error);
   }
 
   // Check if user owns track
@@ -397,7 +291,7 @@ const update_track = asyncHandler(async (req, res, next) => {
 
   if (!isTrackOwner) {
     const error = formatError(403, "User does not own this track");
-    throw error;
+    next(error);
   }
 
   log.debug(`Editing track ${request.trackId}`);
