@@ -72,4 +72,7 @@ FROM
     JOIN artist ON ((artist.id = track.artist_id))
   )
 WHERE
-  (track.deleted = false);
+  (
+    (track.deleted = false)
+    AND (track.is_processing = false)
+  );

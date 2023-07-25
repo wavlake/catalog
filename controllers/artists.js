@@ -69,7 +69,7 @@ const create_artist = asyncHandler(async (req, res, next) => {
 
   if (!request.name) {
     const error = formatError(403, "Artist name is required");
-    throw error;
+    next(error);
   }
 
   let uploadPath;
@@ -164,13 +164,13 @@ const create_artist = asyncHandler(async (req, res, next) => {
                       409,
                       "Artist with that name already exists"
                     );
-                    throw error;
+                    next(error);
                   } else {
                     const error = formatError(
                       500,
                       "Something went wrong creating artist"
                     );
-                    throw error;
+                    next(error);
                   }
                 }
               });
@@ -198,7 +198,7 @@ const update_artist = asyncHandler(async (req, res, next) => {
 
   if (!request.artistId) {
     const error = formatError(403, "artistId field is required");
-    throw error;
+    next(error);
   }
 
   // Check if user owns artist
@@ -209,7 +209,7 @@ const update_artist = asyncHandler(async (req, res, next) => {
 
   if (!isArtistOwner) {
     const error = formatError(403, "User does not own this artist");
-    throw error;
+    next(error);
   }
 
   log.debug(`Editing artist ${request.artistId}`);
@@ -261,7 +261,7 @@ const update_artist_art = asyncHandler(async (req, res, next) => {
 
   if (!request.artistId) {
     const error = formatError(403, "artistId field is required");
-    throw error;
+    next(error);
   }
 
   // Check if user owns artist
@@ -272,7 +272,7 @@ const update_artist_art = asyncHandler(async (req, res, next) => {
 
   if (!isArtistOwner) {
     const error = formatError(403, "User does not own this artist");
-    throw error;
+    next(error);
   }
 
   const uploadPath = request.artwork.path;
@@ -340,7 +340,7 @@ const delete_artist = asyncHandler(async (req, res, next) => {
 
   if (!request.artistId) {
     const error = formatError(403, "artistId field is required");
-    throw error;
+    next(error);
   }
 
   // Check if user owns artist
@@ -351,7 +351,7 @@ const delete_artist = asyncHandler(async (req, res, next) => {
 
   if (!isArtistOwner) {
     const error = formatError(403, "User does not own this artist");
-    throw error;
+    next(error);
   }
 
   log.debug(`Checking albums for artist ${request.artistId}`);
@@ -362,7 +362,7 @@ const delete_artist = asyncHandler(async (req, res, next) => {
     .then((data) => {
       if (data.length > 0) {
         const error = formatError(403, "Artist has undeleted albums");
-        throw error;
+        next(error);
       } else {
         log.debug(`Deleting artist ${request.artistId}`);
         db.knex("artist")

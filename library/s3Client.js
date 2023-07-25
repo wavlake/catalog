@@ -44,8 +44,26 @@ async function uploadS3(sourcePath, key, type) {
     .promise();
 }
 
+async function generatePresignedUrl(key) {
+  const params = {
+    Bucket: s3BucketName,
+    Key: key,
+    Expires: 3600,
+  };
+
+  return new Promise((resolve, reject) => {
+    s3.getSignedUrl("putObject", params, (err, data) => {
+      if (err) {
+        log.debug(`Error generating presigned url for ${key}: ${err}`);
+        reject(err);
+      } else resolve(data);
+    });
+  });
+}
+
 module.exports = {
   s3,
   deleteFromS3,
   uploadS3,
+  generatePresignedUrl,
 };
