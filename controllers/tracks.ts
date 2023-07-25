@@ -216,7 +216,7 @@ const create_track = asyncHandler(async (req, res, next) => {
     throw error;
   }
 
-  const albumAccount = await getAlbumAccount(request.albumId);
+  const albumAccount = await getAlbumAccount(request.userId, request.albumId);
 
   if (!albumAccount == request.userId) {
     const error = formatError(403, "User does not own this album");
