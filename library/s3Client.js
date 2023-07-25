@@ -44,11 +44,12 @@ async function uploadS3(sourcePath, key, type) {
     .promise();
 }
 
-async function generatePresignedUrl(key) {
+async function generatePresignedUrl({ key, contentType = "audio/mpeg" }) {
   const params = {
     Bucket: s3BucketName,
     Key: key,
     Expires: 3600,
+    ContentType: contentType,
   };
 
   return new Promise((resolve, reject) => {
