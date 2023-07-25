@@ -184,7 +184,7 @@ const delete_track = asyncHandler(async (req, res, next) => {
   log.debug(`Deleting track ${request.trackId}`);
   db.knex("track")
     .where("id", "=", request.trackId)
-    .update({ deleted: true }, ["id", "title"])
+    .update({ deleted: true }, ["id", "title", "album_id as albumId"])
     .then((data) => {
       res.send({ success: true, data: data[0] });
     })
