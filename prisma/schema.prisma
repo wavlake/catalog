@@ -286,6 +286,7 @@ view TrackInfo {
   albumId         String?   @map("album_id") @db.Uuid
   artistId        String?   @map("artist_id") @db.Uuid
   order           Int?
+  isProcessing    Boolean?  @map("is_processing")
 
   @@map("track_info")
 }
