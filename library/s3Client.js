@@ -9,9 +9,9 @@ const s3 = new AWS.S3({
   region: "us-east-2",
 });
 
-const extensions = {
-  "audio/mpeg": "mp3",
-  "audio/wav": "wav",
+const contentTypes = {
+  mp3: "audio/mpeg",
+  wav: "audio/wav",
 };
 
 const s3BucketName = `${process.env.AWS_S3_BUCKET_NAME}`;
@@ -49,8 +49,8 @@ async function uploadS3(sourcePath, key, type) {
     .promise();
 }
 
-async function generatePresignedUrl({ key, contentType = "audio/mpeg" }) {
-  const extension = extensions[contentType];
+async function generatePresignedUrl({ key, extension }) {
+  const contentType = contentTypes[extension];
 
   const params = {
     Bucket: s3BucketName,

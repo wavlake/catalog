@@ -196,7 +196,7 @@ const create_track = asyncHandler(async (req, res, next) => {
     userId: req.uid,
     order: req.body.order,
     lyrics: req.body.lyrics,
-    contentType: req.body.contentType ?? "audio/mpeg",
+    extension: req.body.extension ?? "mp3",
   };
 
   if (!request.albumId) {
@@ -221,7 +221,7 @@ const create_track = asyncHandler(async (req, res, next) => {
 
   const presignedUrl = await s3Client.generatePresignedUrl({
     key: s3RawKey,
-    contentType: request.contentType,
+    extension: request.extension,
   });
 
   const liveUrl = `${cdnDomain}/${s3Key}`;
