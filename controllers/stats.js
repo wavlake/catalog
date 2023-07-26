@@ -174,34 +174,6 @@ const get_earnings_by_tracks = asyncHandler(async (req, res, next) => {
     });
 });
 
-const get_earnings_all_time_by_tracks = asyncHandler(async (req, res, next) => {
-  const request = {
-    userId: req["uid"],
-  };
-
-  db.knex("track")
-    .join("artist", "artist.id", "=", "track.artist_id")
-    .select(
-      "track.id as trackId",
-      "track.msat_total as msatTotal",
-      "track.title as title"
-    )
-    .where("artist.user_id", "=", request.userId)
-    .andWhere("track.deleted", "=", false)
-    .orderBy("track.msat_total", "desc")
-    .then((data) => {
-      res.send({ success: true, data: data });
-    })
-    .catch((err) => {
-      log.error(err);
-      const error = formatError(
-        500,
-        "There was a problem retrieving earnings data"
-      );
-      next(error);
-    });
-});
-
 const get_earnings_by_tracks_daily = asyncHandler(async (req, res, next) => {
   const request = {
     userId: req["uid"],
@@ -483,7 +455,6 @@ export default {
   get_earnings_all_time_by_account_weekly,
   get_earnings_by_account_daily,
   get_earnings_by_tracks,
-  get_earnings_all_time_by_tracks,
   get_earnings_by_tracks_daily,
   get_plays_by_account,
   get_plays_all_time_by_account,
