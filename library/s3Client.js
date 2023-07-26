@@ -56,7 +56,7 @@ async function generatePresignedUrl({ key, extension }) {
     Bucket: s3BucketName,
     Key: `${key}.${extension}`,
     Expires: 3600,
-    ContentType: contentType,
+    // ContentType: contentType,
   };
 
   return new Promise((resolve, reject) => {
