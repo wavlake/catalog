@@ -70,6 +70,11 @@ router.get(
   isAuthorized,
   statsController.get_plays_by_tracks_daily
 );
+router.get(
+  "/music/totals/tracks/all",
+  isAuthorized,
+  statsController.get_totals_all_time_by_tracks
+);
 // router.get("/music/subgenres/:genreId", statsController.get_music_subgenre_list);
 
 // Export router

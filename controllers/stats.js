@@ -427,6 +427,51 @@ const get_plays_by_tracks_daily = asyncHandler(async (req, res, next) => {
     });
 });
 
+const get_totals_all_time_by_tracks = asyncHandler(async (req, res, next) => {
+  const request = {
+    userId: req["uid"],
+  };
+
+  const playsum = db
+    .knex("play")
+    .select("track_id")
+    .count("id as playtotal")
+    .groupBy("track_id")
+    .as("playsum");
+
+  db.knex("track")
+    .join("artist", "artist.id", "=", "track.artist_id")
+    .leftOuterJoin(playsum, "track.id", "=", "playsum.track_id")
+    .select(
+      "track.id as trackId",
+      "track.msat_total as msatTotal",
+      "track.title as title",
+      db.knex.raw("COALESCE(playtotal,0) as playTotal")
+    )
+    .where("artist.user_id", "=", request.userId)
+    .andWhere("track.deleted", "=", false)
+    .orderBy("track.msat_total", "desc")
+    .then((data) => {
+      const formatted = data.map((item) => {
+        return {
+          playTotal: item.playtotal,
+          msatTotal: item.msatTotal,
+          title: item.title,
+          trackId: item.trackId,
+        };
+      });
+      res.send({ success: true, data: formatted });
+    })
+    .catch((err) => {
+      log.error(err);
+      const error = formatError(
+        500,
+        "There was a problem retrieving totals data"
+      );
+      next(error);
+    });
+});
+
 function formatWeek(s) {
   const [year, week] = s.split("-");
   return `${year}-${week.padStart(2, "0")}`;
@@ -446,4 +491,5 @@ export default {
   get_plays_by_account_daily,
   get_plays_by_tracks,
   get_plays_by_tracks_daily,
+  get_totals_all_time_by_tracks,
 };
