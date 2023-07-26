@@ -9,6 +9,11 @@ const s3 = new AWS.S3({
   region: "us-east-2",
 });
 
+const extensions = {
+  "audio/mpeg": "mp3",
+  "audio/wav": "wav",
+};
+
 const s3BucketName = `${process.env.AWS_S3_BUCKET_NAME}`;
 
 async function deleteFromS3(key) {
@@ -45,9 +50,11 @@ async function uploadS3(sourcePath, key, type) {
 }
 
 async function generatePresignedUrl({ key, contentType = "audio/mpeg" }) {
+  const extension = extensions[contentType];
+
   const params = {
     Bucket: s3BucketName,
-    Key: key,
+    Key: `${key}.${extension}`,
     Expires: 3600,
     ContentType: contentType,
   };
