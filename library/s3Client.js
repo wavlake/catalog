@@ -44,10 +44,10 @@ async function uploadS3(sourcePath, key, type) {
     .promise();
 }
 
-async function generatePresignedUrl(key) {
+async function generatePresignedUrl({ key, extension }) {
   const params = {
     Bucket: s3BucketName,
-    Key: key,
+    Key: `${key}.${extension}`,
     Expires: 3600,
   };
 
