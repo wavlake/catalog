@@ -196,7 +196,7 @@ const create_track = asyncHandler(async (req, res, next) => {
     userId: req.uid,
     order: req.body.order,
     lyrics: req.body.lyrics,
-    contentType: (req.body.contentType = "audio/mpeg"),
+    contentType: req.body.contentType ?? "audio/mpeg",
   };
 
   if (!request.albumId) {
