@@ -10,6 +10,7 @@ const { getArtistAccount } = require("../library/userHelper");
 import prisma from "../prisma/client";
 const asyncHandler = require("express-async-handler");
 import { formatError } from "../library/errors";
+const { invalidateCdn } = require("../library/cloudfrontClient");
 
 const imagePrefix = `${process.env.AWS_S3_IMAGE_PREFIX}`;
 const localConvertPath = `${process.env.LOCAL_CONVERT_PATH}`;
@@ -68,7 +69,7 @@ const create_artist = asyncHandler(async (req, res, next) => {
 
   if (!request.name) {
     const error = formatError(403, "Artist name is required");
-    throw error;
+    next(error);
   }
 
   let uploadPath;
@@ -163,13 +164,13 @@ const create_artist = asyncHandler(async (req, res, next) => {
                       409,
                       "Artist with that name already exists"
                     );
-                    throw error;
+                    next(error);
                   } else {
                     const error = formatError(
                       500,
                       "Something went wrong creating artist"
                     );
-                    throw error;
+                    next(error);
                   }
                 }
               });
@@ -197,7 +198,7 @@ const update_artist = asyncHandler(async (req, res, next) => {
 
   if (!request.artistId) {
     const error = formatError(403, "artistId field is required");
-    throw error;
+    next(error);
   }
 
   // Check if user owns artist
@@ -208,7 +209,7 @@ const update_artist = asyncHandler(async (req, res, next) => {
 
   if (!isArtistOwner) {
     const error = formatError(403, "User does not own this artist");
-    throw error;
+    next(error);
   }
 
   log.debug(`Editing artist ${request.artistId}`);
@@ -252,8 +253,6 @@ const update_artist = asyncHandler(async (req, res, next) => {
 });
 
 const update_artist_art = asyncHandler(async (req, res, next) => {
-  const newImageId = randomUUID();
-
   const request = {
     userId: req["uid"],
     artwork: req.file,
@@ -262,7 +261,7 @@ const update_artist_art = asyncHandler(async (req, res, next) => {
 
   if (!request.artistId) {
     const error = formatError(403, "artistId field is required");
-    throw error;
+    next(error);
   }
 
   // Check if user owns artist
@@ -273,82 +272,62 @@ const update_artist_art = asyncHandler(async (req, res, next) => {
 
   if (!isArtistOwner) {
     const error = formatError(403, "User does not own this artist");
-    throw error;
+    next(error);
   }
 
   const uploadPath = request.artwork.path;
 
   const convertPath = `${localConvertPath}/${request.artistId}.jpg`;
-  const s3Key = `${imagePrefix}/${newImageId}.jpg`;
+  const s3Key = `${imagePrefix}/${request.artistId}.jpg`;
 
-  // Get old url
-  let oldUrl;
-  getArtworkPath(request.artistId)
-    .then((old) => {
-      oldUrl = old;
+  // Upload new image
+  Jimp.read(uploadPath)
+    .then((img) => {
+      return img
+        .resize(1875, Jimp.AUTO) // resize
+        .quality(60) // set JPEG quality
+        .writeAsync(convertPath); // save
     })
-    .catch((err) =>
-      log.debug(
-        `Error retrieiving current artwork_url for ${request.userId}: ${err}`
-      )
-    )
+    // Upload to S3
+    .then((img) => {
+      s3Client.uploadS3(convertPath, s3Key, "artwork").then((data) => {
+        log.trace(data);
+        log.debug(
+          `Artwork for artist ${request.artistId} uploaded to S3 ${data.Location}, refreshing cache...`
+        );
+        invalidateCdn(s3Key);
+      });
+    })
     .then(() => {
-      // Upload new image
-      Jimp.read(uploadPath)
-        .then((img) => {
-          return img
-            .resize(1875, Jimp.AUTO) // resize
-            .quality(60) // set JPEG quality
-            .writeAsync(convertPath); // save
-        })
-        // Upload to S3
-        .then((img) => {
-          s3Client.uploadS3(convertPath, s3Key, "avatar").then((data) => {
-            log.trace(data);
-            log.debug(
-              `Artwork for artist ${request.artistId} uploaded to S3 ${data.Location}`
-            );
-            // res.send(data);
-          });
-        })
-        .then(() => {
-          const liveUrl = `${cdnDomain}/${s3Key}`;
-          db.knex("artist")
-            .where("id", "=", request.artistId)
-            .update({ artwork_url: liveUrl, updated_at: db.knex.fn.now() }, [
-              "id",
-            ])
-            .then((data) => {
-              res.send({ success: true, data: data });
-            });
-        })
-        .then(() => {
-          log.debug(`Updated artist artwork ${request.artistId}`);
-
-          // Clean up with async calls to avoid blocking response
-          log.info(`Running clean up...`);
-          log.debug(`Deleting local files : ${convertPath} & ${uploadPath}`);
-          fs.unlink(`${convertPath}`, (err) => {
-            if (err) log.debug(`Error deleting local file : ${err}`);
-          });
-          fs.unlink(`${uploadPath}`, (err) => {
-            if (err) log.debug(`Error deleting local file : ${err}`);
-          });
-
-          // Clean up S3
-          s3Client
-            .deleteFromS3(oldUrl)
-            .catch((err) => log.debug(`Error deleting from S3: ${err}`));
-        })
-        .catch((err) => {
-          if (err instanceof multer.MulterError) {
-            log.debug(`MulterError editing artist artwork: ${err}`);
-            next(err);
-          } else if (err) {
-            log.debug(`Error editing artist artwork: ${err}`);
-            next(err);
-          }
+      const liveUrl = `${cdnDomain}/${s3Key}`;
+      db.knex("artist")
+        .where("id", "=", request.artistId)
+        .update({ artwork_url: liveUrl, updated_at: db.knex.fn.now() }, ["id"])
+        .then((data) => {
+          res.send({ success: true, data: data[0] });
         });
+    })
+    .then(() => {
+      log.debug(`Updated artist artwork ${request.artistId}`);
+
+      // Clean up with async calls to avoid blocking response
+      log.info(`Running clean up...`);
+      log.debug(`Deleting local files : ${convertPath} & ${uploadPath}`);
+      fs.unlink(`${convertPath}`, (err) => {
+        if (err) log.debug(`Error deleting local file : ${err}`);
+      });
+      fs.unlink(`${uploadPath}`, (err) => {
+        if (err) log.debug(`Error deleting local file : ${err}`);
+      });
+    })
+    .catch((err) => {
+      if (err instanceof multer.MulterError) {
+        log.debug(`MulterError editing artist artwork: ${err}`);
+        next(err);
+      } else if (err) {
+        log.debug(`Error editing artist artwork: ${err}`);
+        next(err);
+      }
     });
 });
 
@@ -361,7 +340,7 @@ const delete_artist = asyncHandler(async (req, res, next) => {
 
   if (!request.artistId) {
     const error = formatError(403, "artistId field is required");
-    throw error;
+    next(error);
   }
 
   // Check if user owns artist
@@ -372,7 +351,7 @@ const delete_artist = asyncHandler(async (req, res, next) => {
 
   if (!isArtistOwner) {
     const error = formatError(403, "User does not own this artist");
-    throw error;
+    next(error);
   }
 
   log.debug(`Checking albums for artist ${request.artistId}`);
@@ -383,7 +362,7 @@ const delete_artist = asyncHandler(async (req, res, next) => {
     .then((data) => {
       if (data.length > 0) {
         const error = formatError(403, "Artist has undeleted albums");
-        throw error;
+        next(error);
       } else {
         log.debug(`Deleting artist ${request.artistId}`);
         db.knex("artist")

@@ -14,7 +14,8 @@ SELECT
   track.created_at,
   track.album_id,
   track.artist_id,
-  track."order"
+  track."order",
+  track.is_processing
 FROM
   (
     (

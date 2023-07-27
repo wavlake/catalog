@@ -12,7 +12,10 @@ export const isAuthorized = asyncHandler(async (req, res, next) => {
     try {
       authToken = req.headers.authorization.split(" ")[1];
     } catch (err) {
-      const error = formatError(500, "Authentication failed");
+      const error = formatError(
+        500,
+        "Authentication failed, error parsing token"
+      );
       throw error;
     }
   } else {

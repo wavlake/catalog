@@ -130,13 +130,14 @@ model knex_migrations_lock {
 
 model Play {
   id         Int       @id @default(autoincrement())
-  track_id   String    @db.Uuid
-  user_id    String    @db.VarChar(255)
+  trackId    String    @map("track_id") @db.Uuid
+  userId     String    @map("user_id") @db.VarChar(255)
   complete   Boolean
   created_at DateTime? @default(now()) @db.Timestamptz(6)
+  userAgent  String?   @map("user_agent")
 
-  @@index([track_id], map: "idx_play_track_id")
-  @@index([user_id], map: "idx_play_user_id")
+  @@index([trackId], map: "idx_play_track_id")
+  @@index([userId], map: "idx_play_user_id")
   @@map("play")
 }
 
@@ -173,22 +174,24 @@ model ranking_forty {
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 model Track {
-  id        String    @id @unique(map: "track_id_unique") @db.Uuid
-  artistId  String    @map("artist_id") @db.Uuid
-  albumId   String    @map("album_id") @db.Uuid
-  title     String    @db.VarChar(255)
-  order     Int
-  playCount Int?      @default(0) @map("play_count")
-  msatTotal BigInt?   @default(0) @map("msat_total")
-  liveUrl   String    @map("live_url") @db.VarChar(255)
-  rawUrl    String?   @map("raw_url") @db.VarChar(128)
-  size      Int?
-  duration  Int?
-  deleted   Boolean?  @default(false)
-  createdAt DateTime? @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt DateTime? @default(now()) @map("updated_at") @db.Timestamptz(6)
-  album     Album     @relation(fields: [albumId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "track_album_id_foreign")
-  artist    Artist    @relation(fields: [artistId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "track_artist_id_foreign")
+  id           String    @id @unique(map: "track_id_unique") @db.Uuid
+  artistId     String    @map("artist_id") @db.Uuid
+  albumId      String    @map("album_id") @db.Uuid
+  title        String    @db.VarChar(255)
+  order        Int
+  playCount    Int?      @default(0) @map("play_count")
+  msatTotal    BigInt?   @default(0) @map("msat_total")
+  liveUrl      String    @map("live_url") @db.VarChar(255)
+  rawUrl       String?   @map("raw_url") @db.VarChar(128)
+  size         Int?
+  duration     Int?
+  deleted      Boolean?  @default(false)
+  createdAt    DateTime? @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime? @default(now()) @map("updated_at") @db.Timestamptz(6)
+  lyrics       String?
+  isProcessing Boolean?  @default(false) @map("is_processing")
+  album        Album     @relation(fields: [albumId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "track_album_id_foreign")
+  artist       Artist    @relation(fields: [artistId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "track_artist_id_foreign")
 
   @@index([albumId], map: "idx_track_album_id")
   @@index([artistId], map: "idx_track_artist_id")
@@ -283,6 +286,7 @@ view TrackInfo {
   albumId         String?   @map("album_id") @db.Uuid
   artistId        String?   @map("artist_id") @db.Uuid
   order           Int?
+  isProcessing    Boolean?  @map("is_processing")
 
   @@map("track_info")
 }
