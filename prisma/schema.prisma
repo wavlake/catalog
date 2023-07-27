@@ -190,7 +190,7 @@ model Track {
   updatedAt       DateTime? @default(now()) @map("updated_at") @db.Timestamptz(6)
   lyrics          String?
   isProcessing    Boolean?  @default(false) @map("is_processing")
-  compressorError Boolean?  @default(false) @map("compressor_error")
+  compressorError String?   @map("compressor_error") @db.VarChar(255)
   album           Album     @relation(fields: [albumId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "track_album_id_foreign")
   artist          Artist    @relation(fields: [artistId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "track_artist_id_foreign")
 

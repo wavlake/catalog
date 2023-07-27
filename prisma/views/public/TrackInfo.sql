@@ -15,8 +15,7 @@ SELECT
   track.album_id,
   track.artist_id,
   track."order",
-  track.is_processing,
-  track.compressor_error
+  track.is_processing
 FROM
   (
     (
