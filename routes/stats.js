@@ -20,9 +20,9 @@ router.get(
   statsController.get_earnings_all_time_by_account
 );
 router.get(
-  "/music/earnings/all/weekly",
+  "/music/earnings/all/monthly",
   isAuthorized,
-  statsController.get_earnings_all_time_by_account_weekly
+  statsController.get_earnings_all_time_by_account_monthly
 );
 router.get(
   "/music/earnings/daily",
@@ -46,9 +46,9 @@ router.get(
   statsController.get_plays_all_time_by_account
 );
 router.get(
-  "/music/plays/all/weekly",
+  "/music/plays/all/monthly",
   isAuthorized,
-  statsController.get_plays_all_time_by_account_weekly
+  statsController.get_plays_all_time_by_account_monthly
 );
 router.get(
   "/music/plays/agent", // Top Agent for last 30 days

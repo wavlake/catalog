@@ -68,14 +68,14 @@ const get_earnings_all_time_by_account = asyncHandler(
   }
 );
 
-const get_earnings_all_time_by_account_weekly = asyncHandler(
+const get_earnings_all_time_by_account_monthly = asyncHandler(
   async (req, res, next) => {
     const request = {
       userId: req["uid"],
     };
 
     const groupBy = db.knex.raw(
-      "CONCAT(DATE_PART('year',??),'-',DATE_PART('week',??))",
+      "CONCAT(DATE_PART('year',??),'-',DATE_PART('month',??))",
       ["amp.created_at", "amp.created_at"]
     );
 
@@ -92,7 +92,7 @@ const get_earnings_all_time_by_account_weekly = asyncHandler(
         const formatted = data.map((item) => {
           return {
             msatTotal: parseInt(item.msatTotal),
-            createdAt: formatWeek(item.concat),
+            createdAt: formatMonth(item.concat),
           };
         });
         res.send({ success: true, data: formatted });
@@ -150,16 +150,18 @@ const get_earnings_by_tracks = asyncHandler(async (req, res, next) => {
   db.knex("track")
     .join("amp", "track.id", "=", "amp.track_id")
     .join("artist", "artist.id", "=", "track.artist_id")
-    .select("track.id as trackId")
+    .select("track.id as trackId", "track.title as title")
     .sum("amp.msat_amount as msatTotal")
     .where("artist.user_id", "=", request.userId)
     .andWhere("amp.created_at", ">", d30)
     .groupBy("trackId")
+    .orderBy("msatTotal", "desc")
     .then((data) => {
       const formatted = data.map((item) => {
         return {
           msatTotal: parseInt(item.msatTotal),
           trackId: item.trackId,
+          title: item.title,
         };
       });
       res.send({ success: true, data: formatted });
@@ -258,14 +260,14 @@ const get_plays_all_time_by_account = asyncHandler(async (req, res, next) => {
     });
 });
 
-const get_plays_all_time_by_account_weekly = asyncHandler(
+const get_plays_all_time_by_account_monthly = asyncHandler(
   async (req, res, next) => {
     const request = {
       userId: req["uid"],
     };
 
     const groupBy = db.knex.raw(
-      "CONCAT(DATE_PART('year',??),'-',DATE_PART('week',??))",
+      "CONCAT(DATE_PART('year',??),'-',DATE_PART('month',??))",
       ["play.created_at", "play.created_at"]
     );
 
@@ -280,7 +282,7 @@ const get_plays_all_time_by_account_weekly = asyncHandler(
         const formatted = data.map((item) => {
           return {
             playTotal: parseInt(item.playTotal),
-            createdAt: formatWeek(item.concat),
+            createdAt: formatMonth(item.concat),
           };
         });
         res.send({ success: true, data: formatted });
@@ -368,16 +370,18 @@ const get_plays_by_tracks = asyncHandler(async (req, res, next) => {
   db.knex("track")
     .join("play", "track.id", "=", "play.track_id")
     .join("artist", "artist.id", "=", "track.artist_id")
-    .select("track.id as trackId")
+    .select("track.id as trackId", "track.title as title")
     .count("play.id as playTotal")
     .where("artist.user_id", "=", request.userId)
     .andWhere("play.created_at", ">", d30)
     .groupBy("trackId")
+    .orderBy("playTotal", "desc")
     .then((data) => {
       const formatted = data.map((item) => {
         return {
           playTotal: parseInt(item.playTotal),
           trackId: item.trackId,
+          title: item.title,
         };
       });
       res.send({ success: true, data: formatted });
@@ -474,21 +478,21 @@ const get_totals_all_time_by_tracks = asyncHandler(async (req, res, next) => {
     });
 });
 
-function formatWeek(s) {
-  const [year, week] = s.split("-");
-  return `${year}-${week.padStart(2, "0")}`;
+function formatMonth(s) {
+  const [year, month] = s.split("-");
+  return `${year}-${month.padStart(2, "0")}`;
 }
 
 export default {
   get_earnings_by_account,
   get_earnings_all_time_by_account,
-  get_earnings_all_time_by_account_weekly,
+  get_earnings_all_time_by_account_monthly,
   get_earnings_by_account_daily,
   get_earnings_by_tracks,
   get_earnings_by_tracks_daily,
   get_plays_by_account,
   get_plays_all_time_by_account,
-  get_plays_all_time_by_account_weekly,
+  get_plays_all_time_by_account_monthly,
   get_plays_by_account_daily,
   get_plays_by_agent_by_account,
   get_plays_by_tracks,
