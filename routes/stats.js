@@ -12,7 +12,7 @@ const router = express.Router();
 router.get(
   "/music/earnings",
   isAuthorized,
-  statsController.get_earnings_by_account
+  statsController.get_earnings_by_account // Last 30 days
 );
 router.get(
   "/music/earnings/all",
@@ -39,7 +39,7 @@ router.get(
   isAuthorized,
   statsController.get_earnings_by_tracks_daily
 );
-router.get("/music/plays", isAuthorized, statsController.get_plays_by_account);
+router.get("/music/plays", isAuthorized, statsController.get_plays_by_account); // Last 30 days
 router.get(
   "/music/plays/all",
   isAuthorized,
@@ -49,6 +49,11 @@ router.get(
   "/music/plays/all/weekly",
   isAuthorized,
   statsController.get_plays_all_time_by_account_weekly
+);
+router.get(
+  "/music/plays/agent", // Top Agent for last 30 days
+  isAuthorized,
+  statsController.get_plays_by_agent_by_account
 );
 router.get(
   "/music/plays/daily",
@@ -68,7 +73,7 @@ router.get(
 router.get(
   "/music/totals/tracks/all",
   isAuthorized,
-  statsController.get_totals_all_time_by_tracks
+  statsController.get_totals_all_time_by_tracks // Plays and Earnings All-Time
 );
 // router.get("/music/subgenres/:genreId", statsController.get_music_subgenre_list);
 
