@@ -174,34 +174,6 @@ const get_earnings_by_tracks = asyncHandler(async (req, res, next) => {
     });
 });
 
-const get_earnings_all_time_by_tracks = asyncHandler(async (req, res, next) => {
-  const request = {
-    userId: req["uid"],
-  };
-
-  db.knex("track")
-    .join("artist", "artist.id", "=", "track.artist_id")
-    .select(
-      "track.id as trackId",
-      "track.msat_total as msatTotal",
-      "track.title as title"
-    )
-    .where("artist.user_id", "=", request.userId)
-    .andWhere("track.deleted", "=", false)
-    .orderBy("track.msat_total", "desc")
-    .then((data) => {
-      res.send({ success: true, data: data });
-    })
-    .catch((err) => {
-      log.error(err);
-      const error = formatError(
-        500,
-        "There was a problem retrieving earnings data"
-      );
-      next(error);
-    });
-});
-
 const get_earnings_by_tracks_daily = asyncHandler(async (req, res, next) => {
   const request = {
     userId: req["uid"],
@@ -358,6 +330,36 @@ const get_plays_by_account_daily = asyncHandler(async (req, res, next) => {
     });
 });
 
+const get_plays_by_agent_by_account = asyncHandler(async (req, res, next) => {
+  const request = {
+    userId: req["uid"],
+  };
+
+  db.knex("track")
+    .join("play", "track.id", "=", "play.track_id")
+    .join("artist", "artist.id", "=", "track.artist_id")
+    .select(
+      db.knex.raw(
+        "COALESCE(SPLIT_PART(play.user_agent, '/', 1), 'Unknown') as agent"
+      )
+    )
+    .count("play.id as playTotal")
+    .where("artist.user_id", "=", request.userId)
+    .andWhere("play.created_at", ">", d30)
+    .groupBy(["artist.user_id", "agent"])
+    .then((data) => {
+      res.send({ success: true, data: data });
+    })
+    .catch((err) => {
+      log.error(err);
+      const error = formatError(
+        500,
+        "There was a problem retrieving play agent data"
+      );
+      next(error);
+    });
+});
+
 const get_plays_by_tracks = asyncHandler(async (req, res, next) => {
   const request = {
     userId: req["uid"],
@@ -427,6 +429,51 @@ const get_plays_by_tracks_daily = asyncHandler(async (req, res, next) => {
     });
 });
 
+const get_totals_all_time_by_tracks = asyncHandler(async (req, res, next) => {
+  const request = {
+    userId: req["uid"],
+  };
+
+  const playsum = db
+    .knex("play")
+    .select("track_id")
+    .count("id as playtotal")
+    .groupBy("track_id")
+    .as("playsum");
+
+  db.knex("track")
+    .join("artist", "artist.id", "=", "track.artist_id")
+    .leftOuterJoin(playsum, "track.id", "=", "playsum.track_id")
+    .select(
+      "track.id as trackId",
+      "track.msat_total as msatTotal",
+      "track.title as title",
+      db.knex.raw("COALESCE(playtotal,0) as playTotal")
+    )
+    .where("artist.user_id", "=", request.userId)
+    .andWhere("track.deleted", "=", false)
+    .orderBy("track.msat_total", "desc")
+    .then((data) => {
+      const formatted = data.map((item) => {
+        return {
+          playTotal: item.playtotal,
+          msatTotal: item.msatTotal,
+          title: item.title,
+          trackId: item.trackId,
+        };
+      });
+      res.send({ success: true, data: formatted });
+    })
+    .catch((err) => {
+      log.error(err);
+      const error = formatError(
+        500,
+        "There was a problem retrieving totals data"
+      );
+      next(error);
+    });
+});
+
 function formatWeek(s) {
   const [year, week] = s.split("-");
   return `${year}-${week.padStart(2, "0")}`;
@@ -438,12 +485,13 @@ export default {
   get_earnings_all_time_by_account_weekly,
   get_earnings_by_account_daily,
   get_earnings_by_tracks,
-  get_earnings_all_time_by_tracks,
   get_earnings_by_tracks_daily,
   get_plays_by_account,
   get_plays_all_time_by_account,
   get_plays_all_time_by_account_weekly,
   get_plays_by_account_daily,
+  get_plays_by_agent_by_account,
   get_plays_by_tracks,
   get_plays_by_tracks_daily,
+  get_totals_all_time_by_tracks,
 };
