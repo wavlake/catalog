@@ -22,6 +22,10 @@ const get_earnings_by_account = asyncHandler(async (req, res, next) => {
     .andWhere("amp.created_at", ">", d30)
     .groupBy("artist.user_id")
     .then((data) => {
+      if (data.length === 0) {
+        res.send({ success: true, data: { msatTotal: 0 } });
+        return;
+      }
       const formatted = data.map((item) => {
         return {
           msatTotal: parseInt(item.msatTotal),
@@ -51,6 +55,10 @@ const get_earnings_all_time_by_account = asyncHandler(
       .where("artist.user_id", "=", request.userId)
       .groupBy("artist.user_id")
       .then((data) => {
+        if (data.length === 0) {
+          res.send({ success: true, data: { msatTotal: 0 } });
+          return;
+        }
         const formatted = data.map((item) => {
           return {
             msatTotal: parseInt(item.msatTotal),
@@ -89,6 +97,10 @@ const get_earnings_all_time_by_account_monthly = asyncHandler(
       // @ts-ignore
       .orderBy(groupBy, "asc")
       .then((data) => {
+        if (data.length === 0) {
+          res.send({ success: true, data: data });
+          return;
+        }
         const formatted = data.map((item) => {
           return {
             msatTotal: parseInt(item.msatTotal),
@@ -125,6 +137,10 @@ const get_earnings_by_account_daily = asyncHandler(async (req, res, next) => {
     // @ts-ignore
     .orderBy(groupBy, "asc")
     .then((data) => {
+      if (data.length === 0) {
+        res.send({ success: true, data: data });
+        return;
+      }
       const formatted = data.map((item) => {
         return {
           msatTotal: parseInt(item.msatTotal),
@@ -157,6 +173,10 @@ const get_earnings_by_tracks = asyncHandler(async (req, res, next) => {
     .groupBy("trackId")
     .orderBy("msatTotal", "desc")
     .then((data) => {
+      if (data.length === 0) {
+        res.send({ success: true, data: data });
+        return;
+      }
       const formatted = data.map((item) => {
         return {
           msatTotal: parseInt(item.msatTotal),
@@ -192,6 +212,10 @@ const get_earnings_by_tracks_daily = asyncHandler(async (req, res, next) => {
     .andWhere("amp.created_at", ">", d30)
     .groupBy([groupBy, "trackId"])
     .then((data) => {
+      if (data.length === 0) {
+        res.send({ success: true, data: data });
+        return;
+      }
       const formatted = data.map((item) => {
         return {
           msatTotal: parseInt(item.msatTotal),
@@ -224,6 +248,10 @@ const get_plays_by_account = asyncHandler(async (req, res, next) => {
     .andWhere("play.created_at", ">", d30)
     .groupBy("artist.user_id")
     .then((data) => {
+      if (data.length === 0) {
+        res.send({ success: true, data: { playTotal: 0 } });
+        return;
+      }
       res.send({ success: true, data: data[0] });
     })
     .catch((err) => {
@@ -248,6 +276,10 @@ const get_plays_all_time_by_account = asyncHandler(async (req, res, next) => {
     .where("artist.user_id", "=", request.userId)
     .groupBy("artist.user_id")
     .then((data) => {
+      if (data.length === 0) {
+        res.send({ success: true, data: { playTotal: 0 } });
+        return;
+      }
       res.send({ success: true, data: data[0] });
     })
     .catch((err) => {
@@ -279,6 +311,10 @@ const get_plays_all_time_by_account_monthly = asyncHandler(
       .where("artist.user_id", "=", request.userId)
       .groupBy([groupBy, "artist.user_id"])
       .then((data) => {
+        if (data.length === 0) {
+          res.send({ success: true, data: data });
+          return;
+        }
         const formatted = data.map((item) => {
           return {
             playTotal: parseInt(item.playTotal),
@@ -314,6 +350,10 @@ const get_plays_by_account_daily = asyncHandler(async (req, res, next) => {
     .andWhere("play.created_at", ">", d30)
     .groupBy([groupBy, "artist.user_id"])
     .then((data) => {
+      if (data.length === 0) {
+        res.send({ success: true, data: data });
+        return;
+      }
       const formatted = data.map((item) => {
         return {
           createdAt: item.created_at,
@@ -350,6 +390,10 @@ const get_plays_by_agent_by_account = asyncHandler(async (req, res, next) => {
     .andWhere("play.created_at", ">", d30)
     .groupBy(["artist.user_id", "agent"])
     .then((data) => {
+      if (data.length === 0) {
+        res.send({ success: true, data: data });
+        return;
+      }
       res.send({ success: true, data: data });
     })
     .catch((err) => {
@@ -377,6 +421,10 @@ const get_plays_by_tracks = asyncHandler(async (req, res, next) => {
     .groupBy("trackId")
     .orderBy("playTotal", "desc")
     .then((data) => {
+      if (data.length === 0) {
+        res.send({ success: true, data: data });
+        return;
+      }
       const formatted = data.map((item) => {
         return {
           playTotal: parseInt(item.playTotal),
@@ -414,6 +462,10 @@ const get_plays_by_tracks_daily = asyncHandler(async (req, res, next) => {
     // @ts-ignore
     .orderBy(groupBy, "asc")
     .then((data) => {
+      if (data.length === 0) {
+        res.send({ success: true, data: data });
+        return;
+      }
       const formatted = data.map((item) => {
         return {
           playTotal: parseInt(item.playTotal),
@@ -458,6 +510,10 @@ const get_totals_all_time_by_tracks = asyncHandler(async (req, res, next) => {
     .andWhere("track.deleted", "=", false)
     .orderBy("track.msat_total", "desc")
     .then((data) => {
+      if (data.length === 0) {
+        res.send({ success: true, data: data });
+        return;
+      }
       const formatted = data.map((item) => {
         return {
           playTotal: item.playtotal,
