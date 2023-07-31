@@ -22,6 +22,10 @@ const get_earnings_by_account = asyncHandler(async (req, res, next) => {
     .andWhere("amp.created_at", ">", d30)
     .groupBy("artist.user_id")
     .then((data) => {
+      if (data.length === 0) {
+        res.send({ success: true, data: { msatTotal: 0 } });
+        return;
+      }
       const formatted = data.map((item) => {
         return {
           msatTotal: parseInt(item.msatTotal),
@@ -51,6 +55,10 @@ const get_earnings_all_time_by_account = asyncHandler(
       .where("artist.user_id", "=", request.userId)
       .groupBy("artist.user_id")
       .then((data) => {
+        if (data.length === 0) {
+          res.send({ success: true, data: { msatTotal: 0 } });
+          return;
+        }
         const formatted = data.map((item) => {
           return {
             msatTotal: parseInt(item.msatTotal),
@@ -68,14 +76,14 @@ const get_earnings_all_time_by_account = asyncHandler(
   }
 );
 
-const get_earnings_all_time_by_account_weekly = asyncHandler(
+const get_earnings_all_time_by_account_monthly = asyncHandler(
   async (req, res, next) => {
     const request = {
       userId: req["uid"],
     };
 
     const groupBy = db.knex.raw(
-      "CONCAT(DATE_PART('year',??),'-',DATE_PART('week',??))",
+      "CONCAT(DATE_PART('year',??),'-',DATE_PART('month',??))",
       ["amp.created_at", "amp.created_at"]
     );
 
@@ -89,10 +97,14 @@ const get_earnings_all_time_by_account_weekly = asyncHandler(
       // @ts-ignore
       .orderBy(groupBy, "asc")
       .then((data) => {
+        if (data.length === 0) {
+          res.send({ success: true, data: data });
+          return;
+        }
         const formatted = data.map((item) => {
           return {
             msatTotal: parseInt(item.msatTotal),
-            createdAt: formatWeek(item.concat),
+            createdAt: formatMonth(item.concat),
           };
         });
         res.send({ success: true, data: formatted });
@@ -125,6 +137,10 @@ const get_earnings_by_account_daily = asyncHandler(async (req, res, next) => {
     // @ts-ignore
     .orderBy(groupBy, "asc")
     .then((data) => {
+      if (data.length === 0) {
+        res.send({ success: true, data: data });
+        return;
+      }
       const formatted = data.map((item) => {
         return {
           msatTotal: parseInt(item.msatTotal),
@@ -150,47 +166,25 @@ const get_earnings_by_tracks = asyncHandler(async (req, res, next) => {
   db.knex("track")
     .join("amp", "track.id", "=", "amp.track_id")
     .join("artist", "artist.id", "=", "track.artist_id")
-    .select("track.id as trackId")
+    .select("track.id as trackId", "track.title as title")
     .sum("amp.msat_amount as msatTotal")
     .where("artist.user_id", "=", request.userId)
     .andWhere("amp.created_at", ">", d30)
     .groupBy("trackId")
+    .orderBy("msatTotal", "desc")
     .then((data) => {
+      if (data.length === 0) {
+        res.send({ success: true, data: data });
+        return;
+      }
       const formatted = data.map((item) => {
         return {
           msatTotal: parseInt(item.msatTotal),
           trackId: item.trackId,
+          title: item.title,
         };
       });
       res.send({ success: true, data: formatted });
-    })
-    .catch((err) => {
-      log.error(err);
-      const error = formatError(
-        500,
-        "There was a problem retrieving earnings data"
-      );
-      next(error);
-    });
-});
-
-const get_earnings_all_time_by_tracks = asyncHandler(async (req, res, next) => {
-  const request = {
-    userId: req["uid"],
-  };
-
-  db.knex("track")
-    .join("artist", "artist.id", "=", "track.artist_id")
-    .select(
-      "track.id as trackId",
-      "track.msat_total as msatTotal",
-      "track.title as title"
-    )
-    .where("artist.user_id", "=", request.userId)
-    .andWhere("track.deleted", "=", false)
-    .orderBy("track.msat_total", "desc")
-    .then((data) => {
-      res.send({ success: true, data: data });
     })
     .catch((err) => {
       log.error(err);
@@ -218,6 +212,10 @@ const get_earnings_by_tracks_daily = asyncHandler(async (req, res, next) => {
     .andWhere("amp.created_at", ">", d30)
     .groupBy([groupBy, "trackId"])
     .then((data) => {
+      if (data.length === 0) {
+        res.send({ success: true, data: data });
+        return;
+      }
       const formatted = data.map((item) => {
         return {
           msatTotal: parseInt(item.msatTotal),
@@ -250,6 +248,10 @@ const get_plays_by_account = asyncHandler(async (req, res, next) => {
     .andWhere("play.created_at", ">", d30)
     .groupBy("artist.user_id")
     .then((data) => {
+      if (data.length === 0) {
+        res.send({ success: true, data: { playTotal: 0 } });
+        return;
+      }
       res.send({ success: true, data: data[0] });
     })
     .catch((err) => {
@@ -274,6 +276,10 @@ const get_plays_all_time_by_account = asyncHandler(async (req, res, next) => {
     .where("artist.user_id", "=", request.userId)
     .groupBy("artist.user_id")
     .then((data) => {
+      if (data.length === 0) {
+        res.send({ success: true, data: { playTotal: 0 } });
+        return;
+      }
       res.send({ success: true, data: data[0] });
     })
     .catch((err) => {
@@ -286,14 +292,14 @@ const get_plays_all_time_by_account = asyncHandler(async (req, res, next) => {
     });
 });
 
-const get_plays_all_time_by_account_weekly = asyncHandler(
+const get_plays_all_time_by_account_monthly = asyncHandler(
   async (req, res, next) => {
     const request = {
       userId: req["uid"],
     };
 
     const groupBy = db.knex.raw(
-      "CONCAT(DATE_PART('year',??),'-',DATE_PART('week',??))",
+      "CONCAT(DATE_PART('year',??),'-',DATE_PART('month',??))",
       ["play.created_at", "play.created_at"]
     );
 
@@ -305,10 +311,14 @@ const get_plays_all_time_by_account_weekly = asyncHandler(
       .where("artist.user_id", "=", request.userId)
       .groupBy([groupBy, "artist.user_id"])
       .then((data) => {
+        if (data.length === 0) {
+          res.send({ success: true, data: data });
+          return;
+        }
         const formatted = data.map((item) => {
           return {
             playTotal: parseInt(item.playTotal),
-            createdAt: formatWeek(item.concat),
+            createdAt: formatMonth(item.concat),
           };
         });
         res.send({ success: true, data: formatted });
@@ -340,6 +350,10 @@ const get_plays_by_account_daily = asyncHandler(async (req, res, next) => {
     .andWhere("play.created_at", ">", d30)
     .groupBy([groupBy, "artist.user_id"])
     .then((data) => {
+      if (data.length === 0) {
+        res.send({ success: true, data: data });
+        return;
+      }
       const formatted = data.map((item) => {
         return {
           createdAt: item.created_at,
@@ -358,6 +372,40 @@ const get_plays_by_account_daily = asyncHandler(async (req, res, next) => {
     });
 });
 
+const get_plays_by_agent_by_account = asyncHandler(async (req, res, next) => {
+  const request = {
+    userId: req["uid"],
+  };
+
+  db.knex("track")
+    .join("play", "track.id", "=", "play.track_id")
+    .join("artist", "artist.id", "=", "track.artist_id")
+    .select(
+      db.knex.raw(
+        "COALESCE(SPLIT_PART(play.user_agent, '/', 1), 'Unknown') as agent"
+      )
+    )
+    .count("play.id as playTotal")
+    .where("artist.user_id", "=", request.userId)
+    .andWhere("play.created_at", ">", d30)
+    .groupBy(["artist.user_id", "agent"])
+    .then((data) => {
+      if (data.length === 0) {
+        res.send({ success: true, data: data });
+        return;
+      }
+      res.send({ success: true, data: data });
+    })
+    .catch((err) => {
+      log.error(err);
+      const error = formatError(
+        500,
+        "There was a problem retrieving play agent data"
+      );
+      next(error);
+    });
+});
+
 const get_plays_by_tracks = asyncHandler(async (req, res, next) => {
   const request = {
     userId: req["uid"],
@@ -366,16 +414,22 @@ const get_plays_by_tracks = asyncHandler(async (req, res, next) => {
   db.knex("track")
     .join("play", "track.id", "=", "play.track_id")
     .join("artist", "artist.id", "=", "track.artist_id")
-    .select("track.id as trackId")
+    .select("track.id as trackId", "track.title as title")
     .count("play.id as playTotal")
     .where("artist.user_id", "=", request.userId)
     .andWhere("play.created_at", ">", d30)
     .groupBy("trackId")
+    .orderBy("playTotal", "desc")
     .then((data) => {
+      if (data.length === 0) {
+        res.send({ success: true, data: data });
+        return;
+      }
       const formatted = data.map((item) => {
         return {
           playTotal: parseInt(item.playTotal),
           trackId: item.trackId,
+          title: item.title,
         };
       });
       res.send({ success: true, data: formatted });
@@ -408,6 +462,10 @@ const get_plays_by_tracks_daily = asyncHandler(async (req, res, next) => {
     // @ts-ignore
     .orderBy(groupBy, "asc")
     .then((data) => {
+      if (data.length === 0) {
+        res.send({ success: true, data: data });
+        return;
+      }
       const formatted = data.map((item) => {
         return {
           playTotal: parseInt(item.playTotal),
@@ -427,23 +485,73 @@ const get_plays_by_tracks_daily = asyncHandler(async (req, res, next) => {
     });
 });
 
-function formatWeek(s) {
-  const [year, week] = s.split("-");
-  return `${year}-${week.padStart(2, "0")}`;
+const get_totals_all_time_by_tracks = asyncHandler(async (req, res, next) => {
+  const request = {
+    userId: req["uid"],
+  };
+
+  const playsum = db
+    .knex("play")
+    .select("track_id")
+    .count("id as playtotal")
+    .groupBy("track_id")
+    .as("playsum");
+
+  db.knex("track")
+    .join("artist", "artist.id", "=", "track.artist_id")
+    .leftOuterJoin(playsum, "track.id", "=", "playsum.track_id")
+    .select(
+      "track.id as trackId",
+      "track.msat_total as msatTotal",
+      "track.title as title",
+      db.knex.raw("COALESCE(playtotal,0) as playTotal")
+    )
+    .where("artist.user_id", "=", request.userId)
+    .andWhere("track.deleted", "=", false)
+    .orderBy("track.msat_total", "desc")
+    .then((data) => {
+      if (data.length === 0) {
+        res.send({ success: true, data: data });
+        return;
+      }
+      const formatted = data.map((item) => {
+        return {
+          playTotal: item.playtotal,
+          msatTotal: item.msatTotal,
+          title: item.title,
+          trackId: item.trackId,
+        };
+      });
+      res.send({ success: true, data: formatted });
+    })
+    .catch((err) => {
+      log.error(err);
+      const error = formatError(
+        500,
+        "There was a problem retrieving totals data"
+      );
+      next(error);
+    });
+});
+
+function formatMonth(s) {
+  const [year, month] = s.split("-");
+  return `${year}-${month.padStart(2, "0")}`;
 }
 
 export default {
   get_earnings_by_account,
   get_earnings_all_time_by_account,
-  get_earnings_all_time_by_account_weekly,
+  get_earnings_all_time_by_account_monthly,
   get_earnings_by_account_daily,
   get_earnings_by_tracks,
-  get_earnings_all_time_by_tracks,
   get_earnings_by_tracks_daily,
   get_plays_by_account,
   get_plays_all_time_by_account,
-  get_plays_all_time_by_account_weekly,
+  get_plays_all_time_by_account_monthly,
   get_plays_by_account_daily,
+  get_plays_by_agent_by_account,
   get_plays_by_tracks,
   get_plays_by_tracks_daily,
+  get_totals_all_time_by_tracks,
 };
