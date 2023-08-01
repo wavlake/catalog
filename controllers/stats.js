@@ -19,6 +19,7 @@ const get_earnings_by_account = asyncHandler(async (req, res, next) => {
     .join("artist", "artist.id", "=", "track.artist_id")
     .sum("amp.msat_amount as msatTotal")
     .where("artist.user_id", "=", request.userId)
+    .andWhere("track.deleted", "=", false)
     .andWhere("amp.created_at", ">", d30)
     .groupBy("artist.user_id")
     .then((data) => {
@@ -53,6 +54,7 @@ const get_earnings_all_time_by_account = asyncHandler(
       .join("artist", "artist.id", "=", "track.artist_id")
       .sum("amp.msat_amount as msatTotal")
       .where("artist.user_id", "=", request.userId)
+      .andWhere("track.deleted", "=", false)
       .groupBy("artist.user_id")
       .then((data) => {
         if (data.length === 0) {
@@ -93,6 +95,7 @@ const get_earnings_all_time_by_account_monthly = asyncHandler(
       .sum("amp.msat_amount as msatTotal")
       .select("artist.user_id", groupBy)
       .where("artist.user_id", "=", request.userId)
+      .andWhere("track.deleted", "=", false)
       .groupBy([groupBy, "artist.user_id"])
       // @ts-ignore
       .orderBy(groupBy, "asc")
@@ -132,6 +135,7 @@ const get_earnings_by_account_daily = asyncHandler(async (req, res, next) => {
     .sum("amp.msat_amount as msatTotal")
     .select("artist.user_id", groupBy)
     .where("artist.user_id", "=", request.userId)
+    .andWhere("track.deleted", "=", false)
     .andWhere("amp.created_at", ">", d30)
     .groupBy([groupBy, "artist.user_id"])
     // @ts-ignore
@@ -169,6 +173,7 @@ const get_earnings_by_tracks = asyncHandler(async (req, res, next) => {
     .select("track.id as trackId", "track.title as title")
     .sum("amp.msat_amount as msatTotal")
     .where("artist.user_id", "=", request.userId)
+    .andWhere("track.deleted", "=", false)
     .andWhere("amp.created_at", ">", d30)
     .groupBy("trackId")
     .orderBy("msatTotal", "desc")
@@ -209,6 +214,7 @@ const get_earnings_by_tracks_daily = asyncHandler(async (req, res, next) => {
     .select("track.id as trackId", groupBy)
     .sum("amp.msat_amount as msatTotal")
     .where("artist.user_id", "=", request.userId)
+    .andWhere("track.deleted", "=", false)
     .andWhere("amp.created_at", ">", d30)
     .groupBy([groupBy, "trackId"])
     .then((data) => {
@@ -245,6 +251,7 @@ const get_plays_by_account = asyncHandler(async (req, res, next) => {
     .join("artist", "artist.id", "=", "track.artist_id")
     .count("play.id as playTotal")
     .where("artist.user_id", "=", request.userId)
+    .andWhere("track.deleted", "=", false)
     .andWhere("play.created_at", ">", d30)
     .groupBy("artist.user_id")
     .then((data) => {
@@ -274,6 +281,7 @@ const get_plays_all_time_by_account = asyncHandler(async (req, res, next) => {
     .join("artist", "artist.id", "=", "track.artist_id")
     .count("play.id as playTotal")
     .where("artist.user_id", "=", request.userId)
+    .andWhere("track.deleted", "=", false)
     .groupBy("artist.user_id")
     .then((data) => {
       if (data.length === 0) {
@@ -309,6 +317,7 @@ const get_plays_all_time_by_account_monthly = asyncHandler(
       .select(groupBy)
       .count("play.id as playTotal")
       .where("artist.user_id", "=", request.userId)
+      .andWhere("track.deleted", "=", false)
       .groupBy([groupBy, "artist.user_id"])
       .then((data) => {
         if (data.length === 0) {
@@ -347,6 +356,7 @@ const get_plays_by_account_daily = asyncHandler(async (req, res, next) => {
     .select(groupBy)
     .count("play.id as playTotal")
     .where("artist.user_id", "=", request.userId)
+    .andWhere("track.deleted", "=", false)
     .andWhere("play.created_at", ">", d30)
     .groupBy([groupBy, "artist.user_id"])
     .then((data) => {
@@ -387,6 +397,7 @@ const get_plays_by_agent_by_account = asyncHandler(async (req, res, next) => {
     )
     .count("play.id as playTotal")
     .where("artist.user_id", "=", request.userId)
+    .andWhere("track.deleted", "=", false)
     .andWhere("play.created_at", ">", d30)
     .groupBy(["artist.user_id", "agent"])
     .then((data) => {
@@ -417,6 +428,7 @@ const get_plays_by_tracks = asyncHandler(async (req, res, next) => {
     .select("track.id as trackId", "track.title as title")
     .count("play.id as playTotal")
     .where("artist.user_id", "=", request.userId)
+    .andWhere("track.deleted", "=", false)
     .andWhere("play.created_at", ">", d30)
     .groupBy("trackId")
     .orderBy("playTotal", "desc")
@@ -457,6 +469,7 @@ const get_plays_by_tracks_daily = asyncHandler(async (req, res, next) => {
     .select("track.id as trackId", groupBy)
     .count("play.id as playTotal")
     .where("artist.user_id", "=", request.userId)
+    .andWhere("track.deleted", "=", false)
     .andWhere("play.created_at", ">", d30)
     .groupBy([groupBy, "track.id"])
     // @ts-ignore
