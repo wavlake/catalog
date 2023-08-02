@@ -163,7 +163,7 @@ const delete_track = asyncHandler(async (req, res, next) => {
   };
 
   if (!request.trackId) {
-    const error = formatError(500, "trackId field is required");
+    const error = formatError(400, "trackId field is required");
     next(error);
   }
 
@@ -200,7 +200,7 @@ const create_track = asyncHandler(async (req, res, next) => {
   };
 
   if (!request.albumId) {
-    const error = formatError(500, "albumId field is required");
+    const error = formatError(400, "albumId field is required");
     next(error);
   }
 
@@ -227,7 +227,7 @@ const create_track = asyncHandler(async (req, res, next) => {
   const liveUrl = `${cdnDomain}/${s3Key}`;
 
   if (presignedUrl == null) {
-    const error = formatError(500, "Error generating presigned URL");
+    const error = formatError(400, "Error generating presigned URL");
     next(error);
   }
 
@@ -265,7 +265,7 @@ const create_track = asyncHandler(async (req, res, next) => {
       });
     })
     .catch((err) => {
-      const error = formatError(500, `Error creating new: ${err}`);
+      const error = formatError(400, `Error creating new: ${err}`);
       next(error);
     });
 });
