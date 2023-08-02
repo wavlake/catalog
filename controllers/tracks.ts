@@ -265,7 +265,7 @@ const create_track = asyncHandler(async (req, res, next) => {
       });
     })
     .catch((err) => {
-      const error = formatError(400, `Error creating new: ${err}`);
+      const error = formatError(500, `Error creating new: ${err}`);
       next(error);
     });
 });
