@@ -227,7 +227,7 @@ const create_track = asyncHandler(async (req, res, next) => {
   const liveUrl = `${cdnDomain}/${s3Key}`;
 
   if (presignedUrl == null) {
-    const error = formatError(400, "Error generating presigned URL");
+    const error = formatError(500, "Error generating presigned URL");
     next(error);
   }
 
