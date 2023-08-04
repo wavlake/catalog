@@ -1,5 +1,7 @@
 const log = require("loglevel");
 const { auth } = require("../library/firebaseService");
+const Sentry = require("@sentry/node");
+
 import { formatError } from "../library/errors";
 import asyncHandler from "express-async-handler";
 
@@ -31,6 +33,7 @@ export const isAuthorized = asyncHandler(async (req, res, next) => {
       next();
     })
     .catch((err) => {
+      Sentry.captureException(err);
       const error = formatError(500, "Authentication failed");
       throw error;
     });

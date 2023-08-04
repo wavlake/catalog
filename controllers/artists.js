@@ -11,6 +11,7 @@ import prisma from "../prisma/client";
 const asyncHandler = require("express-async-handler");
 import { formatError } from "../library/errors";
 const { invalidateCdn } = require("../library/cloudfrontClient");
+const Sentry = require("@sentry/node");
 
 const imagePrefix = `${process.env.AWS_S3_IMAGE_PREFIX}`;
 const localConvertPath = `${process.env.LOCAL_CONVERT_PATH}`;
@@ -154,8 +155,10 @@ const create_artist = asyncHandler(async (req, res, next) => {
                 });
               })
               .catch((err) => {
+                Sentry.captureException(err);
                 if (err instanceof multer.MulterError) {
                   log.debug(`MulterError creating new artist: ${err}`);
+
                   res.status(409).send("Something went wrong");
                 } else if (err) {
                   log.debug(`Error creating new artist: ${err}`);

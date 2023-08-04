@@ -2,6 +2,7 @@ const log = require("loglevel");
 import db from "../library/db";
 const asyncHandler = require("express-async-handler");
 import { formatError } from "../library/errors";
+const Sentry = require("@sentry/node");
 import prisma from "../prisma/client";
 
 const d = new Date();
@@ -154,6 +155,7 @@ const get_earnings_by_account_daily = asyncHandler(async (req, res, next) => {
       res.send({ success: true, data: formatted });
     })
     .catch((err) => {
+      Sentry.captureException(err);
       const error = formatError(
         500,
         "There was a problem retrieving earnings data"
@@ -193,6 +195,7 @@ const get_earnings_by_tracks = asyncHandler(async (req, res, next) => {
     })
     .catch((err) => {
       log.error(err);
+      Sentry.captureException(err);
       const error = formatError(
         500,
         "There was a problem retrieving earnings data"
@@ -233,6 +236,7 @@ const get_earnings_by_tracks_daily = asyncHandler(async (req, res, next) => {
     })
     .catch((err) => {
       log.error(err);
+      Sentry.captureException(err);
       const error = formatError(
         500,
         "There was a problem retrieving earnings data"
@@ -263,6 +267,7 @@ const get_plays_by_account = asyncHandler(async (req, res, next) => {
     })
     .catch((err) => {
       log.error(err);
+      Sentry.captureException(err);
       const error = formatError(
         500,
         "There was a problem retrieving play data"
@@ -292,6 +297,7 @@ const get_plays_all_time_by_account = asyncHandler(async (req, res, next) => {
     })
     .catch((err) => {
       log.error(err);
+      Sentry.captureException(err);
       const error = formatError(
         500,
         "There was a problem retrieving play data"
@@ -334,6 +340,7 @@ const get_plays_all_time_by_account_monthly = asyncHandler(
       })
       .catch((err) => {
         log.error(err);
+        Sentry.captureException(err);
         const error = formatError(
           500,
           "There was a problem retrieving play data"
@@ -374,6 +381,7 @@ const get_plays_by_account_daily = asyncHandler(async (req, res, next) => {
     })
     .catch((err) => {
       log.error(err);
+      Sentry.captureException(err);
       const error = formatError(
         500,
         "There was a problem retrieving play data"
@@ -409,6 +417,7 @@ const get_plays_by_agent_by_account = asyncHandler(async (req, res, next) => {
     })
     .catch((err) => {
       log.error(err);
+      Sentry.captureException(err);
       const error = formatError(
         500,
         "There was a problem retrieving play agent data"
@@ -448,6 +457,7 @@ const get_plays_by_tracks = asyncHandler(async (req, res, next) => {
     })
     .catch((err) => {
       log.error(err);
+      Sentry.captureException(err);
       const error = formatError(
         500,
         "There was a problem retrieving play data"
@@ -490,6 +500,7 @@ const get_plays_by_tracks_daily = asyncHandler(async (req, res, next) => {
     })
     .catch((err) => {
       log.error(err);
+      Sentry.captureException(err);
       const error = formatError(
         500,
         "There was a problem retrieving play data"
@@ -539,6 +550,7 @@ const get_totals_all_time_by_tracks = asyncHandler(async (req, res, next) => {
     })
     .catch((err) => {
       log.error(err);
+      Sentry.captureException(err);
       const error = formatError(
         500,
         "There was a problem retrieving totals data"
