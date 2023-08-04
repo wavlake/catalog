@@ -1,5 +1,6 @@
 import db from "./db";
 const log = require("loglevel");
+const Sentry = require("@sentry/node");
 
 async function getTrackAccount(userId, trackId) {
   return db
@@ -13,6 +14,7 @@ async function getTrackAccount(userId, trackId) {
       return data.userId == userId;
     })
     .catch((err) => {
+      Sentry.captureException(err);
       log.error(`Error finding user from trackId ${err}`);
     });
 }
@@ -29,6 +31,7 @@ export async function getAlbumAccount(userId, albumId) {
       return data.userId == userId;
     })
     .catch((err) => {
+      Sentry.captureException(err);
       log.error(`Error finding user from albumId ${err}`);
     });
 }
@@ -44,6 +47,7 @@ export async function getArtistAccount(userId, artistId) {
       return data.userId == userId;
     })
     .catch((err) => {
+      Sentry.captureException(err);
       log.error(`Error finding account from artistId ${err}`);
     });
 }
@@ -59,6 +63,7 @@ async function getCommentUser(commentId) {
       return data;
     })
     .catch((err) => {
+      Sentry.captureException(err);
       log.error(`Error finding user from commentId ${err}`);
     });
 }
@@ -74,6 +79,7 @@ async function isPlaylistOwner(userId, playlistId) {
       return data.userId === userId;
     })
     .catch((err) => {
+      Sentry.captureException(err);
       log.error(`Error finding user from playlistId ${err}`);
     });
 }
