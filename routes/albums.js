@@ -23,6 +23,7 @@ const router = express.Router();
 router.get("/account", isAuthorized, albumsController.get_albums_by_account);
 router.get("/:albumId", albumsController.get_album_by_id);
 router.get("/:artistId/artist", albumsController.get_albums_by_artist_id);
+router.get("/:genreId/genre", albumsController.get_albums_by_genre_id);
 router.post(
   "/",
   isAuthorized,

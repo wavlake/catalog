@@ -49,6 +49,31 @@ const get_albums_by_account = asyncHandler(async (req, res, next) => {
     });
 });
 
+const get_albums_by_genre_id = asyncHandler(async (req, res, next) => {
+  const request = {
+    genreId: parseInt(req.params.genreId),
+    // limit: req.query.limit ? req.query.limit : 10,
+    // sortBy: req.body.sortBy
+  };
+
+  const albums = await prisma.album.findMany({
+    select: {
+      artist: {
+        select: {
+          id: true,
+          name: true,
+        },
+      },
+      id: true,
+      title: true,
+      artworkUrl: true,
+    },
+    where: { genreId: request.genreId, deleted: false },
+  });
+
+  res.json({ success: true, data: albums });
+});
+
 const get_album_by_id = asyncHandler(async (req, res, next) => {
   const request = {
     albumId: req.params.albumId,
@@ -370,6 +395,7 @@ const delete_album = asyncHandler(async (req, res, next) => {
 
 export default {
   get_albums_by_account,
+  get_albums_by_genre_id,
   get_album_by_id,
   delete_album,
   create_album,

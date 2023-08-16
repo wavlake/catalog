@@ -61,6 +61,19 @@ const get_tracks_by_album_id = asyncHandler(async (req, res, next) => {
   res.json({ success: true, data: tracks });
 });
 
+const get_tracks_by_artist_url = asyncHandler(async (req, res, next) => {
+  const request = {
+    artistUrl: req.params.artistUrl,
+  };
+
+  const tracks = await prisma.trackInfo.findMany({
+    where: { artistUrl: request.artistUrl },
+    orderBy: { order: "asc" },
+  });
+
+  res.json({ success: true, data: tracks });
+});
+
 const get_tracks_by_new = asyncHandler(async (req, res, next) => {
   const request = {
     limit: req.query.limit ? req.query.limit : 50,
@@ -358,6 +371,7 @@ export default {
   get_tracks_by_random,
   get_tracks_by_album_id,
   get_tracks_by_artist_id,
+  get_tracks_by_artist_url,
   delete_track,
   create_track,
   update_track,
