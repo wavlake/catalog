@@ -234,7 +234,7 @@ model User {
   lastActivityCheckAt DateTime?     @default(now()) @map("last_activity_check_at") @db.Timestamptz(6)
   profileUrl          String?       @unique(map: "user_profile_url_unique") @map("profile_url") @db.VarChar(255)
   artist              Artist[]
-  subscriber          subscriber?
+  subscriber          Subscriber?
   transaction         transaction[]
 
   @@index([profileUrl], map: "idx_profile_url")
@@ -273,12 +273,14 @@ model MusicSubgenre {
   @@map("music_subgenre")
 }
 
-model subscriber {
-  user_id          String    @id @unique(map: "subscriber_user_id_unique") @db.VarChar(64)
+model Subscriber {
+  userId           String    @map("user_id") @id @unique(map: "subscriber_user_id_unique") @db.VarChar(64)
   provider         String    @db.VarChar(255)
-  provider_user_id String    @db.VarChar(255)
+  providerUserId   String    @map("provider_user_id") @db.VarChar(255)
   created_at       DateTime? @default(now()) @db.Timestamptz(6)
-  user             User      @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "subscriber_user_id_foreign")
+  user             User      @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "subscriber_user_id_foreign")
+
+  @@map("subscriber")
 }
 
 view TrackInfo {
