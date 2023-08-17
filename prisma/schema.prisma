@@ -190,7 +190,9 @@ model Track {
   updatedAt       DateTime? @default(now()) @map("updated_at") @db.Timestamptz(6)
   lyrics          String?
   isProcessing    Boolean?  @default(false) @map("is_processing")
-  compressorError String?   @map("compressor_error") @db.VarChar(255)
+  compressorError Boolean?  @default(false) @map("compressor_error")
+  is_draft        Boolean?  @default(false)
+  published_at    DateTime? @default(now()) @db.Timestamptz(6)
   album           Album     @relation(fields: [albumId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "track_album_id_foreign")
   artist          Artist    @relation(fields: [artistId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "track_artist_id_foreign")
 
@@ -232,6 +234,7 @@ model User {
   lastActivityCheckAt DateTime?     @default(now()) @map("last_activity_check_at") @db.Timestamptz(6)
   profileUrl          String?       @unique(map: "user_profile_url_unique") @map("profile_url") @db.VarChar(255)
   artist              Artist[]
+  subscriber          subscriber?
   transaction         transaction[]
 
   @@index([profileUrl], map: "idx_profile_url")
@@ -268,6 +271,14 @@ model MusicSubgenre {
 
   @@index([name], map: "idx_music_subgenre_name")
   @@map("music_subgenre")
+}
+
+model subscriber {
+  user_id          String    @id @unique(map: "subscriber_user_id_unique") @db.VarChar(64)
+  provider         String    @db.VarChar(255)
+  provider_user_id String    @db.VarChar(255)
+  created_at       DateTime? @default(now()) @db.Timestamptz(6)
+  user             User      @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "subscriber_user_id_foreign")
 }
 
 view TrackInfo {
