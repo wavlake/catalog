@@ -16,12 +16,14 @@ const upload = multer({ storage: storage });
 import {
   get_podcasts_by_account,
   create_podcast,
+  get_podcast_by_id,
 } from "../controllers/podcasts.js";
 
 // Create router
 const router = express.Router();
 
 router.get("/account", isAuthorized, get_podcasts_by_account);
+router.get("/:podcastId", get_podcast_by_id);
 
 router.post("/create", upload.single("artwork"), isAuthorized, create_podcast);
 
