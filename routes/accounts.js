@@ -55,4 +55,4 @@ router.get("/", isAuthorized, accountsController.get_account);
 // );
 
 // Export router
-module.exports = router;
+export default router;

@@ -12,4 +12,4 @@ const router = express.Router();
 router.get("/music/top", chartsController.get_top_forty); // TOP 40
 
 // Export router
-module.exports = router;
+export default router;

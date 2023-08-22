@@ -68,14 +68,13 @@ app.use(bodyParser.json());
 app.use(express.json());
 
 // Import routes
-const accounts = require("./routes/accounts");
-const albums = require("./routes/albums");
-const artists = require("./routes/artists");
-const charts = require("./routes/charts");
-const meta = require("./routes/meta");
-const stats = require("./routes/stats");
-const tracks = require("./routes/tracks");
-// importing this way pulls in the types
+import accounts from "./routes/accounts";
+import albums from "./routes/albums";
+import artists from "./routes/artists";
+import charts from "./routes/charts";
+import meta from "./routes/meta";
+import stats from "./routes/stats";
+import tracks from "./routes/tracks";
 import episodes from "./routes/episodes";
 import podcasts from "./routes/podcasts";
 
