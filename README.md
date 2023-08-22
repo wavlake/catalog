@@ -68,7 +68,7 @@ cd db
 Create a new migration, choose a descriptive name for it
 
 ```bash
-knex migrate:make adding_a_new_field_to_table -x ts
+knex migrate:make adding_a_new_field_to_table
 ```
 
 Open up the newly generated file, and edit it to meet your migration needs.
