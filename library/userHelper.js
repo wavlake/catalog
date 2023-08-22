@@ -36,6 +36,22 @@ export async function getAlbumAccount(userId, albumId) {
     });
 }
 
+export async function getPodcastAccount(userId, podcastId) {
+  return db
+    .knex("podcast")
+    .select("podcast.user_id as userId")
+    .where("id", "=", podcastId)
+    .first()
+    .then((data) => {
+      // console.log(data);
+      return data.userId == userId;
+    })
+    .catch((err) => {
+      Sentry.captureException(err);
+      log.error(`Error finding account from podcastId ${err}`);
+    });
+}
+
 export async function getArtistAccount(userId, artistId) {
   return db
     .knex("artist")
