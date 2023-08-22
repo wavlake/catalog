@@ -190,7 +190,7 @@ model Track {
   updatedAt       DateTime? @default(now()) @map("updated_at") @db.Timestamptz(6)
   lyrics          String?
   isProcessing    Boolean?  @default(false) @map("is_processing")
-  compressorError Boolean?  @default(false) @map("compressor_error")
+  compressorError String?   @map("compressor_error") @db.VarChar(255)
   is_draft        Boolean?  @default(false)
   published_at    DateTime? @default(now()) @db.Timestamptz(6)
   album           Album     @relation(fields: [albumId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "track_album_id_foreign")
@@ -274,13 +274,54 @@ model MusicSubgenre {
 }
 
 model Subscriber {
-  userId           String    @map("user_id") @id @unique(map: "subscriber_user_id_unique") @db.VarChar(64)
-  provider         String    @db.VarChar(255)
-  providerUserId   String    @map("provider_user_id") @db.VarChar(255)
-  created_at       DateTime? @default(now()) @db.Timestamptz(6)
-  user             User      @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "subscriber_user_id_foreign")
+  userId         String    @id @unique(map: "subscriber_user_id_unique") @map("user_id") @db.VarChar(64)
+  provider       String    @db.VarChar(255)
+  providerUserId String    @map("provider_user_id") @db.VarChar(255)
+  created_at     DateTime? @default(now()) @db.Timestamptz(6)
+  user           User      @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "subscriber_user_id_foreign")
 
   @@map("subscriber")
+}
+
+model Episode {
+  id          String    @id @unique(map: "episode_id_unique") @db.Uuid
+  title       String    @db.VarChar(255)
+  description String?   @db.VarChar(255)
+  podcast_id  String    @db.Uuid
+  order       Int
+  play_count  Int?      @default(0)
+  msat_total  BigInt?   @default(0)
+  live_url    String    @db.VarChar(255)
+  raw_url     String?   @db.VarChar(128)
+  size        Int?
+  duration    Int?
+  deleted     Boolean?  @default(false)
+  is_draft    Boolean?  @default(true)
+  created_at  DateTime? @default(now()) @db.Timestamptz(6)
+  updated_at  DateTime? @default(now()) @db.Timestamptz(6)
+
+  @@index([podcast_id], map: "idx_episode_podcast_id")
+  @@map("episode")
+}
+
+model Podcast {
+  id          String    @id @unique(map: "podcast_id_unique") @db.Uuid
+  user_id     String    @db.Uuid
+  title       String    @db.VarChar(255)
+  artwork_url String?   @db.VarChar(255)
+  description String?   @db.VarChar(255)
+  created_at  DateTime? @default(now()) @db.Timestamptz(6)
+  updated_at  DateTime? @default(now()) @db.Timestamptz(6)
+  deleted     Boolean?  @default(false)
+  is_draft    Boolean?  @default(true)
+  twitter     String?   @db.VarChar(255)
+  instagram   String?   @db.VarChar(255)
+  youtube     String?   @db.VarChar(255)
+  website     String?   @db.VarChar(255)
+  nostr       String?   @db.VarChar(255)
+
+  @@index([user_id], map: "idx_podcast_user_id")
+  @@map("podcast")
 }
 
 view TrackInfo {

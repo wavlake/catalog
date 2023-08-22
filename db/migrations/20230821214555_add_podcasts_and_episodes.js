@@ -2,14 +2,24 @@ exports.up = function (knex) {
   return knex.schema
     .createTable("podcast", function (table) {
       table.uuid("id").primary().unique();
-      table.uuid("user_id").notNullable().index("idx_podcast_user_id");
-      table.string("title").notNullable();
+      table.string("user_id").notNullable().index("idx_podcast_user_id");
+      table.string("name").notNullable();
       table.string("artwork_url");
+      table
+        .string("podcast_url")
+        .notNullable()
+        .unique()
+        .index("idx_podcast_url");
       table.string("description");
       table.timestamp("created_at").defaultTo(knex.fn.now());
       table.timestamp("updated_at").defaultTo(knex.fn.now());
       table.boolean("deleted").defaultTo(false);
       table.boolean("is_draft").defaultTo(true);
+      table.string("twitter");
+      table.string("instagram");
+      table.string("youtube");
+      table.string("website");
+      table.string("npub");
     })
     .createTable("episode", function (table) {
       table.uuid("id").primary().unique();
@@ -31,5 +41,5 @@ exports.up = function (knex) {
 };
 
 exports.down = function (knex) {
-  return knex.schema.dropTableIfExists("podcast");
+  return knex.schema.dropTableIfExists("podcast").dropTableIfExists("episode");
 };
