@@ -236,6 +236,7 @@ model User {
   artist              Artist[]
   subscriber          Subscriber?
   transaction         transaction[]
+  podcast             Podcast[]
 
   @@index([profileUrl], map: "idx_profile_url")
   @@map("user")

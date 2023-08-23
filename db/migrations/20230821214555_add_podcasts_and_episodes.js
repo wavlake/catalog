@@ -3,6 +3,7 @@ exports.up = function (knex) {
     .createTable("podcast", function (table) {
       table.uuid("id").primary().unique();
       table.string("user_id").notNullable().index("idx_podcast_user_id");
+      table.foreign("user_id").references("user.id");
       table.string("name").notNullable();
       table.string("artwork_url");
       table
@@ -26,6 +27,7 @@ exports.up = function (knex) {
       table.string("title").notNullable();
       table.string("description");
       table.uuid("podcast_id").notNullable().index("idx_episode_podcast_id");
+      table.foreign("podcast_id").references("podcast.id");
       table.integer("order").unsigned().notNullable();
       table.integer("play_count").unsigned().defaultTo(0);
       table.bigInteger("msat_total").unsigned().defaultTo(0);
