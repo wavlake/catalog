@@ -9,7 +9,7 @@ import format from "../library/format";
 import prisma from "../prisma/client";
 import asyncHandler from "express-async-handler";
 import { formatError } from "../library/errors";
-import { getPodcastAccount } from "../library/userHelper";
+import { isPodcastOwner } from "../library/userHelper";
 import { invalidateCdn } from "../library/cloudfrontClient";
 import Sentry from "@sentry/node";
 
@@ -203,7 +203,7 @@ export const update_podcast = asyncHandler(async (req, res, next) => {
   }
 
   // Check if user owns podcast
-  const isPodcastOwner = await getPodcastAccount(
+  const isPodcastOwner = await isPodcastOwner(
     request.userId,
     request.podcastId
   );
@@ -266,7 +266,7 @@ export const update_podcast_art = asyncHandler(async (req, res, next) => {
   }
 
   // Check if user owns podcast
-  const isPodcastOwner = await getPodcastAccount(
+  const isPodcastOwner = await isPodcastOwner(
     request.userId,
     request.podcastId
   );
@@ -345,7 +345,7 @@ export const delete_podcast = asyncHandler(async (req, res, next) => {
   }
 
   // Check if user owns artist
-  const isPodcastOwner = await getPodcastAccount(
+  const isPodcastOwner = await isPodcastOwner(
     request.userId,
     request.podcastId
   );

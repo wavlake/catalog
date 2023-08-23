@@ -3,7 +3,7 @@ import db from "../library/db";
 const log = require("loglevel");
 const { randomUUID } = require("crypto");
 const s3Client = require("../library/s3Client");
-const { getAlbumAccount, getTrackAccount } = require("../library/userHelper");
+const { isAlbumOwner, isTrackOwner } = require("../library/userHelper");
 const asyncHandler = require("express-async-handler");
 import { formatError } from "../library/errors";
 
@@ -181,7 +181,7 @@ const delete_track = asyncHandler(async (req, res, next) => {
   }
 
   // Check if user owns track
-  const isTrackOwner = await getTrackAccount(request.userId, request.trackId);
+  const isTrackOwner = await isTrackOwner(request.userId, request.trackId);
 
   if (!isTrackOwner) {
     const error = formatError(403, "User does not own this track");
@@ -217,9 +217,9 @@ const create_track = asyncHandler(async (req, res, next) => {
     next(error);
   }
 
-  const albumAccount = await getAlbumAccount(request.userId, request.albumId);
+  const albumAccount = await isAlbumOwner(request.userId, request.albumId);
 
-  if (!albumAccount == request.userId) {
+  if (!albumAccount === request.userId) {
     const error = formatError(403, "User does not own this album");
     next(error);
   }
@@ -298,7 +298,7 @@ const update_track = asyncHandler(async (req, res, next) => {
   }
 
   // Check if user owns track
-  const isTrackOwner = await getTrackAccount(request.userId, request.trackId);
+  const isTrackOwner = await isTrackOwner(request.userId, request.trackId);
 
   if (!isTrackOwner) {
     const error = formatError(403, "User does not own this track");

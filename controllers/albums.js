@@ -6,7 +6,7 @@ const multer = require("multer");
 const Jimp = require("jimp");
 const s3Client = require("../library/s3Client");
 import prisma from "../prisma/client";
-const { getAlbumAccount, getArtistAccount } = require("../library/userHelper");
+const { isAlbumOwner, isArtistOwner } = require("../library/userHelper");
 const asyncHandler = require("express-async-handler");
 import { formatError } from "../library/errors";
 const { invalidateCdn } = require("../library/cloudfrontClient");
@@ -114,10 +114,7 @@ const create_album = asyncHandler(async (req, res, next) => {
   };
 
   // Check if user owns artist
-  const isArtistOwner = await getArtistAccount(
-    request.userId,
-    request.artistId
-  );
+  const isArtistOwner = await isArtistOwner(request.userId, request.artistId);
 
   if (!isArtistOwner) {
     const error = formatError(403, "User does not own this artist");
@@ -229,7 +226,7 @@ const update_album = asyncHandler(async (req, res, next) => {
   }
 
   // Check if user owns album
-  const isAlbumOwner = await getAlbumAccount(request.userId, request.albumId);
+  const isAlbumOwner = await isAlbumOwner(request.userId, request.albumId);
 
   if (!isAlbumOwner) {
     const error = formatError(403, "User does not own this album");
@@ -281,7 +278,7 @@ const update_album_art = asyncHandler(async (req, res, next) => {
   }
 
   // Check if user owns album
-  const isAlbumOwner = await getAlbumAccount(request.userId, request.albumId);
+  const isAlbumOwner = await isAlbumOwner(request.userId, request.albumId);
 
   if (!isAlbumOwner) {
     const error = formatError(403, "User does not own this album");
@@ -357,7 +354,7 @@ const delete_album = asyncHandler(async (req, res, next) => {
   }
 
   // Check if user owns album
-  const isAlbumOwner = await getAlbumAccount(request.userId, request.albumId);
+  const isAlbumOwner = await isAlbumOwner(request.userId, request.albumId);
 
   if (!isAlbumOwner) {
     const error = formatError(403, "User does not own this album");
