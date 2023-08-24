@@ -6,7 +6,7 @@ const multer = require("multer");
 const Jimp = require("jimp");
 const s3Client = require("../library/s3Client");
 import prisma from "../prisma/client";
-const { isAlbumOwner, isArtistOwner } = require("../library/userHelper");
+import { isAlbumOwner, isArtistOwner } from "../library/userHelper";
 const asyncHandler = require("express-async-handler");
 import { formatError } from "../library/errors";
 const { invalidateCdn } = require("../library/cloudfrontClient");
@@ -114,9 +114,9 @@ const create_album = asyncHandler(async (req, res, next) => {
   };
 
   // Check if user owns artist
-  const isArtistOwner = await isArtistOwner(request.userId, request.artistId);
+  const isOwner = await isArtistOwner(request.userId, request.artistId);
 
-  if (!isArtistOwner) {
+  if (!isOwner) {
     const error = formatError(403, "User does not own this artist");
     next(error);
   }
@@ -226,9 +226,9 @@ const update_album = asyncHandler(async (req, res, next) => {
   }
 
   // Check if user owns album
-  const isAlbumOwner = await isAlbumOwner(request.userId, request.albumId);
+  const isOwner = await isAlbumOwner(request.userId, request.albumId);
 
-  if (!isAlbumOwner) {
+  if (!isOwner) {
     const error = formatError(403, "User does not own this album");
     next(error);
   }
@@ -278,9 +278,9 @@ const update_album_art = asyncHandler(async (req, res, next) => {
   }
 
   // Check if user owns album
-  const isAlbumOwner = await isAlbumOwner(request.userId, request.albumId);
+  const isOwner = await isAlbumOwner(request.userId, request.albumId);
 
-  if (!isAlbumOwner) {
+  if (!isOwner) {
     const error = formatError(403, "User does not own this album");
     next(error);
   }
@@ -354,9 +354,9 @@ const delete_album = asyncHandler(async (req, res, next) => {
   }
 
   // Check if user owns album
-  const isAlbumOwner = await isAlbumOwner(request.userId, request.albumId);
+  const isOwner = await isAlbumOwner(request.userId, request.albumId);
 
-  if (!isAlbumOwner) {
+  if (!isOwner) {
     const error = formatError(403, "User does not own this album");
     next(error);
   }

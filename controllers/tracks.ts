@@ -1,11 +1,12 @@
 import prisma from "../prisma/client";
 import db from "../library/db";
-const log = require("loglevel");
-const { randomUUID } = require("crypto");
-const s3Client = require("../library/s3Client");
-const { isAlbumOwner, isTrackOwner } = require("../library/userHelper");
-const asyncHandler = require("express-async-handler");
+import log from "loglevel";
+import { randomUUID } from "crypto";
+import s3Client from "../library/s3Client";
+import { isAlbumOwner, isTrackOwner } from "../library/userHelper";
+import asyncHandler from "express-async-handler";
 import { formatError } from "../library/errors";
+import { parseLimit } from "../library/helpers";
 
 const randomSampleSize = process.env.RANDOM_SAMPLE_SIZE;
 
@@ -75,10 +76,7 @@ const get_tracks_by_artist_url = asyncHandler(async (req, res, next) => {
 });
 
 const get_tracks_by_new = asyncHandler(async (req, res, next) => {
-  const request = {
-    limit: req.query.limit ? req.query.limit : 50,
-    // sortBy: req.body.sortBy
-  };
+  const limit = parseLimit(req.query.limit, 50);
 
   const albumTracks = db.knex
     .select("track.id as id", "track.album_id as albumId")
@@ -103,7 +101,7 @@ const get_tracks_by_new = asyncHandler(async (req, res, next) => {
   db.knex(albumTracks)
     .orderBy("createdAt", "desc")
     .where("ranking", "=", 1)
-    .limit(request.limit)
+    .limit(limit)
     .then((data) => {
       // console.log(data);
       res.send({ success: true, data: data });
@@ -155,15 +153,13 @@ const get_tracks_by_random = asyncHandler(async (req, res, next) => {
 });
 
 const get_tracks_by_artist_id = asyncHandler(async (req, res, next) => {
-  const request = {
-    artistId: req.params.artistId,
-    limit: req.query.limit ? parseInt(req.query.limit) : 10,
-  };
+  const { artistId } = req.params;
+  const limit = parseLimit(req.query.limit);
 
   const tracks = await prisma.trackInfo.findMany({
-    where: { artistId: request.artistId },
+    where: { artistId: artistId },
     orderBy: { msatTotal30Days: "desc" },
-    take: request.limit,
+    take: limit,
   });
 
   res.json({ success: true, data: tracks });
@@ -171,7 +167,7 @@ const get_tracks_by_artist_id = asyncHandler(async (req, res, next) => {
 
 const delete_track = asyncHandler(async (req, res, next) => {
   const request = {
-    userId: req.uid,
+    userId: req["uid"],
     trackId: req.params.trackId,
   };
 
@@ -181,9 +177,9 @@ const delete_track = asyncHandler(async (req, res, next) => {
   }
 
   // Check if user owns track
-  const isTrackOwner = await isTrackOwner(request.userId, request.trackId);
+  const isOwner = await isTrackOwner(request.userId, request.trackId);
 
-  if (!isTrackOwner) {
+  if (!isOwner) {
     const error = formatError(403, "User does not own this track");
     next(error);
   }
@@ -206,7 +202,7 @@ const create_track = asyncHandler(async (req, res, next) => {
   const request = {
     albumId: req.body.albumId,
     title: req.body.title,
-    userId: req.uid,
+    userId: req["uid"],
     order: req.body.order == "" ? 0 : parseInt(req.body.order),
     lyrics: req.body.lyrics,
     extension: req.body.extension ?? "mp3",
@@ -285,7 +281,7 @@ const create_track = asyncHandler(async (req, res, next) => {
 
 const update_track = asyncHandler(async (req, res, next) => {
   const request = {
-    userId: req.uid,
+    userId: req["uid"],
     trackId: req.body.trackId,
     title: req.body.title,
     order: req.body.order,
@@ -298,9 +294,9 @@ const update_track = asyncHandler(async (req, res, next) => {
   }
 
   // Check if user owns track
-  const isTrackOwner = await isTrackOwner(request.userId, request.trackId);
+  const isOwner = await isTrackOwner(request.userId, request.trackId);
 
-  if (!isTrackOwner) {
+  if (!isOwner) {
     const error = formatError(403, "User does not own this track");
     next(error);
   }

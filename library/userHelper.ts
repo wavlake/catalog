@@ -2,7 +2,10 @@ import db from "./db";
 const log = require("loglevel");
 const Sentry = require("@sentry/node");
 
-async function isTrackOwner(userId: string, trackId: string): Promise<boolean> {
+export async function isTrackOwner(
+  userId: string,
+  trackId: string
+): Promise<boolean> {
   return db
     .knex("track")
     .join("artist", "track.artist_id", "=", "artist.id")
@@ -102,7 +105,7 @@ export async function isArtistOwner(
     });
 }
 
-async function getCommentUser(commentId: string): Promise<any> {
+export async function getCommentUser(commentId: string): Promise<any> {
   return db
     .knex("comment")
     .select("user_id as userId")
@@ -119,7 +122,7 @@ async function getCommentUser(commentId: string): Promise<any> {
     });
 }
 
-async function isPlaylistOwner(
+export async function isPlaylistOwner(
   userId: string,
   playlistId: string
 ): Promise<boolean> {
@@ -138,11 +141,3 @@ async function isPlaylistOwner(
       return false;
     });
 }
-
-module.exports = {
-  isTrackOwner,
-  isAlbumOwner,
-  isArtistOwner,
-  getCommentUser,
-  isPlaylistOwner,
-};

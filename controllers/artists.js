@@ -6,7 +6,7 @@ import multer from "multer";
 const Jimp = require("jimp");
 const s3Client = require("../library/s3Client");
 const format = require("../library/format");
-const { isArtistOwner } = require("../library/userHelper");
+import { isArtistOwner } from "../library/userHelper";
 import prisma from "../prisma/client";
 const asyncHandler = require("express-async-handler");
 import { formatError } from "../library/errors";
@@ -205,9 +205,9 @@ const update_artist = asyncHandler(async (req, res, next) => {
   }
 
   // Check if user owns artist
-  const isArtistOwner = await isArtistOwner(request.userId, request.artistId);
+  const isOwner = await isArtistOwner(request.userId, request.artistId);
 
-  if (!isArtistOwner) {
+  if (!isOwner) {
     const error = formatError(403, "User does not own this artist");
     next(error);
   }
@@ -265,9 +265,9 @@ const update_artist_art = asyncHandler(async (req, res, next) => {
   }
 
   // Check if user owns artist
-  const isArtistOwner = await isArtistOwner(request.userId, request.artistId);
+  const isOwner = await isArtistOwner(request.userId, request.artistId);
 
-  if (!isArtistOwner) {
+  if (!isOwner) {
     const error = formatError(403, "User does not own this artist");
     next(error);
   }
@@ -341,9 +341,9 @@ const delete_artist = asyncHandler(async (req, res, next) => {
   }
 
   // Check if user owns artist
-  const isArtistOwner = await isArtistOwner(request.userId, request.artistId);
+  const isOwner = await isArtistOwner(request.userId, request.artistId);
 
-  if (!isArtistOwner) {
+  if (!isOwner) {
     const error = formatError(403, "User does not own this artist");
     next(error);
   }

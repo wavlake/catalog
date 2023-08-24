@@ -234,9 +234,9 @@ model User {
   lastActivityCheckAt DateTime?     @default(now()) @map("last_activity_check_at") @db.Timestamptz(6)
   profileUrl          String?       @unique(map: "user_profile_url_unique") @map("profile_url") @db.VarChar(255)
   artist              Artist[]
+  podcast             Podcast[]
   subscriber          Subscriber?
   transaction         transaction[]
-  podcast             Podcast[]
 
   @@index([profileUrl], map: "idx_profile_url")
   @@map("user")
@@ -300,6 +300,7 @@ model Episode {
   isDraft     Boolean?  @default(true) @map("is_draft")
   createdAt   DateTime? @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt   DateTime? @default(now()) @map("updated_at") @db.Timestamptz(6)
+  podcast     Podcast   @relation(fields: [podcastId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "episode_podcast_id_foreign")
 
   @@index([podcastId], map: "idx_episode_podcast_id")
   @@map("episode")
@@ -321,6 +322,8 @@ model Podcast {
   youtube     String?   @db.VarChar(255)
   website     String?   @db.VarChar(255)
   npub        String?   @db.VarChar(255)
+  episode     Episode[]
+  user        User      @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "podcast_user_id_foreign")
 
   @@index([userId], map: "idx_podcast_user_id")
   @@index([podcastUrl], map: "idx_podcast_url")

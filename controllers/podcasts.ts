@@ -203,12 +203,9 @@ export const update_podcast = asyncHandler(async (req, res, next) => {
   }
 
   // Check if user owns podcast
-  const isPodcastOwner = await isPodcastOwner(
-    request.userId,
-    request.podcastId
-  );
+  const isOwner = await isPodcastOwner(request.userId, request.podcastId);
 
-  if (!isPodcastOwner) {
+  if (!isOwner) {
     const error = formatError(403, "User does not own this podcast");
     next(error);
   }
@@ -266,12 +263,9 @@ export const update_podcast_art = asyncHandler(async (req, res, next) => {
   }
 
   // Check if user owns podcast
-  const isPodcastOwner = await isPodcastOwner(
-    request.userId,
-    request.podcastId
-  );
+  const isOwner = await isPodcastOwner(request.userId, request.podcastId);
 
-  if (!isPodcastOwner) {
+  if (!isOwner) {
     const error = formatError(403, "User does not own this podcast");
     next(error);
   }
@@ -345,12 +339,9 @@ export const delete_podcast = asyncHandler(async (req, res, next) => {
   }
 
   // Check if user owns artist
-  const isPodcastOwner = await isPodcastOwner(
-    request.userId,
-    request.podcastId
-  );
+  const isOwner = await isPodcastOwner(request.userId, request.podcastId);
 
-  if (!isPodcastOwner) {
+  if (!isOwner) {
     const error = formatError(403, "User does not own this podcast");
     next(error);
   }
