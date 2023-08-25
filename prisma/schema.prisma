@@ -29,6 +29,8 @@ model Album {
   deleted        Boolean?       @default(false)
   genreId        Int?           @map("genre_id")
   subgenreId     Int?           @map("subgenre_id")
+  is_draft       Boolean?       @default(false)
+  published_at   DateTime?      @default(now()) @db.Timestamptz(6)
   artist         Artist         @relation(fields: [artistId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "album_artist_id_foreign")
   music_genre    MusicGenre?    @relation(fields: [genreId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "album_genre_id_foreign")
   music_subgenre MusicSubgenre? @relation(fields: [subgenreId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "album_subgenre_id_foreign")
@@ -191,8 +193,6 @@ model Track {
   lyrics          String?
   isProcessing    Boolean?  @default(false) @map("is_processing")
   compressorError Boolean?  @default(false) @map("compressor_error")
-  is_draft        Boolean?  @default(false)
-  published_at    DateTime? @default(now()) @db.Timestamptz(6)
   album           Album     @relation(fields: [albumId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "track_album_id_foreign")
   artist          Artist    @relation(fields: [artistId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "track_artist_id_foreign")
 
@@ -285,45 +285,48 @@ model Subscriber {
 }
 
 model Episode {
-  id          String    @id @unique(map: "episode_id_unique") @db.Uuid
-  title       String    @db.VarChar(255)
-  description String?   @db.VarChar(255)
-  podcastId   String    @map("podcast_id") @db.Uuid
-  order       Int
-  playCount   Int?      @default(0) @map("play_count")
-  msatTotal   BigInt?   @default(0) @map("msat_total")
-  liveUrl     String    @map("live_url") @db.VarChar(255)
-  rawUrl      String?   @map("raw_url") @db.VarChar(128)
-  size        Int?
-  duration    Int?
-  deleted     Boolean?  @default(false)
-  isDraft     Boolean?  @default(true) @map("is_draft")
-  createdAt   DateTime? @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt   DateTime? @default(now()) @map("updated_at") @db.Timestamptz(6)
-  podcast     Podcast   @relation(fields: [podcastId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "episode_podcast_id_foreign")
+  id            String    @id @unique(map: "episode_id_unique") @db.Uuid
+  title         String    @db.VarChar(255)
+  description   String?   @db.VarChar(255)
+  podcastId     String    @map("podcast_id") @db.Uuid
+  order         Int
+  playCount     Int?      @default(0) @map("play_count")
+  msatTotal     BigInt?   @default(0) @map("msat_total")
+  liveUrl       String    @map("live_url") @db.VarChar(255)
+  rawUrl        String?   @map("raw_url") @db.VarChar(128)
+  size          Int?
+  duration      Int?
+  deleted       Boolean?  @default(false)
+  isDraft       Boolean?  @default(true) @map("is_draft")
+  is_processing Boolean?  @default(false)
+  createdAt     DateTime? @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime? @default(now()) @map("updated_at") @db.Timestamptz(6)
+  published_at  DateTime? @default(now()) @db.Timestamptz(6)
+  podcast       Podcast   @relation(fields: [podcastId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "episode_podcast_id_foreign")
 
   @@index([podcastId], map: "idx_episode_podcast_id")
   @@map("episode")
 }
 
 model Podcast {
-  id          String    @id @unique(map: "podcast_id_unique") @db.Uuid
-  userId      String    @map("user_id") @db.VarChar(255)
-  name        String    @db.VarChar(255)
-  artworkUrl  String?   @map("artwork_url") @db.VarChar(255)
-  podcastUrl  String    @unique(map: "podcast_podcast_url_unique") @map("podcast_url") @db.VarChar(255)
-  description String?   @db.VarChar(255)
-  createdAt   DateTime? @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt   DateTime? @default(now()) @map("updated_at") @db.Timestamptz(6)
-  deleted     Boolean?  @default(false)
-  isDraft     Boolean?  @default(true) @map("is_draft")
-  twitter     String?   @db.VarChar(255)
-  instagram   String?   @db.VarChar(255)
-  youtube     String?   @db.VarChar(255)
-  website     String?   @db.VarChar(255)
-  npub        String?   @db.VarChar(255)
-  episode     Episode[]
-  user        User      @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "podcast_user_id_foreign")
+  id           String    @id @unique(map: "podcast_id_unique") @db.Uuid
+  userId       String    @map("user_id") @db.VarChar(255)
+  name         String    @db.VarChar(255)
+  artworkUrl   String?   @map("artwork_url") @db.VarChar(255)
+  podcastUrl   String    @unique(map: "podcast_podcast_url_unique") @map("podcast_url") @db.VarChar(255)
+  description  String?   @db.VarChar(200)
+  createdAt    DateTime? @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime? @default(now()) @map("updated_at") @db.Timestamptz(6)
+  published_at DateTime? @default(now()) @db.Timestamptz(6)
+  deleted      Boolean?  @default(false)
+  isDraft      Boolean?  @default(true) @map("is_draft")
+  twitter      String?   @db.VarChar(255)
+  instagram    String?   @db.VarChar(255)
+  youtube      String?   @db.VarChar(255)
+  website      String?   @db.VarChar(255)
+  npub         String?   @db.VarChar(255)
+  episode      Episode[]
+  user         User      @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "podcast_user_id_foreign")
 
   @@index([userId], map: "idx_podcast_user_id")
   @@index([podcastUrl], map: "idx_podcast_url")

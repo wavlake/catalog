@@ -92,7 +92,8 @@ export const get_episodes_by_new = asyncHandler(async (req, res, next) => {
 });
 
 export const delete_episode = asyncHandler(async (req, res, next) => {
-  const { uid, episodeId } = req.params;
+  const { episodeId } = req.params;
+  const uid = req["uid"];
 
   if (!episodeId) {
     const error = formatError(400, "episodeId field is required");
@@ -114,7 +115,6 @@ export const delete_episode = asyncHandler(async (req, res, next) => {
     .then((data) => {
       res.send({ success: true, data: data[0] });
     })
-
     .catch((err) => {
       log.debug(`Error deleting episode ${episodeId}: ${err}`);
       next(err);

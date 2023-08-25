@@ -11,9 +11,10 @@ exports.up = function (knex) {
         .notNullable()
         .unique()
         .index("idx_podcast_url");
-      table.string("description");
+      table.string("description", 200);
       table.timestamp("created_at").defaultTo(knex.fn.now());
       table.timestamp("updated_at").defaultTo(knex.fn.now());
+      table.timestamp("published_at").defaultTo(knex.fn.now());
       table.boolean("deleted").defaultTo(false);
       table.boolean("is_draft").defaultTo(true);
       table.string("twitter");
@@ -37,11 +38,23 @@ exports.up = function (knex) {
       table.integer("duration").unsigned();
       table.boolean("deleted").defaultTo(false);
       table.boolean("is_draft").defaultTo(true);
+      table.boolean("is_processing").defaultTo(false);
       table.timestamp("created_at").defaultTo(knex.fn.now());
       table.timestamp("updated_at").defaultTo(knex.fn.now());
+      table.timestamp("published_at").defaultTo(knex.fn.now());
+    })
+    .alterTable("album", function (table) {
+      table.boolean("is_draft").defaultTo(false);
+      table.timestamp("published_at").defaultTo(knex.fn.now());
     });
 };
 
 exports.down = function (knex) {
-  return knex.schema.dropTableIfExists("podcast").dropTableIfExists("episode");
+  return knex.schema
+    .dropTableIfExists("episode")
+    .dropTableIfExists("podcast")
+    .alterTable("album", function (table) {
+      table.dropColumn("is_draft");
+      table.dropColumn("published_at");
+    });
 };

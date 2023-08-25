@@ -11,7 +11,7 @@ import asyncHandler from "express-async-handler";
 import { formatError } from "../library/errors";
 import { isPodcastOwner } from "../library/userHelper";
 import { invalidateCdn } from "../library/cloudfrontClient";
-import Sentry from "@sentry/node";
+import { getStatus } from "../library/helpers";
 
 const imagePrefix = `${process.env.AWS_S3_IMAGE_PREFIX}`;
 const localConvertPath = `${process.env.LOCAL_CONVERT_PATH}`;
@@ -27,7 +27,13 @@ export const get_podcasts_by_account = asyncHandler(async (req, res, next) => {
       where: { userId: uid, deleted: false },
     });
 
-    res.json({ success: true, data: podcasts });
+    res.json({
+      success: true,
+      data: podcasts.map((podcast) => ({
+        ...podcast,
+        status: getStatus(podcast.isDraft, podcast.published_at),
+      })),
+    });
   }
 });
 
@@ -64,6 +70,7 @@ export const create_podcast = asyncHandler(async (req, res, next) => {
     instagram: req.body.instagram ? req.body.instagram : "",
     youtube: req.body.youtube ? req.body.youtube : "",
     website: req.body.website ? req.body.website : "",
+    isDraft: req.body.isDraft ? req.body.isDraft : false,
   };
 
   if (!request.name) {
@@ -115,6 +122,8 @@ export const create_podcast = asyncHandler(async (req, res, next) => {
                   website: request.website,
                   artwork_url: liveUrl,
                   podcast_url: format.urlFriendly(request.name),
+                  is_draft: request.isDraft,
+                  published_at: db.knex.fn.now(),
                 },
                 ["*"]
               )
@@ -149,11 +158,12 @@ export const create_podcast = asyncHandler(async (req, res, next) => {
                     website: data[0]["website"],
                     artworkUrl: data[0]["artwork_url"],
                     podcastUrl: data[0]["podcast_url"],
+                    isDraft: data[0]["is_draft"],
+                    publishedAt: data[0]["published_at"],
                   },
                 });
               })
               .catch((err) => {
-                Sentry.captureException(err);
                 if (err instanceof multer.MulterError) {
                   log.debug(`MulterError creating new podcast: ${err}`);
 
@@ -189,12 +199,14 @@ export const update_podcast = asyncHandler(async (req, res, next) => {
     userId: req["uid"],
     podcastId: req.body.podcastId,
     name: req.body.name,
-    description: req.body.description ? req.body.description : "",
-    twitter: req.body.twitter ? req.body.twitter : "",
-    nostr: req.body.nostr ? req.body.nostr : "",
-    instagram: req.body.instagram ? req.body.instagram : "",
-    youtube: req.body.youtube ? req.body.youtube : "",
-    website: req.body.website ? req.body.website : "",
+    description: req.body.description,
+    twitter: req.body.twitter,
+    nostr: req.body.nostr,
+    instagram: req.body.instagram,
+    youtube: req.body.youtube,
+    website: req.body.website,
+    isDraft: req.body.isDraft,
+    publishedAt: req.body.publishedAt,
   };
 
   if (!request.podcastId) {
@@ -223,6 +235,8 @@ export const update_podcast = asyncHandler(async (req, res, next) => {
         youtube: request.youtube,
         website: request.website,
         podcast_url: format.urlFriendly(request.name),
+        is_draft: request.isDraft,
+        published_at: request.publishedAt,
       },
       ["*"]
     )
@@ -241,10 +255,13 @@ export const update_podcast = asyncHandler(async (req, res, next) => {
           website: data[0]["website"],
           artworkUrl: data[0]["artwork_url"],
           podcastUrl: data[0]["podcast_url"],
+          isDraft: data[0]["is_draft"],
+          publishedAt: data[0]["published_at"],
         },
       });
     })
     .catch((err) => {
+      console.log(err);
       log.debug(`Error editing podcast ${request.podcastId}: ${err}`);
       next(err);
     });
