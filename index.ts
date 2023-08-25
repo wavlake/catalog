@@ -1,8 +1,8 @@
 import { errorHandler } from "./middlewares/errorHandler";
+import express from "express";
 
 const config = require("dotenv").config();
 const fs = require("fs");
-const express = require("express");
 const app = express();
 const log = require("loglevel");
 const cors = require("cors");
@@ -68,13 +68,15 @@ app.use(bodyParser.json());
 app.use(express.json());
 
 // Import routes
-const accounts = require("./routes/accounts");
-const albums = require("./routes/albums");
-const artists = require("./routes/artists");
-const charts = require("./routes/charts");
-const meta = require("./routes/meta");
-const stats = require("./routes/stats");
-const tracks = require("./routes/tracks");
+import accounts from "./routes/accounts";
+import albums from "./routes/albums";
+import artists from "./routes/artists";
+import charts from "./routes/charts";
+import meta from "./routes/meta";
+import stats from "./routes/stats";
+import tracks from "./routes/tracks";
+import episodes from "./routes/episodes";
+import podcasts from "./routes/podcasts";
 
 app.use(cors(corsOptions));
 
@@ -86,6 +88,8 @@ app.use("/v1/charts", charts);
 app.use("/v1/meta", meta);
 app.use("/v1/stats", stats);
 app.use("/v1/tracks", tracks);
+app.use("/v1/episodes", episodes);
+app.use("/v1/podcasts", podcasts);
 
 // The error handler must be registered before any other error middleware and after all controllers
 app.use(Sentry.Handlers.errorHandler());

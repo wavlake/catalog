@@ -1,75 +1,80 @@
-const log = require("loglevel");
+import log from "loglevel";
 import db from "../library/db";
-const { randomUUID } = require("crypto");
-const fs = require("fs");
+import { randomUUID } from "crypto";
+import fs from "fs";
 import multer from "multer";
-const Jimp = require("jimp");
-const s3Client = require("../library/s3Client");
-const format = require("../library/format");
-import { isArtistOwner } from "../library/userHelper";
+import Jimp from "jimp";
+import s3Client from "../library/s3Client";
+import format from "../library/format";
 import prisma from "../prisma/client";
-const asyncHandler = require("express-async-handler");
+import asyncHandler from "express-async-handler";
 import { formatError } from "../library/errors";
+import { isPodcastOwner } from "../library/userHelper";
+import { invalidateCdn } from "../library/cloudfrontClient";
+import { getStatus } from "../library/helpers";
 import { AWS_S3_IMAGE_PREFIX } from "../library/constants";
-const { invalidateCdn } = require("../library/cloudfrontClient");
-const Sentry = require("@sentry/node");
 
 const localConvertPath = `${process.env.LOCAL_CONVERT_PATH}`;
 const cdnDomain = `${process.env.AWS_CDN_DOMAIN}`;
 
-const get_artist_by_url = asyncHandler(async (req, res, next) => {
-  const request = {
-    artistUrl: req.params.artistUrl,
-  };
+export const get_podcasts_by_account = asyncHandler(async (req, res, next) => {
+  const { uid } = req.params;
 
-  const artist = await prisma.artist.findFirstOrThrow({
-    where: { artistUrl: request.artistUrl },
-  });
+  if (!uid) {
+    res.status(400).send("userId is required");
+  } else {
+    const podcasts = await prisma.podcast.findMany({
+      where: { userId: uid, deleted: false },
+    });
 
-  res.json({ success: true, data: artist });
+    res.json({
+      success: true,
+      data: podcasts.map((podcast) => ({
+        ...podcast,
+        status: getStatus(podcast.isDraft, podcast.publishedAt),
+      })),
+    });
+  }
 });
 
-const get_artist_by_id = asyncHandler(async (req, res, next) => {
-  const request = {
-    artistId: req.params.artistId,
-  };
+export const get_podcast_by_id = asyncHandler(async (req, res, next) => {
+  const { podcastId } = req.params;
 
-  const artist = await prisma.artist.findFirstOrThrow({
-    where: { id: request.artistId },
+  const podcast = await prisma.podcast.findFirstOrThrow({
+    where: { id: podcastId },
   });
 
-  res.json({ success: true, data: artist });
+  res.json({ success: true, data: podcast });
 });
 
-const get_artists_by_account = asyncHandler(async (req, res, next) => {
-  const request = {
-    userId: req.params.uid,
-  };
+export const get_podcast_by_url = asyncHandler(async (req, res, next) => {
+  const { podcastUrl } = req.params;
 
-  const artists = await prisma.artist.findMany({
-    where: { userId: request.userId, deleted: false },
+  const podcast = await prisma.podcast.findFirstOrThrow({
+    where: { podcastUrl },
   });
 
-  res.json({ success: true, data: artists });
+  res.json({ success: true, data: podcast });
 });
 
-const create_artist = asyncHandler(async (req, res, next) => {
-  const newArtistId = randomUUID();
+export const create_podcast = asyncHandler(async (req, res, next) => {
+  const newPodcastId = randomUUID();
 
   const request = {
     artwork: req.file,
     userId: req["uid"], //required, should come in with auth
     name: req.body.name, // required
-    bio: req.body.bio ? req.body.bio : "",
+    description: req.body.description ? req.body.description : "",
     twitter: req.body.twitter ? req.body.twitter : "",
     nostr: req.body.nostr ? req.body.nostr : "",
     instagram: req.body.instagram ? req.body.instagram : "",
     youtube: req.body.youtube ? req.body.youtube : "",
     website: req.body.website ? req.body.website : "",
+    isDraft: req.body.isDraft ? req.body.isDraft : false,
   };
 
   if (!request.name) {
-    const error = formatError(403, "Artist name is required");
+    const error = formatError(403, "Podcast name is required");
     next(error);
   }
 
@@ -85,8 +90,8 @@ const create_artist = asyncHandler(async (req, res, next) => {
   // console.log(request.image)
   // console.log(uploadPath)
 
-  const convertPath = `${localConvertPath}/${newArtistId}.jpg`;
-  const s3Key = `${AWS_S3_IMAGE_PREFIX}/${newArtistId}.jpg`;
+  const convertPath = `${localConvertPath}/${newPodcastId}.jpg`;
+  const s3Key = `${AWS_S3_IMAGE_PREFIX}/${newPodcastId}.jpg`;
 
   Jimp.read(uploadPath)
     .then((img) => {
@@ -100,29 +105,31 @@ const create_artist = asyncHandler(async (req, res, next) => {
           // Write metadata to db
           .then((data) => {
             log.debug(
-              `Avatar for ${newArtistId} uploaded to S3 ${data.Location}`
+              `Avatar for ${newPodcastId} uploaded to S3 ${data.Location}`
             );
             const liveUrl = `${cdnDomain}/${s3Key}`;
-            db.knex("artist")
+            db.knex("podcast")
               .insert(
                 {
-                  id: newArtistId,
+                  id: newPodcastId,
                   user_id: request.userId,
                   name: request.name,
-                  bio: request.bio,
+                  description: request.description,
                   twitter: request.twitter,
                   instagram: request.instagram,
                   npub: request.nostr,
                   youtube: request.youtube,
                   website: request.website,
                   artwork_url: liveUrl,
-                  artist_url: format.urlFriendly(request.name),
+                  podcast_url: format.urlFriendly(request.name),
+                  is_draft: request.isDraft,
+                  published_at: db.knex.fn.now(),
                 },
                 ["*"]
               )
               .then((data) => {
                 log.debug(
-                  `Created new artist ${request.name} with id: ${data[0]["id"]}`
+                  `Created new podcast ${request.name} with id: ${data[0]["id"]}`
                 );
 
                 // Clean up with async calls to avoid blocking response
@@ -150,28 +157,29 @@ const create_artist = asyncHandler(async (req, res, next) => {
                     youtube: data[0]["youtube"],
                     website: data[0]["website"],
                     artworkUrl: data[0]["artwork_url"],
-                    artistUrl: data[0]["artist_url"],
+                    podcastUrl: data[0]["podcast_url"],
+                    isDraft: data[0]["is_draft"],
+                    publishedAt: data[0]["published_at"],
                   },
                 });
               })
               .catch((err) => {
-                Sentry.captureException(err);
                 if (err instanceof multer.MulterError) {
-                  log.debug(`MulterError creating new artist: ${err}`);
+                  log.debug(`MulterError creating new podcast: ${err}`);
 
                   res.status(409).send("Something went wrong");
                 } else if (err) {
-                  log.debug(`Error creating new artist: ${err}`);
+                  log.debug(`Error creating new podcast: ${err}`);
                   if (err.message.includes("duplicate")) {
                     const error = formatError(
                       409,
-                      "Artist with that name already exists"
+                      "Podcast with that name already exists"
                     );
                     next(error);
                   } else {
                     const error = formatError(
                       500,
-                      "Something went wrong creating artist"
+                      "Something went wrong creating podcast"
                     );
                     next(error);
                   }
@@ -179,52 +187,56 @@ const create_artist = asyncHandler(async (req, res, next) => {
               });
           })
           .catch((err) => {
-            log.debug(`Error creating new artist: ${err}`);
+            log.debug(`Error creating new podcast: ${err}`);
             next(err);
           })
       );
     });
 });
 
-const update_artist = asyncHandler(async (req, res, next) => {
+export const update_podcast = asyncHandler(async (req, res, next) => {
   const request = {
     userId: req["uid"],
-    artistId: req.body.artistId,
+    podcastId: req.body.podcastId,
     name: req.body.name,
-    bio: req.body.bio ? req.body.bio : "",
-    twitter: req.body.twitter ? req.body.twitter : "",
-    nostr: req.body.nostr ? req.body.nostr : "",
-    instagram: req.body.instagram ? req.body.instagram : "",
-    youtube: req.body.youtube ? req.body.youtube : "",
-    website: req.body.website ? req.body.website : "",
+    description: req.body.description,
+    twitter: req.body.twitter,
+    nostr: req.body.nostr,
+    instagram: req.body.instagram,
+    youtube: req.body.youtube,
+    website: req.body.website,
+    isDraft: req.body.isDraft,
+    publishedAt: req.body.publishedAt,
   };
 
-  if (!request.artistId) {
-    const error = formatError(403, "artistId field is required");
+  if (!request.podcastId) {
+    const error = formatError(403, "podcastId field is required");
     next(error);
   }
 
-  // Check if user owns artist
-  const isOwner = await isArtistOwner(request.userId, request.artistId);
+  // Check if user owns podcast
+  const isOwner = await isPodcastOwner(request.userId, request.podcastId);
 
   if (!isOwner) {
-    const error = formatError(403, "User does not own this artist");
+    const error = formatError(403, "User does not own this podcast");
     next(error);
   }
 
-  log.debug(`Editing artist ${request.artistId}`);
-  db.knex("artist")
-    .where("id", "=", request.artistId)
+  log.debug(`Editing podcast ${request.podcastId}`);
+  db.knex("podcast")
+    .where("id", "=", request.podcastId)
     .update(
       {
         name: request.name,
-        bio: request.bio,
+        description: request.description,
         twitter: request.twitter,
         instagram: request.instagram,
         npub: request.nostr,
         youtube: request.youtube,
         website: request.website,
-        artist_url: format.urlFriendly(request.name),
+        podcast_url: format.urlFriendly(request.name),
+        is_draft: request.isDraft,
+        published_at: request.publishedAt,
       },
       ["*"]
     )
@@ -235,47 +247,50 @@ const update_artist = asyncHandler(async (req, res, next) => {
           id: data[0]["id"],
           userId: data[0]["user_id"],
           name: data[0]["name"],
-          bio: data[0]["bio"],
+          description: data[0]["description"],
           twitter: data[0]["twitter"],
           instagram: data[0]["instagram"],
           npub: data[0]["npub"],
           youtube: data[0]["youtube"],
           website: data[0]["website"],
           artworkUrl: data[0]["artwork_url"],
-          artistUrl: data[0]["artist_url"],
+          podcastUrl: data[0]["podcast_url"],
+          isDraft: data[0]["is_draft"],
+          publishedAt: data[0]["published_at"],
         },
       });
     })
     .catch((err) => {
-      log.debug(`Error editing artist ${request.artistId}: ${err}`);
+      console.log(err);
+      log.debug(`Error editing podcast ${request.podcastId}: ${err}`);
       next(err);
     });
 });
 
-const update_artist_art = asyncHandler(async (req, res, next) => {
+export const update_podcast_art = asyncHandler(async (req, res, next) => {
   const request = {
     userId: req["uid"],
     artwork: req.file,
-    artistId: req.body.artistId,
+    podcastId: req.body.podcastId,
   };
 
-  if (!request.artistId) {
-    const error = formatError(403, "artistId field is required");
+  if (!request.podcastId) {
+    const error = formatError(403, "podcastId field is required");
     next(error);
   }
 
-  // Check if user owns artist
-  const isOwner = await isArtistOwner(request.userId, request.artistId);
+  // Check if user owns podcast
+  const isOwner = await isPodcastOwner(request.userId, request.podcastId);
 
   if (!isOwner) {
-    const error = formatError(403, "User does not own this artist");
+    const error = formatError(403, "User does not own this podcast");
     next(error);
   }
 
   const uploadPath = request.artwork.path;
 
-  const convertPath = `${localConvertPath}/${request.artistId}.jpg`;
-  const s3Key = `${AWS_S3_IMAGE_PREFIX}/${request.artistId}.jpg`;
+  const convertPath = `${localConvertPath}/${request.podcastId}.jpg`;
+  const s3Key = `${AWS_S3_IMAGE_PREFIX}/${request.podcastId}.jpg`;
 
   // Upload new image
   Jimp.read(uploadPath)
@@ -290,22 +305,22 @@ const update_artist_art = asyncHandler(async (req, res, next) => {
       s3Client.uploadS3(convertPath, s3Key, "artwork").then((data) => {
         log.trace(data);
         log.debug(
-          `Artwork for artist ${request.artistId} uploaded to S3 ${data.Location}, refreshing cache...`
+          `Artwork for podcast ${request.podcastId} uploaded to S3 ${data.Location}, refreshing cache...`
         );
         invalidateCdn(s3Key);
       });
     })
     .then(() => {
       const liveUrl = `${cdnDomain}/${s3Key}`;
-      db.knex("artist")
-        .where("id", "=", request.artistId)
+      db.knex("podcast")
+        .where("id", "=", request.podcastId)
         .update({ artwork_url: liveUrl, updated_at: db.knex.fn.now() }, ["id"])
         .then((data) => {
           res.send({ success: true, data: data[0] });
         });
     })
     .then(() => {
-      log.debug(`Updated artist artwork ${request.artistId}`);
+      log.debug(`Updated podcast artwork ${request.podcastId}`);
 
       // Clean up with async calls to avoid blocking response
       log.info(`Running clean up...`);
@@ -319,88 +334,60 @@ const update_artist_art = asyncHandler(async (req, res, next) => {
     })
     .catch((err) => {
       if (err instanceof multer.MulterError) {
-        log.debug(`MulterError editing artist artwork: ${err}`);
+        log.debug(`MulterError editing podcast artwork: ${err}`);
         next(err);
       } else if (err) {
-        log.debug(`Error editing artist artwork: ${err}`);
+        log.debug(`Error editing podcast artwork: ${err}`);
         next(err);
       }
     });
 });
 
-// TODO: Add clean up step for old artwork, see update_artist_art
-const delete_artist = asyncHandler(async (req, res, next) => {
+// TODO: Add clean up step for old artwork, see update_podcast_art
+export const delete_podcast = asyncHandler(async (req, res, next) => {
   const request = {
     userId: req["uid"],
-    artistId: req.params.artistId,
+    podcastId: req.params.podcastId,
   };
 
-  if (!request.artistId) {
-    const error = formatError(403, "artistId field is required");
+  if (!request.podcastId) {
+    const error = formatError(403, "podcastId field is required");
     next(error);
   }
 
   // Check if user owns artist
-  const isOwner = await isArtistOwner(request.userId, request.artistId);
+  const isOwner = await isPodcastOwner(request.userId, request.podcastId);
 
   if (!isOwner) {
-    const error = formatError(403, "User does not own this artist");
+    const error = formatError(403, "User does not own this podcast");
     next(error);
   }
 
-  log.debug(`Checking albums for artist ${request.artistId}`);
-  db.knex("album")
-    .select("album.artist_id as artistId", "album.deleted")
-    .where("album.artist_id", "=", request.artistId)
-    .andWhere("album.deleted", false)
+  log.debug(`Checking episodes for podcast ${request.podcastId}`);
+  db.knex("episode")
+    .select("episode.podcast_id as podcastId", "episode.deleted")
+    .where("episode.podcast_id", "=", request.podcastId)
+    .andWhere("episode.deleted", false)
     .then((data) => {
       if (data.length > 0) {
-        const error = formatError(403, "Artist has undeleted albums");
+        const error = formatError(403, "Podcast has undeleted episodes");
         next(error);
       } else {
-        log.debug(`Deleting artist ${request.artistId}`);
-        db.knex("artist")
-          .where("id", "=", request.artistId)
+        log.debug(`Deleting podcast ${request.podcastId}`);
+        db.knex("podcast")
+          .where("id", "=", request.podcastId)
           .update({ deleted: true }, ["id", "name"])
           .then((data) => {
             res.send({ success: true, data: data[0] });
           })
           .catch((err) => {
-            log.debug(`Error deleting artist ${request.artistId}: ${err}`);
+            log.debug(`Error deleting podcast ${request.podcastId}: ${err}`);
             next(err);
           });
       }
     })
     .catch((err) => {
-      log.debug(`Error deleting artist ${request.artistId}: ${err}`);
+      log.debug(`Error deleting podcast ${request.podcastId}: ${err}`);
       next(err);
     });
 });
-//////////// HELPERS ///////////////
-
-async function getArtworkPath(artistId) {
-  const regexp =
-    /^(([^:\/?#]+):)?(\/\/([^\/?#]*))?([^?#]*)(\?([^#]*))?(#(.*))?/;
-
-  return new Promise((resolve, reject) => {
-    return db
-      .knex("artist")
-      .select("artwork_url")
-      .where("id", "=", artistId)
-      .then((data) => {
-        const match = data[0].artwork_url.match(regexp);
-        resolve(match[5]);
-      })
-      .catch((e) => log.error(`Error looking up artist artwork_url: ${e}`));
-  });
-}
-
-export default {
-  get_artists_by_account,
-  get_artist_by_url,
-  get_artist_by_id,
-  create_artist,
-  update_artist,
-  update_artist_art,
-  delete_artist,
-};

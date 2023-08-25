@@ -6,12 +6,13 @@ const multer = require("multer");
 const Jimp = require("jimp");
 const s3Client = require("../library/s3Client");
 import prisma from "../prisma/client";
-const { getAlbumAccount, getArtistAccount } = require("../library/userHelper");
+import { isAlbumOwner, isArtistOwner } from "../library/userHelper";
 const asyncHandler = require("express-async-handler");
 import { formatError } from "../library/errors";
+import { getStatus } from "../library/helpers";
+import { AWS_S3_IMAGE_PREFIX } from "../library/constants";
 const { invalidateCdn } = require("../library/cloudfrontClient");
 
-const imagePrefix = `${process.env.AWS_S3_IMAGE_PREFIX}`;
 const localConvertPath = `${process.env.LOCAL_CONVERT_PATH}`;
 const cdnDomain = `${process.env.AWS_CDN_DOMAIN}`;
 
@@ -36,13 +37,21 @@ const get_albums_by_account = asyncHandler(async (req, res, next) => {
       "album.artwork_url as artworkUrl",
       "artist.name as name",
       "music_genre.id as genreId",
-      "music_subgenre.id as subgenreId"
+      "music_subgenre.id as subgenreId",
+      "album.is_draft as isDraft",
+      "album.published_at as publishedAt"
     )
     .where("user.id", "=", request.userId)
     .andWhere("album.deleted", "=", false)
     .then((data) => {
       // console.log(data)
-      res.send({ success: true, data: data });
+      res.send({
+        success: true,
+        data: data.map((album) => ({
+          ...album,
+          status: getStatus(album.isDraft, album.publishedAt),
+        })),
+      });
     })
     .catch((err) => {
       next(err);
@@ -111,15 +120,13 @@ const create_album = asyncHandler(async (req, res, next) => {
     genreId: req.body.genreId,
     subgenreId: req.body.subgenreId,
     description: req.body.description,
+    isDraft: req.body.isDraft,
   };
 
   // Check if user owns artist
-  const isArtistOwner = await getArtistAccount(
-    request.userId,
-    request.artistId
-  );
+  const isOwner = await isArtistOwner(request.userId, request.artistId);
 
-  if (!isArtistOwner) {
+  if (!isOwner) {
     const error = formatError(403, "User does not own this artist");
     next(error);
   }
@@ -134,7 +141,7 @@ const create_album = asyncHandler(async (req, res, next) => {
   }
 
   const convertPath = `${localConvertPath}/${newAlbumId}.jpg`;
-  const s3Key = `${imagePrefix}/${newAlbumId}.jpg`;
+  const s3Key = `${AWS_S3_IMAGE_PREFIX}/${newAlbumId}.jpg`;
 
   Jimp.read(uploadPath)
     .then((img) => {
@@ -163,6 +170,8 @@ const create_album = asyncHandler(async (req, res, next) => {
                 artwork_url: liveUrl,
                 genre_id: request.genreId,
                 subgenre_id: request.subgenreId,
+                is_draft: request.isDraft,
+                published_at: db.knex.fn.now(),
               },
               ["*"]
             )
@@ -193,6 +202,8 @@ const create_album = asyncHandler(async (req, res, next) => {
                   description: data[0]["description"],
                   genreId: data[0]["genre_id"],
                   subgenreId: data[0]["subgenre_id"],
+                  isDraft: data[0]["is_draft"],
+                  publishedAt: data[0]["published_at"],
                 },
               });
             })
@@ -221,6 +232,8 @@ const update_album = asyncHandler(async (req, res, next) => {
     description: req.body.description,
     genreId: req.body.genreId,
     subgenreId: req.body.subgenreId,
+    isDraft: req.body.isDraft,
+    publishedAt: req.body.publishedAt,
   };
 
   if (!request.albumId) {
@@ -229,9 +242,9 @@ const update_album = asyncHandler(async (req, res, next) => {
   }
 
   // Check if user owns album
-  const isAlbumOwner = await getAlbumAccount(request.userId, request.albumId);
+  const isOwner = await isAlbumOwner(request.userId, request.albumId);
 
-  if (!isAlbumOwner) {
+  if (!isOwner) {
     const error = formatError(403, "User does not own this album");
     next(error);
   }
@@ -246,6 +259,8 @@ const update_album = asyncHandler(async (req, res, next) => {
         updated_at: db.knex.fn.now(),
         genre_id: request.genreId,
         subgenre_id: request.subgenreId,
+        is_draft: request.isDraft,
+        published_at: request.publishedAt,
       },
       ["*"]
     )
@@ -260,6 +275,8 @@ const update_album = asyncHandler(async (req, res, next) => {
           description: data[0]["description"],
           genreId: data[0]["genre_id"],
           subgenreId: data[0]["subgenre_id"],
+          isDraft: data[0]["is_draft"],
+          publishedAt: data[0]["published_at"],
         },
       });
     })
@@ -281,9 +298,9 @@ const update_album_art = asyncHandler(async (req, res, next) => {
   }
 
   // Check if user owns album
-  const isAlbumOwner = await getAlbumAccount(request.userId, request.albumId);
+  const isOwner = await isAlbumOwner(request.userId, request.albumId);
 
-  if (!isAlbumOwner) {
+  if (!isOwner) {
     const error = formatError(403, "User does not own this album");
     next(error);
   }
@@ -291,7 +308,7 @@ const update_album_art = asyncHandler(async (req, res, next) => {
   const uploadPath = request.artwork.path;
 
   const convertPath = `${localConvertPath}/${request.albumId}.jpg`;
-  const s3Key = `${imagePrefix}/${request.albumId}.jpg`;
+  const s3Key = `${AWS_S3_IMAGE_PREFIX}/${request.albumId}.jpg`;
 
   log.debug(`Editing album artwork ${request.albumId}`);
 
@@ -357,9 +374,9 @@ const delete_album = asyncHandler(async (req, res, next) => {
   }
 
   // Check if user owns album
-  const isAlbumOwner = await getAlbumAccount(request.userId, request.albumId);
+  const isOwner = await isAlbumOwner(request.userId, request.albumId);
 
-  if (!isAlbumOwner) {
+  if (!isOwner) {
     const error = formatError(403, "User does not own this album");
     next(error);
   }

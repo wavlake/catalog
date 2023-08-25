@@ -21,4 +21,4 @@ router.put("/update", isAuthorized, tracksController.update_track);
 router.delete("/:trackId", isAuthorized, tracksController.delete_track);
 
 // Export router
-module.exports = router;
+export default router;

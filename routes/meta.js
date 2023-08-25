@@ -12,4 +12,4 @@ router.get("/music/genres", metaController.get_music_genre_list);
 router.get("/music/subgenres/:genreId", metaController.get_music_subgenre_list);
 
 // Export router
-module.exports = router;
+export default router;

@@ -2,7 +2,10 @@ import db from "./db";
 const log = require("loglevel");
 const Sentry = require("@sentry/node");
 
-async function getTrackAccount(userId, trackId) {
+export async function isTrackOwner(
+  userId: string,
+  trackId: string
+): Promise<boolean> {
   return db
     .knex("track")
     .join("artist", "track.artist_id", "=", "artist.id")
@@ -16,10 +19,35 @@ async function getTrackAccount(userId, trackId) {
     .catch((err) => {
       Sentry.captureException(err);
       log.error(`Error finding user from trackId ${err}`);
+      return false;
     });
 }
 
-export async function getAlbumAccount(userId, albumId) {
+export async function isEpisodeOwner(
+  userId: string,
+  episodeId: string
+): Promise<boolean> {
+  return db
+    .knex("episode")
+    .join("podcast", "episode.podcast_id", "=", "podcast.id")
+    .join("user", "podcast.user_id", "=", "user.id")
+    .select("user.id as userId")
+    .where("episode.id", "=", episodeId)
+    .first()
+    .then((data) => {
+      return data.userId == userId;
+    })
+    .catch((err) => {
+      Sentry.captureException(err);
+      log.error(`Error finding user from episodeId ${err}`);
+      return false;
+    });
+}
+
+export async function isAlbumOwner(
+  userId: string,
+  albumId: string
+): Promise<boolean> {
   return db
     .knex("album")
     .join("artist", "album.artist_id", "=", "artist.id")
@@ -33,10 +61,34 @@ export async function getAlbumAccount(userId, albumId) {
     .catch((err) => {
       Sentry.captureException(err);
       log.error(`Error finding user from albumId ${err}`);
+      return false;
     });
 }
 
-export async function getArtistAccount(userId, artistId) {
+export async function isPodcastOwner(
+  userId: string,
+  podcastId: string
+): Promise<boolean> {
+  return db
+    .knex("podcast")
+    .select("podcast.user_id as userId")
+    .where("id", "=", podcastId)
+    .first()
+    .then((data) => {
+      // console.log(data);
+      return data.userId == userId;
+    })
+    .catch((err) => {
+      Sentry.captureException(err);
+      log.error(`Error finding account from podcastId ${err}`);
+      return false;
+    });
+}
+
+export async function isArtistOwner(
+  userId: string,
+  artistId: string
+): Promise<boolean> {
   return db
     .knex("artist")
     .select("artist.user_id as userId")
@@ -49,10 +101,11 @@ export async function getArtistAccount(userId, artistId) {
     .catch((err) => {
       Sentry.captureException(err);
       log.error(`Error finding account from artistId ${err}`);
+      return false;
     });
 }
 
-async function getCommentUser(commentId) {
+export async function getCommentUser(commentId: string): Promise<any> {
   return db
     .knex("comment")
     .select("user_id as userId")
@@ -65,10 +118,14 @@ async function getCommentUser(commentId) {
     .catch((err) => {
       Sentry.captureException(err);
       log.error(`Error finding user from commentId ${err}`);
+      return undefined;
     });
 }
 
-async function isPlaylistOwner(userId, playlistId) {
+export async function isPlaylistOwner(
+  userId: string,
+  playlistId: string
+): Promise<boolean> {
   return db
     .knex("playlist")
     .select("user_id as userId")
@@ -81,13 +138,6 @@ async function isPlaylistOwner(userId, playlistId) {
     .catch((err) => {
       Sentry.captureException(err);
       log.error(`Error finding user from playlistId ${err}`);
+      return false;
     });
 }
-
-module.exports = {
-  getTrackAccount,
-  getAlbumAccount,
-  getArtistAccount,
-  getCommentUser,
-  isPlaylistOwner,
-};

@@ -78,4 +78,4 @@ router.get(
 // router.get("/music/subgenres/:genreId", statsController.get_music_subgenre_list);
 
 // Export router
-module.exports = router;
+export default router;

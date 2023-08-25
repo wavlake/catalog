@@ -40,4 +40,4 @@ router.put(
 router.delete("/:artistId", isAuthorized, artistsController.delete_artist);
 
 // Export router
-module.exports = router;
+export default router;
