@@ -59,36 +59,34 @@ export const get_podcast_by_url = asyncHandler(async (req, res, next) => {
 
 export const create_podcast = asyncHandler(async (req, res, next) => {
   const newPodcastId = randomUUID();
+  const {
+    name,
+    description,
+    twitter,
+    npub,
+    instagram,
+    youtube,
+    website,
+    // default to draft if not specified
+    isDraft = true,
+  } = req.body;
 
-  const request = {
-    artwork: req.file,
-    userId: req["uid"], //required, should come in with auth
-    name: req.body.name, // required
-    description: req.body.description ? req.body.description : "",
-    twitter: req.body.twitter ? req.body.twitter : "",
-    nostr: req.body.nostr ? req.body.nostr : "",
-    instagram: req.body.instagram ? req.body.instagram : "",
-    youtube: req.body.youtube ? req.body.youtube : "",
-    website: req.body.website ? req.body.website : "",
-    isDraft: req.body.isDraft ? req.body.isDraft : false,
-  };
+  const userId = req["uid"];
+  const artwork = req.file;
 
-  if (!request.name) {
+  if (!name) {
     const error = formatError(403, "Podcast name is required");
     next(error);
   }
 
   let uploadPath;
   let isKeeper = false;
-  if (!request.artwork) {
+  if (!artwork) {
     uploadPath = "./graphics/wavlake-icon-750.png";
     isKeeper = true;
   } else {
-    uploadPath = request.artwork.path;
+    uploadPath = artwork.path;
   }
-
-  // console.log(request.image)
-  // console.log(uploadPath)
 
   const convertPath = `${localConvertPath}/${newPodcastId}.jpg`;
   const s3Key = `${AWS_S3_IMAGE_PREFIX}/${newPodcastId}.jpg`;
@@ -112,24 +110,24 @@ export const create_podcast = asyncHandler(async (req, res, next) => {
               .insert(
                 {
                   id: newPodcastId,
-                  user_id: request.userId,
-                  name: request.name,
-                  description: request.description,
-                  twitter: request.twitter,
-                  instagram: request.instagram,
-                  npub: request.nostr,
-                  youtube: request.youtube,
-                  website: request.website,
+                  user_id: userId,
+                  name,
+                  description,
+                  twitter,
+                  instagram,
+                  npub,
+                  youtube,
+                  website,
                   artwork_url: liveUrl,
-                  podcast_url: format.urlFriendly(request.name),
-                  is_draft: request.isDraft,
+                  podcast_url: format.urlFriendly(name),
+                  is_draft: isDraft,
                   published_at: db.knex.fn.now(),
                 },
                 ["*"]
               )
               .then((data) => {
                 log.debug(
-                  `Created new podcast ${request.name} with id: ${data[0]["id"]}`
+                  `Created new podcast ${name} with id: ${data[0]["id"]}`
                 );
 
                 // Clean up with async calls to avoid blocking response
@@ -200,7 +198,7 @@ export const update_podcast = asyncHandler(async (req, res, next) => {
     name,
     description,
     twitter,
-    nostr: npub,
+    npub,
     instagram,
     youtube,
     website,
