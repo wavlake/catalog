@@ -18,7 +18,7 @@ const localConvertPath = `${process.env.LOCAL_CONVERT_PATH}`;
 const cdnDomain = `${process.env.AWS_CDN_DOMAIN}`;
 
 export const get_podcasts_by_account = asyncHandler(async (req, res, next) => {
-  const { uid } = req.params;
+  const uid = req["uid"];
 
   if (!uid) {
     res.status(400).send("userId is required");
