@@ -353,7 +353,6 @@ view TrackInfo {
   @@map("track_info")
 }
 
-/// The underlying view does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
 view episode_info {
   id              String    @unique @db.Uuid
   title           String?   @db.VarChar(255)
