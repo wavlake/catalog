@@ -195,76 +195,56 @@ export const create_podcast = asyncHandler(async (req, res, next) => {
 });
 
 export const update_podcast = asyncHandler(async (req, res, next) => {
-  const request = {
-    userId: req["uid"],
-    podcastId: req.body.podcastId,
-    name: req.body.name,
-    description: req.body.description,
-    twitter: req.body.twitter,
-    nostr: req.body.nostr,
-    instagram: req.body.instagram,
-    youtube: req.body.youtube,
-    website: req.body.website,
-    isDraft: req.body.isDraft,
-    publishedAt: req.body.publishedAt,
-  };
+  const {
+    podcastId,
+    name,
+    description,
+    twitter,
+    nostr: npub,
+    instagram,
+    youtube,
+    website,
+    isDraft,
+    publishedAt: publishedAtString,
+  } = req.body;
+  const uid = req["uid"];
 
-  if (!request.podcastId) {
+  const publishedAt = publishedAtString
+    ? new Date(publishedAtString)
+    : undefined;
+
+  if (!podcastId) {
     const error = formatError(403, "podcastId field is required");
     next(error);
   }
 
   // Check if user owns podcast
-  const isOwner = await isPodcastOwner(request.userId, request.podcastId);
+  const isOwner = await isPodcastOwner(uid, podcastId);
 
   if (!isOwner) {
     const error = formatError(403, "User does not own this podcast");
     next(error);
   }
 
-  log.debug(`Editing podcast ${request.podcastId}`);
-  db.knex("podcast")
-    .where("id", "=", request.podcastId)
-    .update(
-      {
-        name: request.name,
-        description: request.description,
-        twitter: request.twitter,
-        instagram: request.instagram,
-        npub: request.nostr,
-        youtube: request.youtube,
-        website: request.website,
-        podcast_url: format.urlFriendly(request.name),
-        is_draft: request.isDraft,
-        published_at: request.publishedAt,
-      },
-      ["*"]
-    )
-    .then((data) => {
-      res.send({
-        success: true,
-        data: {
-          id: data[0]["id"],
-          userId: data[0]["user_id"],
-          name: data[0]["name"],
-          description: data[0]["description"],
-          twitter: data[0]["twitter"],
-          instagram: data[0]["instagram"],
-          npub: data[0]["npub"],
-          youtube: data[0]["youtube"],
-          website: data[0]["website"],
-          artworkUrl: data[0]["artwork_url"],
-          podcastUrl: data[0]["podcast_url"],
-          isDraft: data[0]["is_draft"],
-          publishedAt: data[0]["published_at"],
-        },
-      });
-    })
-    .catch((err) => {
-      console.log(err);
-      log.debug(`Error editing podcast ${request.podcastId}: ${err}`);
-      next(err);
-    });
+  log.debug(`Editing podcast ${podcastId}`);
+  const updatedPodcast = await prisma.podcast.update({
+    where: {
+      id: podcastId,
+    },
+    data: {
+      name,
+      description,
+      twitter,
+      npub,
+      instagram,
+      youtube,
+      website,
+      isDraft,
+      publishedAt,
+    },
+  });
+
+  res.json({ success: true, data: updatedPodcast });
 });
 
 export const update_podcast_art = asyncHandler(async (req, res, next) => {
