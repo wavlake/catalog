@@ -11,7 +11,7 @@ exports.up = function (knex) {
         .notNullable()
         .unique()
         .index("idx_podcast_url");
-      table.string("description", 200);
+      table.string("description", 1000);
       table.timestamp("created_at").defaultTo(knex.fn.now());
       table.timestamp("updated_at").defaultTo(knex.fn.now());
       table.timestamp("published_at").defaultTo(knex.fn.now());
@@ -26,7 +26,7 @@ exports.up = function (knex) {
     .createTable("episode", function (table) {
       table.uuid("id").primary().unique();
       table.string("title").notNullable();
-      table.string("description");
+      table.string("description", 1000);
       table.uuid("podcast_id").notNullable().index("idx_episode_podcast_id");
       table.foreign("podcast_id").references("podcast.id");
       table.integer("order").unsigned().notNullable();
