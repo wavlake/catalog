@@ -32,7 +32,6 @@ export const get_episodes_by_account = asyncHandler(async (req, res, next) => {
       // },
     },
   });
-
   res.json({ success: true, data: episodes });
 });
 
@@ -40,11 +39,10 @@ export const get_episodes_by_podcast_id = asyncHandler(
   async (req, res, next) => {
     const { podcastId } = req.params;
 
-    const episodes = await prisma.episode.findMany({
+    const episodes = await prisma.episode_info.findMany({
       where: { podcastId },
       orderBy: { order: "asc" },
     });
-
     res.json({ success: true, data: episodes });
   }
 );

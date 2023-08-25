@@ -31,7 +31,7 @@ export const get_podcasts_by_account = asyncHandler(async (req, res, next) => {
       success: true,
       data: podcasts.map((podcast) => ({
         ...podcast,
-        status: getStatus(podcast.isDraft, podcast.published_at),
+        status: getStatus(podcast.isDraft, podcast.publishedAt),
       })),
     });
   }
