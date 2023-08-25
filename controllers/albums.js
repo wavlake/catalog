@@ -10,9 +10,9 @@ import { isAlbumOwner, isArtistOwner } from "../library/userHelper";
 const asyncHandler = require("express-async-handler");
 import { formatError } from "../library/errors";
 import { getStatus } from "../library/helpers";
+import { AWS_S3_IMAGE_PREFIX } from "../library/constants";
 const { invalidateCdn } = require("../library/cloudfrontClient");
 
-const imagePrefix = `${process.env.AWS_S3_IMAGE_PREFIX}`;
 const localConvertPath = `${process.env.LOCAL_CONVERT_PATH}`;
 const cdnDomain = `${process.env.AWS_CDN_DOMAIN}`;
 
@@ -141,7 +141,7 @@ const create_album = asyncHandler(async (req, res, next) => {
   }
 
   const convertPath = `${localConvertPath}/${newAlbumId}.jpg`;
-  const s3Key = `${imagePrefix}/${newAlbumId}.jpg`;
+  const s3Key = `${AWS_S3_IMAGE_PREFIX}/${newAlbumId}.jpg`;
 
   Jimp.read(uploadPath)
     .then((img) => {
@@ -308,7 +308,7 @@ const update_album_art = asyncHandler(async (req, res, next) => {
   const uploadPath = request.artwork.path;
 
   const convertPath = `${localConvertPath}/${request.albumId}.jpg`;
-  const s3Key = `${imagePrefix}/${request.albumId}.jpg`;
+  const s3Key = `${AWS_S3_IMAGE_PREFIX}/${request.albumId}.jpg`;
 
   log.debug(`Editing album artwork ${request.albumId}`);
 

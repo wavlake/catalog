@@ -12,8 +12,8 @@ import { formatError } from "../library/errors";
 import { isPodcastOwner } from "../library/userHelper";
 import { invalidateCdn } from "../library/cloudfrontClient";
 import { getStatus } from "../library/helpers";
+import { AWS_S3_IMAGE_PREFIX } from "../library/constants";
 
-const imagePrefix = `${process.env.AWS_S3_IMAGE_PREFIX}`;
 const localConvertPath = `${process.env.LOCAL_CONVERT_PATH}`;
 const cdnDomain = `${process.env.AWS_CDN_DOMAIN}`;
 
@@ -91,7 +91,7 @@ export const create_podcast = asyncHandler(async (req, res, next) => {
   // console.log(uploadPath)
 
   const convertPath = `${localConvertPath}/${newPodcastId}.jpg`;
-  const s3Key = `${imagePrefix}/${newPodcastId}.jpg`;
+  const s3Key = `${AWS_S3_IMAGE_PREFIX}/${newPodcastId}.jpg`;
 
   Jimp.read(uploadPath)
     .then((img) => {
@@ -290,7 +290,7 @@ export const update_podcast_art = asyncHandler(async (req, res, next) => {
   const uploadPath = request.artwork.path;
 
   const convertPath = `${localConvertPath}/${request.podcastId}.jpg`;
-  const s3Key = `${imagePrefix}/${request.podcastId}.jpg`;
+  const s3Key = `${AWS_S3_IMAGE_PREFIX}/${request.podcastId}.jpg`;
 
   // Upload new image
   Jimp.read(uploadPath)

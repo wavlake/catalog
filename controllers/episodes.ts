@@ -7,13 +7,10 @@ import asyncHandler from "express-async-handler";
 import { formatError } from "../library/errors";
 import { isEpisodeOwner, isPodcastOwner } from "../library/userHelper";
 import { parseLimit } from "../library/helpers";
-
-const randomSampleSize = process.env.RANDOM_SAMPLE_SIZE;
+import { AWS_S3_EPISODE_PREFIX, AWS_S3_RAW_PREFIX } from "../library/constants";
 
 const s3BucketName = `${process.env.AWS_S3_BUCKET_NAME}`;
 const cdnDomain = `${process.env.AWS_CDN_DOMAIN}`;
-const episodePrefix = `${process.env.AWS_S3_EPISODE_PREFIX}`;
-const rawPrefix = `${process.env.AWS_S3_RAW_PREFIX}`;
 
 export const get_episode = asyncHandler(async (req, res, next) => {
   const { episodeId } = req.params;
@@ -146,9 +143,9 @@ export const create_episode = asyncHandler(async (req, res, next) => {
 
   const newepisodeId = randomUUID();
 
-  const s3RawKey = `${rawPrefix}/${newepisodeId}`;
-  const s3RawUrl = `https://${s3BucketName}.s3.us-east-2.amazonaws.com/${rawPrefix}/${newepisodeId}.${request.extension}`;
-  const s3Key = `${episodePrefix}/${newepisodeId}.mp3`;
+  const s3RawKey = `${AWS_S3_RAW_PREFIX}/${newepisodeId}`;
+  const s3RawUrl = `https://${s3BucketName}.s3.us-east-2.amazonaws.com/${AWS_S3_RAW_PREFIX}/${newepisodeId}.${request.extension}`;
+  const s3Key = `${AWS_S3_EPISODE_PREFIX}/${newepisodeId}.mp3`;
 
   const presignedUrl = await s3Client.generatePresignedUrl({
     key: s3RawKey,

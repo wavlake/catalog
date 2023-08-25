@@ -10,10 +10,10 @@ import { isArtistOwner } from "../library/userHelper";
 import prisma from "../prisma/client";
 const asyncHandler = require("express-async-handler");
 import { formatError } from "../library/errors";
+import { AWS_S3_IMAGE_PREFIX } from "../library/constants";
 const { invalidateCdn } = require("../library/cloudfrontClient");
 const Sentry = require("@sentry/node");
 
-const imagePrefix = `${process.env.AWS_S3_IMAGE_PREFIX}`;
 const localConvertPath = `${process.env.LOCAL_CONVERT_PATH}`;
 const cdnDomain = `${process.env.AWS_CDN_DOMAIN}`;
 
@@ -86,7 +86,7 @@ const create_artist = asyncHandler(async (req, res, next) => {
   // console.log(uploadPath)
 
   const convertPath = `${localConvertPath}/${newArtistId}.jpg`;
-  const s3Key = `${imagePrefix}/${newArtistId}.jpg`;
+  const s3Key = `${AWS_S3_IMAGE_PREFIX}/${newArtistId}.jpg`;
 
   Jimp.read(uploadPath)
     .then((img) => {
@@ -275,7 +275,7 @@ const update_artist_art = asyncHandler(async (req, res, next) => {
   const uploadPath = request.artwork.path;
 
   const convertPath = `${localConvertPath}/${request.artistId}.jpg`;
-  const s3Key = `${imagePrefix}/${request.artistId}.jpg`;
+  const s3Key = `${AWS_S3_IMAGE_PREFIX}/${request.artistId}.jpg`;
 
   // Upload new image
   Jimp.read(uploadPath)

@@ -7,13 +7,12 @@ import { isAlbumOwner, isTrackOwner } from "../library/userHelper";
 import asyncHandler from "express-async-handler";
 import { formatError } from "../library/errors";
 import { parseLimit } from "../library/helpers";
+import { AWS_S3_RAW_PREFIX, AWS_S3_TRACK_PREFIX } from "../library/constants";
 
 const randomSampleSize = process.env.RANDOM_SAMPLE_SIZE;
 
 const s3BucketName = `${process.env.AWS_S3_BUCKET_NAME}`;
 const cdnDomain = `${process.env.AWS_CDN_DOMAIN}`;
-const trackPrefix = `${process.env.AWS_S3_TRACK_PREFIX}`;
-const rawPrefix = `${process.env.AWS_S3_RAW_PREFIX}`;
 
 const get_track = asyncHandler(async (req, res, next) => {
   const request = {
@@ -224,9 +223,9 @@ const create_track = asyncHandler(async (req, res, next) => {
 
   const newTrackId = randomUUID();
 
-  const s3RawKey = `${rawPrefix}/${newTrackId}`;
-  const s3RawUrl = `https://${s3BucketName}.s3.us-east-2.amazonaws.com/${rawPrefix}/${newTrackId}.${request.extension}`;
-  const s3Key = `${trackPrefix}/${newTrackId}.mp3`;
+  const s3RawKey = `${AWS_S3_RAW_PREFIX}/${newTrackId}`;
+  const s3RawUrl = `https://${s3BucketName}.s3.us-east-2.amazonaws.com/${AWS_S3_RAW_PREFIX}/${newTrackId}.${request.extension}`;
+  const s3Key = `${AWS_S3_TRACK_PREFIX}/${newTrackId}.mp3`;
 
   const presignedUrl = await s3Client.generatePresignedUrl({
     key: s3RawKey,
