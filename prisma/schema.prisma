@@ -193,8 +193,8 @@ model Track {
   lyrics          String?
   isProcessing    Boolean?  @default(false) @map("is_processing")
   compressorError Boolean?  @default(false) @map("compressor_error")
-  is_draft        Boolean?  @default(false)
-  published_at    DateTime? @default(now()) @db.Timestamptz(6)
+  isDraft         Boolean?  @default(false) @map("is_draft")
+  publishedAt     DateTime? @default(now()) @db.Timestamptz(6) @map("published_at")
   album           Album     @relation(fields: [albumId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "track_album_id_foreign")
   artist          Artist    @relation(fields: [artistId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "track_artist_id_foreign")
 
