@@ -193,6 +193,8 @@ model Track {
   lyrics          String?
   isProcessing    Boolean?  @default(false) @map("is_processing")
   compressorError Boolean?  @default(false) @map("compressor_error")
+  is_draft        Boolean?  @default(false)
+  published_at    DateTime? @default(now()) @db.Timestamptz(6)
   album           Album     @relation(fields: [albumId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "track_album_id_foreign")
   artist          Artist    @relation(fields: [artistId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "track_artist_id_foreign")
 
@@ -285,24 +287,25 @@ model Subscriber {
 }
 
 model episode {
-  id            String    @id @unique(map: "episode_id_unique") @db.Uuid
-  title         String    @db.VarChar(255)
-  description   String?   @db.VarChar(1000)
-  podcast_id    String    @db.Uuid
-  order         Int
-  play_count    Int?      @default(0)
-  msat_total    BigInt?   @default(0)
-  live_url      String    @db.VarChar(255)
-  raw_url       String?   @db.VarChar(128)
-  size          Int?
-  duration      Int?
-  deleted       Boolean?  @default(false)
-  is_draft      Boolean?  @default(true)
-  is_processing Boolean?  @default(false)
-  created_at    DateTime? @default(now()) @db.Timestamptz(6)
-  updated_at    DateTime? @default(now()) @db.Timestamptz(6)
-  published_at  DateTime? @default(now()) @db.Timestamptz(6)
-  podcast       podcast   @relation(fields: [podcast_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "episode_podcast_id_foreign")
+  id               String    @id @unique(map: "episode_id_unique") @db.Uuid
+  title            String    @db.VarChar(255)
+  description      String?   @db.VarChar(1000)
+  podcast_id       String    @db.Uuid
+  order            Int
+  play_count       Int?      @default(0)
+  msat_total       BigInt?   @default(0)
+  live_url         String    @db.VarChar(255)
+  raw_url          String?   @db.VarChar(128)
+  size             Int?
+  duration         Int?
+  deleted          Boolean?  @default(false)
+  is_draft         Boolean?  @default(true)
+  is_processing    Boolean?  @default(false)
+  created_at       DateTime? @default(now()) @db.Timestamptz(6)
+  updated_at       DateTime? @default(now()) @db.Timestamptz(6)
+  published_at     DateTime? @default(now()) @db.Timestamptz(6)
+  compressor_error Boolean?  @default(false)
+  podcast          podcast   @relation(fields: [podcast_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "episode_podcast_id_foreign")
 
   @@index([podcast_id], map: "idx_episode_podcast_id")
 }
