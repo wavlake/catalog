@@ -225,65 +225,53 @@ const create_album = asyncHandler(async (req, res, next) => {
 });
 
 const update_album = asyncHandler(async (req, res, next) => {
-  const request = {
-    userId: req["uid"],
-    albumId: req.body.albumId,
-    title: req.body.title,
-    description: req.body.description,
-    genreId: req.body.genreId,
-    subgenreId: req.body.subgenreId,
-    isDraft: req.body.isDraft,
-    publishedAt: req.body.publishedAt,
-  };
+  const {
+    albumId,
+    title,
+    description,
+    genreId,
+    subgenreId,
+    isDraft: is_draft,
+    publishedAt: publishedAtString,
+  } = req.body;
+  const uid = req["uid"];
+  const published_at = publishedAtString
+    ? new Date(publishedAtString)
+    : undefined;
+  const updated_at = new Date();
 
-  if (!request.albumId) {
+  if (!albumId) {
     const error = formatError(400, "albumId field is required");
     next(error);
   }
 
   // Check if user owns album
-  const isOwner = await isAlbumOwner(request.userId, request.albumId);
+  const isOwner = await isAlbumOwner(uid, albumId);
 
   if (!isOwner) {
     const error = formatError(403, "User does not own this album");
     next(error);
   }
 
-  log.debug(`Editing album ${request.albumId}`);
-  db.knex("album")
-    .where("id", "=", request.albumId)
-    .update(
-      {
-        title: request.title,
-        description: request.description,
-        updated_at: db.knex.fn.now(),
-        genre_id: request.genreId,
-        subgenre_id: request.subgenreId,
-        is_draft: request.isDraft,
-        published_at: request.publishedAt,
-      },
-      ["*"]
-    )
-    .then((data) => {
-      res.send({
-        success: true,
-        data: {
-          id: data[0]["id"],
-          title: data[0]["title"],
-          artworkUrl: data[0]["artwork_url"],
-          artistId: data[0]["artist_id"],
-          description: data[0]["description"],
-          genreId: data[0]["genre_id"],
-          subgenreId: data[0]["subgenre_id"],
-          isDraft: data[0]["is_draft"],
-          publishedAt: data[0]["published_at"],
-        },
-      });
-    })
-    .catch((err) => {
-      log.debug(`Error editing album ${request.albumId}: ${err}`);
-      next(err);
-    });
+  log.debug(`Editing album ${albumId}`);
+  const updatedAlbum = await prisma.album.update({
+    where: {
+      id: albumId,
+    },
+    data: {
+      title,
+      description,
+      updatedAt: updated_at,
+      genreId,
+      subgenreId,
+      is_draft,
+      published_at,
+    },
+  });
+  res.json({
+    success: true,
+    data: updatedAlbum,
+  });
 });
 
 const update_album_art = asyncHandler(async (req, res, next) => {

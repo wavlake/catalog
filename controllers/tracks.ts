@@ -279,60 +279,54 @@ const create_track = asyncHandler(async (req, res, next) => {
 });
 
 const update_track = asyncHandler(async (req, res, next) => {
-  const request = {
-    userId: req["uid"],
-    trackId: req.body.trackId,
-    title: req.body.title,
-    order: req.body.order,
-    lyrics: req.body.lyrics,
-  };
+  const {
+    trackId,
+    title,
+    order,
+    lyrics,
+    isDraft,
+    publishedAt: publishedAtString,
+  } = req.body;
+  const uid = req["uid"];
 
-  if (!request.trackId) {
-    const error = formatError(403, "trackId field is required");
+  const publishedAt = publishedAtString
+    ? new Date(publishedAtString)
+    : undefined;
+  const updatedAt = new Date();
+
+  if (!trackId) {
+    const error = formatError(400, "trackId field is required");
     next(error);
   }
 
   // Check if user owns track
-  const isOwner = await isTrackOwner(request.userId, request.trackId);
+  const isOwner = await isTrackOwner(uid, trackId);
 
   if (!isOwner) {
     const error = formatError(403, "User does not own this track");
     next(error);
   }
 
-  log.debug(`Editing track ${request.trackId}`);
-  db.knex("track")
-    .where("id", "=", request.trackId)
-    .update(
-      {
-        title: request.title,
-        order: request.order,
-        lyrics: request.lyrics,
-        updated_at: db.knex.fn.now(),
+  log.debug(`Editing track ${trackId}`);
+  try {
+    const updatedTrack = await prisma.track.update({
+      where: {
+        id: trackId,
       },
-      ["*"]
-    )
-    .then((data) => {
-      res.send({
-        success: true,
-        data: {
-          id: data[0]["id"],
-          artistId: data[0]["artist_id"],
-          albumId: data[0]["album_id"],
-          title: data[0]["title"],
-          order: data[0]["order"],
-          duration: data[0]["duration"],
-          liveUrl: data[0]["liveUrl"],
-          rawUrl: data[0]["raw_url"],
-          size: data[0]["size"],
-          lyrics: data[0]["lyrics"],
-        },
-      });
-    })
-    .catch((err) => {
-      log.debug(`Error editing track ${request.trackId}: ${err}`);
-      next(err);
+      data: {
+        title,
+        order,
+        lyrics,
+        updatedAt,
+        isDraft,
+        publishedAt,
+      },
     });
+    res.json({ success: true, data: updatedTrack });
+  } catch (err) {
+    log.debug(`Error editing track ${trackId}: ${err}`);
+    next(err);
+  }
 });
 
 async function getAlbumDetails(albumId) {

@@ -78,7 +78,6 @@ export const create_podcast = asyncHandler(async (req, res, next) => {
     const error = formatError(403, "Podcast name is required");
     next(error);
   }
-
   let uploadPath;
   let isKeeper = false;
   if (!artwork) {
@@ -210,6 +209,7 @@ export const update_podcast = asyncHandler(async (req, res, next) => {
   const publishedAt = publishedAtString
     ? new Date(publishedAtString)
     : undefined;
+  const updatedAt = new Date();
 
   if (!podcastId) {
     const error = formatError(403, "podcastId field is required");
@@ -238,6 +238,7 @@ export const update_podcast = asyncHandler(async (req, res, next) => {
       youtube,
       website,
       isDraft,
+      updatedAt,
       publishedAt,
     },
   });

@@ -197,56 +197,44 @@ export const create_episode = asyncHandler(async (req, res, next) => {
 });
 
 export const update_episode = asyncHandler(async (req, res, next) => {
-  const request = {
-    userId: req["uid"],
-    episodeId: req.body.episodeId,
-    title: req.body.title,
-    order: req.body.order,
-    lyrics: req.body.lyrics,
-  };
+  const {
+    episodeId,
+    title,
+    order,
+    isDraft: is_draft,
+    publishedAt: publishedAtString,
+  } = req.body;
+  const uid = req["uid"];
+  const published_at = publishedAtString
+    ? new Date(publishedAtString)
+    : undefined;
+  const updated_at = new Date();
 
-  if (!request.episodeId) {
+  if (!episodeId) {
     const error = formatError(403, "episodeId field is required");
     next(error);
   }
 
   // Check if user owns episode
-  const isOwner = await isEpisodeOwner(request.userId, request.episodeId);
+  const isOwner = await isEpisodeOwner(uid, episodeId);
 
   if (!isOwner) {
     const error = formatError(403, "User does not own this episode");
     next(error);
   }
 
-  log.debug(`Editing episode ${request.episodeId}`);
-  db.knex("episode")
-    .where("id", "=", request.episodeId)
-    .update(
-      {
-        title: request.title,
-        order: request.order,
-        lyrics: request.lyrics,
-        updated_at: db.knex.fn.now(),
-      },
-      ["*"]
-    )
-    .then((data) => {
-      res.send({
-        success: true,
-        data: {
-          id: data[0]["id"],
-          podcastId: data[0]["podcast_id"],
-          title: data[0]["title"],
-          order: data[0]["order"],
-          duration: data[0]["duration"],
-          liveUrl: data[0]["liveUrl"],
-          rawUrl: data[0]["raw_url"],
-          size: data[0]["size"],
-        },
-      });
-    })
-    .catch((err) => {
-      log.debug(`Error editing episode ${request.episodeId}: ${err}`);
-      next(err);
-    });
+  log.debug(`Editing episode ${episodeId}`);
+  const updatedTrack = await prisma.episode.update({
+    where: {
+      id: episodeId,
+    },
+    data: {
+      title,
+      order,
+      updated_at,
+      is_draft,
+      published_at,
+    },
+  });
+  res.json({ success: true, data: updatedTrack });
 });
