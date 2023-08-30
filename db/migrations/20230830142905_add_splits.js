@@ -5,14 +5,9 @@ exports.up = function (knex) {
       .alterTable("amp", function (table) {
         // split_tx column is a way to group splits that were created from the same tx
         table.uuid("split_tx").defaultTo(null).index("idx_amp_split");
-        // split_source is the originator of the tx
-        table
-          .string("split_source")
-          .defaultTo(null)
-          .index("idx_amp_split_source");
         // split_destination is the destination of the tx (typically a user)
         table
-          .string("split_destination")
+          .uuid("split_destination")
           .defaultTo(null)
           .index("idx_amp_split_destination");
         // content_type describes track or podcast
@@ -76,9 +71,8 @@ exports.down = function (knex) {
   return knex.schema
     .alterTable("amp", function (table) {
       table.string("source_region");
-      table.dropColumn("split");
+      table.dropColumn("split_tx");
       table.dropColumn("split_destination");
-      table.dropColumn("split_source");
       table.dropColumn("content_type");
     })
     .dropTableIfExists("split_recipient")
