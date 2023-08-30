@@ -59,36 +59,34 @@ export const get_podcast_by_url = asyncHandler(async (req, res, next) => {
 
 export const create_podcast = asyncHandler(async (req, res, next) => {
   const newPodcastId = randomUUID();
+  const {
+    name,
+    description,
+    twitter,
+    npub,
+    instagram,
+    youtube,
+    website,
+    // default to draft if not specified
+    isDraft = true,
+  } = req.body;
 
-  const request = {
-    artwork: req.file,
-    userId: req["uid"], //required, should come in with auth
-    name: req.body.name, // required
-    description: req.body.description ? req.body.description : "",
-    twitter: req.body.twitter ? req.body.twitter : "",
-    nostr: req.body.nostr ? req.body.nostr : "",
-    instagram: req.body.instagram ? req.body.instagram : "",
-    youtube: req.body.youtube ? req.body.youtube : "",
-    website: req.body.website ? req.body.website : "",
-    isDraft: req.body.isDraft ? req.body.isDraft : false,
-  };
+  const userId = req["uid"];
+  const artwork = req.file;
 
-  if (!request.name) {
+  if (!name) {
     const error = formatError(403, "Podcast name is required");
     next(error);
   }
 
   let uploadPath;
   let isKeeper = false;
-  if (!request.artwork) {
+  if (!artwork) {
     uploadPath = "./graphics/wavlake-icon-750.png";
     isKeeper = true;
   } else {
-    uploadPath = request.artwork.path;
+    uploadPath = artwork.path;
   }
-
-  // console.log(request.image)
-  // console.log(uploadPath)
 
   const convertPath = `${localConvertPath}/${newPodcastId}.jpg`;
   const s3Key = `${AWS_S3_IMAGE_PREFIX}/${newPodcastId}.jpg`;
@@ -112,24 +110,24 @@ export const create_podcast = asyncHandler(async (req, res, next) => {
               .insert(
                 {
                   id: newPodcastId,
-                  user_id: request.userId,
-                  name: request.name,
-                  description: request.description,
-                  twitter: request.twitter,
-                  instagram: request.instagram,
-                  npub: request.nostr,
-                  youtube: request.youtube,
-                  website: request.website,
+                  user_id: userId,
+                  name,
+                  description,
+                  twitter,
+                  instagram,
+                  npub,
+                  youtube,
+                  website,
                   artwork_url: liveUrl,
-                  podcast_url: format.urlFriendly(request.name),
-                  is_draft: request.isDraft,
+                  podcast_url: format.urlFriendly(name),
+                  is_draft: isDraft,
                   published_at: db.knex.fn.now(),
                 },
                 ["*"]
               )
               .then((data) => {
                 log.debug(
-                  `Created new podcast ${request.name} with id: ${data[0]["id"]}`
+                  `Created new podcast ${name} with id: ${data[0]["id"]}`
                 );
 
                 // Clean up with async calls to avoid blocking response
@@ -195,76 +193,56 @@ export const create_podcast = asyncHandler(async (req, res, next) => {
 });
 
 export const update_podcast = asyncHandler(async (req, res, next) => {
-  const request = {
-    userId: req["uid"],
-    podcastId: req.body.podcastId,
-    name: req.body.name,
-    description: req.body.description,
-    twitter: req.body.twitter,
-    nostr: req.body.nostr,
-    instagram: req.body.instagram,
-    youtube: req.body.youtube,
-    website: req.body.website,
-    isDraft: req.body.isDraft,
-    publishedAt: req.body.publishedAt,
-  };
+  const {
+    podcastId,
+    name,
+    description,
+    twitter,
+    npub,
+    instagram,
+    youtube,
+    website,
+    isDraft,
+    publishedAt: publishedAtString,
+  } = req.body;
+  const uid = req["uid"];
 
-  if (!request.podcastId) {
+  const publishedAt = publishedAtString
+    ? new Date(publishedAtString)
+    : undefined;
+
+  if (!podcastId) {
     const error = formatError(403, "podcastId field is required");
     next(error);
   }
 
   // Check if user owns podcast
-  const isOwner = await isPodcastOwner(request.userId, request.podcastId);
+  const isOwner = await isPodcastOwner(uid, podcastId);
 
   if (!isOwner) {
     const error = formatError(403, "User does not own this podcast");
     next(error);
   }
 
-  log.debug(`Editing podcast ${request.podcastId}`);
-  db.knex("podcast")
-    .where("id", "=", request.podcastId)
-    .update(
-      {
-        name: request.name,
-        description: request.description,
-        twitter: request.twitter,
-        instagram: request.instagram,
-        npub: request.nostr,
-        youtube: request.youtube,
-        website: request.website,
-        podcast_url: format.urlFriendly(request.name),
-        is_draft: request.isDraft,
-        published_at: request.publishedAt,
-      },
-      ["*"]
-    )
-    .then((data) => {
-      res.send({
-        success: true,
-        data: {
-          id: data[0]["id"],
-          userId: data[0]["user_id"],
-          name: data[0]["name"],
-          description: data[0]["description"],
-          twitter: data[0]["twitter"],
-          instagram: data[0]["instagram"],
-          npub: data[0]["npub"],
-          youtube: data[0]["youtube"],
-          website: data[0]["website"],
-          artworkUrl: data[0]["artwork_url"],
-          podcastUrl: data[0]["podcast_url"],
-          isDraft: data[0]["is_draft"],
-          publishedAt: data[0]["published_at"],
-        },
-      });
-    })
-    .catch((err) => {
-      console.log(err);
-      log.debug(`Error editing podcast ${request.podcastId}: ${err}`);
-      next(err);
-    });
+  log.debug(`Editing podcast ${podcastId}`);
+  const updatedPodcast = await prisma.podcast.update({
+    where: {
+      id: podcastId,
+    },
+    data: {
+      name,
+      description,
+      twitter,
+      npub,
+      instagram,
+      youtube,
+      website,
+      isDraft,
+      publishedAt,
+    },
+  });
+
+  res.json({ success: true, data: updatedPodcast });
 });
 
 export const update_podcast_art = asyncHandler(async (req, res, next) => {
