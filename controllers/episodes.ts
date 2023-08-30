@@ -201,14 +201,14 @@ export const update_episode = asyncHandler(async (req, res, next) => {
     episodeId,
     title,
     order,
-    isDraft: is_draft,
+    isDraft,
     publishedAt: publishedAtString,
   } = req.body;
   const uid = req["uid"];
-  const published_at = publishedAtString
+  const publishedAt = publishedAtString
     ? new Date(publishedAtString)
     : undefined;
-  const updated_at = new Date();
+  const updatedAt = new Date();
 
   if (!episodeId) {
     const error = formatError(403, "episodeId field is required");
@@ -231,9 +231,9 @@ export const update_episode = asyncHandler(async (req, res, next) => {
     data: {
       title,
       order,
-      updated_at,
-      is_draft,
-      published_at,
+      updatedAt,
+      isDraft,
+      publishedAt,
     },
   });
   res.json({ success: true, data: updatedTrack });

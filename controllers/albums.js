@@ -231,14 +231,14 @@ const update_album = asyncHandler(async (req, res, next) => {
     description,
     genreId,
     subgenreId,
-    isDraft: is_draft,
+    isDraft,
     publishedAt: publishedAtString,
   } = req.body;
   const uid = req["uid"];
-  const published_at = publishedAtString
+  const publishedAt = publishedAtString
     ? new Date(publishedAtString)
     : undefined;
-  const updated_at = new Date();
+  const updatedAt = new Date();
 
   if (!albumId) {
     const error = formatError(400, "albumId field is required");
@@ -261,11 +261,11 @@ const update_album = asyncHandler(async (req, res, next) => {
     data: {
       title,
       description,
-      updatedAt: updated_at,
+      updatedAt,
       genreId,
       subgenreId,
-      is_draft,
-      published_at,
+      isDraft,
+      publishedAt,
     },
   });
   res.json({
