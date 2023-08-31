@@ -7,7 +7,7 @@ exports.up = function (knex) {
         table.uuid("split_tx").defaultTo(null).index("idx_amp_split");
         // split_destination is the destination of the tx (typically a user)
         table
-          .uuid("split_destination")
+          .string("split_destination", 64)
           .defaultTo(null)
           .index("idx_amp_split_destination");
         // content_type describes track or podcast
@@ -36,7 +36,7 @@ exports.up = function (knex) {
           .index("idx_split_recipient_split_id");
         table.foreign("split_id").references("split.id");
         table
-          .uuid("user_id")
+          .string("user_id", 64)
           .notNullable()
           .index("idx_split_recipient_user_id");
         table
