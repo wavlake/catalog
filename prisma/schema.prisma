@@ -347,11 +347,11 @@ model zap_request {
 }
 
 model Split {
-  id             Int              @id @default(autoincrement())
-  contentId      String           @map("content_id") @db.Uuid
-  contentType    String?          @default("track") @map("content_type") @db.VarChar(12)
-  createdAt      DateTime?        @default(now()) @map("created_at") @db.Timestamptz(6)
-  splitRecipient SplitRecipient[]
+  id              Int              @id @default(autoincrement())
+  contentId       String           @unique(map: "split_content_id_unique") @map("content_id") @db.Uuid
+  contentType     String?          @default("track") @map("content_type") @db.VarChar(12)
+  createdAt       DateTime?        @default(now()) @map("created_at") @db.Timestamptz(6)
+  splitRecipients SplitRecipient[]
 
   @@index([contentId], map: "idx_split_content_id")
   @@index([contentType], map: "idx_split_content_type")
@@ -379,8 +379,8 @@ model TimeSplit {
   contentId        String    @map("content_id") @db.Uuid
   shareNumerator   Int       @map("share_numerator") @db.SmallInt
   shareDenominator Int       @map("share_denominator") @db.SmallInt
-  startSeconds     Int       @db.SmallInt @map("start_seconds")
-  endSeconds       Int       @db.SmallInt @map("end_seconds")
+  startSeconds     Int       @map("start_seconds") @db.SmallInt
+  endSeconds       Int       @map("end_seconds") @db.SmallInt
   createdAt        DateTime? @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt        DateTime? @default(now()) @map("updated_at") @db.Timestamptz(6)
 

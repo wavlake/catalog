@@ -2,6 +2,26 @@ import db from "./db";
 const log = require("loglevel");
 const Sentry = require("@sentry/node");
 
+export async function isContentOwner(
+  userId: string,
+  contentId: string,
+  contentType: string
+): Promise<boolean> {
+  switch (contentType) {
+    case "track":
+      return isTrackOwner(userId, contentId);
+    case "episode":
+      return isEpisodeOwner(userId, contentId);
+    case "album":
+      return isAlbumOwner(userId, contentId);
+    case "podcast":
+      return isPodcastOwner(userId, contentId);
+
+    default:
+      return false;
+  }
+}
+
 export async function isTrackOwner(
   userId: string,
   trackId: string
