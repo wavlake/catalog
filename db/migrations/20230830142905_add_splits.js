@@ -5,6 +5,11 @@ exports.up = function (knex) {
       .alterTable("amp", function (table) {
         // split_tx column is a way to group splits that were created from the same tx
         table.uuid("split_tx").defaultTo(null).index("idx_amp_split");
+        // time_split_source is the content set the time split
+        table
+          .uuid("time_split_source")
+          .defaultTo(null)
+          .index("idx_amp_time_split_source");
         // split_destination is the destination of the tx (typically a user)
         table
           .string("split_destination", 64)
