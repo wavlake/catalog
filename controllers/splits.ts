@@ -1,13 +1,11 @@
 import prisma from "../prisma/client";
-import db from "../library/db";
-import log from "loglevel";
 import asyncHandler from "express-async-handler";
 import { SplitRecipient } from "@prisma/client";
 import { formatError } from "../library/errors";
 import { isContentOwner } from "../library/userHelper";
 
 const create_split = asyncHandler(async (req, res, next) => {
-  const { contentId, contentType, splits } = req.body;
+  const { contentId, contentType, splitRecipients } = req.body;
   const userId = req["uid"];
 
   // Does user own this content?
@@ -18,7 +16,7 @@ const create_split = asyncHandler(async (req, res, next) => {
     next(error);
   }
 
-  const splitRecipients: SplitRecipient[] = splits.map((split) => {
+  const newSplits: SplitRecipient[] = splitRecipients.map((split) => {
     return {
       userId: split.userId,
       share: split.splitPercentage,
@@ -30,12 +28,12 @@ const create_split = asyncHandler(async (req, res, next) => {
       data: {
         contentId: contentId,
         contentType: contentType,
-        splitRecipient: {
-          createMany: { data: splitRecipients },
+        splitRecipients: {
+          createMany: { data: newSplits },
         },
       },
       include: {
-        splitRecipient: true,
+        splitRecipients: true,
       },
     });
 
@@ -65,7 +63,7 @@ const get_split = asyncHandler(async (req, res, next) => {
         contentType: contentType,
       },
       include: {
-        splitRecipient: true,
+        splitRecipients: true,
       },
     });
 
@@ -77,7 +75,7 @@ const get_split = asyncHandler(async (req, res, next) => {
 });
 
 const update_split = asyncHandler(async (req, res, next) => {
-  const { contentId, contentType, splits } = req.body;
+  const { contentId, contentType, splitRecipients } = req.body;
   const userId = req["uid"];
 
   // Does user own this content?
@@ -103,7 +101,7 @@ const update_split = asyncHandler(async (req, res, next) => {
     next(error);
   }
 
-  const splitRecipients: SplitRecipient[] = splits.map((split) => {
+  const newSplits: SplitRecipient[] = splitRecipients.map((split) => {
     return {
       userId: split.userId,
       share: split.splitPercentage,
@@ -118,13 +116,13 @@ const update_split = asyncHandler(async (req, res, next) => {
       data: {
         contentId: contentId,
         contentType: contentType,
-        splitRecipient: {
+        splitRecipients: {
           deleteMany: {},
-          createMany: { data: splitRecipients },
+          createMany: { data: newSplits },
         },
       },
       include: {
-        splitRecipient: true,
+        splitRecipients: true,
       },
     });
 
