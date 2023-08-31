@@ -28,12 +28,12 @@ const create_split = asyncHandler(async (req, res, next) => {
       data: {
         contentId: contentId,
         contentType: contentType,
-        splitRecipient: {
+        splitRecipients: {
           createMany: { data: newSplits },
         },
       },
       include: {
-        splitRecipient: true,
+        splitRecipients: true,
       },
     });
 
@@ -63,7 +63,7 @@ const get_split = asyncHandler(async (req, res, next) => {
         contentType: contentType,
       },
       include: {
-        splitRecipient: true,
+        splitRecipients: true,
       },
     });
 
@@ -116,13 +116,13 @@ const update_split = asyncHandler(async (req, res, next) => {
       data: {
         contentId: contentId,
         contentType: contentType,
-        splitRecipient: {
+        splitRecipients: {
           deleteMany: {},
           createMany: { data: newSplits },
         },
       },
       include: {
-        splitRecipient: true,
+        splitRecipients: true,
       },
     });
 
