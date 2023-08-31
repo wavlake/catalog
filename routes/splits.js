@@ -10,6 +10,11 @@ const router = express.Router();
 //////// ROUTES ////////
 
 router.post("/", isAuthorized, splitsController.create_split);
+router.get(
+  "/:contentId/:contentType",
+  isAuthorized,
+  splitsController.get_split
+);
 
 // Export router
 export default router;
