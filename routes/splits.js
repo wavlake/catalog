@@ -15,6 +15,6 @@ router.get(
   isAuthorized,
   splitsController.get_split
 );
-
+router.put("/update", isAuthorized, splitsController.update_split);
 // Export router
 export default router;
