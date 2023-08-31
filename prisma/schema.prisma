@@ -379,6 +379,8 @@ model TimeSplit {
   contentId        String    @map("content_id") @db.Uuid
   shareNumerator   Int       @map("share_numerator") @db.SmallInt
   shareDenominator Int       @map("share_denominator") @db.SmallInt
+  startSeconds     Int       @db.SmallInt @map("start_seconds")
+  endSeconds       Int       @db.SmallInt @map("end_seconds")
   createdAt        DateTime? @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt        DateTime? @default(now()) @map("updated_at") @db.Timestamptz(6)
 

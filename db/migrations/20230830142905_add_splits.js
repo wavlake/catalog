@@ -65,7 +65,15 @@ exports.up = function (knex) {
         table
           .smallint("share_denominator")
           .notNullable()
-          .checkPositive("time_split_share_denomitor_check");
+          .checkPositive("time_split_share_denominator_check");
+        table
+          .smallint("start_seconds")
+          .notNullable()
+          .checkPositive("time_split_start_seconds_check");
+        table
+          .smallint("end_seconds")
+          .notNullable()
+          .checkPositive("time_split_end_seconds_check");
         table.timestamp("created_at").defaultTo(knex.fn.now());
         table.timestamp("updated_at").defaultTo(knex.fn.now());
       })
@@ -76,6 +84,7 @@ exports.down = function (knex) {
   return knex.schema
     .alterTable("amp", function (table) {
       table.string("source_region");
+      table.dropColumn("time_split_source");
       table.dropColumn("split_tx");
       table.dropColumn("split_destination");
       table.dropColumn("content_type");
