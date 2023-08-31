@@ -344,41 +344,44 @@ model zap_request {
   @@index([payment_hash], map: "idx_zap_payment_hash")
 }
 
-model split {
-  id              Int               @id @default(autoincrement())
-  content_id      String            @db.Uuid
-  content_type    String?           @default("track") @db.VarChar(12)
-  created_at      DateTime?         @default(now()) @db.Timestamptz(6)
-  split_recipient split_recipient[]
+model Split {
+  id             Int              @id @default(autoincrement())
+  contentId      String           @map("content_id") @db.Uuid
+  contentType    String?          @default("track") @map("content_type") @db.VarChar(12)
+  createdAt      DateTime?        @default(now()) @map("created_at") @db.Timestamptz(6)
+  splitRecipient SplitRecipient[]
 
-  @@index([content_id], map: "idx_split_content_id")
-  @@index([content_type], map: "idx_split_content_type")
+  @@index([contentId], map: "idx_split_content_id")
+  @@index([contentType], map: "idx_split_content_type")
+  @@map("split")
 }
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
-model split_recipient {
-  id         Int       @id @default(autoincrement())
-  split_id   Int
-  user_id    String    @db.VarChar(64)
-  share      Int       @db.SmallInt
-  created_at DateTime? @default(now()) @db.Timestamptz(6)
-  updated_at DateTime? @default(now()) @db.Timestamptz(6)
-  split      split     @relation(fields: [split_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "split_recipient_split_id_foreign")
+model SplitRecipient {
+  id        Int       @id @default(autoincrement())
+  splitId   Int       @map("split_id")
+  userId    String    @map("user_id") @db.VarChar(64)
+  share     Int       @db.SmallInt
+  createdAt DateTime? @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime? @default(now()) @map("updated_at") @db.Timestamptz(6)
+  split     Split     @relation(fields: [splitId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "split_recipient_split_id_foreign")
 
-  @@index([split_id], map: "idx_split_recipient_split_id")
-  @@index([user_id], map: "idx_split_recipient_user_id")
+  @@index([splitId], map: "idx_split_recipient_split_id")
+  @@index([userId], map: "idx_split_recipient_user_id")
+  @@map("split_recipient")
 }
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
-model time_split {
-  id                Int       @id @default(autoincrement())
-  content_id        String    @db.Uuid
-  share_numerator   Int       @db.SmallInt
-  share_denominator Int       @db.SmallInt
-  created_at        DateTime? @default(now()) @db.Timestamptz(6)
-  updated_at        DateTime? @default(now()) @db.Timestamptz(6)
+model TimeSplit {
+  id               Int       @id @default(autoincrement())
+  contentId        String    @map("content_id") @db.Uuid
+  shareNumerator   Int       @map("share_numerator") @db.SmallInt
+  shareDenominator Int       @map("share_denominator") @db.SmallInt
+  createdAt        DateTime? @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime? @default(now()) @map("updated_at") @db.Timestamptz(6)
 
-  @@index([content_id], map: "idx_time_split_content_id")
+  @@index([contentId], map: "idx_time_split_content_id")
+  @@map("time_split")
 }
 
 view TrackInfo {
