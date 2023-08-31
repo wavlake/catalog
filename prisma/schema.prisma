@@ -42,19 +42,26 @@ model Album {
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 model Amp {
-  id            Int       @id @default(autoincrement())
-  track_id      String    @db.Uuid
-  user_id       String    @db.VarChar(255)
-  msat_amount   Int
-  created_at    DateTime? @default(now()) @db.Timestamptz(6)
-  source_region String?   @db.VarChar(255)
-  comment       Boolean   @default(false)
-  fee_msat      Int?      @default(0)
-  type          Int?
-  type_key      Int?
+  id                Int       @id @default(autoincrement())
+  track_id          String    @db.Uuid
+  user_id           String    @db.VarChar(255)
+  msat_amount       Int
+  created_at        DateTime? @default(now()) @db.Timestamptz(6)
+  comment           Boolean   @default(false)
+  fee_msat          Int?      @default(0)
+  type              Int?
+  type_key          Int?
+  split_tx          String?   @db.Uuid
+  time_split_source String?   @db.Uuid
+  split_destination String?   @db.VarChar(64)
+  content_type      String?   @default("track") @db.VarChar(12)
 
   @@index([track_id], map: "idx_amp_track_id")
   @@index([user_id], map: "idx_amp_user_id")
+  @@index([content_type], map: "idx_amp_content_type")
+  @@index([split_tx], map: "idx_amp_split")
+  @@index([split_destination], map: "idx_amp_split_destination")
+  @@index([time_split_source], map: "idx_amp_time_split_source")
   @@map("amp")
 }
 
@@ -281,24 +288,25 @@ model Subscriber {
 }
 
 model Episode {
-  id           String    @id @unique(map: "episode_id_unique") @db.Uuid
-  title        String    @db.VarChar(255)
-  description  String?   @db.VarChar(1000)
-  podcastId    String    @map("podcast_id") @db.Uuid
-  order        Int
-  playCount    Int?      @default(0) @map("play_count")
-  msatTotal    BigInt?   @default(0) @map("msat_total")
-  liveUrl      String    @map("live_url") @db.VarChar(255)
-  rawUrl       String?   @map("raw_url") @db.VarChar(128)
-  size         Int?
-  duration     Int?
-  deleted      Boolean?  @default(false)
-  isDraft      Boolean?  @default(true) @map("is_draft")
-  isProcessing Boolean?  @default(false) @map("is_processing")
-  createdAt    DateTime? @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt    DateTime? @default(now()) @map("updated_at") @db.Timestamptz(6)
-  publishedAt  DateTime? @default(now()) @map("published_at") @db.Timestamptz(6)
-  podcast      Podcast   @relation(fields: [podcastId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "episode_podcast_id_foreign")
+  id               String    @id @unique(map: "episode_id_unique") @db.Uuid
+  title            String    @db.VarChar(255)
+  description      String?   @db.VarChar(1000)
+  podcastId        String    @map("podcast_id") @db.Uuid
+  order            Int
+  playCount        Int?      @default(0) @map("play_count")
+  msatTotal        BigInt?   @default(0) @map("msat_total")
+  liveUrl          String    @map("live_url") @db.VarChar(255)
+  rawUrl           String?   @map("raw_url") @db.VarChar(128)
+  size             Int?
+  duration         Int?
+  deleted          Boolean?  @default(false)
+  isDraft          Boolean?  @default(true) @map("is_draft")
+  isProcessing     Boolean?  @default(false) @map("is_processing")
+  createdAt        DateTime? @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime? @default(now()) @map("updated_at") @db.Timestamptz(6)
+  publishedAt      DateTime? @default(now()) @map("published_at") @db.Timestamptz(6)
+  compressor_error Boolean?  @default(false)
+  podcast          Podcast   @relation(fields: [podcastId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "episode_podcast_id_foreign")
 
   @@index([podcastId], map: "idx_episode_podcast_id")
   @@map("episode")
@@ -336,6 +344,48 @@ model zap_request {
   created_at   DateTime? @default(now()) @db.Timestamptz(6)
 
   @@index([payment_hash], map: "idx_zap_payment_hash")
+}
+
+model Split {
+  id             Int              @id @default(autoincrement())
+  contentId      String           @map("content_id") @db.Uuid
+  contentType    String?          @default("track") @map("content_type") @db.VarChar(12)
+  createdAt      DateTime?        @default(now()) @map("created_at") @db.Timestamptz(6)
+  splitRecipient SplitRecipient[]
+
+  @@index([contentId], map: "idx_split_content_id")
+  @@index([contentType], map: "idx_split_content_type")
+  @@map("split")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model SplitRecipient {
+  id        Int       @id @default(autoincrement())
+  splitId   Int       @map("split_id")
+  userId    String    @map("user_id") @db.VarChar(64)
+  share     Int       @db.SmallInt
+  createdAt DateTime? @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime? @default(now()) @map("updated_at") @db.Timestamptz(6)
+  split     Split     @relation(fields: [splitId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "split_recipient_split_id_foreign")
+
+  @@index([splitId], map: "idx_split_recipient_split_id")
+  @@index([userId], map: "idx_split_recipient_user_id")
+  @@map("split_recipient")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model TimeSplit {
+  id               Int       @id @default(autoincrement())
+  contentId        String    @map("content_id") @db.Uuid
+  shareNumerator   Int       @map("share_numerator") @db.SmallInt
+  shareDenominator Int       @map("share_denominator") @db.SmallInt
+  startSeconds     Int       @db.SmallInt @map("start_seconds")
+  endSeconds       Int       @db.SmallInt @map("end_seconds")
+  createdAt        DateTime? @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime? @default(now()) @map("updated_at") @db.Timestamptz(6)
+
+  @@index([contentId], map: "idx_time_split_content_id")
+  @@map("time_split")
 }
 
 view TrackInfo {
