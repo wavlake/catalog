@@ -120,6 +120,7 @@ export const create_episode = asyncHandler(async (req, res, next) => {
   const request = {
     podcastId: req.body.podcastId,
     title: req.body.title,
+    description: req.body.description,
     userId: req["uid"],
     order: req.body.order == "" ? 0 : parseInt(req.body.order),
     extension: req.body.extension ?? "mp3",
@@ -161,7 +162,7 @@ export const create_episode = asyncHandler(async (req, res, next) => {
     .insert(
       {
         id: newepisodeId,
-        // artist_id: albumDetails.artistId,
+        description: request.description,
         podcast_id: request.podcastId,
         live_url: liveUrl,
         title: request.title,
@@ -200,6 +201,7 @@ export const update_episode = asyncHandler(async (req, res, next) => {
   const {
     episodeId,
     title,
+    description,
     order,
     isDraft,
     publishedAt: publishedAtString,
@@ -230,6 +232,7 @@ export const update_episode = asyncHandler(async (req, res, next) => {
     },
     data: {
       title,
+      description,
       order,
       updatedAt,
       isDraft,

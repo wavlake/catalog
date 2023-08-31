@@ -360,9 +360,10 @@ view TrackInfo {
   @@map("track_info")
 }
 
-view EpisodeInfo {
+view episodeInfo {
   id              String    @unique @db.Uuid
   title           String?   @db.VarChar(255)
+  description     String?   @db.VarChar(1000)
   podcast         String?   @db.VarChar(255)
   podcastUrl      String?   @db.VarChar(255)
   artworkUrl      String?   @db.VarChar(255)

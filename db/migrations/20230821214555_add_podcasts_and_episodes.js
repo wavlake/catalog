@@ -51,6 +51,7 @@ exports.up = function (knex) {
       view.columns([
         "id",
         "title",
+        "description",
         "podcast",
         "podcastUrl",
         "artworkUrl",
@@ -69,6 +70,7 @@ exports.up = function (knex) {
           `select 
           episode.id as id, 
           episode.title as title,
+          episode.description as description,
           podcast.name as podcast,
           podcast.podcast_url as podcastUrl,
           podcast.artwork_url as artworkUrl,
