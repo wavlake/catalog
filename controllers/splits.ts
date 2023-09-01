@@ -63,6 +63,12 @@ const parseSplitsAndValidateUsername = async (
 
 const create_split = asyncHandler(async (req, res, next) => {
   const { contentId, contentType, splitRecipients } = req.body;
+  if (splitRecipients.length === 0) {
+    const error = formatError(400, "Must include at least one split recipient");
+    next(error);
+    return;
+  }
+
   const userId = req["uid"];
 
   // Does user own this content?
