@@ -8,25 +8,54 @@ type ValidatedSplitReceipient = Partial<SplitRecipient> & {
   username?: string;
   error?: boolean;
 };
-const parseSplitsAndValidateUsername = async (
-  split
-): Promise<ValidatedSplitReceipient> => {
-  const { name: username, splitPercentage: share } = split;
-  const usernameMatch = await prisma.user.findFirst({
-    where: {
-      name: username,
-    },
-    select: {
-      id: true,
-    },
-  });
 
-  return {
-    userId: usernameMatch?.id,
-    share,
-    username,
-    error: !usernameMatch,
-  };
+const parseSplitsAndValidateUsername = async (
+  frontendSplits: any,
+  next: any
+): Promise<{ userId: string; share: number }[]> => {
+  const validatedSplits = await Promise.all<ValidatedSplitReceipient>(
+    frontendSplits.map(async (split) => {
+      const { name: username, splitPercentage: share } = split;
+      const usernameMatch = await prisma.user.findFirst({
+        where: {
+          name: username,
+        },
+        select: {
+          id: true,
+        },
+      });
+
+      return {
+        userId: usernameMatch?.id,
+        share,
+        username,
+        error: !usernameMatch,
+      };
+    })
+  );
+
+  const invalidUserNames = validatedSplits
+    .filter((split) => split.error)
+    .map((split) => split.username);
+
+  if (!!invalidUserNames.length) {
+    const error = formatError(
+      404,
+      `Username${
+        invalidUserNames.length === 1 ? "" : "s"
+      } not found: ${invalidUserNames.join(", ")}`
+    );
+    next(error);
+    return [];
+  }
+
+  return validatedSplits.map((split) => {
+    const { userId, share } = split;
+    return {
+      userId,
+      share,
+    };
+  });
 };
 
 const create_split = asyncHandler(async (req, res, next) => {
@@ -39,33 +68,15 @@ const create_split = asyncHandler(async (req, res, next) => {
   if (!isOwner) {
     const error = formatError(403, "User does not own this content");
     next(error);
-  }
-
-  const newSplits = await Promise.all<ValidatedSplitReceipient>(
-    splitRecipients.map(parseSplitsAndValidateUsername)
-  );
-  const invalidUserNames = newSplits
-    .filter((split) => split.error)
-    .map((split) => split.username);
-
-  if (!!invalidUserNames.length) {
-    const error = formatError(
-      404,
-      `Username${
-        invalidUserNames.length === 1 ? "" : "s"
-      } not found: ${invalidUserNames.join(", ")}`
-    );
-    next(error);
     return;
   }
-
-  const newSplitsForDb = newSplits.map((split) => {
-    const { userId, share } = split;
-    return {
-      userId,
-      share,
-    };
-  });
+  const newSplitsForDb = await parseSplitsAndValidateUsername(
+    splitRecipients,
+    next
+  );
+  if (!newSplitsForDb.length) {
+    return;
+  }
 
   try {
     const split = await prisma.split.create({
@@ -85,6 +96,7 @@ const create_split = asyncHandler(async (req, res, next) => {
   } catch (e) {
     const error = formatError(500, `${e.code}: ${e.message}`);
     next(error);
+    return;
   }
 });
 
@@ -98,6 +110,7 @@ const get_split = asyncHandler(async (req, res, next) => {
   if (!isOwner) {
     const error = formatError(403, "User does not own this content");
     next(error);
+    return;
   }
 
   try {
@@ -128,6 +141,7 @@ const update_split = asyncHandler(async (req, res, next) => {
   if (!isOwner) {
     const error = formatError(403, "User does not own this content");
     next(error);
+    return;
   }
 
   const splitId = await prisma.split.findFirst({
@@ -141,35 +155,19 @@ const update_split = asyncHandler(async (req, res, next) => {
   });
 
   if (!splitId) {
+    console.log("split not found");
     const error = formatError(404, "Split not found");
-    next(error);
-  }
-
-  const newSplits = await Promise.all<ValidatedSplitReceipient>(
-    splitRecipients.map(parseSplitsAndValidateUsername)
-  );
-  const invalidUserNames = newSplits
-    .filter((split) => split.error)
-    .map((split) => split.username);
-
-  if (!!invalidUserNames.length) {
-    const error = formatError(
-      404,
-      `Username${
-        invalidUserNames.length === 1 ? "" : "s"
-      } not found: ${invalidUserNames.join(", ")}`
-    );
     next(error);
     return;
   }
 
-  const newSplitsForDb = newSplits.map((split) => {
-    const { userId, share } = split;
-    return {
-      userId,
-      share,
-    };
-  });
+  const newSplitsForDb = await parseSplitsAndValidateUsername(
+    splitRecipients,
+    next
+  );
+  if (!newSplitsForDb.length) {
+    return;
+  }
 
   try {
     const split = await prisma.split.update({
