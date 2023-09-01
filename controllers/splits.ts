@@ -2,7 +2,7 @@ import prisma from "../prisma/client";
 import asyncHandler from "express-async-handler";
 import { SplitRecipient } from "@prisma/client";
 import { formatError } from "../library/errors";
-import { isContentOwner } from "../library/userHelper";
+import { SplitContentTypes, isContentOwner } from "../library/userHelper";
 
 type ValidatedSplitReceipient = Partial<SplitRecipient> & {
   username?: string;
@@ -116,7 +116,11 @@ const get_split = asyncHandler(async (req, res, next) => {
   const userId = req["uid"];
 
   // Does user own this content?
-  const isOwner = await isContentOwner(userId, contentId, contentType);
+  const isOwner = await isContentOwner(
+    userId,
+    contentId,
+    contentType as SplitContentTypes
+  );
 
   if (!isOwner) {
     const error = formatError(403, "User does not own this content");
@@ -132,7 +136,6 @@ const get_split = asyncHandler(async (req, res, next) => {
       },
       include: {
         splitRecipients: true,
-        use,
       },
     });
 
