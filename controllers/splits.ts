@@ -9,6 +9,9 @@ type ValidatedSplitReceipient = Partial<SplitRecipient> & {
   error?: boolean;
 };
 
+// This function takes the frontend splits array and returns an array of validated splits that can be added to the db.
+// It also validates that each split's username exists in the database, and retrieves the corresponding userId.
+
 const parseSplitsAndValidateUsername = async (
   frontendSplits: any,
   next: any
@@ -75,6 +78,8 @@ const create_split = asyncHandler(async (req, res, next) => {
     next
   );
   if (!newSplitsForDb.length) {
+    // parseSplitsAndValidateUsername will handle any invalid usernames
+    // if an invalid username is found, next() is called with an error and an empty array is returned
     return;
   }
 
