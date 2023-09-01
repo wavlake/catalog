@@ -44,6 +44,21 @@ const create_split = asyncHandler(async (req, res, next) => {
   const newSplits = await Promise.all<ValidatedSplitReceipient>(
     splitRecipients.map(parseSplitsAndValidateUsername)
   );
+  const invalidUserNames = newSplits
+    .filter((split) => split.error)
+    .map((split) => split.username);
+
+  if (!!invalidUserNames.length) {
+    const error = formatError(
+      404,
+      `Username${
+        invalidUserNames.length === 1 ? "" : "s"
+      } not found: ${invalidUserNames.join(", ")}`
+    );
+    next(error);
+    return;
+  }
+
   const newSplitsForDb = newSplits.map((split) => {
     const { userId, share } = split;
     return {
