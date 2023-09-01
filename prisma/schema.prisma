@@ -235,18 +235,19 @@ model transaction {
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 model User {
-  id                  String        @id @unique(map: "user_id_unique") @db.VarChar(64)
-  name                String        @unique(map: "user_name_unique") @db.VarChar(255)
-  msatBalance         BigInt?       @default(0) @map("msat_balance")
-  ampMsat             Int?          @default(1000) @map("amp_msat")
-  createdAt           DateTime?     @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt           DateTime?     @default(now()) @map("updated_at") @db.Timestamptz(6)
-  isLocked            Boolean       @default(false) @map("is_locked")
-  artworkUrl          String?       @map("artwork_url") @db.VarChar(255)
-  lastActivityCheckAt DateTime?     @default(now()) @map("last_activity_check_at") @db.Timestamptz(6)
-  profileUrl          String?       @unique(map: "user_profile_url_unique") @map("profile_url") @db.VarChar(255)
+  id                  String           @id @unique(map: "user_id_unique") @db.VarChar(64)
+  name                String           @unique(map: "user_name_unique") @db.VarChar(255)
+  msatBalance         BigInt?          @default(0) @map("msat_balance")
+  ampMsat             Int?             @default(1000) @map("amp_msat")
+  createdAt           DateTime?        @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt           DateTime?        @default(now()) @map("updated_at") @db.Timestamptz(6)
+  isLocked            Boolean          @default(false) @map("is_locked")
+  artworkUrl          String?          @map("artwork_url") @db.VarChar(255)
+  lastActivityCheckAt DateTime?        @default(now()) @map("last_activity_check_at") @db.Timestamptz(6)
+  profileUrl          String?          @unique(map: "user_profile_url_unique") @map("profile_url") @db.VarChar(255)
   artist              Artist[]
   podcast             Podcast[]
+  split_recipient     SplitRecipient[]
   subscriber          Subscriber?
   transaction         transaction[]
 
@@ -367,6 +368,7 @@ model SplitRecipient {
   createdAt DateTime? @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt DateTime? @default(now()) @map("updated_at") @db.Timestamptz(6)
   split     Split     @relation(fields: [splitId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "split_recipient_split_id_foreign")
+  user      User      @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "split_recipient_user_id_foreign")
 
   @@index([splitId], map: "idx_split_recipient_split_id")
   @@index([userId], map: "idx_split_recipient_user_id")
@@ -413,6 +415,7 @@ view TrackInfo {
 view EpisodeInfo {
   id              String    @unique @db.Uuid
   title           String?   @db.VarChar(255)
+  description     String?   @db.VarChar(1000)
   podcast         String?   @db.VarChar(255)
   podcastUrl      String?   @db.VarChar(255)
   artworkUrl      String?   @db.VarChar(255)

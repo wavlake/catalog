@@ -1,3 +1,4 @@
+import { User } from "./../node_modules/.prisma/client/index.d";
 import prisma from "../prisma/client";
 import asyncHandler from "express-async-handler";
 import { SplitRecipient } from "@prisma/client";
@@ -135,7 +136,16 @@ const get_split = asyncHandler(async (req, res, next) => {
         contentType: contentType,
       },
       include: {
-        splitRecipients: true,
+        splitRecipients: {
+          select: {
+            share: true,
+            user: {
+              select: {
+                name: true,
+              },
+            },
+          },
+        },
       },
     });
 

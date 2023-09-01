@@ -1,6 +1,7 @@
 SELECT
   episode.id,
   episode.title,
+  episode.description,
   podcast.name AS podcast,
   podcast.podcast_url AS "podcastUrl",
   podcast.artwork_url AS "artworkUrl",
