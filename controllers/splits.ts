@@ -3,6 +3,31 @@ import asyncHandler from "express-async-handler";
 import { SplitRecipient } from "@prisma/client";
 import { formatError } from "../library/errors";
 import { isContentOwner } from "../library/userHelper";
+import { type } from "os";
+type ValidatedSplitReceipient = Partial<SplitRecipient> & {
+  username?: string;
+  error?: boolean;
+};
+const parseSplitsAndValidateUsername = async (
+  split
+): Promise<ValidatedSplitReceipient> => {
+  const { name: username, splitPercentage: share } = split;
+  const usernameMatch = await prisma.user.findFirst({
+    where: {
+      name: username,
+    },
+    select: {
+      id: true,
+    },
+  });
+
+  return {
+    userId: usernameMatch?.id,
+    share,
+    username,
+    error: !usernameMatch,
+  };
+};
 
 const create_split = asyncHandler(async (req, res, next) => {
   const { contentId, contentType, splitRecipients } = req.body;
@@ -16,10 +41,14 @@ const create_split = asyncHandler(async (req, res, next) => {
     next(error);
   }
 
-  const newSplits: SplitRecipient[] = splitRecipients.map((split) => {
+  const newSplits = await Promise.all<ValidatedSplitReceipient>(
+    splitRecipients.map(parseSplitsAndValidateUsername)
+  );
+  const newSplitsForDb = newSplits.map((split) => {
+    const { userId, share } = split;
     return {
-      userId: split.userId,
-      share: split.splitPercentage,
+      userId,
+      share,
     };
   });
 
@@ -29,7 +58,7 @@ const create_split = asyncHandler(async (req, res, next) => {
         contentId: contentId,
         contentType: contentType,
         splitRecipients: {
-          createMany: { data: newSplits },
+          createMany: { data: newSplitsForDb },
         },
       },
       include: {
@@ -101,10 +130,29 @@ const update_split = asyncHandler(async (req, res, next) => {
     next(error);
   }
 
-  const newSplits: SplitRecipient[] = splitRecipients.map((split) => {
+  const newSplits = await Promise.all<ValidatedSplitReceipient>(
+    splitRecipients.map(parseSplitsAndValidateUsername)
+  );
+  const invalidUserNames = newSplits
+    .filter((split) => split.error)
+    .map((split) => split.username);
+
+  if (!!invalidUserNames.length) {
+    const error = formatError(
+      404,
+      `Username${
+        invalidUserNames.length === 1 ? "" : "s"
+      } not found: ${invalidUserNames.join(", ")}`
+    );
+    next(error);
+    return;
+  }
+
+  const newSplitsForDb = newSplits.map((split) => {
+    const { userId, share } = split;
     return {
-      userId: split.userId,
-      share: split.splitPercentage,
+      userId,
+      share,
     };
   });
 
@@ -118,7 +166,7 @@ const update_split = asyncHandler(async (req, res, next) => {
         contentType: contentType,
         splitRecipients: {
           deleteMany: {},
-          createMany: { data: newSplits },
+          createMany: { data: newSplitsForDb },
         },
       },
       include: {
