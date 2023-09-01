@@ -1,5 +1,6 @@
 exports.up = function (knex) {
   return knex.schema
+    .dropViewIfExists("episode_info")
     .createViewOrReplace("episode_info", function (view) {
       view.columns([
         "id",
@@ -73,6 +74,7 @@ exports.up = function (knex) {
 
 exports.down = function (knex) {
   return knex.schema
+    .dropViewIfExists("episode_info")
     .createViewOrReplace("episode_info", function (view) {
       view.columns([
         "id",
