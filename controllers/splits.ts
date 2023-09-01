@@ -3,7 +3,7 @@ import asyncHandler from "express-async-handler";
 import { SplitRecipient } from "@prisma/client";
 import { formatError } from "../library/errors";
 import { isContentOwner } from "../library/userHelper";
-import { type } from "os";
+
 type ValidatedSplitReceipient = Partial<SplitRecipient> & {
   username?: string;
   error?: boolean;
@@ -132,6 +132,7 @@ const get_split = asyncHandler(async (req, res, next) => {
       },
       include: {
         splitRecipients: true,
+        use,
       },
     });
 
