@@ -204,7 +204,6 @@ const update_split = asyncHandler(async (req, res, next) => {
   });
 
   if (!splitId) {
-    console.log("split not found");
     const error = formatError(404, "Split not found");
     next(error);
     return;
