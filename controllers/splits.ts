@@ -20,6 +20,17 @@ const parseSplitsAndValidateUsername = async (
   const validatedSplits = await Promise.all<ValidatedSplitReceipient>(
     frontendSplits.map(async (split) => {
       const { name: username, splitPercentage: share } = split;
+      const hasValidData = username && share && typeof share === "number";
+
+      // guard against invalid data
+      if (!hasValidData) {
+        return {
+          share,
+          username,
+          error: true,
+        };
+      }
+
       const usernameMatch = await prisma.user.findFirst({
         where: {
           name: username,
@@ -47,7 +58,7 @@ const parseSplitsAndValidateUsername = async (
       404,
       `Username${
         invalidUserNames.length === 1 ? "" : "s"
-      } not found: ${invalidUserNames.join(", ")}`
+      } not found: "${invalidUserNames.join(`", "`)}"`
     );
     next(error);
     return [];
@@ -64,22 +75,35 @@ const parseSplitsAndValidateUsername = async (
 
 const create_split = asyncHandler(async (req, res, next) => {
   const { contentId, contentType, splitRecipients } = req.body;
+
+  // Does user own this content?
+  const userId = req["uid"];
+  const isOwner = await isContentOwner(userId, contentId, contentType);
+  if (!isOwner) {
+    const error = formatError(403, "User does not own this content");
+    next(error);
+    return;
+  }
+
   if (splitRecipients.length === 0) {
     const error = formatError(400, "Must include at least one split recipient");
     next(error);
     return;
   }
 
-  const userId = req["uid"];
-
-  // Does user own this content?
-  const isOwner = await isContentOwner(userId, contentId, contentType);
-
-  if (!isOwner) {
-    const error = formatError(403, "User does not own this content");
+  const allSplitSharesAreValid = splitRecipients.every(
+    (split) =>
+      !!split.share && typeof split.share === "number" && split.share > 0
+  );
+  if (!allSplitSharesAreValid) {
+    const error = formatError(
+      400,
+      "All split percentages must be a positive number"
+    );
     next(error);
     return;
   }
+
   const newSplitsForDb = await parseSplitsAndValidateUsername(
     splitRecipients,
     next
