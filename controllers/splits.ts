@@ -1,27 +1,118 @@
+import { User } from "./../node_modules/.prisma/client/index.d";
 import prisma from "../prisma/client";
 import asyncHandler from "express-async-handler";
 import { SplitRecipient } from "@prisma/client";
 import { formatError } from "../library/errors";
-import { isContentOwner } from "../library/userHelper";
+import { SplitContentTypes, isContentOwner } from "../library/userHelper";
+
+type ValidatedSplitReceipient = Partial<SplitRecipient> & {
+  username?: string;
+  error?: boolean;
+};
+
+// This function takes the frontend splits array and returns an array of validated splits that can be added to the db.
+// It also validates that each split's username exists in the database, and retrieves the corresponding userId.
+
+const parseSplitsAndValidateUsername = async (
+  frontendSplits: any,
+  next: any
+): Promise<{ userId: string; share: number }[]> => {
+  const validatedSplits = await Promise.all<ValidatedSplitReceipient>(
+    frontendSplits.map(async (split) => {
+      const { name: username, splitPercentage: share } = split;
+      const hasValidData = username && share && typeof share === "number";
+
+      // guard against invalid data
+      if (!hasValidData) {
+        return {
+          share,
+          username,
+          error: true,
+        };
+      }
+
+      const usernameMatch = await prisma.user.findFirst({
+        where: {
+          name: username,
+        },
+        select: {
+          id: true,
+        },
+      });
+
+      return {
+        userId: usernameMatch?.id,
+        share,
+        username,
+        error: !usernameMatch,
+      };
+    })
+  );
+
+  const invalidUserNames = validatedSplits
+    .filter((split) => split.error)
+    .map((split) => split.username);
+
+  if (!!invalidUserNames.length) {
+    const error = formatError(
+      404,
+      `Username${
+        invalidUserNames.length === 1 ? "" : "s"
+      } not found: "${invalidUserNames.join(`", "`)}"`
+    );
+    next(error);
+    return [];
+  }
+
+  return validatedSplits.map((split) => {
+    const { userId, share } = split;
+    return {
+      userId,
+      share,
+    };
+  });
+};
 
 const create_split = asyncHandler(async (req, res, next) => {
   const { contentId, contentType, splitRecipients } = req.body;
-  const userId = req["uid"];
 
   // Does user own this content?
+  const userId = req["uid"];
   const isOwner = await isContentOwner(userId, contentId, contentType);
-
   if (!isOwner) {
     const error = formatError(403, "User does not own this content");
     next(error);
+    return;
   }
 
-  const newSplits: SplitRecipient[] = splitRecipients.map((split) => {
-    return {
-      userId: split.userId,
-      share: split.splitPercentage,
-    };
-  });
+  if (splitRecipients.length === 0) {
+    const error = formatError(400, "Must include at least one split recipient");
+    next(error);
+    return;
+  }
+
+  const allSplitSharesAreValid = splitRecipients.every(
+    (split) =>
+      !!split.share && typeof split.share === "number" && split.share > 0
+  );
+  if (!allSplitSharesAreValid) {
+    const error = formatError(
+      400,
+      "All split percentages must be a positive number"
+    );
+    next(error);
+    return;
+  }
+
+  const newSplitsForDb = await parseSplitsAndValidateUsername(
+    splitRecipients,
+    next
+  );
+  if (!newSplitsForDb.length) {
+    // parseSplitsAndValidateUsername will handle any invalid usernames
+    // if an invalid username is found, next() is called with an error and an empty array is returned
+    return;
+  }
 
   try {
     const split = await prisma.split.create({
@@ -29,7 +120,7 @@ const create_split = asyncHandler(async (req, res, next) => {
         contentId: contentId,
         contentType: contentType,
         splitRecipients: {
-          createMany: { data: newSplits },
+          createMany: { data: newSplitsForDb },
         },
       },
       include: {
@@ -41,6 +132,7 @@ const create_split = asyncHandler(async (req, res, next) => {
   } catch (e) {
     const error = formatError(500, `${e.code}: ${e.message}`);
     next(error);
+    return;
   }
 });
 
@@ -49,11 +141,16 @@ const get_split = asyncHandler(async (req, res, next) => {
   const userId = req["uid"];
 
   // Does user own this content?
-  const isOwner = await isContentOwner(userId, contentId, contentType);
+  const isOwner = await isContentOwner(
+    userId,
+    contentId,
+    contentType as SplitContentTypes
+  );
 
   if (!isOwner) {
     const error = formatError(403, "User does not own this content");
     next(error);
+    return;
   }
 
   try {
@@ -63,7 +160,16 @@ const get_split = asyncHandler(async (req, res, next) => {
         contentType: contentType,
       },
       include: {
-        splitRecipients: true,
+        splitRecipients: {
+          select: {
+            share: true,
+            user: {
+              select: {
+                name: true,
+              },
+            },
+          },
+        },
       },
     });
 
@@ -84,6 +190,7 @@ const update_split = asyncHandler(async (req, res, next) => {
   if (!isOwner) {
     const error = formatError(403, "User does not own this content");
     next(error);
+    return;
   }
 
   const splitId = await prisma.split.findFirst({
@@ -99,14 +206,16 @@ const update_split = asyncHandler(async (req, res, next) => {
   if (!splitId) {
     const error = formatError(404, "Split not found");
     next(error);
+    return;
   }
 
-  const newSplits: SplitRecipient[] = splitRecipients.map((split) => {
-    return {
-      userId: split.userId,
-      share: split.splitPercentage,
-    };
-  });
+  const newSplitsForDb = await parseSplitsAndValidateUsername(
+    splitRecipients,
+    next
+  );
+  if (!newSplitsForDb.length) {
+    return;
+  }
 
   try {
     const split = await prisma.split.update({
@@ -118,7 +227,7 @@ const update_split = asyncHandler(async (req, res, next) => {
         contentType: contentType,
         splitRecipients: {
           deleteMany: {},
-          createMany: { data: newSplits },
+          createMany: { data: newSplitsForDb },
         },
       },
       include: {
