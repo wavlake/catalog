@@ -1,4 +1,3 @@
-import { User } from "./../node_modules/.prisma/client/index.d";
 import prisma from "../prisma/client";
 import asyncHandler from "express-async-handler";
 import { SplitRecipient } from "@prisma/client";
@@ -9,17 +8,39 @@ type ValidatedSplitReceipient = Partial<SplitRecipient> & {
   username?: string;
   error?: boolean;
 };
-
 // This function takes the frontend splits array and returns an array of validated splits that can be added to the db.
 // It also validates that each split's username exists in the database, and retrieves the corresponding userId.
 
 const parseSplitsAndValidateUsername = async (
-  frontendSplits: any,
+  incomingSplits: Array<SplitRecipient & { name: string }>,
   next: any
 ): Promise<{ userId: string; share: number }[]> => {
+  if (incomingSplits.length === 0) {
+    const error = formatError(400, "Must include at least one split recipient");
+    next(error);
+    return;
+  }
+  const allSplitSharesAreValid = incomingSplits.every((split) => {
+    return (
+      !!split.share &&
+      typeof split.share === "number" &&
+      split.share > 0 &&
+      // modulous 1 checks if the number is an integer
+      split.share % 1 === 0
+    );
+  });
+  if (!allSplitSharesAreValid) {
+    const error = formatError(
+      400,
+      "Each split share must be a positive integer"
+    );
+    next(error);
+    return;
+  }
+
   const validatedSplits = await Promise.all<ValidatedSplitReceipient>(
-    frontendSplits.map(async (split) => {
-      const { name: username, splitPercentage: share } = split;
+    incomingSplits.map(async (split) => {
+      const { name: username, share } = split;
       const hasValidData = username && share && typeof share === "number";
 
       // guard against invalid data
@@ -30,7 +51,6 @@ const parseSplitsAndValidateUsername = async (
           error: true,
         };
       }
-
       const usernameMatch = await prisma.user.findFirst({
         where: {
           name: username,
@@ -81,25 +101,6 @@ const create_split = asyncHandler(async (req, res, next) => {
   const isOwner = await isContentOwner(userId, contentId, contentType);
   if (!isOwner) {
     const error = formatError(403, "User does not own this content");
-    next(error);
-    return;
-  }
-
-  if (splitRecipients.length === 0) {
-    const error = formatError(400, "Must include at least one split recipient");
-    next(error);
-    return;
-  }
-
-  const allSplitSharesAreValid = splitRecipients.every(
-    (split) =>
-      !!split.share && typeof split.share === "number" && split.share > 0
-  );
-  if (!allSplitSharesAreValid) {
-    const error = formatError(
-      400,
-      "All split percentages must be a positive number"
-    );
     next(error);
     return;
   }
@@ -186,6 +187,15 @@ const update_split = asyncHandler(async (req, res, next) => {
 
   // Does user own this content?
   const isOwner = await isContentOwner(userId, contentId, contentType);
+
+  if (!contentId || !contentType) {
+    const error = formatError(
+      400,
+      "Must include both contentId and contentType"
+    );
+    next(error);
+    return;
+  }
 
   if (!isOwner) {
     const error = formatError(403, "User does not own this content");
