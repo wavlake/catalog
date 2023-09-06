@@ -12,7 +12,7 @@ var storage = multer.diskStorage({
 const upload = multer({ storage: storage });
 
 // Import controllers
-import albumsController from "../controllers/albums.js";
+import albumsController from "../controllers/albums";
 const { isAuthorized } = require("../middlewares/auth");
 
 // Create router

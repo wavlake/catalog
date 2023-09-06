@@ -1,7 +1,7 @@
 const express = require("express");
 
 // Import controllers
-import metaController from "../controllers/meta.js";
+import metaController from "../controllers/meta";
 
 // Create router
 const router = express.Router();
