@@ -3,7 +3,8 @@ import express from "express";
 
 const config = require("dotenv").config();
 const fs = require("fs");
-const app = express();
+// export for testing
+export const app = express();
 const log = require("loglevel");
 const cors = require("cors");
 const compression = require("compression");
