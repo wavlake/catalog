@@ -12,15 +12,15 @@ type ValidatedSplitReceipient = Partial<SplitRecipient> & {
 // It also validates that each split's username exists in the database, and retrieves the corresponding userId.
 
 const parseSplitsAndValidateUsername = async (
-  frontendSplits: Array<SplitRecipient & { name: string }>,
+  incomingSplits: Array<SplitRecipient & { name: string }>,
   next: any
 ): Promise<{ userId: string; share: number }[]> => {
-  if (frontendSplits.length === 0) {
+  if (incomingSplits.length === 0) {
     const error = formatError(400, "Must include at least one split recipient");
     next(error);
     return;
   }
-  const allSplitSharesAreValid = frontendSplits.every((split) => {
+  const allSplitSharesAreValid = incomingSplits.every((split) => {
     return !!split.share && typeof split.share === "number" && split.share > 0;
   });
   if (!allSplitSharesAreValid) {
@@ -33,7 +33,7 @@ const parseSplitsAndValidateUsername = async (
   }
 
   const validatedSplits = await Promise.all<ValidatedSplitReceipient>(
-    frontendSplits.map(async (split) => {
+    incomingSplits.map(async (split) => {
       const { name: username, share } = split;
       const hasValidData = username && share && typeof share === "number";
 
