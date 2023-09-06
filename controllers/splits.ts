@@ -21,12 +21,18 @@ const parseSplitsAndValidateUsername = async (
     return;
   }
   const allSplitSharesAreValid = incomingSplits.every((split) => {
-    return !!split.share && typeof split.share === "number" && split.share > 0;
+    return (
+      !!split.share &&
+      typeof split.share === "number" &&
+      split.share > 0 &&
+      // modulous 1 checks if the number is an integer
+      split.share % 1 === 0
+    );
   });
   if (!allSplitSharesAreValid) {
     const error = formatError(
       400,
-      "All split percentages must be a positive number"
+      "Each split share must be a positive integer"
     );
     next(error);
     return;
