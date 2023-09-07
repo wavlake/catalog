@@ -21,6 +21,13 @@ const parseSplitsAndValidateUsername = async (
     return;
   }
   const allSplitSharesAreValid = incomingSplits.every((split) => {
+    console.log(split);
+    console.log(
+      !!split.share,
+      typeof split.share === "number",
+      split.share > 0,
+      split.share % 1 === 0
+    );
     return (
       !!split.share &&
       typeof split.share === "number" &&

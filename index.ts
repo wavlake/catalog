@@ -13,7 +13,6 @@ const Sentry = require("@sentry/node");
 
 const corsHost = process.env.CORS_HOST;
 log.setLevel(process.env.LOGLEVEL);
-const port = process.env.EXPRESS_PORT;
 const localConvertPath = `${process.env.LOCAL_CONVERT_PATH}`;
 const localUploadPath = `${process.env.LOCAL_UPLOAD_PATH}`;
 const sentryDsn = process.env.SENTRY_DSN;
@@ -98,6 +97,5 @@ app.use(Sentry.Handlers.errorHandler());
 
 // override default html error page with custom error handler
 app.use(errorHandler);
-export const server = app.listen(port, () => {
-  log.debug(`Wavlake catalog is listening on port ${port}`);
-});
+
+export default app;
