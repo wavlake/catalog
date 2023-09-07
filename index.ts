@@ -98,6 +98,6 @@ app.use(Sentry.Handlers.errorHandler());
 
 // override default html error page with custom error handler
 app.use(errorHandler);
-app.listen(port, () => {
+export const server = app.listen(port, () => {
   log.debug(`Wavlake catalog is listening on port ${port}`);
 });

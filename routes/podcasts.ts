@@ -1,6 +1,6 @@
 import express from "express";
 import multer from "multer";
-const { isAuthorized } = require("../middlewares/auth.js");
+const { isAuthorized } = require("../middlewares/auth");
 
 var storage = multer.diskStorage({
   destination: function (req, file, callback) {
@@ -21,7 +21,7 @@ import {
   update_podcast,
   update_podcast_art,
   delete_podcast,
-} from "../controllers/podcasts.js";
+} from "../controllers/podcasts";
 
 // Create router
 const router = express.Router();

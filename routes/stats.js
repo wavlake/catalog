@@ -1,8 +1,8 @@
 const express = require("express");
-const { isAuthorized } = require("../middlewares/auth.js");
+const { isAuthorized } = require("../middlewares/auth");
 
 // Import controllers
-import statsController from "../controllers/stats.js";
+import statsController from "../controllers/stats";
 
 // Create router
 const router = express.Router();
