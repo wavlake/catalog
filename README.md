@@ -1,3 +1,5 @@
+[![Node.js CI](https://github.com/wavlake/catalog/actions/workflows/node.js.yml/badge.svg?branch=main)](https://github.com/wavlake/catalog/actions/workflows/node.js.yml)
+
 Install dependencies
 
 ```bash
