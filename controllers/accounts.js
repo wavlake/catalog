@@ -43,4 +43,21 @@ const get_account = asyncHandler(async (req, res, next) => {
   }
 });
 
-export default { get_account };
+const get_features = asyncHandler(async (req, res, next) => {
+  const userId = req["uid"];
+
+  try {
+    // check DB for user id
+
+    res.send({
+      success: true,
+      data: {
+        splitsV1: true,
+      },
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+export default { get_account, get_features };
