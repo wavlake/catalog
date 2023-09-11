@@ -1,7 +1,12 @@
 const log = require("loglevel");
 import db from "../library/db";
-const asyncHandler = require("express-async-handler");
+import asyncHandler from "express-async-handler";
 import { formatError } from "../library/errors";
+import prisma from "../prisma/client";
+
+type UserFeatures = {
+  splitsV1?: boolean;
+};
 
 const get_account = asyncHandler(async (req, res, next) => {
   const request = {
@@ -48,12 +53,19 @@ const get_features = asyncHandler(async (req, res, next) => {
 
   try {
     // check DB for user id
+    const user = prisma.user.findFirstOrThrow({
+      where: {
+        id: userId,
+      },
+    });
+
+    const data: UserFeatures = {
+      splitsV1: true,
+    };
 
     res.send({
       success: true,
-      data: {
-        splitsV1: true,
-      },
+      data,
     });
   } catch (err) {
     next(err);
