@@ -1,4 +1,3 @@
-import prisma from "../prisma/client";
 import { TimeSplit } from "@prisma/client";
 import { formatError } from "../library/errors";
 import { isContentOwner } from "../library/userHelper";
@@ -21,31 +20,18 @@ export async function checkContentOwnership(req, res, next) {
 export async function hasNoOverlaps(
   requestedTimeSplits: Array<TimeSplit>
 ): Promise<Boolean> {
-  const existingTimeSplits = await prisma.timeSplit.findMany({
-    where: {
-      OR: requestedTimeSplits.map((split) => {
-        return {
-          AND: [
-            {
-              contentId: split.contentId,
-            },
-            {
-              startSeconds: {
-                lte: split.endSeconds,
-              },
-            },
-            {
-              endSeconds: {
-                gte: split.startSeconds,
-              },
-            },
-          ],
-        };
-      }),
-    },
+  requestedTimeSplits.sort((a, b) => {
+    return a.startSeconds - b.startSeconds;
   });
-
-  return existingTimeSplits.length === 0;
+  for (let i = 0; i < requestedTimeSplits.length - 1; i++) {
+    if (
+      requestedTimeSplits[i].endSeconds >=
+      requestedTimeSplits[i + 1].startSeconds
+    ) {
+      return false;
+    }
+  }
+  return true;
 }
 
 export async function validateTimeSplitRequest(
@@ -65,6 +51,7 @@ export async function validateTimeSplitRequest(
       "contentId must be a string, contentType must be a string, and timeSplits must be an array"
     );
     next(error);
+    return false;
   }
 
   const timeSplitsAreValid = timeSplits.every((split) => {
@@ -85,7 +72,7 @@ export async function validateTimeSplitRequest(
       "Each time split must include a recipientContentId as string and startSeconds, endSeconds, shareNumerator, and shareDenominator as numbers."
     );
     next(error);
-    return;
+    return false;
   }
 
   // Check for overlaps
@@ -97,7 +84,7 @@ export async function validateTimeSplitRequest(
         "Time splits cannot overlap with one another."
       );
       next(error);
-      return;
+      return false;
     }
   }
 
