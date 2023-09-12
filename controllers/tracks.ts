@@ -278,6 +278,22 @@ const create_track = asyncHandler(async (req, res, next) => {
     });
 });
 
+const search_tracks_by_title = asyncHandler(async (req, res, next) => {
+  const title = String(req.query.title);
+
+  if (!title) {
+    const error = formatError(400, "title field is required");
+    next(error);
+  }
+
+  const tracks = await prisma.trackInfo.findMany({
+    where: { title: { contains: title, mode: "insensitive" } },
+    take: 10,
+  });
+
+  res.json({ success: true, data: tracks });
+});
+
 const update_track = asyncHandler(async (req, res, next) => {
   const {
     trackId,
@@ -358,6 +374,7 @@ export default {
   get_tracks_by_account,
   get_tracks_by_new,
   get_tracks_by_random,
+  search_tracks_by_title,
   get_tracks_by_album_id,
   get_tracks_by_artist_id,
   get_tracks_by_artist_url,
