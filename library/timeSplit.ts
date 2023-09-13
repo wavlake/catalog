@@ -1,7 +1,25 @@
 import { TimeSplit } from "@prisma/client";
 import { formatError } from "../library/errors";
+import prisma from "../prisma/client";
 
 type NewTimeSplit = Omit<TimeSplit, "id" | "createdAt" | "updatedAt">;
+
+export async function contentHasTimeSplits(contentId: string) {
+  const existingSplits = await prisma.timeSplit.findMany({
+    where: {
+      contentId: contentId,
+    },
+  });
+
+  if (existingSplits.length > 0) {
+    const error = formatError(
+      400,
+      "Time splits already exist for this content."
+    );
+    return true;
+  }
+  return false;
+}
 
 export async function hasNoOverlaps(
   requestedTimeSplits: Array<TimeSplit>

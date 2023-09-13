@@ -1,12 +1,26 @@
 import prisma from "../prisma/client";
 import asyncHandler from "express-async-handler";
 import { formatError } from "../library/errors";
-import { validateTimeSplitRequest } from "../library/timeSplit";
+import {
+  contentHasTimeSplits,
+  validateTimeSplitRequest,
+} from "../library/timeSplit";
 import { checkContentOwnership } from "../library/userHelper";
 import log from "loglevel";
 
 const create_time_splits = asyncHandler(async (req, res, next) => {
   await checkContentOwnership(req, res, next);
+  const { contentId } = req.body;
+
+  const hasTimeSplits = await contentHasTimeSplits(contentId);
+  if (hasTimeSplits) {
+    const error = formatError(
+      400,
+      "Time splits already exist for this content. Update instead of create."
+    );
+    next(error);
+    return;
+  }
 
   const newSplitsForDb = await validateTimeSplitRequest(req, res, next);
 
