@@ -1,20 +1,24 @@
 import { TimeSplit } from "@prisma/client";
 import { formatError } from "../library/errors";
-import { isContentOwner } from "../library/userHelper";
+import prisma from "../prisma/client";
 
-export async function checkContentOwnership(req, res, next) {
-  const { contentId, contentType } = req.body;
-  const userId = req["uid"];
+type NewTimeSplit = Omit<TimeSplit, "id" | "createdAt" | "updatedAt">;
 
-  // Does user own this content?
-  const isOwner = await isContentOwner(userId, contentId, contentType);
-  if (!isOwner) {
-    const error = formatError(403, "User does not own this content");
-    next(error);
-    return;
+export async function contentHasTimeSplits(contentId: string) {
+  const existingSplits = await prisma.timeSplit.findMany({
+    where: {
+      contentId: contentId,
+    },
+  });
+
+  if (existingSplits.length > 0) {
+    const error = formatError(
+      400,
+      "Time splits already exist for this content."
+    );
+    return true;
   }
-
-  return true;
+  return false;
 }
 
 export async function hasNoOverlaps(
@@ -89,7 +93,7 @@ export async function validateTimeSplitRequest(
   }
 
   // Transform timeSplits into db format
-  const newSplitsForDb = <TimeSplit[]>timeSplits.map((split) => {
+  const newSplitsForDb = timeSplits.map<NewTimeSplit>((split) => {
     return {
       contentId: contentId,
       startSeconds: split.startSeconds,
