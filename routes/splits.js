@@ -22,7 +22,11 @@ router.put("/update", isAuthorized, splitsController.update_split);
 
 //// TIME SPLITS ////
 
-router.get("/time", isAuthorized, timeSplitsController.get_time_splits);
+router.get(
+  "/time/:contentId/:contentType",
+  isAuthorized,
+  timeSplitsController.get_time_splits
+);
 router.post("/time", isAuthorized, timeSplitsController.create_time_splits);
 router.put("/time", isAuthorized, timeSplitsController.update_time_splits);
 // Export router

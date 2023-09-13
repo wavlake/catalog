@@ -1,10 +1,8 @@
 import prisma from "../prisma/client";
 import asyncHandler from "express-async-handler";
 import { formatError } from "../library/errors";
-import {
-  checkContentOwnership,
-  validateTimeSplitRequest,
-} from "../library/timeSplit";
+import { validateTimeSplitRequest } from "../library/timeSplit";
+import { checkContentOwnership } from "../library/userHelper";
 import log from "loglevel";
 
 const create_time_splits = asyncHandler(async (req, res, next) => {
@@ -28,8 +26,18 @@ const create_time_splits = asyncHandler(async (req, res, next) => {
 });
 
 const get_time_splits = asyncHandler(async (req, res, next) => {
+  const { contentId, contentType } = req.params;
+
+  if (!contentId || !contentType) {
+    const error = formatError(
+      400,
+      "Must include both contentId and contentType"
+    );
+    next(error);
+    return;
+  }
+
   await checkContentOwnership(req, res, next);
-  const { contentId } = req.body;
 
   try {
     const splits = await prisma.timeSplit.findMany({
