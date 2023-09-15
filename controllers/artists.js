@@ -186,6 +186,23 @@ const create_artist = asyncHandler(async (req, res, next) => {
     });
 });
 
+const search_artists_by_name = asyncHandler(async (req, res, next) => {
+  const name = String(req.query.name);
+
+  if (!name) {
+    const error = formatError(400, "name field is required");
+    next(error);
+  }
+
+  // TODO: Sort results by sats?
+  const artists = await prisma.artist.findMany({
+    where: { name: { contains: name, mode: "insensitive" }, deleted: false },
+    take: 10,
+  });
+
+  res.json({ success: true, data: artists });
+});
+
 const update_artist = asyncHandler(async (req, res, next) => {
   const request = {
     userId: req["uid"],
@@ -400,6 +417,7 @@ export default {
   get_artist_by_url,
   get_artist_by_id,
   create_artist,
+  search_artists_by_name,
   update_artist,
   update_artist_art,
   delete_artist,
