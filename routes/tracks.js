@@ -12,6 +12,10 @@ const router = express.Router();
 router.get("/account", isAuthorized, tracksController.get_tracks_by_account);
 router.get("/new", tracksController.get_tracks_by_new);
 router.get("/random", tracksController.get_tracks_by_random);
+router.get(
+  "/random/:genreId/genre",
+  tracksController.get_random_tracks_by_genre_id
+);
 router.get("/", tracksController.search_tracks_by_title);
 router.get("/:albumId/album", tracksController.get_tracks_by_album_id);
 router.get("/:artistId/artist", tracksController.get_tracks_by_artist_id);
