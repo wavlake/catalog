@@ -26,7 +26,10 @@ const get_all_by_term = asyncHandler(async (req, res, next) => {
   });
 
   const tracks = await prisma.trackInfo.findMany({
-    where: { title: { contains: term, mode: "insensitive" } },
+    where: {
+      title: { contains: term, mode: "insensitive" },
+      duration: { not: null },
+    },
     take: 10,
   });
 
