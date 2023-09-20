@@ -16,14 +16,20 @@ const get_all_by_term = asyncHandler(async (req, res, next) => {
     take: 10,
   });
 
-  // TODO: Filter out albums with no tracks
   const albums = await prisma.album.findMany({
-    where: { title: { contains: term, mode: "insensitive" }, deleted: false },
+    where: {
+      title: { contains: term, mode: "insensitive" },
+      deleted: false,
+      track: { some: { deleted: false } }, // some: at least one
+    },
     take: 10,
   });
 
   const tracks = await prisma.trackInfo.findMany({
-    where: { title: { contains: term, mode: "insensitive" } },
+    where: {
+      title: { contains: term, mode: "insensitive" },
+      duration: { not: null },
+    },
     take: 10,
   });
 
@@ -59,6 +65,11 @@ function combineResults(artists, albums, tracks) {
       name: track.title,
       url: track.url,
       artworkUrl: track.artworkUrl,
+      liveUrl: track.liveUrl,
+      duration: track.duration,
+      albumId: track.albumId,
+      artistId: track.artistId,
+      artist: track.artist,
     });
   });
   return results;
