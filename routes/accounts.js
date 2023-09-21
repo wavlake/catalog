@@ -13,8 +13,8 @@ var storage = multer.diskStorage({
 const upload = multer({ storage: storage });
 
 // Import controllers
-import accountsController from "../controllers/accounts.js";
-const { isAuthorized } = require("../middlewares/auth.js");
+import accountsController from "../controllers/accounts";
+const { isAuthorized } = require("../middlewares/auth");
 
 // Create router
 const router = express.Router();
@@ -55,4 +55,4 @@ router.get("/", isAuthorized, accountsController.get_account);
 // );
 
 // Export router
-module.exports = router;
+export default router;

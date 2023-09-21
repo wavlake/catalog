@@ -19,20 +19,22 @@ model activity {
 }
 
 model Album {
-  id             String         @id @unique(map: "album_id_unique") @db.Uuid
-  artistId       String         @map("artist_id") @db.Uuid
-  title          String         @db.VarChar(255)
-  artworkUrl     String?        @map("artwork_url") @db.VarChar(255)
-  createdAt      DateTime?      @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt      DateTime?      @default(now()) @map("updated_at") @db.Timestamptz(6)
-  description    String?        @db.VarChar(1000)
-  deleted        Boolean?       @default(false)
-  genreId        Int?           @map("genre_id")
-  subgenreId     Int?           @map("subgenre_id")
-  artist         Artist         @relation(fields: [artistId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "album_artist_id_foreign")
-  music_genre    MusicGenre?    @relation(fields: [genreId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "album_genre_id_foreign")
-  music_subgenre MusicSubgenre? @relation(fields: [subgenreId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "album_subgenre_id_foreign")
-  track          Track[]
+  id            String         @id @unique(map: "album_id_unique") @db.Uuid
+  artistId      String         @map("artist_id") @db.Uuid
+  title         String         @db.VarChar(255)
+  artworkUrl    String?        @map("artwork_url") @db.VarChar(255)
+  createdAt     DateTime?      @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime?      @default(now()) @map("updated_at") @db.Timestamptz(6)
+  description   String?        @db.VarChar(1000)
+  deleted       Boolean?       @default(false)
+  genreId       Int?           @map("genre_id")
+  subgenreId    Int?           @map("subgenre_id")
+  isDraft       Boolean?       @default(false) @map("is_draft")
+  publishedAt   DateTime?      @default(now()) @map("published_at") @db.Timestamptz(6)
+  artist        Artist         @relation(fields: [artistId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "album_artist_id_foreign")
+  musicGenre    MusicGenre?    @relation(fields: [genreId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "album_genre_id_foreign")
+  musicSubgenre MusicSubgenre? @relation(fields: [subgenreId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "album_subgenre_id_foreign")
+  track         Track[]
 
   @@index([artistId], map: "idx_album_artist_id")
   @@map("album")
@@ -40,19 +42,26 @@ model Album {
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 model Amp {
-  id            Int       @id @default(autoincrement())
-  track_id      String    @db.Uuid
-  user_id       String    @db.VarChar(255)
-  msat_amount   Int
-  created_at    DateTime? @default(now()) @db.Timestamptz(6)
-  source_region String?   @db.VarChar(255)
-  comment       Boolean   @default(false)
-  fee_msat      Int?      @default(0)
-  type          Int?
-  type_key      Int?
+  id                Int       @id @default(autoincrement())
+  track_id          String    @db.Uuid
+  user_id           String    @db.VarChar(255)
+  msat_amount       Int
+  created_at        DateTime? @default(now()) @db.Timestamptz(6)
+  comment           Boolean   @default(false)
+  fee_msat          Int?      @default(0)
+  type              Int?
+  type_key          Int?
+  split_tx          String?   @db.Uuid
+  time_split_source String?   @db.Uuid
+  split_destination String?   @db.VarChar(64)
+  content_type      String?   @default("track") @db.VarChar(12)
 
   @@index([track_id], map: "idx_amp_track_id")
   @@index([user_id], map: "idx_amp_user_id")
+  @@index([content_type], map: "idx_amp_content_type")
+  @@index([split_tx], map: "idx_amp_split")
+  @@index([split_destination], map: "idx_amp_split_destination")
+  @@index([time_split_source], map: "idx_amp_time_split_source")
   @@map("amp")
 }
 
@@ -129,47 +138,50 @@ model knex_migrations_lock {
 }
 
 model Play {
-  id         Int       @id @default(autoincrement())
-  trackId    String    @map("track_id") @db.Uuid
-  userId     String    @map("user_id") @db.VarChar(255)
-  complete   Boolean
-  created_at DateTime? @default(now()) @db.Timestamptz(6)
-  userAgent  String?   @map("user_agent")
+  id        Int       @id @default(autoincrement())
+  trackId   String    @map("track_id") @db.Uuid
+  userId    String    @map("user_id") @db.VarChar(255)
+  complete  Boolean
+  createdAt DateTime? @default(now()) @map("created_at") @db.Timestamptz(6)
+  userAgent String?   @map("user_agent")
 
   @@index([trackId], map: "idx_play_track_id")
   @@index([userId], map: "idx_play_user_id")
   @@map("play")
 }
 
-model playlist {
-  id           String    @id @unique(map: "playlist_id_unique") @db.Uuid
-  user_id      String    @db.VarChar(64)
-  title        String    @db.VarChar(255)
-  is_favorites Boolean?  @default(false)
-  created_at   DateTime? @default(now()) @db.Timestamptz(6)
-  updated_at   DateTime? @default(now()) @db.Timestamptz(6)
+model Playlist {
+  id          String    @id @unique(map: "playlist_id_unique") @db.Uuid
+  userId      String    @map("user_id") @db.VarChar(64)
+  title       String    @db.VarChar(255)
+  isFavorites Boolean?  @default(false) @map("is_favorites")
+  createdAt   DateTime? @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime? @default(now()) @map("updated_at") @db.Timestamptz(6)
 
-  @@index([user_id], map: "idx_playlist_user_id")
+  @@index([userId], map: "idx_playlist_user_id")
+  @@map("playlist")
 }
 
-model playlist_track {
-  id          Int       @id @default(autoincrement())
-  track_id    String    @db.Uuid
-  playlist_id String    @db.Uuid
-  order       String    @db.VarChar(16)
-  created_at  DateTime? @default(now()) @db.Timestamptz(6)
-  updated_at  DateTime? @default(now()) @db.Timestamptz(6)
-
-  @@index([playlist_id], map: "idx_playlist_track_playlist_id")
-}
-
-model ranking_forty {
+model PlaylistTrack {
   id         Int       @id @default(autoincrement())
-  track_id   String    @db.VarChar(255)
-  rank       Int       @default(1)
-  created_at DateTime? @default(now()) @db.Timestamptz(6)
+  trackId    String    @map("track_id") @db.Uuid
+  playlistId String    @map("playlist_id") @db.Uuid
+  order      String    @db.VarChar(16)
+  createdAt  DateTime? @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt  DateTime? @default(now()) @map("updated_at") @db.Timestamptz(6)
 
-  @@index([track_id], map: "idx_ranking_forty_track_id")
+  @@index([playlistId], map: "idx_playlist_track_playlist_id")
+  @@map("playlist_track")
+}
+
+model RankingForty {
+  id        Int       @id @default(autoincrement())
+  trackId   String    @map("track_id") @db.VarChar(255)
+  rank      Int       @default(1)
+  createdAt DateTime? @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([trackId], map: "idx_ranking_forty_track_id")
+  @@map("ranking_forty")
 }
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
@@ -190,7 +202,9 @@ model Track {
   updatedAt       DateTime? @default(now()) @map("updated_at") @db.Timestamptz(6)
   lyrics          String?
   isProcessing    Boolean?  @default(false) @map("is_processing")
-  compressorError String?   @map("compressor_error") @db.VarChar(255)
+  compressorError Boolean?  @default(false) @map("compressor_error")
+  isDraft         Boolean?  @default(false) @map("is_draft")
+  publishedAt     DateTime? @default(now()) @map("published_at") @db.Timestamptz(6)
   album           Album     @relation(fields: [albumId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "track_album_id_foreign")
   artist          Artist    @relation(fields: [artistId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "track_artist_id_foreign")
 
@@ -221,21 +235,107 @@ model transaction {
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 model User {
-  id                  String        @id @unique(map: "user_id_unique") @db.VarChar(64)
-  name                String        @unique(map: "user_name_unique") @db.VarChar(255)
-  msatBalance         BigInt?       @default(0) @map("msat_balance")
-  ampMsat             Int?          @default(1000) @map("amp_msat")
-  createdAt           DateTime?     @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt           DateTime?     @default(now()) @map("updated_at") @db.Timestamptz(6)
-  isLocked            Boolean       @default(false) @map("is_locked")
-  artworkUrl          String?       @map("artwork_url") @db.VarChar(255)
-  lastActivityCheckAt DateTime?     @default(now()) @map("last_activity_check_at") @db.Timestamptz(6)
-  profileUrl          String?       @unique(map: "user_profile_url_unique") @map("profile_url") @db.VarChar(255)
+  id                  String           @id @unique(map: "user_id_unique") @db.VarChar(64)
+  name                String           @unique(map: "user_name_unique") @db.VarChar(255)
+  msatBalance         BigInt?          @default(0) @map("msat_balance")
+  ampMsat             Int?             @default(1000) @map("amp_msat")
+  createdAt           DateTime?        @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt           DateTime?        @default(now()) @map("updated_at") @db.Timestamptz(6)
+  isLocked            Boolean          @default(false) @map("is_locked")
+  artworkUrl          String?          @map("artwork_url") @db.VarChar(255)
+  lastActivityCheckAt DateTime?        @default(now()) @map("last_activity_check_at") @db.Timestamptz(6)
+  profileUrl          String?          @unique(map: "user_profile_url_unique") @map("profile_url") @db.VarChar(255)
   artist              Artist[]
+  podcast             Podcast[]
+  split_recipient     SplitRecipient[]
+  subscriber          Subscriber?
   transaction         transaction[]
 
   @@index([profileUrl], map: "idx_profile_url")
   @@map("user")
+}
+
+model MusicGenre {
+  id            Int             @id @default(autoincrement())
+  name          String          @unique(map: "music_genre_name_unique") @db.VarChar(64)
+  createdAt     DateTime?       @default(now()) @map("created_at") @db.Timestamptz(6)
+  album         Album[]
+  musicSubgenre MusicSubgenre[]
+
+  @@index([name], map: "idx_music_genre_name")
+  @@map("music_genre")
+}
+
+model MusicSubgenre {
+  id         Int        @id @default(autoincrement())
+  genreId    Int        @map("genre_id")
+  name       String     @unique(map: "music_subgenre_name_unique") @db.VarChar(64)
+  createdAt  DateTime?  @default(now()) @map("created_at") @db.Timestamptz(6)
+  album      Album[]
+  musicGenre MusicGenre @relation(fields: [genreId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "music_subgenre_genre_id_foreign")
+
+  @@index([name], map: "idx_music_subgenre_name")
+  @@map("music_subgenre")
+}
+
+model Subscriber {
+  userId         String    @id @unique(map: "subscriber_user_id_unique") @map("user_id") @db.VarChar(64)
+  provider       String    @db.VarChar(255)
+  providerUserId String    @map("provider_user_id") @db.VarChar(255)
+  createdAt      DateTime? @default(now()) @map("created_at") @db.Timestamptz(6)
+  user           User      @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "subscriber_user_id_foreign")
+
+  @@map("subscriber")
+}
+
+model Episode {
+  id               String    @id @unique(map: "episode_id_unique") @db.Uuid
+  title            String    @db.VarChar(255)
+  description      String?   @db.VarChar(1000)
+  podcastId        String    @map("podcast_id") @db.Uuid
+  order            Int
+  playCount        Int?      @default(0) @map("play_count")
+  msatTotal        BigInt?   @default(0) @map("msat_total")
+  liveUrl          String    @map("live_url") @db.VarChar(255)
+  rawUrl           String?   @map("raw_url") @db.VarChar(128)
+  size             Int?
+  duration         Int?
+  deleted          Boolean?  @default(false)
+  isDraft          Boolean?  @default(true) @map("is_draft")
+  isProcessing     Boolean?  @default(false) @map("is_processing")
+  createdAt        DateTime? @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime? @default(now()) @map("updated_at") @db.Timestamptz(6)
+  publishedAt      DateTime? @default(now()) @map("published_at") @db.Timestamptz(6)
+  compressor_error Boolean?  @default(false)
+  podcast          Podcast   @relation(fields: [podcastId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "episode_podcast_id_foreign")
+
+  @@index([podcastId], map: "idx_episode_podcast_id")
+  @@map("episode")
+}
+
+model Podcast {
+  id          String    @id @unique(map: "podcast_id_unique") @db.Uuid
+  userId      String    @map("user_id") @db.VarChar(255)
+  name        String    @db.VarChar(255)
+  artworkUrl  String?   @map("artwork_url") @db.VarChar(255)
+  podcastUrl  String    @unique(map: "podcast_podcast_url_unique") @map("podcast_url") @db.VarChar(255)
+  description String?   @db.VarChar(1000)
+  createdAt   DateTime? @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime? @default(now()) @map("updated_at") @db.Timestamptz(6)
+  publishedAt DateTime? @default(now()) @map("published_at") @db.Timestamptz(6)
+  deleted     Boolean?  @default(false)
+  isDraft     Boolean?  @default(true) @map("is_draft")
+  twitter     String?   @db.VarChar(255)
+  instagram   String?   @db.VarChar(255)
+  youtube     String?   @db.VarChar(255)
+  website     String?   @db.VarChar(255)
+  npub        String?   @db.VarChar(255)
+  episode     Episode[]
+  user        User      @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "podcast_user_id_foreign")
+
+  @@index([podcastUrl], map: "idx_podcast_url")
+  @@index([userId], map: "idx_podcast_user_id")
+  @@map("podcast")
 }
 
 model zap_request {
@@ -247,27 +347,47 @@ model zap_request {
   @@index([payment_hash], map: "idx_zap_payment_hash")
 }
 
-model MusicGenre {
-  id             Int             @id @default(autoincrement())
-  name           String          @unique(map: "music_genre_name_unique") @db.VarChar(64)
-  created_at     DateTime?       @default(now()) @db.Timestamptz(6)
-  album          Album[]
-  music_subgenre MusicSubgenre[]
+model Split {
+  id              Int              @id @default(autoincrement())
+  contentType     String?          @default("track") @map("content_type") @db.VarChar(12)
+  createdAt       DateTime?        @default(now()) @map("created_at") @db.Timestamptz(6)
+  contentId       String           @unique(map: "split_content_id_unique") @map("content_id") @db.Uuid
+  splitRecipients SplitRecipient[]
 
-  @@index([name], map: "idx_music_genre_name")
-  @@map("music_genre")
+  @@index([contentType], map: "idx_split_content_type")
+  @@map("split")
 }
 
-model MusicSubgenre {
-  id          Int        @id @default(autoincrement())
-  genreId     Int        @map("genre_id")
-  name        String     @unique(map: "music_subgenre_name_unique") @db.VarChar(64)
-  created_at  DateTime?  @default(now()) @db.Timestamptz(6)
-  album       Album[]
-  music_genre MusicGenre @relation(fields: [genreId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "music_subgenre_genre_id_foreign")
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model SplitRecipient {
+  id        Int       @id @default(autoincrement())
+  splitId   Int       @map("split_id")
+  userId    String    @map("user_id") @db.VarChar(64)
+  share     Int       @db.SmallInt
+  createdAt DateTime? @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime? @default(now()) @map("updated_at") @db.Timestamptz(6)
+  split     Split     @relation(fields: [splitId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "split_recipient_split_id_foreign")
+  user      User      @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "split_recipient_user_id_foreign")
 
-  @@index([name], map: "idx_music_subgenre_name")
-  @@map("music_subgenre")
+  @@index([splitId], map: "idx_split_recipient_split_id")
+  @@index([userId], map: "idx_split_recipient_user_id")
+  @@map("split_recipient")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model TimeSplit {
+  id                   Int       @id @default(autoincrement())
+  contentId            String    @map("content_id") @db.Uuid
+  shareNumerator       Int       @map("share_numerator") @db.SmallInt
+  shareDenominator     Int       @map("share_denominator") @db.SmallInt
+  startSeconds         Int       @map("start_seconds") @db.SmallInt
+  endSeconds           Int       @map("end_seconds") @db.SmallInt
+  createdAt            DateTime? @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt            DateTime? @default(now()) @map("updated_at") @db.Timestamptz(6)
+  recipientContentId   String    @db.Uuid @map("recipient_content_id")
+
+  @@index([contentId], map: "idx_time_split_content_id")
+  @@map("time_split")
 }
 
 view TrackInfo {
@@ -290,4 +410,24 @@ view TrackInfo {
   isProcessing    Boolean?  @map("is_processing")
 
   @@map("track_info")
+}
+
+view EpisodeInfo {
+  id              String    @unique @db.Uuid
+  title           String?   @db.VarChar(255)
+  description     String?   @db.VarChar(1000)
+  podcast         String?   @db.VarChar(255)
+  podcastUrl      String?   @db.VarChar(255)
+  artworkUrl      String?   @db.VarChar(255)
+  msatTotal30Days BigInt?
+  msatTotal7Days  BigInt?
+  msatTotal1Days  BigInt?
+  liveUrl         String?   @db.VarChar(255)
+  duration        Int?
+  createdAt       DateTime? @db.Timestamptz(6)
+  podcastId       String?   @db.Uuid
+  order           Int?
+  isProcessing    Boolean?
+
+  @@map("episode_info")
 }

@@ -1,6 +1,6 @@
 const express = require("express");
 const multer = require("multer");
-const { isAuthorized } = require("../middlewares/auth.js");
+const { isAuthorized } = require("../middlewares/auth");
 
 var storage = multer.diskStorage({
   destination: function (req, file, callback) {
@@ -13,12 +13,13 @@ var storage = multer.diskStorage({
 
 const upload = multer({ storage: storage });
 
-import artistsController from "../controllers/artists.js";
+import artistsController from "../controllers/artists";
 
 // Create router
 const router = express.Router();
 
 // router.get("/", artistsController.get_all_artists);
+router.get("/", artistsController.search_artists_by_name);
 router.get("/account", isAuthorized, artistsController.get_artists_by_account);
 router.get("/:artistUrl/url", artistsController.get_artist_by_url);
 router.get("/:artistId", artistsController.get_artist_by_id);
@@ -40,4 +41,4 @@ router.put(
 router.delete("/:artistId", isAuthorized, artistsController.delete_artist);
 
 // Export router
-module.exports = router;
+export default router;

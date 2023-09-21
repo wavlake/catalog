@@ -1,8 +1,8 @@
 const express = require("express");
-const { isAuthorized } = require("../middlewares/auth.js");
+const { isAuthorized } = require("../middlewares/auth");
 
 // Import controllers
-import statsController from "../controllers/stats.js";
+import statsController from "../controllers/stats";
 
 // Create router
 const router = express.Router();
@@ -78,4 +78,4 @@ router.get(
 // router.get("/music/subgenres/:genreId", statsController.get_music_subgenre_list);
 
 // Export router
-module.exports = router;
+export default router;

@@ -12,7 +12,7 @@ var storage = multer.diskStorage({
 const upload = multer({ storage: storage });
 
 // Import controllers
-import albumsController from "../controllers/albums.js";
+import albumsController from "../controllers/albums";
 const { isAuthorized } = require("../middlewares/auth");
 
 // Create router
@@ -23,6 +23,7 @@ const router = express.Router();
 router.get("/account", isAuthorized, albumsController.get_albums_by_account);
 router.get("/:albumId", albumsController.get_album_by_id);
 router.get("/:artistId/artist", albumsController.get_albums_by_artist_id);
+router.get("/:genreId/genre", albumsController.get_albums_by_genre_id);
 router.post(
   "/",
   isAuthorized,
@@ -39,4 +40,4 @@ router.put(
 router.delete("/:albumId", isAuthorized, albumsController.delete_album);
 
 // Export router
-module.exports = router;
+export default router;

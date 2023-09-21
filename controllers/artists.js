@@ -6,14 +6,14 @@ import multer from "multer";
 const Jimp = require("jimp");
 const s3Client = require("../library/s3Client");
 const format = require("../library/format");
-const { getArtistAccount } = require("../library/userHelper");
+import { isArtistOwner } from "../library/userHelper";
 import prisma from "../prisma/client";
 const asyncHandler = require("express-async-handler");
 import { formatError } from "../library/errors";
+import { AWS_S3_IMAGE_PREFIX } from "../library/constants";
 const { invalidateCdn } = require("../library/cloudfrontClient");
 const Sentry = require("@sentry/node");
 
-const imagePrefix = `${process.env.AWS_S3_IMAGE_PREFIX}`;
 const localConvertPath = `${process.env.LOCAL_CONVERT_PATH}`;
 const cdnDomain = `${process.env.AWS_CDN_DOMAIN}`;
 
@@ -86,7 +86,7 @@ const create_artist = asyncHandler(async (req, res, next) => {
   // console.log(uploadPath)
 
   const convertPath = `${localConvertPath}/${newArtistId}.jpg`;
-  const s3Key = `${imagePrefix}/${newArtistId}.jpg`;
+  const s3Key = `${AWS_S3_IMAGE_PREFIX}/${newArtistId}.jpg`;
 
   Jimp.read(uploadPath)
     .then((img) => {
@@ -186,6 +186,23 @@ const create_artist = asyncHandler(async (req, res, next) => {
     });
 });
 
+const search_artists_by_name = asyncHandler(async (req, res, next) => {
+  const name = String(req.query.name);
+
+  if (!name) {
+    const error = formatError(400, "name field is required");
+    next(error);
+  }
+
+  // TODO: Sort results by sats?
+  const artists = await prisma.artist.findMany({
+    where: { name: { contains: name, mode: "insensitive" }, deleted: false },
+    take: 10,
+  });
+
+  res.json({ success: true, data: artists });
+});
+
 const update_artist = asyncHandler(async (req, res, next) => {
   const request = {
     userId: req["uid"],
@@ -205,12 +222,9 @@ const update_artist = asyncHandler(async (req, res, next) => {
   }
 
   // Check if user owns artist
-  const isArtistOwner = await getArtistAccount(
-    request.userId,
-    request.artistId
-  );
+  const isOwner = await isArtistOwner(request.userId, request.artistId);
 
-  if (!isArtistOwner) {
+  if (!isOwner) {
     const error = formatError(403, "User does not own this artist");
     next(error);
   }
@@ -268,12 +282,9 @@ const update_artist_art = asyncHandler(async (req, res, next) => {
   }
 
   // Check if user owns artist
-  const isArtistOwner = await getArtistAccount(
-    request.userId,
-    request.artistId
-  );
+  const isOwner = await isArtistOwner(request.userId, request.artistId);
 
-  if (!isArtistOwner) {
+  if (!isOwner) {
     const error = formatError(403, "User does not own this artist");
     next(error);
   }
@@ -281,7 +292,7 @@ const update_artist_art = asyncHandler(async (req, res, next) => {
   const uploadPath = request.artwork.path;
 
   const convertPath = `${localConvertPath}/${request.artistId}.jpg`;
-  const s3Key = `${imagePrefix}/${request.artistId}.jpg`;
+  const s3Key = `${AWS_S3_IMAGE_PREFIX}/${request.artistId}.jpg`;
 
   // Upload new image
   Jimp.read(uploadPath)
@@ -347,12 +358,9 @@ const delete_artist = asyncHandler(async (req, res, next) => {
   }
 
   // Check if user owns artist
-  const isArtistOwner = await getArtistAccount(
-    request.userId,
-    request.artistId
-  );
+  const isOwner = await isArtistOwner(request.userId, request.artistId);
 
-  if (!isArtistOwner) {
+  if (!isOwner) {
     const error = formatError(403, "User does not own this artist");
     next(error);
   }
@@ -409,6 +417,7 @@ export default {
   get_artist_by_url,
   get_artist_by_id,
   create_artist,
+  search_artists_by_name,
   update_artist,
   update_artist_art,
   delete_artist,

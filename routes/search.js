@@ -1,15 +1,14 @@
 const express = require("express");
+const { isAuthorized } = require("../middlewares/auth");
+
 // Import controllers
-import chartsController from "../controllers/charts";
+import searchController from "../controllers/search";
 
 // Create router
 const router = express.Router();
 
 //////// ROUTES ////////
 
-/// MUSIC CHARTS ///
-
-router.get("/music/top", chartsController.get_top_forty); // TOP 40
-
+router.get("/", searchController.get_all_by_term);
 // Export router
 export default router;

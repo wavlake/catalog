@@ -1,7 +1,7 @@
 const express = require("express");
 
 // Import controllers
-import metaController from "../controllers/meta.js";
+import metaController from "../controllers/meta";
 
 // Create router
 const router = express.Router();
@@ -12,4 +12,4 @@ router.get("/music/genres", metaController.get_music_genre_list);
 router.get("/music/subgenres/:genreId", metaController.get_music_subgenre_list);
 
 // Export router
-module.exports = router;
+export default router;
