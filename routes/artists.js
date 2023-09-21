@@ -19,6 +19,7 @@ import artistsController from "../controllers/artists";
 const router = express.Router();
 
 // router.get("/", artistsController.get_all_artists);
+router.get("/", artistsController.search_artists_by_name);
 router.get("/account", isAuthorized, artistsController.get_artists_by_account);
 router.get("/:artistUrl/url", artistsController.get_artist_by_url);
 router.get("/:artistId", artistsController.get_artist_by_id);

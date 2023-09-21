@@ -164,6 +164,41 @@ const get_tracks_by_artist_id = asyncHandler(async (req, res, next) => {
   res.json({ success: true, data: tracks });
 });
 
+const get_random_tracks_by_genre_id = asyncHandler(async (req, res, next) => {
+  const { genreId } = req.params;
+
+  const randomTracks = db
+    .knex(db.knex.raw(`track TABLESAMPLE BERNOULLI(${randomSampleSize})`))
+    .join("album", "album.id", "=", "track.album_id")
+    .join("artist", "artist.id", "=", "track.artist_id")
+    .join("music_genre", "music_genre.id", "=", "album.genre_id")
+    .select(
+      "track.id as id",
+      "track.title as title",
+      "artist.name as artist",
+      "artist.artist_url as artistUrl",
+      "artist.artwork_url as avatarUrl",
+      "track.album_id as albumId",
+      "album.artwork_url as artworkUrl",
+      "album.title as albumTitle",
+      "track.live_url as liveUrl",
+      "track.duration as duration"
+    )
+    .where("music_genre.id", "=", genreId);
+
+  randomTracks
+    .distinct()
+    .where("track.deleted", "=", false)
+    // .limit(request.limit)
+    .then((data) => {
+      res.send(shuffle(data));
+    })
+    .catch((err) => {
+      log.debug(`Error querying track table for Boosted: ${err}`);
+      next(err);
+    });
+});
+
 const delete_track = asyncHandler(async (req, res, next) => {
   const request = {
     userId: req["uid"],
@@ -378,6 +413,7 @@ export default {
   get_tracks_by_album_id,
   get_tracks_by_artist_id,
   get_tracks_by_artist_url,
+  get_random_tracks_by_genre_id,
   delete_track,
   create_track,
   update_track,
