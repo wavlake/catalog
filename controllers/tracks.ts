@@ -78,7 +78,11 @@ const get_tracks_by_new = asyncHandler(async (req, res, next) => {
   const limit = parseLimit(req.query.limit, 50);
 
   const albumTracks = db.knex
-    .select("track.id as id", "track.album_id as albumId")
+    .select(
+      "track.id as id",
+      "track.album_id as albumId",
+      "artist.id as artistId"
+    )
     .join("artist", "track.artist_id", "=", "artist.id")
     .join("album", "album.id", "=", "track.album_id")
     .rank("ranking", "track.id", "track.album_id")
@@ -95,7 +99,7 @@ const get_tracks_by_new = asyncHandler(async (req, res, next) => {
     .andWhere("track.order", "=", 1)
     .andWhere("track.duration", "is not", null)
     .from("track")
-    .groupBy("track.album_id", "track.id")
+    .groupBy("track.album_id", "track.id", "artist.id")
     .as("a");
 
   db.knex(albumTracks)
