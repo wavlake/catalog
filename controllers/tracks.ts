@@ -93,6 +93,7 @@ const get_tracks_by_new = asyncHandler(async (req, res, next) => {
     .min("track.created_at as createdAt")
     .andWhere("track.deleted", "=", false)
     .andWhere("track.order", "=", 1)
+    .andWhere("track.duration", "is not", null)
     .from("track")
     .groupBy("track.album_id", "track.id")
     .as("a");
@@ -141,6 +142,7 @@ const get_tracks_by_random = asyncHandler(async (req, res, next) => {
   randomTracks
     .distinct()
     .where("track.deleted", "=", false)
+    .andWhere("track.duration", "is not", null)
     // .limit(request.limit)
     .then((data) => {
       res.send(shuffle(data));
@@ -184,7 +186,8 @@ const get_random_tracks_by_genre_id = asyncHandler(async (req, res, next) => {
       "track.live_url as liveUrl",
       "track.duration as duration"
     )
-    .where("music_genre.id", "=", genreId);
+    .where("music_genre.id", "=", genreId)
+    .andWhere("track.duration", "is not", null);
 
   randomTracks
     .distinct()
