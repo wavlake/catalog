@@ -188,7 +188,8 @@ const get_random_tracks_by_genre_id = asyncHandler(async (req, res, next) => {
       "album.artwork_url as artworkUrl",
       "album.title as albumTitle",
       "track.live_url as liveUrl",
-      "track.duration as duration"
+      "track.duration as duration",
+      "artist.id as artistId"
     )
     .where("music_genre.id", "=", genreId)
     .andWhere("track.duration", "is not", null);
