@@ -339,7 +339,6 @@ const search_tracks = asyncHandler(async (req, res, next) => {
     take: 10,
   });
 
-  console.log({ tracks });
   res.json({ success: true, data: tracks });
 });
 
