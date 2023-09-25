@@ -15,7 +15,8 @@ SELECT
   track.album_id,
   track.artist_id,
   track."order",
-  track.is_processing
+  track.is_processing,
+  track.msat_total
 FROM
   (
     (

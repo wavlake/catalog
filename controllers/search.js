@@ -38,6 +38,9 @@ const get_all_by_term = asyncHandler(async (req, res, next) => {
       title: { contains: term, mode: "insensitive" },
       duration: { not: null },
     },
+    orderBy: {
+      msatTotal: "desc",
+    },
     take: 10,
   });
 
