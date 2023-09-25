@@ -16,6 +16,9 @@ const get_music_genre_list = asyncHandler(async (req, res, next) => {
     _count: {
       genreId: true,
     },
+    where: {
+      track: { some: { deleted: false } },
+    },
   });
 
   const genresWithCount = genres.map((genre) => {
