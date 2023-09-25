@@ -12,7 +12,12 @@ const get_all_by_term = asyncHandler(async (req, res, next) => {
 
   // TODO: Sort results by sats?
   const artists = await prisma.artist.findMany({
-    where: { name: { contains: term, mode: "insensitive" }, deleted: false },
+    where: {
+      name: { contains: term, mode: "insensitive" },
+      deleted: false,
+      album: { some: { deleted: false } },
+      track: { some: { deleted: false } },
+    },
     take: 10,
   });
 
@@ -68,6 +73,7 @@ function combineResults(artists, albums, tracks) {
       liveUrl: track.liveUrl,
       duration: track.duration,
       albumId: track.albumId,
+      albumTitle: track.albumTitle,
       artistId: track.artistId,
       artist: track.artist,
     });

@@ -78,7 +78,11 @@ const get_tracks_by_new = asyncHandler(async (req, res, next) => {
   const limit = parseLimit(req.query.limit, 50);
 
   const albumTracks = db.knex
-    .select("track.id as id", "track.album_id as albumId")
+    .select(
+      "track.id as id",
+      "track.album_id as albumId",
+      "artist.id as artistId"
+    )
     .join("artist", "track.artist_id", "=", "artist.id")
     .join("album", "album.id", "=", "track.album_id")
     .rank("ranking", "track.id", "track.album_id")
@@ -93,8 +97,9 @@ const get_tracks_by_new = asyncHandler(async (req, res, next) => {
     .min("track.created_at as createdAt")
     .andWhere("track.deleted", "=", false)
     .andWhere("track.order", "=", 1)
+    .andWhere("track.duration", "is not", null)
     .from("track")
-    .groupBy("track.album_id", "track.id")
+    .groupBy("track.album_id", "track.id", "artist.id")
     .as("a");
 
   db.knex(albumTracks)
@@ -141,6 +146,7 @@ const get_tracks_by_random = asyncHandler(async (req, res, next) => {
   randomTracks
     .distinct()
     .where("track.deleted", "=", false)
+    .andWhere("track.duration", "is not", null)
     // .limit(request.limit)
     .then((data) => {
       res.send(shuffle(data));
@@ -182,9 +188,11 @@ const get_random_tracks_by_genre_id = asyncHandler(async (req, res, next) => {
       "album.artwork_url as artworkUrl",
       "album.title as albumTitle",
       "track.live_url as liveUrl",
-      "track.duration as duration"
+      "track.duration as duration",
+      "artist.id as artistId"
     )
-    .where("music_genre.id", "=", genreId);
+    .where("music_genre.id", "=", genreId)
+    .andWhere("track.duration", "is not", null);
 
   randomTracks
     .distinct()

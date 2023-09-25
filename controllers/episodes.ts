@@ -17,6 +17,16 @@ export const get_episode = asyncHandler(async (req, res, next) => {
 
   const episode = await prisma.episode.findFirstOrThrow({
     where: { id: episodeId },
+    include: {
+      podcast: {
+        select: {
+          artworkUrl: true,
+          id: true,
+          name: true,
+          podcastUrl: true,
+        },
+      },
+    },
   });
 
   res.json({ success: true, data: episode });
