@@ -27,6 +27,9 @@ const get_all_by_term = asyncHandler(async (req, res, next) => {
       deleted: false,
       track: { some: { deleted: false } }, // some: at least one
     },
+    include: {
+      artist: true,
+    },
     take: 10,
   });
 
@@ -34,6 +37,9 @@ const get_all_by_term = asyncHandler(async (req, res, next) => {
     where: {
       title: { contains: term, mode: "insensitive" },
       duration: { not: null },
+    },
+    orderBy: {
+      msatTotal: "desc",
     },
     take: 10,
   });
@@ -51,7 +57,7 @@ function combineResults(artists, albums, tracks) {
       type: "artist",
       name: artist.name,
       url: artist.artistUrl,
-      artworkUrl: artist.artworkUrl,
+      avatarUrl: artist.artworkUrl,
     });
   });
   albums.forEach((album) => {
@@ -61,6 +67,7 @@ function combineResults(artists, albums, tracks) {
       name: album.title,
       url: album.url,
       artworkUrl: album.artworkUrl,
+      avatarUrl: album.artist.artworkUrl,
     });
   });
   tracks.forEach((track) => {
@@ -76,6 +83,7 @@ function combineResults(artists, albums, tracks) {
       albumTitle: track.albumTitle,
       artistId: track.artistId,
       artist: track.artist,
+      avatarUrl: track.avatarUrl,
     });
   });
   return results;
