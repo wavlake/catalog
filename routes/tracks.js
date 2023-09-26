@@ -16,7 +16,7 @@ router.get(
   "/random/:genreId/genre",
   tracksController.get_random_tracks_by_genre_id
 );
-router.get("/", tracksController.search_tracks_by_title);
+router.get("/", tracksController.search_tracks);
 router.get("/:albumId/album", tracksController.get_tracks_by_album_id);
 router.get("/:artistId/artist", tracksController.get_tracks_by_artist_id);
 router.get("/:artistUrl/artist-url", tracksController.get_tracks_by_artist_url);
