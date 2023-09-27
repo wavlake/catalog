@@ -55,6 +55,14 @@ model Amp {
   time_split_source String?   @db.Uuid
   split_destination String?   @db.VarChar(64)
   content_type      String?   @default("track") @db.VarChar(12)
+  value_guid        String?
+  value_podcast     String?
+  value_feed_id     Int?
+  value_episode     String?
+  value_item_id     Int?
+  value_ts          Int?
+  value_app_name    String?
+  value_sender_name String?
 
   @@index([track_id], map: "idx_amp_track_id")
   @@index([user_id], map: "idx_amp_user_id")
