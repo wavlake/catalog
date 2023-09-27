@@ -51,7 +51,7 @@ model Amp {
   fee_msat          Int?      @default(0)
   type              Int?
   type_key          Int?
-  split_tx          String?   @db.Uuid
+  tx_id             String?   @db.Uuid
   time_split_source String?   @db.Uuid
   split_destination String?   @db.VarChar(64)
   content_type      String?   @default("track") @db.VarChar(12)
@@ -59,7 +59,7 @@ model Amp {
   @@index([track_id], map: "idx_amp_track_id")
   @@index([user_id], map: "idx_amp_user_id")
   @@index([content_type], map: "idx_amp_content_type")
-  @@index([split_tx], map: "idx_amp_split")
+  @@index([tx_id], map: "idx_amp_split")
   @@index([split_destination], map: "idx_amp_split_destination")
   @@index([time_split_source], map: "idx_amp_time_split_source")
   @@map("amp")
@@ -97,15 +97,20 @@ model Artist {
 }
 
 model comment {
-  id         Int       @id @default(autoincrement())
-  user_id    String    @db.VarChar(255)
-  amp_id     Int
-  content    String    @db.VarChar(210)
-  parent_id  Int?
-  created_at DateTime? @default(now()) @db.Timestamptz(6)
+  id           Int       @id @default(autoincrement())
+  user_id      String    @db.VarChar(255)
+  amp_id       Int
+  content      String?
+  parent_id    Int?
+  created_at   DateTime? @default(now()) @db.Timestamptz(6)
+  tx_id        String?   @db.Uuid
+  content_id   String?   @db.Uuid
+  content_type String?   @default("track") @db.VarChar(12)
+  is_nostr     Boolean?  @default(false)
 
   @@index([parent_id], map: "idx_comment_parent_id")
   @@index([user_id], map: "idx_comment_user_id")
+  @@index([content_id], map: "idx_comment_content_id")
 }
 
 model event_track {
@@ -408,7 +413,7 @@ view TrackInfo {
   artistId        String?   @map("artist_id") @db.Uuid
   order           Int?
   isProcessing    Boolean?  @map("is_processing")
-  msatTotal      BigInt?   @map("msat_total")
+  msatTotal       BigInt?   @map("msat_total")
 
   @@map("track_info")
 }
