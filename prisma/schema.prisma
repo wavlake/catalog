@@ -362,12 +362,13 @@ model zap_request {
 
 model Split {
   id              Int              @id @default(autoincrement())
+  contentId       String           @unique(map: "split_content_id_unique") @map("content_id") @db.Uuid
   contentType     String?          @default("track") @map("content_type") @db.VarChar(12)
   createdAt       DateTime?        @default(now()) @map("created_at") @db.Timestamptz(6)
-  contentId       String           @unique(map: "split_content_id_unique") @map("content_id") @db.Uuid
   splitRecipients SplitRecipient[]
 
   @@index([contentType], map: "idx_split_content_type")
+  @@index([contentId], map: "idx_split_content_id")
   @@map("split")
 }
 
@@ -401,6 +402,15 @@ model TimeSplit {
 
   @@index([contentId], map: "idx_time_split_content_id")
   @@map("time_split")
+}
+
+model library {
+  id         Int       @id @default(autoincrement())
+  user_id    String
+  content_id String
+  created_at DateTime? @default(now()) @db.Timestamptz(6)
+
+  @@index([user_id], map: "idx_library_user_id")
 }
 
 view TrackInfo {
