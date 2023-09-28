@@ -22,7 +22,12 @@ const getAllComments = async (contentIds: string[]) => {
         where: { id: comment.userId },
       });
 
-      return { ...comment, user };
+      return {
+        ...comment,
+        name: user.name,
+        commenterProfileUrl: user.profileUrl,
+        commenterArtworkUrl: user.artworkUrl,
+      };
     })
   );
 
@@ -39,9 +44,23 @@ const getAllComments = async (contentIds: string[]) => {
     },
   });
 
-  return [...commentsWithUserInfo, ...nostrComments].sort((a, b) =>
-    a.createdAt < b.createdAt ? 1 : -1
+  const sortedComments = [...commentsWithUserInfo, ...nostrComments].sort(
+    (a, b) => (a.createdAt < b.createdAt ? 1 : -1)
   );
+
+  const commentsWithSatAmount = await Promise.all(
+    sortedComments.map(async (comment) => {
+      const amp = await prisma.amp.findUnique({
+        where: { id: comment.ampId },
+      });
+
+      return {
+        ...comment,
+        commentMsatSum: amp.msat_amount,
+      };
+    })
+  );
+  return commentsWithSatAmount;
 };
 
 const get_comments = asyncHandler(async (req, res, next) => {
