@@ -3,18 +3,32 @@ import prisma from "../prisma/client";
 import asyncHandler from "express-async-handler";
 
 const getAllComments = async (contentIds: string[]) => {
-  const userComments = await prisma.comment.findMany({
-    where: {
-      AND: [
-        {
-          OR: contentIds.map((id) => ({
-            contentId: id,
-          })),
-        },
-        { isNostr: false },
-      ],
-    },
-  });
+  const [userComments, nostrComments] = await Promise.all([
+    prisma.comment.findMany({
+      where: {
+        AND: [
+          {
+            OR: contentIds.map((id) => ({
+              contentId: id,
+            })),
+          },
+          { isNostr: false },
+        ],
+      },
+    }),
+    prisma.comment.findMany({
+      where: {
+        AND: [
+          {
+            OR: contentIds.map((id) => ({
+              contentId: id,
+            })),
+          },
+          { isNostr: true },
+        ],
+      },
+    }),
+  ]);
 
   const commentsWithUserInfo = await Promise.all(
     userComments.map(async (comment) => {
@@ -30,19 +44,6 @@ const getAllComments = async (contentIds: string[]) => {
       };
     })
   );
-
-  const nostrComments = await prisma.comment.findMany({
-    where: {
-      AND: [
-        {
-          OR: contentIds.map((id) => ({
-            contentId: id,
-          })),
-        },
-        { isNostr: true },
-      ],
-    },
-  });
 
   const sortedComments = [...commentsWithUserInfo, ...nostrComments].sort(
     (a, b) => (a.createdAt < b.createdAt ? 1 : -1)
@@ -60,6 +61,7 @@ const getAllComments = async (contentIds: string[]) => {
       };
     })
   );
+
   return commentsWithSatAmount;
 };
 
