@@ -36,7 +36,7 @@ const add_to_library = asyncHandler(async (req, res, next) => {
       res.status(400).json({ success: false, error: "No npub found" });
       return;
     }
-    if (!contentIds) {
+    if (!contentIds.length) {
       res.status(400).json({ success: false, error: "No content ids found" });
       return;
     }
@@ -70,7 +70,7 @@ const remove_from_library = asyncHandler(async (req, res, next) => {
       res.status(400).json({ success: false, error: "No npub found" });
       return;
     }
-    if (!contentIds) {
+    if (!contentIds.length) {
       res.status(400).json({ success: false, error: "No content ids found" });
       return;
     }
