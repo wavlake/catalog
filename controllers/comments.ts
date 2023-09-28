@@ -7,7 +7,6 @@ const get_comments = asyncHandler(async (req, res, next) => {
   const comments = await prisma.comment.findMany({
     where: { content_id: contentId },
   });
-  console.log("Found comments -------------", comments);
   res.json({ success: true, data: comments });
 });
 
@@ -23,7 +22,6 @@ const get_podcast_comments = asyncHandler(async (req, res, next) => {
       })),
     },
   });
-  console.log("Found comments -------------", comments);
   res.json({ success: true, data: comments });
 });
 
@@ -48,7 +46,6 @@ const get_artist_comments = asyncHandler(async (req, res, next) => {
       })),
     },
   });
-  console.log("Found comments -------------", comments);
   res.json({ success: true, data: comments });
 });
 
