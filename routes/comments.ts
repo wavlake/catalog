@@ -1,7 +1,4 @@
-const express = require("express");
-const { isAuthorized } = require("../middlewares/auth");
-
-// Import controllers
+import express from "express";
 import commentsController from "../controllers/comments";
 
 // Create router
