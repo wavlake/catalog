@@ -32,6 +32,10 @@ const getAllComments = async (contentIds: string[]) => {
 
   const commentsWithUserInfo = await Promise.all(
     userComments.map(async (comment) => {
+      if (comment.userId === "keysend") {
+        return comment;
+      }
+
       const user = await prisma.user.findUnique({
         where: { id: comment.userId },
       });
