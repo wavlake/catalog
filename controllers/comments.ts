@@ -1,8 +1,14 @@
+import { formatError } from "../library/errors";
 import prisma from "../prisma/client";
 import asyncHandler from "express-async-handler";
 
 const get_comments = asyncHandler(async (req, res, next) => {
   const { id: contentId } = req.params;
+  if (!contentId) {
+    const error = formatError(400, "Must include a track or episode id");
+    next(error);
+    return;
+  }
 
   const comments = await prisma.comment.findMany({
     where: { content_id: contentId },
@@ -12,6 +18,12 @@ const get_comments = asyncHandler(async (req, res, next) => {
 
 const get_podcast_comments = asyncHandler(async (req, res, next) => {
   const { id: podcastId } = req.params;
+  if (!podcastId) {
+    const error = formatError(400, "Must include the podcast id");
+    next(error);
+    return;
+  }
+
   const episodes = await prisma.episode.findMany({
     where: { podcastId },
   });
@@ -27,6 +39,12 @@ const get_podcast_comments = asyncHandler(async (req, res, next) => {
 
 const get_artist_comments = asyncHandler(async (req, res, next) => {
   const { id: artistId } = req.params;
+  if (!artistId) {
+    const error = formatError(400, "Must include the artist id");
+    next(error);
+    return;
+  }
+
   const albums = await prisma.album.findMany({
     where: { artistId },
   });
