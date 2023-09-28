@@ -1,56 +1,59 @@
 import prisma from "../prisma/client";
 import asyncHandler from "express-async-handler";
 
-type Comment = {
-  id: number;
-  user_id: string;
-  amp_id: number;
-  content: string;
-  parent_id: number;
-  created_at: string;
-};
+const get_comments = asyncHandler(async (req, res, next) => {
+  const { id: contentId } = req.params;
 
-const mockComments: Comment[] = [
-  {
-    id: 1,
-    user_id: "def-12",
-    amp_id: 12,
-    content: "Cool track",
-    parent_id: 13,
-    created_at: "jkl-56",
-  },
-  {
-    id: 1,
-    user_id: "abc-73",
-    amp_id: 12,
-    content:
-      "That was an awesome episode, i would listen to it again, especially while driving, or on a plane, or maybe on a train, or if i needed to fall asleep, or was working the night shift. Great for any and all occasion. This is a long comment, ok cool.",
-    parent_id: 13,
-    created_at: "pqr-91",
-  },
-];
-
-const get_episode_comments = asyncHandler(async (req, res, next) => {
-  const { id: episodeId } = req.params;
-
-  // const track = await prisma.comment.findMany({
-  //   where: { amp_id: episodeId },
-  // });
-
-  res.json({ success: true, data: mockComments });
+  const comments = await prisma.comment.findMany({
+    where: { content_id: contentId },
+  });
+  console.log("Found comments -------------", comments);
+  res.json({ success: true, data: comments });
 });
 
-const get_track_comments = asyncHandler(async (req, res, next) => {
-  const { id: trackId } = req.params;
+const get_podcast_comments = asyncHandler(async (req, res, next) => {
+  const { id: podcastId } = req.params;
+  const episodes = await prisma.episode.findMany({
+    where: { podcastId },
+  });
+  const comments = await prisma.comment.findMany({
+    where: {
+      OR: episodes.map(({ id }) => ({
+        content_id: id,
+      })),
+    },
+  });
+  console.log("Found comments -------------", comments);
+  res.json({ success: true, data: comments });
+});
 
-  // const track = await prisma.episodeInfo.findFirstOrThrow({
-  //   where: { id: trackId },
-  // });
+const get_artist_comments = asyncHandler(async (req, res, next) => {
+  const { id: artistId } = req.params;
+  const albums = await prisma.album.findMany({
+    where: { artistId },
+  });
 
-  res.json({ success: true, data: mockComments });
+  const tracks = await prisma.track.findMany({
+    where: {
+      OR: albums.map(({ id }) => ({
+        albumId: id,
+      })),
+    },
+  });
+
+  const comments = await prisma.comment.findMany({
+    where: {
+      OR: tracks.map(({ id }) => ({
+        content_id: id,
+      })),
+    },
+  });
+  console.log("Found comments -------------", comments);
+  res.json({ success: true, data: comments });
 });
 
 export default {
-  get_episode_comments,
-  get_track_comments,
+  get_comments,
+  get_podcast_comments,
+  get_artist_comments,
 };
