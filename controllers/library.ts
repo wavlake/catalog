@@ -1,12 +1,7 @@
 import asyncHandler from "express-async-handler";
 import { Event } from "nostr-tools";
 import prisma from "../prisma/client";
-import { log } from "console";
 import { formatError } from "../library/errors";
-
-type EventContent = {
-  contentIds: string[];
-};
 
 const get_user_library = asyncHandler(async (req, res, next) => {
   try {

@@ -55,14 +55,20 @@ const getAllComments = async (contentIds: string[]) => {
 
   const commentsWithSatAmount = await Promise.all(
     sortedComments.map(async (comment) => {
-      const amp = await prisma.amp.findUnique({
-        where: { id: comment.ampId },
-      });
+      if (comment.txId) {
+        const preamp = await prisma.preamp.findUnique({
+          where: { txId: comment.txId },
+        });
 
-      return {
-        ...comment,
-        commentMsatSum: amp.msat_amount,
-      };
+        return {
+          ...comment,
+          commentMsatSum: preamp.msatAmount,
+        };
+      } else {
+        return {
+          ...comment,
+        };
+      }
     })
   );
 
@@ -85,6 +91,7 @@ const get_comments = asyncHandler(async (req, res, next) => {
   });
 });
 
+// looks up all episode ids for a podcast and then gets all comments for those episodes
 const get_podcast_comments = asyncHandler(async (req, res, next) => {
   const { id: podcastId } = req.params;
   if (!podcastId) {
@@ -104,6 +111,7 @@ const get_podcast_comments = asyncHandler(async (req, res, next) => {
   res.json({ success: true, data: combinedAndSortedComments });
 });
 
+// looks up all album ids for an artist, then all the track ids for each album, and then gets all comments for those tracks
 const get_artist_comments = asyncHandler(async (req, res, next) => {
   const { id: artistId } = req.params;
   if (!artistId) {
