@@ -10,12 +10,11 @@ type EventContent = {
 
 const get_user_library = asyncHandler(async (req, res, next) => {
   try {
-    const parsedEvent: Event = res.locals.parsedEvent;
-    const npub = parsedEvent.pubkey;
+    const { pubkey } = res.locals.authEvent as Event;
 
     const libraryContent = await prisma.library.findMany({
       where: {
-        user_id: npub,
+        user_id: pubkey,
       },
     });
 
@@ -28,22 +27,16 @@ const get_user_library = asyncHandler(async (req, res, next) => {
 
 const add_to_library = asyncHandler(async (req, res, next) => {
   try {
-    const parsedEvent: Event = res.locals.parsedEvent;
-    if (!parsedEvent) {
-      const error = formatError(400, "No event found");
+    const { pubkey } = res.locals.authEvent as Event;
+
+    if (!pubkey) {
+      const error = formatError(400, "No pubkey found");
       next(error);
       return;
     }
 
-    const npub = parsedEvent.pubkey;
-    const content: EventContent = JSON.parse(parsedEvent.content);
-    const { contentIds = [] } = content;
-    console.log({ content });
-    if (!npub) {
-      const error = formatError(400, "No npub found");
-      next(error);
-      return;
-    }
+    const { contentIds = [] } = req.body;
+
     if (!contentIds.length) {
       const error = formatError(
         400,
@@ -55,7 +48,7 @@ const add_to_library = asyncHandler(async (req, res, next) => {
 
     await prisma.library.createMany({
       data: contentIds.map((contentId) => ({
-        user_id: npub,
+        user_id: pubkey,
         content_id: contentId,
       })),
     });
@@ -69,22 +62,15 @@ const add_to_library = asyncHandler(async (req, res, next) => {
 
 const remove_from_library = asyncHandler(async (req, res, next) => {
   try {
-    const parsedEvent: Event = res.locals.parsedEvent;
-    if (!parsedEvent) {
-      const error = formatError(400, "No event found");
+    const { pubkey } = res.locals.authEvent as Event;
+
+    if (!pubkey) {
+      const error = formatError(400, "No pubkey found");
       next(error);
       return;
     }
+    const { contentIds = [] } = req.body;
 
-    const npub = parsedEvent.pubkey;
-    const content: EventContent = JSON.parse(parsedEvent.content);
-    const { contentIds = [] } = content;
-
-    if (!npub) {
-      const error = formatError(400, "No npub found");
-      next(error);
-      return;
-    }
     if (!contentIds.length) {
       const error = formatError(
         400,
@@ -96,7 +82,7 @@ const remove_from_library = asyncHandler(async (req, res, next) => {
 
     await prisma.library.deleteMany({
       where: {
-        user_id: npub,
+        user_id: pubkey,
         content_id: {
           in: contentIds,
         },
