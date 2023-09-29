@@ -1,7 +1,4 @@
-const express = require("express");
-const { isAuthorized } = require("../middlewares/auth");
-
-// Import controllers
+import express from "express";
 import commentsController from "../controllers/comments";
 
 // Create router
@@ -9,8 +6,9 @@ const router = express.Router();
 
 //////// ROUTES ////////
 
-router.get("/episode/:id", commentsController.get_episode_comments);
-router.get("/track/:id", commentsController.get_track_comments);
+router.get("/:id", commentsController.get_comments);
+router.get("/show/:id", commentsController.get_podcast_comments);
+router.get("/artist/:id", commentsController.get_artist_comments);
 
 // Export router
 export default router;
