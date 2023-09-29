@@ -46,7 +46,7 @@ const get_artist_by_id = asyncHandler(async (req, res, next) => {
 
   const tracks = await prisma.trackInfo.findMany({
     where: { artistId: request.artistId },
-    orderBy: { msatTotal30Days: "desc" },
+    orderBy: { msatTotal: "desc" },
     take: 10,
   });
 
