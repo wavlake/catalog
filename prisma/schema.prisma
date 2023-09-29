@@ -55,14 +55,6 @@ model Amp {
   time_split_source String?   @db.Uuid
   split_destination String?   @db.VarChar(64)
   content_type      String?   @default("track") @db.VarChar(12)
-  value_guid        String?
-  value_podcast     String?
-  value_feed_id     Int?
-  value_episode     String?
-  value_item_id     Int?
-  value_ts          Int?
-  value_app_name    String?
-  value_sender_name String?
 
   @@index([track_id], map: "idx_amp_track_id")
   @@index([user_id], map: "idx_amp_user_id")
@@ -411,6 +403,22 @@ model library {
   created_at DateTime? @default(now()) @db.Timestamptz(6)
 
   @@index([user_id], map: "idx_library_user_id")
+
+}
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model Preamp {
+  txId       String  @id @map("tx_id") @db.Uuid
+  msatAmount Int     @map("msat_amount")
+  guid       String?
+  podcast    String?
+  feedId     Int?    @map("feed_id")
+  episode    String?
+  itemId     Int?    @map("item_id")
+  ts         Int?
+  appName    String? @map("app_name")
+  senderName String? @map("sender_name")
+
+  @@map("preamp")
 }
 
 view TrackInfo {
