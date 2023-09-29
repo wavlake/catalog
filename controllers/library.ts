@@ -1,43 +1,55 @@
 import asyncHandler from "express-async-handler";
 import { Event } from "nostr-tools";
 import prisma from "../prisma/client";
+import { log } from "console";
+import { formatError } from "../library/errors";
 
 type EventContent = {
   contentIds: string[];
 };
 
 const get_user_library = asyncHandler(async (req, res, next) => {
-  const { nostr } = req.body;
+  try {
+    const parsedEvent: Event = res.locals.parsedEvent;
+    const npub = parsedEvent.pubkey;
 
-  const npub = (nostr as Event).pubkey;
+    const libraryContent = await prisma.library.findMany({
+      where: {
+        user_id: npub,
+      },
+    });
 
-  const libraryContent = await prisma.library.findMany({
-    where: {
-      user_id: npub,
-    },
-  });
-
-  res.json({ success: true, data: libraryContent });
+    res.json({ success: true, data: libraryContent });
+  } catch (err) {
+    const error = formatError(500, err);
+    next(error);
+  }
 });
 
 const add_to_library = asyncHandler(async (req, res, next) => {
   try {
-    const { nostr } = req.body;
-    if (!nostr) {
-      res.status(400).json({ success: false, error: "No event found" });
+    const parsedEvent: Event = res.locals.parsedEvent;
+    if (!parsedEvent) {
+      const error = formatError(400, "No event found");
+      next(error);
       return;
     }
 
-    const npub = (nostr as Event).pubkey;
-    const content: EventContent = JSON.parse(nostr.content);
-    const { contentIds } = content;
-
+    const npub = parsedEvent.pubkey;
+    const content: EventContent = JSON.parse(parsedEvent.content);
+    const { contentIds = [] } = content;
+    console.log({ content });
     if (!npub) {
-      res.status(400).json({ success: false, error: "No npub found" });
+      const error = formatError(400, "No npub found");
+      next(error);
       return;
     }
     if (!contentIds.length) {
-      res.status(400).json({ success: false, error: "No content ids found" });
+      const error = formatError(
+        400,
+        "Request must include a list of content ids"
+      );
+      next(error);
       return;
     }
 
@@ -50,28 +62,35 @@ const add_to_library = asyncHandler(async (req, res, next) => {
 
     res.json({ success: true });
   } catch (err) {
-    res.status(500).json({ success: false, error: err });
+    const error = formatError(500, err);
+    next(error);
   }
 });
 
 const remove_from_library = asyncHandler(async (req, res, next) => {
   try {
-    const { nostr } = req.body;
-    if (!nostr) {
-      res.status(400).json({ success: false, error: "No event found" });
+    const parsedEvent: Event = res.locals.parsedEvent;
+    if (!parsedEvent) {
+      const error = formatError(400, "No event found");
+      next(error);
       return;
     }
 
-    const npub = (nostr as Event).pubkey;
-    const content: EventContent = JSON.parse(nostr.content);
-    const { contentIds } = content;
+    const npub = parsedEvent.pubkey;
+    const content: EventContent = JSON.parse(parsedEvent.content);
+    const { contentIds = [] } = content;
 
     if (!npub) {
-      res.status(400).json({ success: false, error: "No npub found" });
+      const error = formatError(400, "No npub found");
+      next(error);
       return;
     }
     if (!contentIds.length) {
-      res.status(400).json({ success: false, error: "No content ids found" });
+      const error = formatError(
+        400,
+        "Request must include a list of content ids"
+      );
+      next(error);
       return;
     }
 
@@ -86,7 +105,8 @@ const remove_from_library = asyncHandler(async (req, res, next) => {
 
     res.json({ success: true });
   } catch (err) {
-    res.status(500).json({ success: false, error: err });
+    const error = formatError(500, err);
+    next(error);
   }
 });
 
