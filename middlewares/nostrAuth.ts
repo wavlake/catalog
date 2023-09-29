@@ -56,7 +56,9 @@ async function validateEvent(
       throw new Error("Invalid nostr event, payload tag invalid");
     }
     if (payloadTag?.[1] !== hashPayload(body)) {
-      throw new Error("Invalid nostr event, payload tag invalid");
+      throw new Error(
+        "Invalid payload tag hash, does not match request body hash"
+      );
     }
   }
   return true;
