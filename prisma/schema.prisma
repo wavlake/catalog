@@ -407,6 +407,8 @@ model Preamp {
   ts         Int?
   appName    String? @map("app_name")
   senderName String? @map("sender_name")
+  userId     String  @map("user_id")
+  contentId  String  @map("content_id") @db.Uuid
 
   @@map("preamp")
 }
