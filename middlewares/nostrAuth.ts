@@ -78,8 +78,13 @@ export const isNostrAuthorized = asyncHandler(async (req, res, next) => {
 
     const nostrEvent = await nip98.unpackEventFromToken(authorization);
 
-    const fullUrl = `${req.protocol}://${req.get("host")}${req.originalUrl}`;
-    console.log("fullUrl", fullUrl);
+    const host = req.get("host");
+    // req.protocol may be "http" when express is behind a proxy or load balancer
+    // so we hardcode it as HTTPS here, since that is what the client will be using
+    const fullUrl = `${
+      host === "localhost" ? req.protocol : "https"
+    }://${host}${req.originalUrl}`;
+
     const eventIsValid = await validateEvent(
       nostrEvent,
       fullUrl,
