@@ -399,7 +399,7 @@ model TimeSplit {
 model library {
   id         Int       @id @default(autoincrement())
   user_id    String
-  content_id String
+  content_id String    @db.Uuid
   created_at DateTime? @default(now()) @db.Timestamptz(6)
 
   @@index([user_id], map: "idx_library_user_id")
