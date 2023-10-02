@@ -105,12 +105,13 @@ const remove_from_library = asyncHandler(async (req, res, next) => {
       next(error);
       return;
     }
-    const { contentIds = [] } = req.body;
 
-    if (!contentIds.length) {
+    const { id } = req.params;
+
+    if (!id) {
       const error = formatError(
         400,
-        "Request must include a list of content ids"
+        "Request must include a content id as a param (e.g. /library/abc-123)"
       );
       next(error);
       return;
@@ -120,7 +121,7 @@ const remove_from_library = asyncHandler(async (req, res, next) => {
       where: {
         user_id: pubkey,
         content_id: {
-          in: contentIds,
+          in: [id],
         },
       },
     });

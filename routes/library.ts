@@ -23,7 +23,7 @@ router.get(
   libraryController.get_user_library({ tracks: true })
 );
 router.post("/", isNostrAuthorized, libraryController.add_to_library);
-router.delete("/", isNostrAuthorized, libraryController.remove_from_library);
+router.delete("/:id", isNostrAuthorized, libraryController.remove_from_library);
 
 // Export router
 export default router;
