@@ -1,15 +1,16 @@
 import asyncHandler from "express-async-handler";
 import { Event, Kind, nip98, verifySignature } from "nostr-tools";
 import { formatError } from "../library/errors";
-import { base64 } from "@scure/base";
+import { sha256 } from "@noble/hashes/sha256";
+import { bytesToHex } from "@noble/hashes/utils";
 
 // TODO - replace validateEvent with the nostr-tools version once the payload hash feature of NIP-98 is implemented
-// https://github.com/nostr-protocol/nips/blob/master/98.md#nostr-event
 // https://github.com/nbd-wtf/nostr-tools/blob/master/nip98.ts
 // https://github.com/nbd-wtf/nostr-tools/issues/307
 const utf8Encoder = new TextEncoder();
 function hashPayload(payload: any): string {
-  return base64.encode(utf8Encoder.encode(JSON.stringify(payload)));
+  const hash = sha256(utf8Encoder.encode(JSON.stringify(payload)));
+  return bytesToHex(hash);
 }
 
 async function validateEvent(
@@ -64,6 +65,8 @@ async function validateEvent(
   return true;
 }
 
+// This middleware is used to authenticate requests from Nostr
+// It follows the NIP-98 spec - https://github.com/nostr-protocol/nips/blob/master/98.md
 export const isNostrAuthorized = asyncHandler(async (req, res, next) => {
   try {
     const { authorization } = req.headers;
