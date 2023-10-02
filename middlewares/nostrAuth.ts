@@ -75,9 +75,11 @@ export const isNostrAuthorized = asyncHandler(async (req, res, next) => {
 
     const nostrEvent = await nip98.unpackEventFromToken(authorization);
 
+    const fullUrl = `${req.protocol}://${req.get("host")}${req.originalUrl}`;
+
     const eventIsValid = await validateEvent(
       nostrEvent,
-      req.url,
+      fullUrl,
       req.method,
       req.body
     );
@@ -93,8 +95,7 @@ export const isNostrAuthorized = asyncHandler(async (req, res, next) => {
     res.locals.authEvent = nostrEvent;
     next();
   } catch (err) {
-    console.log("caught ya", err);
-    const error = formatError(500, err);
+    const error = formatError(401, err);
     next(error);
   }
 });
