@@ -15,21 +15,24 @@ const get_user_library = ({
 }) =>
   asyncHandler(async (req, res, next) => {
     try {
-      const { pubkey = "123" } = res.locals.authEvent as Event;
+      const { pubkey } = res.locals.authEvent as Event;
+      if (!pubkey) {
+        const error = formatError(400, "No pubkey found");
+        next(error);
+        return;
+      }
 
       const libraryArtists = artists
         ? await db
             .knex("library")
-            .join("artists", "library.content_id", "artists.id")
-            .where({
-              user_id: pubkey,
-            })
+            .join("artist", "library.content_id", "artist.id")
+            .where("library.user_id", "=", pubkey)
         : [];
 
       const libraryAlbums = albums
         ? await db
             .knex("library")
-            .join("albums", "library.content_id", "albums.id")
+            .join("album", "library.content_id", "album.id")
             .where({
               user_id: pubkey,
             })
@@ -38,7 +41,7 @@ const get_user_library = ({
       const libraryTracks = tracks
         ? await db
             .knex("library")
-            .join("tracks", "library.content_id", "tracks.id")
+            .join("track", "library.content_id", "track.id")
             .where({
               user_id: pubkey,
             })
