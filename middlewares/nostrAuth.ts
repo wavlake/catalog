@@ -79,7 +79,7 @@ export const isNostrAuthorized = asyncHandler(async (req, res, next) => {
     const nostrEvent = await nip98.unpackEventFromToken(authorization);
 
     const fullUrl = `${req.protocol}://${req.get("host")}${req.originalUrl}`;
-
+    console.log("fullUrl", fullUrl);
     const eventIsValid = await validateEvent(
       nostrEvent,
       fullUrl,
