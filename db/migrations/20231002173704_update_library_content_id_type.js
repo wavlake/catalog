@@ -14,6 +14,6 @@ exports.up = function (knex) {
  */
 exports.down = function (knex) {
   return knex.schema.alterTable("library", function (table) {
-    table.text("content_id").notNullable();
+    table.text("content_id").notNullable().alter();
   });
 };
