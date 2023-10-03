@@ -250,7 +250,6 @@ model User {
   artworkUrl          String?          @map("artwork_url") @db.VarChar(255)
   lastActivityCheckAt DateTime?        @default(now()) @map("last_activity_check_at") @db.Timestamptz(6)
   profileUrl          String?          @unique(map: "user_profile_url_unique") @map("profile_url") @db.VarChar(255)
-  compressor_error    Boolean?         @default(false)
   artist              Artist[]
   podcast             Podcast[]
   split_recipient     SplitRecipient[]
