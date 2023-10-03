@@ -1,12 +1,8 @@
-const log = require("loglevel");
+import { feature_flag } from "./../node_modules/.prisma/client/index.d";
 import db from "../library/db";
 import asyncHandler from "express-async-handler";
 import { formatError } from "../library/errors";
 import prisma from "../prisma/client";
-
-type UserFeatures = {
-  splitsV1?: boolean;
-};
 
 const get_account = asyncHandler(async (req, res, next) => {
   const request = {
@@ -49,23 +45,23 @@ const get_account = asyncHandler(async (req, res, next) => {
 });
 
 const get_features = asyncHandler(async (req, res, next) => {
-  const userId = req["uid"];
-
   try {
-    // check DB for user id
-    const user = prisma.user.findFirstOrThrow({
+    const userId = req["uid"];
+
+    const flags = await prisma.userFlag.findMany({
       where: {
-        id: userId,
+        userId,
+      },
+      include: {
+        featureFlag: true,
       },
     });
 
-    const data: UserFeatures = {
-      splitsV1: true,
-    };
+    console.log(flags);
 
     res.send({
       success: true,
-      data,
+      data: flags.map((flag) => flag.featureFlag.name),
     });
   } catch (err) {
     next(err);
