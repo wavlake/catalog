@@ -41,7 +41,7 @@ const get_user_library = ({
       const libraryTracks = tracks
         ? await db
             .knex("library")
-            .join("track", "library.content_id", "track.id")
+            .join("track_info", "library.content_id", "track_info.id")
             .where({
               user_id: pubkey,
             })
