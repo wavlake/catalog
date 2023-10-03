@@ -255,6 +255,7 @@ model User {
   split_recipient     SplitRecipient[]
   subscriber          Subscriber?
   transaction         transaction[]
+  user_flag           UserFlag[]
 
   @@index([profileUrl], map: "idx_profile_url")
   @@map("user")
@@ -421,6 +422,24 @@ model Preamp {
   contentId  String  @map("content_id") @db.Uuid
 
   @@map("preamp")
+}
+
+model feature_flag {
+  id       Int        @id @default(autoincrement())
+  name     String     @db.VarChar(255)
+  userFlag UserFlag[]
+}
+
+model UserFlag {
+  id            Int          @id @default(autoincrement())
+  userId        String       @map("user_id") @db.VarChar(255)
+  featureFlagId Int          @map("feature_flag_id")
+  featureFlag   feature_flag @relation(fields: [featureFlagId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "user_flag_feature_flag_id_foreign")
+  user          User         @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "user_flag_user_id_foreign")
+
+  @@index([featureFlagId], map: "idx_user_feature_flag_id")
+  @@index([userId], map: "idx_user_flag_id")
+  @@map("user_flag")
 }
 
 view TrackInfo {

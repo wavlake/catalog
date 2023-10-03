@@ -1,7 +1,6 @@
-const log = require("loglevel");
 import db from "../library/db";
-const asyncHandler = require("express-async-handler");
-import { formatError } from "../library/errors";
+import asyncHandler from "express-async-handler";
+import prisma from "../prisma/client";
 
 const get_account = asyncHandler(async (req, res, next) => {
   const request = {
@@ -43,4 +42,28 @@ const get_account = asyncHandler(async (req, res, next) => {
   }
 });
 
-export default { get_account };
+const get_features = asyncHandler(async (req, res, next) => {
+  try {
+    const userId = req["uid"];
+
+    const flags = await prisma.userFlag.findMany({
+      where: {
+        userId,
+      },
+      include: {
+        featureFlag: true,
+      },
+    });
+
+    console.log(flags);
+
+    res.send({
+      success: true,
+      data: flags.map((flag) => flag.featureFlag.name),
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+export default { get_account, get_features };
