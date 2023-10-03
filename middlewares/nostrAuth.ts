@@ -51,11 +51,8 @@ async function validateEvent(
     throw new Error("Invalid nostr event, method tag invalid");
   }
 
-  if (method.toLowerCase() !== "get") {
+  if (Boolean(body)) {
     const payloadTag = event.tags.find((t) => t[0] === "payload");
-    if (payloadTag?.length !== 1) {
-      throw new Error("Invalid nostr event, payload tag invalid");
-    }
     if (payloadTag?.[1] !== hashPayload(body)) {
       throw new Error(
         "Invalid payload tag hash, does not match request body hash"
