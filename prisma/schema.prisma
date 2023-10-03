@@ -97,20 +97,20 @@ model Artist {
 }
 
 model comment {
-  id           Int       @id @default(autoincrement())
-  user_id      String    @db.VarChar(255)
-  amp_id       Int
-  content      String?
-  parent_id    Int?
-  created_at   DateTime? @default(now()) @db.Timestamptz(6)
-  tx_id        String?   @db.Uuid
-  content_id   String?   @db.Uuid
-  content_type String?   @default("track") @db.VarChar(12)
-  is_nostr     Boolean?  @default(false)
+  id          Int       @id @default(autoincrement())
+  userId      String    @map("user_id") @db.VarChar(255)
+  ampId       Int       @map("amp_id")
+  content     String?
+  parentId    Int?      @map("parent_id")
+  createdAt   DateTime? @default(now()) @map("created_at") @db.Timestamptz(6)
+  txId        String?   @map("tx_id") @db.Uuid
+  contentId   String?   @map("content_id") @db.Uuid
+  contentType String?   @default("track") @map("content_type") @db.VarChar(12)
+  isNostr     Boolean?  @default(false) @map("is_nostr")
 
-  @@index([parent_id], map: "idx_comment_parent_id")
-  @@index([user_id], map: "idx_comment_user_id")
-  @@index([content_id], map: "idx_comment_content_id")
+  @@index([parentId], map: "idx_comment_parent_id")
+  @@index([userId], map: "idx_comment_user_id")
+  @@index([contentId], map: "idx_comment_content_id")
 }
 
 model event_track {
@@ -255,6 +255,7 @@ model User {
   split_recipient     SplitRecipient[]
   subscriber          Subscriber?
   transaction         transaction[]
+  user_flag           UserFlag[]
 
   @@index([profileUrl], map: "idx_profile_url")
   @@map("user")
@@ -354,12 +355,13 @@ model zap_request {
 
 model Split {
   id              Int              @id @default(autoincrement())
+  contentId       String           @unique(map: "split_content_id_unique") @map("content_id") @db.Uuid
   contentType     String?          @default("track") @map("content_type") @db.VarChar(12)
   createdAt       DateTime?        @default(now()) @map("created_at") @db.Timestamptz(6)
-  contentId       String           @unique(map: "split_content_id_unique") @map("content_id") @db.Uuid
   splitRecipients SplitRecipient[]
 
   @@index([contentType], map: "idx_split_content_type")
+  @@index([contentId], map: "idx_split_content_id")
   @@map("split")
 }
 
@@ -395,6 +397,15 @@ model TimeSplit {
   @@map("time_split")
 }
 
+model library {
+  id         Int       @id @default(autoincrement())
+  user_id    String
+  content_id String    @db.Uuid
+  created_at DateTime? @default(now()) @db.Timestamptz(6)
+
+  @@index([user_id], map: "idx_library_user_id")
+}
+
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 model Preamp {
   txId       String  @id @map("tx_id") @db.Uuid
@@ -407,8 +418,28 @@ model Preamp {
   ts         Int?
   appName    String? @map("app_name")
   senderName String? @map("sender_name")
+  userId     String  @map("user_id")
+  contentId  String  @map("content_id") @db.Uuid
 
   @@map("preamp")
+}
+
+model feature_flag {
+  id       Int        @id @default(autoincrement())
+  name     String     @db.VarChar(255)
+  userFlag UserFlag[]
+}
+
+model UserFlag {
+  id            Int          @id @default(autoincrement())
+  userId        String       @map("user_id") @db.VarChar(255)
+  featureFlagId Int          @map("feature_flag_id")
+  featureFlag   feature_flag @relation(fields: [featureFlagId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "user_flag_feature_flag_id_foreign")
+  user          User         @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "user_flag_user_id_foreign")
+
+  @@index([featureFlagId], map: "idx_user_feature_flag_id")
+  @@index([userId], map: "idx_user_flag_id")
+  @@map("user_flag")
 }
 
 view TrackInfo {

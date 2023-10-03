@@ -1,56 +1,146 @@
+import { formatError } from "../library/errors";
 import prisma from "../prisma/client";
 import asyncHandler from "express-async-handler";
 
-type Comment = {
-  id: number;
-  user_id: string;
-  amp_id: number;
-  content: string;
-  parent_id: number;
-  created_at: string;
+const getAllComments = async (contentIds: string[]) => {
+  const [userComments, nostrComments] = await Promise.all([
+    prisma.comment.findMany({
+      where: {
+        AND: [
+          {
+            OR: contentIds.map((id) => ({
+              contentId: id,
+            })),
+          },
+          { isNostr: false },
+        ],
+      },
+    }),
+    prisma.comment.findMany({
+      where: {
+        AND: [
+          {
+            OR: contentIds.map((id) => ({
+              contentId: id,
+            })),
+          },
+          { isNostr: true },
+        ],
+      },
+    }),
+  ]);
+
+  const commentsWithUserInfo = await Promise.all(
+    userComments.map(async (comment) => {
+      if (comment.userId === "keysend") {
+        return comment;
+      }
+
+      const user = await prisma.user.findUnique({
+        where: { id: comment.userId },
+      });
+
+      return {
+        ...comment,
+        name: user.name,
+        commenterProfileUrl: user.profileUrl,
+        commenterArtworkUrl: user.artworkUrl,
+      };
+    })
+  );
+
+  const sortedComments = [...commentsWithUserInfo, ...nostrComments].sort(
+    (a, b) => (a.createdAt < b.createdAt ? 1 : -1)
+  );
+
+  const commentsWithSatAmount = await Promise.all(
+    sortedComments.map(async (comment) => {
+      if (comment.txId) {
+        const preamp = await prisma.preamp.findUnique({
+          where: { txId: comment.txId },
+        });
+
+        return {
+          ...comment,
+          commentMsatSum: preamp.msatAmount,
+        };
+      } else {
+        return {
+          ...comment,
+        };
+      }
+    })
+  );
+
+  return commentsWithSatAmount;
 };
 
-const mockComments: Comment[] = [
-  {
-    id: 1,
-    user_id: "def-12",
-    amp_id: 12,
-    content: "Cool track",
-    parent_id: 13,
-    created_at: "jkl-56",
-  },
-  {
-    id: 1,
-    user_id: "abc-73",
-    amp_id: 12,
-    content:
-      "That was an awesome episode, i would listen to it again, especially while driving, or on a plane, or maybe on a train, or if i needed to fall asleep, or was working the night shift. Great for any and all occasion. This is a long comment, ok cool.",
-    parent_id: 13,
-    created_at: "pqr-91",
-  },
-];
+const get_comments = asyncHandler(async (req, res, next) => {
+  const { id: contentId } = req.params;
+  if (!contentId) {
+    const error = formatError(400, "Must include a track or episode id");
+    next(error);
+    return;
+  }
 
-const get_episode_comments = asyncHandler(async (req, res, next) => {
-  const { id: episodeId } = req.params;
+  const combinedAndSortedComments = await getAllComments([contentId]);
 
-  // const track = await prisma.comment.findMany({
-  //   where: { amp_id: episodeId },
-  // });
-
-  res.json({ success: true, data: mockComments });
+  res.json({
+    success: true,
+    data: combinedAndSortedComments,
+  });
 });
 
-const get_track_comments = asyncHandler(async (req, res, next) => {
-  const { id: trackId } = req.params;
+// looks up all episode ids for a podcast and then gets all comments for those episodes
+const get_podcast_comments = asyncHandler(async (req, res, next) => {
+  const { id: podcastId } = req.params;
+  if (!podcastId) {
+    const error = formatError(400, "Must include the podcast id");
+    next(error);
+    return;
+  }
 
-  // const track = await prisma.episodeInfo.findFirstOrThrow({
-  //   where: { id: trackId },
-  // });
+  const episodes = await prisma.episode.findMany({
+    where: { podcastId },
+  });
 
-  res.json({ success: true, data: mockComments });
+  const combinedAndSortedComments = await getAllComments(
+    episodes.map(({ id }) => id)
+  );
+
+  res.json({ success: true, data: combinedAndSortedComments });
+});
+
+// looks up all album ids for an artist, then all the track ids for each album, and then gets all comments for those tracks
+const get_artist_comments = asyncHandler(async (req, res, next) => {
+  const { id: artistId } = req.params;
+  if (!artistId) {
+    const error = formatError(400, "Must include the artist id");
+    next(error);
+    return;
+  }
+
+  const albums = await prisma.album.findMany({
+    where: { artistId },
+  });
+
+  const tracks = await prisma.track.findMany({
+    where: {
+      OR: albums.map(({ id }) => ({
+        albumId: id,
+      })),
+    },
+  });
+
+  const combinedAndSortedComments = await getAllComments(
+    tracks.map(({ id }) => id)
+  );
+
+  res.json({ success: true, data: combinedAndSortedComments });
 });
 
 export default {
-  get_episode_comments,
-  get_track_comments,
+  get_comments,
+  get_podcast_comments,
+  get_artist_comments,
 };
