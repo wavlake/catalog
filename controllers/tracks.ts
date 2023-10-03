@@ -78,7 +78,11 @@ const get_tracks_by_new = asyncHandler(async (req, res, next) => {
   const limit = parseLimit(req.query.limit, 50);
 
   const albumTracks = db.knex
-    .select("track.id as id", "track.album_id as albumId")
+    .select(
+      "track.id as id",
+      "track.album_id as albumId",
+      "artist.id as artistId"
+    )
     .join("artist", "track.artist_id", "=", "artist.id")
     .join("album", "album.id", "=", "track.album_id")
     .rank("ranking", "track.id", "track.album_id")
@@ -93,8 +97,9 @@ const get_tracks_by_new = asyncHandler(async (req, res, next) => {
     .min("track.created_at as createdAt")
     .andWhere("track.deleted", "=", false)
     .andWhere("track.order", "=", 1)
+    .andWhere("track.duration", "is not", null)
     .from("track")
-    .groupBy("track.album_id", "track.id")
+    .groupBy("track.album_id", "track.id", "artist.id")
     .as("a");
 
   db.knex(albumTracks)
@@ -141,6 +146,7 @@ const get_tracks_by_random = asyncHandler(async (req, res, next) => {
   randomTracks
     .distinct()
     .where("track.deleted", "=", false)
+    .andWhere("track.duration", "is not", null)
     // .limit(request.limit)
     .then((data) => {
       res.send(shuffle(data));
@@ -162,6 +168,43 @@ const get_tracks_by_artist_id = asyncHandler(async (req, res, next) => {
   });
 
   res.json({ success: true, data: tracks });
+});
+
+const get_random_tracks_by_genre_id = asyncHandler(async (req, res, next) => {
+  const { genreId } = req.params;
+
+  const randomTracks = db
+    .knex(db.knex.raw(`track TABLESAMPLE BERNOULLI(${randomSampleSize})`))
+    .join("album", "album.id", "=", "track.album_id")
+    .join("artist", "artist.id", "=", "track.artist_id")
+    .join("music_genre", "music_genre.id", "=", "album.genre_id")
+    .select(
+      "track.id as id",
+      "track.title as title",
+      "artist.name as artist",
+      "artist.artist_url as artistUrl",
+      "artist.artwork_url as avatarUrl",
+      "track.album_id as albumId",
+      "album.artwork_url as artworkUrl",
+      "album.title as albumTitle",
+      "track.live_url as liveUrl",
+      "track.duration as duration",
+      "artist.id as artistId"
+    )
+    .where("music_genre.id", "=", genreId)
+    .andWhere("track.duration", "is not", null);
+
+  randomTracks
+    .distinct()
+    .where("track.deleted", "=", false)
+    // .limit(request.limit)
+    .then((data) => {
+      res.send(shuffle(data));
+    })
+    .catch((err) => {
+      log.debug(`Error querying track table for Boosted: ${err}`);
+      next(err);
+    });
 });
 
 const delete_track = asyncHandler(async (req, res, next) => {
@@ -278,6 +321,35 @@ const create_track = asyncHandler(async (req, res, next) => {
     });
 });
 
+const search_tracks = asyncHandler(async (req, res, next) => {
+  const title = String(req.query.title);
+  const artist = String(req.query.artist);
+  const album = String(req.query.album);
+
+  if (!title && !artist && !album) {
+    const error = formatError(
+      400,
+      "Must include at least one search query. Either title, artist, or album"
+    );
+    next(error);
+  }
+
+  const tracks = await prisma.trackInfo.findMany({
+    where: {
+      OR: [
+        { title: { contains: title, mode: "insensitive" } },
+        {
+          artist: { contains: artist, mode: "insensitive" },
+        },
+        { albumTitle: { contains: album, mode: "insensitive" } },
+      ],
+    },
+    take: 10,
+  });
+
+  res.json({ success: true, data: tracks });
+});
+
 const update_track = asyncHandler(async (req, res, next) => {
   const {
     trackId,
@@ -358,9 +430,11 @@ export default {
   get_tracks_by_account,
   get_tracks_by_new,
   get_tracks_by_random,
+  search_tracks,
   get_tracks_by_album_id,
   get_tracks_by_artist_id,
   get_tracks_by_artist_url,
+  get_random_tracks_by_genre_id,
   delete_track,
   create_track,
   update_track,

@@ -77,7 +77,10 @@ import stats from "./routes/stats";
 import tracks from "./routes/tracks";
 import episodes from "./routes/episodes";
 import podcasts from "./routes/podcasts";
+import search from "./routes/search";
 import splits from "./routes/splits";
+import comments from "./routes/comments";
+import library from "./routes/library";
 
 app.use(cors(corsOptions));
 
@@ -91,7 +94,10 @@ app.use("/v1/stats", stats);
 app.use("/v1/tracks", tracks);
 app.use("/v1/episodes", episodes);
 app.use("/v1/podcasts", podcasts);
+app.use("/v1/search", search);
 app.use("/v1/splits", splits);
+app.use("/v1/comments", comments);
+app.use("/v1/library", library);
 
 // The error handler must be registered before any other error middleware and after all controllers
 app.use(Sentry.Handlers.errorHandler());

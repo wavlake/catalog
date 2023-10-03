@@ -51,7 +51,7 @@ model Amp {
   fee_msat          Int?      @default(0)
   type              Int?
   type_key          Int?
-  split_tx          String?   @db.Uuid
+  tx_id             String?   @db.Uuid
   time_split_source String?   @db.Uuid
   split_destination String?   @db.VarChar(64)
   content_type      String?   @default("track") @db.VarChar(12)
@@ -59,7 +59,7 @@ model Amp {
   @@index([track_id], map: "idx_amp_track_id")
   @@index([user_id], map: "idx_amp_user_id")
   @@index([content_type], map: "idx_amp_content_type")
-  @@index([split_tx], map: "idx_amp_split")
+  @@index([tx_id], map: "idx_amp_split")
   @@index([split_destination], map: "idx_amp_split_destination")
   @@index([time_split_source], map: "idx_amp_time_split_source")
   @@map("amp")
@@ -97,15 +97,20 @@ model Artist {
 }
 
 model comment {
-  id         Int       @id @default(autoincrement())
-  user_id    String    @db.VarChar(255)
-  amp_id     Int
-  content    String    @db.VarChar(210)
-  parent_id  Int?
-  created_at DateTime? @default(now()) @db.Timestamptz(6)
+  id          Int       @id @default(autoincrement())
+  userId      String    @map("user_id") @db.VarChar(255)
+  ampId       Int       @map("amp_id")
+  content     String?
+  parentId    Int?      @map("parent_id")
+  createdAt   DateTime? @default(now()) @map("created_at") @db.Timestamptz(6)
+  txId        String?   @map("tx_id") @db.Uuid
+  contentId   String?   @map("content_id") @db.Uuid
+  contentType String?   @default("track") @map("content_type") @db.VarChar(12)
+  isNostr     Boolean?  @default(false) @map("is_nostr")
 
-  @@index([parent_id], map: "idx_comment_parent_id")
-  @@index([user_id], map: "idx_comment_user_id")
+  @@index([parentId], map: "idx_comment_parent_id")
+  @@index([userId], map: "idx_comment_user_id")
+  @@index([contentId], map: "idx_comment_content_id")
 }
 
 model event_track {
@@ -354,8 +359,8 @@ model Split {
   createdAt       DateTime?        @default(now()) @map("created_at") @db.Timestamptz(6)
   splitRecipients SplitRecipient[]
 
-  @@index([contentId], map: "idx_split_content_id")
   @@index([contentType], map: "idx_split_content_type")
+  @@index([contentId], map: "idx_split_content_id")
   @@map("split")
 }
 
@@ -377,17 +382,45 @@ model SplitRecipient {
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 model TimeSplit {
-  id               Int       @id @default(autoincrement())
-  contentId        String    @map("content_id") @db.Uuid
-  shareNumerator   Int       @map("share_numerator") @db.SmallInt
-  shareDenominator Int       @map("share_denominator") @db.SmallInt
-  startSeconds     Int       @map("start_seconds") @db.SmallInt
-  endSeconds       Int       @map("end_seconds") @db.SmallInt
-  createdAt        DateTime? @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt        DateTime? @default(now()) @map("updated_at") @db.Timestamptz(6)
+  id                 Int       @id @default(autoincrement())
+  contentId          String    @map("content_id") @db.Uuid
+  shareNumerator     Int       @map("share_numerator") @db.SmallInt
+  shareDenominator   Int       @map("share_denominator") @db.SmallInt
+  startSeconds       Int       @map("start_seconds") @db.SmallInt
+  endSeconds         Int       @map("end_seconds") @db.SmallInt
+  createdAt          DateTime? @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt          DateTime? @default(now()) @map("updated_at") @db.Timestamptz(6)
+  recipientContentId String    @map("recipient_content_id") @db.Uuid
 
   @@index([contentId], map: "idx_time_split_content_id")
   @@map("time_split")
+}
+
+model library {
+  id         Int       @id @default(autoincrement())
+  user_id    String
+  content_id String    @db.Uuid
+  created_at DateTime? @default(now()) @db.Timestamptz(6)
+
+  @@index([user_id], map: "idx_library_user_id")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model Preamp {
+  txId       String  @id @map("tx_id") @db.Uuid
+  msatAmount Int     @map("msat_amount")
+  guid       String?
+  podcast    String?
+  feedId     Int?    @map("feed_id")
+  episode    String?
+  itemId     Int?    @map("item_id")
+  ts         Int?
+  appName    String? @map("app_name")
+  senderName String? @map("sender_name")
+  userId     String  @map("user_id")
+  contentId  String  @map("content_id") @db.Uuid
+
+  @@map("preamp")
 }
 
 view TrackInfo {
@@ -408,6 +441,7 @@ view TrackInfo {
   artistId        String?   @map("artist_id") @db.Uuid
   order           Int?
   isProcessing    Boolean?  @map("is_processing")
+  msatTotal       BigInt?   @map("msat_total")
 
   @@map("track_info")
 }

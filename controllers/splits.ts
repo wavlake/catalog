@@ -3,6 +3,7 @@ import asyncHandler from "express-async-handler";
 import { SplitRecipient } from "@prisma/client";
 import { formatError } from "../library/errors";
 import { SplitContentTypes, isContentOwner } from "../library/userHelper";
+import { checkContentOwnership } from "../library/userHelper";
 
 type ValidatedSplitReceipient = Partial<SplitRecipient> & {
   username?: string;
@@ -38,10 +39,19 @@ const parseSplitsAndValidateUsername = async (
     return;
   }
 
+  let userTracker = []; // used to check for duplicate usernames
   const validatedSplits = await Promise.all<ValidatedSplitReceipient>(
     incomingSplits.map(async (split) => {
       const { name: username, share } = split;
       const hasValidData = username && share && typeof share === "number";
+
+      // check for duplicate usernames
+      if (userTracker.includes(username)) {
+        const error = formatError(400, "Splits must have unique users");
+        next(error);
+        return;
+      }
+      userTracker.push(username);
 
       // guard against invalid data
       if (!hasValidData) {
@@ -94,16 +104,9 @@ const parseSplitsAndValidateUsername = async (
 };
 
 const create_split = asyncHandler(async (req, res, next) => {
-  const { contentId, contentType, splitRecipients } = req.body;
+  await checkContentOwnership(req, res, next);
 
-  // Does user own this content?
-  const userId = req["uid"];
-  const isOwner = await isContentOwner(userId, contentId, contentType);
-  if (!isOwner) {
-    const error = formatError(403, "User does not own this content");
-    next(error);
-    return;
-  }
+  const { contentId, contentType, splitRecipients } = req.body;
 
   const newSplitsForDb = await parseSplitsAndValidateUsername(
     splitRecipients,
@@ -139,20 +142,17 @@ const create_split = asyncHandler(async (req, res, next) => {
 
 const get_split = asyncHandler(async (req, res, next) => {
   const { contentId, contentType } = req.params;
-  const userId = req["uid"];
 
-  // Does user own this content?
-  const isOwner = await isContentOwner(
-    userId,
-    contentId,
-    contentType as SplitContentTypes
-  );
-
-  if (!isOwner) {
-    const error = formatError(403, "User does not own this content");
+  if (!contentId || !contentType) {
+    const error = formatError(
+      400,
+      "Must include both contentId and contentType"
+    );
     next(error);
     return;
   }
+
+  await checkContentOwnership(req, res, next);
 
   try {
     const split = await prisma.split.findFirst({
@@ -182,23 +182,14 @@ const get_split = asyncHandler(async (req, res, next) => {
 });
 
 const update_split = asyncHandler(async (req, res, next) => {
+  await checkContentOwnership(req, res, next);
   const { contentId, contentType, splitRecipients } = req.body;
-  const userId = req["uid"];
-
-  // Does user own this content?
-  const isOwner = await isContentOwner(userId, contentId, contentType);
 
   if (!contentId || !contentType) {
     const error = formatError(
       400,
       "Must include both contentId and contentType"
     );
-    next(error);
-    return;
-  }
-
-  if (!isOwner) {
-    const error = formatError(403, "User does not own this content");
     next(error);
     return;
   }
