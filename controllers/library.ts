@@ -16,6 +16,7 @@ const get_user_library = ({
   asyncHandler(async (req, res, next) => {
     try {
       const { pubkey } = res.locals.authEvent as Event;
+
       if (!pubkey) {
         const error = formatError(400, "No pubkey found");
         next(error);
@@ -29,8 +30,6 @@ const get_user_library = ({
             .select(
               "artist.id as id",
               "artist.name as name",
-              "artist.user_id as userId",
-              "artist.content_id as contentId",
               "artist.artwork_url as artworkUrl",
               "artist.artist_url as artistUrl",
               "artist.updated_at as updatedAt",
@@ -51,8 +50,6 @@ const get_user_library = ({
             .join("album", "library.content_id", "album.id")
             .select(
               "album.id as id",
-              "album.user_id as userId",
-              "album.content_id as contentId",
               "album.created_at as createdAt",
               "album.artist_id as artistId",
               "album.title as title",
@@ -75,8 +72,6 @@ const get_user_library = ({
             .join("track_info", "library.content_id", "track_info.id")
             .select(
               "track_info.id as id",
-              "track_info.user_id as userId",
-              "track_info.content_id as contentId",
               "track_info.created_at as createdAt",
               "track_info.title as title",
               "track_info.artist as artist",
