@@ -41,7 +41,7 @@ const get_user_library = ({
       const libraryTracks = tracks
         ? await db
             .knex("library")
-            .join("track", "library.content_id", "track.id")
+            .join("track_info", "library.content_id", "track_info.id")
             .where({
               user_id: pubkey,
             })
@@ -71,22 +71,26 @@ const add_to_library = asyncHandler(async (req, res, next) => {
       return;
     }
 
-    const { contentIds = [] } = req.body;
+    const { contentId } = req.body;
 
-    if (!contentIds.length) {
-      const error = formatError(
-        400,
-        "Request must include a list of content ids"
-      );
+    // check if content id exist in the database already
+    const existingContent = await prisma.library.findFirst({
+      where: {
+        content_id: contentId,
+      },
+    });
+
+    if (existingContent) {
+      const error = formatError(400, "This content is already in your library");
       next(error);
       return;
     }
 
-    await prisma.library.createMany({
-      data: contentIds.map((contentId) => ({
+    await prisma.library.create({
+      data: {
         user_id: pubkey,
         content_id: contentId,
-      })),
+      },
     });
 
     res.json({ success: true });
