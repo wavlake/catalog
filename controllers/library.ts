@@ -41,6 +41,7 @@ const get_user_library = ({
               "artist.verified as verified",
               "artist.npub as npub"
             )
+            .orderBy("library.created_at", "desc")
             .where("library.user_id", "=", pubkey)
         : [];
 
@@ -61,6 +62,7 @@ const get_user_library = ({
               "album.subgenre_id as subgenreId",
               "album.published_at as publishedAt"
             )
+            .orderBy("library.created_at", "desc")
             .where({
               user_id: pubkey,
             })
@@ -89,6 +91,7 @@ const get_user_library = ({
               "track_info.order as order",
               "track_info.msat_total as msatTotal"
             )
+            .orderBy("library.created_at", "desc")
             .where({
               user_id: pubkey,
             })
