@@ -75,8 +75,6 @@ const get_user_library = ({
             .join("track_info", "library.content_id", "track_info.id")
             .select(
               "track_info.id as id",
-              "track_info.user_id as userId",
-              "track_info.content_id as contentId",
               "track_info.created_at as createdAt",
               "track_info.title as title",
               "track_info.artist as artist",
