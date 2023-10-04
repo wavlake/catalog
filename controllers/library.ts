@@ -15,8 +15,8 @@ const get_user_library = ({
 }) =>
   asyncHandler(async (req, res, next) => {
     try {
-      // const { pubkey } = res.locals.authEvent as Event;
-      const pubkey = "123";
+      const { pubkey } = res.locals.authEvent as Event;
+
       if (!pubkey) {
         const error = formatError(400, "No pubkey found");
         next(error);
