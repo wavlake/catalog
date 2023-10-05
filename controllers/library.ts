@@ -49,10 +49,12 @@ const get_user_library = ({
         ? await db
             .knex("library")
             .join("album", "library.content_id", "album.id")
+            .join("artist", "artist.id", "album.artist_id")
             .select(
               "album.id as id",
               "album.created_at as createdAt",
               "album.artist_id as artistId",
+              "artist.name as artist",
               "album.title as title",
               "album.artwork_url as artworkUrl",
               "album.updated_at as updatedAt",
@@ -63,9 +65,7 @@ const get_user_library = ({
               "album.published_at as publishedAt"
             )
             .orderBy("library.created_at", "desc")
-            .where({
-              user_id: pubkey,
-            })
+            .where("library.user_id", "=", pubkey)
         : [];
 
       const libraryTracks = tracks
