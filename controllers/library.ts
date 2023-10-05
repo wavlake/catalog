@@ -16,6 +16,7 @@ const get_user_library = ({
   asyncHandler(async (req, res, next) => {
     try {
       const { pubkey } = res.locals.authEvent as Event;
+
       if (!pubkey) {
         const error = formatError(400, "No pubkey found");
         next(error);
@@ -26,6 +27,21 @@ const get_user_library = ({
         ? await db
             .knex("library")
             .join("artist", "library.content_id", "artist.id")
+            .select(
+              "artist.id as id",
+              "artist.name as name",
+              "artist.artwork_url as artworkUrl",
+              "artist.artist_url as artistUrl",
+              "artist.updated_at as updatedAt",
+              "artist.bio as bio",
+              "artist.twitter as twitter",
+              "artist.youtube as youtube",
+              "artist.website as website",
+              "artist.deleted as deleted",
+              "artist.verified as verified",
+              "artist.npub as npub"
+            )
+            .orderBy("library.created_at", "desc")
             .where("library.user_id", "=", pubkey)
         : [];
 
@@ -33,15 +49,49 @@ const get_user_library = ({
         ? await db
             .knex("library")
             .join("album", "library.content_id", "album.id")
-            .where({
-              user_id: pubkey,
-            })
+            .join("artist", "artist.id", "album.artist_id")
+            .select(
+              "album.id as id",
+              "album.created_at as createdAt",
+              "album.artist_id as artistId",
+              "artist.name as artist",
+              "album.title as title",
+              "album.artwork_url as artworkUrl",
+              "album.updated_at as updatedAt",
+              "album.description as description",
+              "album.deleted as deleted",
+              "album.genre_id as genreId",
+              "album.subgenre_id as subgenreId",
+              "album.published_at as publishedAt"
+            )
+            .orderBy("library.created_at", "desc")
+            .where("library.user_id", "=", pubkey)
         : [];
 
       const libraryTracks = tracks
         ? await db
             .knex("library")
-            .join("track", "library.content_id", "track.id")
+            .join("track_info", "library.content_id", "track_info.id")
+            .select(
+              "track_info.id as id",
+              "track_info.created_at as createdAt",
+              "track_info.title as title",
+              "track_info.artist as artist",
+              "track_info.artist_url as artistUrl",
+              "track_info.avatar_url as avatarUrl",
+              "track_info.artwork_url as artworkUrl",
+              "track_info.msat_total_30_days as msatTotal30Days",
+              "track_info.msat_total_7_days as msatTotal7Days",
+              "track_info.msat_total_1_days as msatTotal1Days",
+              "track_info.album_title as albumTitle",
+              "track_info.live_url as liveUrl",
+              "track_info.duration as duration",
+              "track_info.album_id as albumId",
+              "track_info.artist_id as artistId",
+              "track_info.order as order",
+              "track_info.msat_total as msatTotal"
+            )
+            .orderBy("library.created_at", "desc")
             .where({
               user_id: pubkey,
             })
@@ -71,22 +121,26 @@ const add_to_library = asyncHandler(async (req, res, next) => {
       return;
     }
 
-    const { contentIds = [] } = req.body;
+    const { contentId } = req.body;
 
-    if (!contentIds.length) {
-      const error = formatError(
-        400,
-        "Request must include a list of content ids"
-      );
+    // check if content id exist in the database already
+    const existingContent = await prisma.library.findFirst({
+      where: {
+        content_id: contentId,
+      },
+    });
+
+    if (existingContent) {
+      const error = formatError(400, "This content is already in your library");
       next(error);
       return;
     }
 
-    await prisma.library.createMany({
-      data: contentIds.map((contentId) => ({
+    await prisma.library.create({
+      data: {
         user_id: pubkey,
         content_id: contentId,
-      })),
+      },
     });
 
     res.json({ success: true });
