@@ -54,7 +54,7 @@ const get_user_library = ({
               "album.id as id",
               "album.created_at as createdAt",
               "album.artist_id as artistId",
-              "artist.name as artistName",
+              "artist.name as artist",
               "album.title as title",
               "album.artwork_url as artworkUrl",
               "album.updated_at as updatedAt",
