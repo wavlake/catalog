@@ -129,6 +129,7 @@ const add_to_library = asyncHandler(async (req, res, next) => {
     const existingContent = await prisma.library.findFirst({
       where: {
         content_id: contentId,
+        user_id: pubkey,
       },
     });
 
