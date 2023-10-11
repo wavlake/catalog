@@ -1,22 +1,6 @@
 import db from "../library/db";
 import asyncHandler from "express-async-handler";
-import Parser from "rss-parser";
-
-type CustomFeed = {
-  title?: string;
-  description?: string;
-  author?: string;
-  episodes?: string;
-};
-
-type CustomItem = { bar: number };
-const parser: Parser<CustomFeed, CustomItem> = new Parser({
-  customFields: {
-    //   feed: ["baz"],
-    //   //            ^ will error because `baz` is not a key of CustomFeed
-    //   item: ["bar"],
-  },
-});
+import podcastFeedParser from "@podverse/podcast-feed-parser";
 
 export const fetchAndParseFeed = async ({
   feed_url,
@@ -24,8 +8,7 @@ export const fetchAndParseFeed = async ({
   feed_url: string;
 }): Promise<any> => {
   try {
-    const feed = await parser.parseURL(feed_url);
-
+    const feed = await podcastFeedParser.getPodcastFromURL({ url: feed_url });
     return feed;
   } catch (error) {
     throw new Error(`Error fetching or parsing XML: ${error}`);
@@ -34,6 +17,7 @@ export const fetchAndParseFeed = async ({
 
 const get_rss_feeds = asyncHandler(async (req, res, next) => {
   try {
+    // limit to first 10 feeds to display on homepage
     const feeds = await db.knex("external_feed").limit(10);
     const parsedFeeds = await Promise.all(feeds.map(fetchAndParseFeed));
 
