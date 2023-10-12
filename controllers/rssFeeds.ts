@@ -59,9 +59,18 @@ type Value = {
   method: string;
   suggested: string;
   type: string;
-  recipients: any[];
+  recipients: ValueRecipient[];
 };
 
+type ValueRecipient = {
+  address: string;
+  customKey: string;
+  customValue: string;
+  fee: string;
+  name: string;
+  split: string;
+  type: string;
+};
 type Owner = {
   name: string;
   email: string;
