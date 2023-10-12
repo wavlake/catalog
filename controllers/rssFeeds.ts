@@ -1,32 +1,40 @@
 import db from "../library/db";
 import asyncHandler from "express-async-handler";
 import { getPodcastFromURL } from "@podverse/podcast-feed-parser";
+import prisma from "../prisma/client";
+import podcastIndex from "podcast-index-api";
 
-const options = {
-  fields: {
-    meta: ["podcast:guid", "default"],
-  },
+const { PODCAST_INDEX_KEY, PODCAST_INDEX_SECRET } = process.env;
+const podcastIndexApi = podcastIndex(PODCAST_INDEX_KEY, PODCAST_INDEX_SECRET);
+
+const fetchFeedUrl = async (guid: string) => {
+  const podcast = await podcastIndexApi.podcastsByGUID(guid);
+  return podcast.feed.url;
 };
 
-export const fetchAndParseFeed = async ({
-  feed_url,
-}: {
-  feed_url: string;
-}): Promise<Feed> => {
+const fetchAndParseFeed = async (guid: string): Promise<Feed> => {
   try {
+    // grab rss feed url from the Podcast Index API
+    const url = await fetchFeedUrl(guid);
+    // grab the XML feed from the url and parse it
     const feed: Feed = await getPodcastFromURL(
       {
-        url: feed_url,
+        url,
       },
-      options
+      // parse custom fields
+      {
+        fields: {
+          meta: ["podcast:guid", "default"],
+        },
+      }
     );
 
+    // alias the guid field
     const aliasedMetaObject = {
       ...feed.meta,
-      // alias the guid field
       guid: feed.meta["podcast:guid"],
     };
-    // remove old key
+    // remove the old guid key
     delete aliasedMetaObject["podcast:guid"];
 
     return {
@@ -40,8 +48,10 @@ export const fetchAndParseFeed = async ({
 
 const get_external_rss_feeds = asyncHandler(async (req, res, next) => {
   try {
-    const feeds = await db.knex("external_feed");
-    const parsedFeeds = await Promise.all(feeds.map(fetchAndParseFeed));
+    const feeds = await prisma.externalFeed.findMany();
+    const parsedFeeds = await Promise.all(
+      feeds.map(({ guid }) => fetchAndParseFeed(guid))
+    );
 
     res.send({
       success: true,
