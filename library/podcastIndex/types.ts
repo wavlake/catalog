@@ -1,4 +1,4 @@
-export interface PodcastIndexResponse {
+export interface PodcastIndexPodcast {
   status: string;
   query: {
     guid: string;
@@ -7,6 +7,15 @@ export interface PodcastIndexResponse {
   // if there is no podcast found, this will be an empty array
   feed: Feed;
   description: string;
+}
+
+export interface PodcastIndexPodcastEpisodes {
+  count: number;
+  description: string;
+  items: Episode[];
+  liveItems: LiveItem[];
+  query: string;
+  status: string;
 }
 
 interface Feed {
@@ -62,4 +71,99 @@ interface Value {
     suggested: string;
   };
   destinations: Destination[];
+}
+
+interface Person {
+  id: number;
+  name: string;
+  role: string;
+  group: string;
+  href: string;
+  img: string;
+}
+
+interface Transcript {
+  url: string;
+  type: string;
+}
+
+interface Destination {
+  name: string;
+  type: string;
+  address: string;
+  split: number;
+  customKey?: string;
+  customValue?: string;
+}
+
+interface Value {
+  model: {
+    type: string;
+    method: string;
+    suggested: string;
+  };
+  destinations: Destination[];
+}
+
+interface Episode {
+  id: number;
+  title: string;
+  link: string;
+  description: string;
+  guid: string;
+  datePublished: number;
+  datePublishedPretty: string;
+  dateCrawled: number;
+  enclosureUrl: string;
+  enclosureType: string;
+  enclosureLength: number;
+  duration: number;
+  explicit: number;
+  episode: any; // Replace with actual type if applicable
+  episodeType: string;
+  season: number;
+  image: string;
+  feedItunesId: number;
+  feedImage: string;
+  feedId: number;
+  feedLanguage: string;
+  feedDead: number;
+  feedDuplicateOf: any; // Replace with actual type if applicable
+  chaptersUrl: string;
+  transcriptUrl: string;
+  persons: Person[];
+  transcripts: Transcript[];
+  value: Value;
+}
+
+interface LiveItem {
+  id: number;
+  title: string;
+  link: string;
+  description: string;
+  guid: string;
+  datePublished: number;
+  datePublishedPretty: string;
+  dateCrawled: number;
+  enclosureUrl: string;
+  enclosureType: string;
+  enclosureLength: number;
+  startTime: number;
+  endTime: number;
+  status: string;
+  contentLink: string;
+  duration: null | number;
+  explicit: number;
+  episode: null | any; // Replace with actual type if applicable
+  episodeType: null | string;
+  season: null | number;
+  image: string;
+  feedItunesId: number;
+  feedImage: string;
+  feedId: number;
+  feedLanguage: string;
+  feedDead: number;
+  feedDuplicateOf: null | any; // Replace with actual type if applicable
+  chaptersUrl: null | string;
+  transcriptUrl: null | string;
 }

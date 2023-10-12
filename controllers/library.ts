@@ -123,6 +123,12 @@ const add_to_library = asyncHandler(async (req, res, next) => {
 
     const { contentId } = req.body;
 
+    if (!contentId) {
+      const error = formatError(400, "contentID missing from request body");
+      next(error);
+      return;
+    }
+
     // check if content id exist in the database already
     const existingContent = await prisma.library.findFirst({
       where: {

@@ -1,12 +1,26 @@
 import podcastIndex from "podcast-index-api";
-import { PodcastIndexResponse } from "./types";
+import { PodcastIndexPodcastEpisodes, PodcastIndexPodcast } from "./types";
+import log from "loglevel";
 
 const { PODCAST_INDEX_KEY, PODCAST_INDEX_SECRET } = process.env;
 const podcastIndexApi = podcastIndex(PODCAST_INDEX_KEY, PODCAST_INDEX_SECRET);
 
 export const fetchPodcastFeed = async (guid: string) => {
-  const podcast: PodcastIndexResponse = await podcastIndexApi.podcastsByGUID(
+  const podcast: PodcastIndexPodcast = await podcastIndexApi.podcastsByGUID(
     guid
   );
-  return podcast;
+
+  if (Array.isArray(podcast.feed) && podcast.feed.length === 0) {
+    log.warn(
+      `Empty feed for guid: ${podcast.query.guid}, verify the guid being used is correct`
+    );
+  }
+
+  const episodes: PodcastIndexPodcastEpisodes =
+    await podcastIndexApi.episodesByFeedId(podcast.feed.id);
+  console.log("episodes", episodes.count);
+  return {
+    ...podcast,
+    episodes,
+  };
 };
