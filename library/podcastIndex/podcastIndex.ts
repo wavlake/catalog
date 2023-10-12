@@ -18,7 +18,7 @@ export const fetchPodcastFeed = async (guid: string) => {
 
   const episodes: PodcastIndexPodcastEpisodes =
     await podcastIndexApi.episodesByFeedId(podcast.feed.id);
-  console.log("episodes", episodes.count);
+
   return {
     ...podcast,
     episodes,
