@@ -1,7 +1,7 @@
 exports.up = function (knex) {
   return knex.schema.createTable("external_feed", function (table) {
     table.uuid("guid").primary().unique();
-    table.text("feed_url").notNullable();
+    table.text("title").notNullable();
   });
 };
 
