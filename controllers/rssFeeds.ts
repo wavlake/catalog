@@ -35,8 +35,6 @@ const get_external_rss_feed = asyncHandler(async (req, res, next) => {
       next(error);
       return;
     }
-    // TODO replace first with a call to podcastindex.org to fetch the target feed url and use that
-    const targetFeedUrl = await db.knex("external_feed").first();
     const parsedFeed = await fetchPodcastFeed(guid);
 
     res.send({
