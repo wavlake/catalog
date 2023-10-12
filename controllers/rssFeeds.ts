@@ -21,7 +21,18 @@ export const fetchAndParseFeed = async ({
       options
     );
 
-    return feed;
+    const aliasedMetaObject = {
+      ...feed.meta,
+      // alias the guid field
+      guid: feed.meta["podcast:guid"],
+    };
+    // remove old key
+    delete aliasedMetaObject["podcast:guid"];
+
+    return {
+      meta: aliasedMetaObject,
+      episodes: feed.episodes,
+    };
   } catch (error) {
     throw new Error(`Error fetching or parsing XML: ${error}`);
   }
@@ -130,7 +141,7 @@ type FeedEpisode = {
   };
   explicit: boolean;
   funding: any[];
-  "podcast:guid": string;
+  guid: string;
   imageURL: string;
   keywords: string;
   language: string;
