@@ -8,5 +8,5 @@ export const fetchPodcastFeed = async (guid: string) => {
   const podcast: PodcastIndexResponse = await podcastIndexApi.podcastsByGUID(
     guid
   );
-  return podcast.feed.url;
+  return podcast;
 };

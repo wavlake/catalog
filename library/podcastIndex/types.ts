@@ -4,6 +4,7 @@ export interface PodcastIndexResponse {
     guid: string;
     id: number;
   };
+  // if there is no podcast found, this will be an empty array
   feed: Feed;
   description: string;
 }
