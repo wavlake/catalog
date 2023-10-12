@@ -1,6 +1,12 @@
 import db from "../library/db";
 import asyncHandler from "express-async-handler";
-import podcastFeedParser from "@podverse/podcast-feed-parser";
+import { getPodcastFromURL } from "@podverse/podcast-feed-parser";
+
+const options = {
+  fields: {
+    meta: ["podcast:guid", "default"],
+  },
+};
 
 export const fetchAndParseFeed = async ({
   feed_url,
@@ -8,9 +14,13 @@ export const fetchAndParseFeed = async ({
   feed_url: string;
 }): Promise<Feed> => {
   try {
-    const feed: Feed = await podcastFeedParser.getPodcastFromURL({
-      url: feed_url,
-    });
+    const feed: Feed = await getPodcastFromURL(
+      {
+        url: feed_url,
+      },
+      options
+    );
+
     return feed;
   } catch (error) {
     throw new Error(`Error fetching or parsing XML: ${error}`);
@@ -120,7 +130,7 @@ type FeedEpisode = {
   };
   explicit: boolean;
   funding: any[];
-  guid: string;
+  "podcast:guid": string;
   imageURL: string;
   keywords: string;
   language: string;
