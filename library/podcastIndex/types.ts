@@ -48,7 +48,7 @@ interface Feed {
   episodeCount: number;
   crawlErrors: number;
   parseErrors: number;
-  categories: null; // You might want to replace this with the actual type if available
+  categories: null;
   locked: number;
   imageUrlHash: number;
   value: Value;
@@ -119,7 +119,7 @@ interface Episode {
   enclosureLength: number;
   duration: number;
   explicit: number;
-  episode: any; // Replace with actual type if applicable
+  episode: any;
   episodeType: string;
   season: number;
   image: string;
@@ -128,7 +128,7 @@ interface Episode {
   feedId: number;
   feedLanguage: string;
   feedDead: number;
-  feedDuplicateOf: any; // Replace with actual type if applicable
+  feedDuplicateOf: any;
   chaptersUrl: string;
   transcriptUrl: string;
   persons: Person[];
@@ -154,7 +154,7 @@ interface LiveItem {
   contentLink: string;
   duration: null | number;
   explicit: number;
-  episode: null | any; // Replace with actual type if applicable
+  episode: null | any;
   episodeType: null | string;
   season: null | number;
   image: string;
@@ -163,7 +163,7 @@ interface LiveItem {
   feedId: number;
   feedLanguage: string;
   feedDead: number;
-  feedDuplicateOf: null | any; // Replace with actual type if applicable
+  feedDuplicateOf: null | any;
   chaptersUrl: null | string;
   transcriptUrl: null | string;
 }
