@@ -55,8 +55,6 @@ const get_features = asyncHandler(async (req, res, next) => {
       },
     });
 
-    console.log(flags);
-
     res.send({
       success: true,
       data: flags.map((flag) => flag.featureFlag.name),

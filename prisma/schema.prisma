@@ -443,6 +443,13 @@ model UserFlag {
   @@map("user_flag")
 }
 
+model ExternalFeed {
+  guid  String @id @unique(map: "external_feed_guid_unique") @db.Uuid
+  title String
+
+  @@map("external_feed")
+}
+
 view TrackInfo {
   id              String    @unique @db.Uuid
   title           String?   @db.VarChar(255)
