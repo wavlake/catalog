@@ -240,17 +240,18 @@ model transaction {
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 model User {
-  id                  String           @id @unique(map: "user_id_unique") @db.VarChar(64)
-  name                String           @unique(map: "user_name_unique") @db.VarChar(255)
-  msatBalance         BigInt?          @default(0) @map("msat_balance")
-  ampMsat             Int?             @default(1000) @map("amp_msat")
-  createdAt           DateTime?        @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt           DateTime?        @default(now()) @map("updated_at") @db.Timestamptz(6)
-  isLocked            Boolean          @default(false) @map("is_locked")
-  artworkUrl          String?          @map("artwork_url") @db.VarChar(255)
-  lastActivityCheckAt DateTime?        @default(now()) @map("last_activity_check_at") @db.Timestamptz(6)
-  profileUrl          String?          @unique(map: "user_profile_url_unique") @map("profile_url") @db.VarChar(255)
+  id                  String            @id @unique(map: "user_id_unique") @db.VarChar(64)
+  name                String            @unique(map: "user_name_unique") @db.VarChar(255)
+  msatBalance         BigInt?           @default(0) @map("msat_balance")
+  ampMsat             Int?              @default(1000) @map("amp_msat")
+  createdAt           DateTime?         @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt           DateTime?         @default(now()) @map("updated_at") @db.Timestamptz(6)
+  isLocked            Boolean           @default(false) @map("is_locked")
+  artworkUrl          String?           @map("artwork_url") @db.VarChar(255)
+  lastActivityCheckAt DateTime?         @default(now()) @map("last_activity_check_at") @db.Timestamptz(6)
+  profileUrl          String?           @unique(map: "user_profile_url_unique") @map("profile_url") @db.VarChar(255)
   artist              Artist[]
+  external_payment    ExternalPayment[]
   podcast             Podcast[]
   split_recipient     SplitRecipient[]
   subscriber          Subscriber?
@@ -448,6 +449,26 @@ model ExternalFeed {
   title String
 
   @@map("external_feed")
+}
+
+model ExternalPayment {
+  id           Int     @id @default(autoincrement())
+  userId       String  @map("user_id")
+  paymentIndex Int     @map("payment_index")
+  msatAmount   Int     @map("msat_amount")
+  feeMsat      Int     @map("fee_msat")
+  pubkey       String
+  message      String?
+  podcast      String?
+  guid         String? @db.Uuid
+  feedId       Int?    @map("feed_id")
+  episode      String?
+  episodeGuid  String? @map("episode_guid") @db.Uuid
+  ts           Int?
+  isSettled    Boolean @map("is_settled")
+  user         User    @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "external_payment_user_id_foreign")
+
+  @@map("external_payment")
 }
 
 view TrackInfo {
