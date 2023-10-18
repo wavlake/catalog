@@ -20,7 +20,6 @@ const get_external_rss_feeds = asyncHandler(async (req, res, next) => {
       )
     );
 
-    console.log("timeSplitData", timeSplitData);
 
     res.send({
       success: true,
