@@ -2,6 +2,7 @@ import podcastIndex from "podcast-index-api";
 import { PodcastIndexPodcastEpisodes, PodcastIndexPodcast } from "./types";
 import log from "loglevel";
 import { sanitize } from "../htmlSanitization";
+import { getPodcastFromURL } from "@podverse/podcast-feed-parser";
 
 const { PODCAST_INDEX_KEY, PODCAST_INDEX_SECRET } = process.env;
 const podcastIndexApi = podcastIndex(PODCAST_INDEX_KEY, PODCAST_INDEX_SECRET);
@@ -17,8 +18,15 @@ export const fetchPodcastIndexFeed = async (guid: string) => {
     );
   }
 
-  const episodes: PodcastIndexPodcastEpisodes =
-    await podcastIndexApi.episodesByFeedId(podcast.feed.id);
+  const [rawFeed, episodesUntyped] = await Promise.all([
+    // this parser grabs the raw RSS feed contents
+    getPodcastFromURL({
+      url: podcast.feed.url,
+    }),
+    podcastIndexApi.episodesByFeedId(podcast.feed.id),
+  ]);
+
+  const episodes: PodcastIndexPodcastEpisodes = episodesUntyped;
 
   const sanitizedFeed = {
     ...podcast,
@@ -28,10 +36,15 @@ export const fetchPodcastIndexFeed = async (guid: string) => {
     },
     episodes: {
       ...episodes,
-      items: episodes.items.map((episode) => {
+      items: episodes.items.map((episode, index) => {
         return {
           ...episode,
-          description: sanitize(episode.description),
+          // overwrite the description with the one from the raw feed
+          // podcastindex.org truncates this
+          description: sanitize(rawFeed?.episodes?.[index]?.description),
+          // manually add in time splits because podcastindex doesn't yet support them
+          valueTimeSplits:
+            rawFeed?.episodes?.[index]?.value?.[0]?.timeSplits ?? [],
         };
       }),
       liveItems: episodes.liveItems.map((liveItem) => {
