@@ -1,6 +1,20 @@
 import db from "../library/db";
 import asyncHandler from "express-async-handler";
 import prisma from "../prisma/client";
+import log from "loglevel";
+
+async function groupSplitPayments(combinedAmps) {
+  // Group records by txId
+  const grouped = combinedAmps.reduce((acc, curr) => {
+    if (!acc[curr.txId]) {
+      acc[curr.txId] = [];
+    }
+    acc[curr.txId].push(curr);
+    return acc;
+  }, {});
+
+  return grouped;
+}
 
 const get_account = asyncHandler(async (req, res, next) => {
   const request = {
@@ -64,4 +78,64 @@ const get_features = asyncHandler(async (req, res, next) => {
   }
 });
 
-export default { get_account, get_features };
+const get_history = asyncHandler(async (req, res, next) => {
+  const request = {
+    page: req.query.page || 1,
+  };
+  const userId = req["uid"];
+  try {
+    const internalAmps = db
+      .knex("amp")
+      .join("track", "track.id", "=", "amp.track_id")
+      .join("album", "album.id", "=", "track.album_id")
+      .join("artist", "artist.id", "=", "album.artist_id")
+      .select(
+        "amp.msat_amount as msatAmount",
+        "amp.created_at as createdAt",
+        "track.title as title",
+        "artist.name as name",
+        db.knex.raw("0 as fee"),
+        "amp.tx_id as txId"
+      )
+      .where("amp.user_id", "=", userId);
+
+    const externalAmps = db
+      .knex("external_payment")
+      .select(
+        "external_payment.msat_amount as msatAmount",
+        "external_payment.created_at as createdAt",
+        "external_payment.podcast as title",
+        "external_payment.name as name",
+        "external_payment.fee_msat as fee",
+        "external_payment.tx_id as txId"
+      )
+      .where("external_payment.user_id", "=", userId);
+
+    const combinedAmps = await internalAmps
+      .unionAll(externalAmps)
+      .as("combined")
+      .orderBy("createdAt", "desc")
+      .paginate({
+        perPage: 50,
+        currentPage: request.page,
+        isLengthAware: true,
+      });
+
+    res.json({
+      success: true,
+      data: {
+        history: await groupSplitPayments(combinedAmps.data),
+        pagination: {
+          currentPage: combinedAmps.pagination.currentPage,
+          perPage: combinedAmps.pagination.perPage,
+          total: combinedAmps.pagination.total,
+          totalPages: combinedAmps.pagination.lastPage,
+        },
+      },
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+export default { get_account, get_features, get_history };
