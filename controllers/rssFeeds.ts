@@ -1,9 +1,7 @@
-import { sanitize } from "./../library/htmlSanitization";
 import asyncHandler from "express-async-handler";
 import prisma from "../prisma/client";
 import { fetchPodcastIndexFeed } from "../library/podcastIndex/podcastIndex";
 import { formatError } from "../library/errors";
-import { getPodcastFromURL } from "@podverse/podcast-feed-parser";
 
 const get_external_rss_feeds = asyncHandler(async (req, res, next) => {
   try {

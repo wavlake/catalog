@@ -17,7 +17,6 @@ export const fetchPodcastIndexFeed = async (guid: string) => {
       `Empty feed for guid: ${podcast.query.guid}, verify the guid being used is correct`
     );
   }
-
   const [rawFeed, episodesUntyped] = await Promise.all([
     // this parser grabs the raw RSS feed contents
     getPodcastFromURL({
@@ -37,14 +36,20 @@ export const fetchPodcastIndexFeed = async (guid: string) => {
     episodes: {
       ...episodes,
       items: episodes.items.map((episode, index) => {
+        const matchedEpisode = rawFeed?.episodes?.find(
+          (rawFeedEpisode) => rawFeedEpisode.guid === episode.guid
+        );
+        const valueTimeSplits = matchedEpisode
+          ? matchedEpisode.value?.[0]?.timeSplits
+          : [];
+
         return {
           ...episode,
           // overwrite the description with the one from the raw feed
           // podcastindex.org truncates this
-          description: sanitize(rawFeed?.episodes?.[index]?.description),
+          description: sanitize(matchedEpisode?.description),
           // manually add in time splits because podcastindex doesn't yet support them
-          valueTimeSplits:
-            rawFeed?.episodes?.[index]?.value?.[0]?.timeSplits ?? [],
+          valueTimeSplits,
         };
       }),
       liveItems: episodes.liveItems.map((liveItem) => {
