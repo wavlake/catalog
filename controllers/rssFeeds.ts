@@ -1,9 +1,7 @@
-import { sanitize } from "./../library/htmlSanitization";
 import asyncHandler from "express-async-handler";
 import prisma from "../prisma/client";
 import { fetchPodcastIndexFeed } from "../library/podcastIndex/podcastIndex";
 import { formatError } from "../library/errors";
-import { getPodcastFromURL } from "@podverse/podcast-feed-parser";
 
 const get_external_rss_feeds = asyncHandler(async (req, res, next) => {
   try {
@@ -11,15 +9,6 @@ const get_external_rss_feeds = asyncHandler(async (req, res, next) => {
     const responses = await Promise.all(
       feedGuids.map(({ guid }) => fetchPodcastIndexFeed(guid))
     );
-
-    const timeSplitData = await Promise.all(
-      responses.map(({ feed }) =>
-        getPodcastFromURL({
-          url: feed.url,
-        })
-      )
-    );
-
 
     res.send({
       success: true,
@@ -47,29 +36,9 @@ const get_external_rss_feed = asyncHandler(async (req, res, next) => {
     }
     const podcastIndexOrgFeed = await fetchPodcastIndexFeed(guid);
 
-    // this parser uses the raw RSS feed
-    const rawFeed = await getPodcastFromURL({
-      url: podcastIndexOrgFeed.feed.url,
-    });
-
-    const response = {
-      ...podcastIndexOrgFeed,
-      episodes: {
-        ...podcastIndexOrgFeed.episodes,
-        items: podcastIndexOrgFeed.episodes.items.map((episode, index) => ({
-          ...episode,
-          // overwrite the description with the one from the raw feed
-          // podcastindex.org truncates this
-          description: sanitize(rawFeed.episodes[index]?.description),
-          // manually add in time splits because podcastindex doesn't yet support them
-          valueTimeSplits:
-            rawFeed.episodes[index]?.value?.[0]?.timeSplits ?? [],
-        })),
-      },
-    };
     res.send({
       success: true,
-      data: response,
+      data: podcastIndexOrgFeed,
     });
   } catch (err) {
     next(err);
