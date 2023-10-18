@@ -1,4 +1,3 @@
-import db from "../library/db";
 import asyncHandler from "express-async-handler";
 import prisma from "../prisma/client";
 import { fetchPodcastFeed } from "../library/podcastIndex/podcastIndex";
