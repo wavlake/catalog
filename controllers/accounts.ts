@@ -79,9 +79,7 @@ const get_features = asyncHandler(async (req, res, next) => {
 });
 
 const get_history = asyncHandler(async (req, res, next) => {
-  const request = {
-    page: req.query.page || 1,
-  };
+  const page = req.query.page || 1;
   const userId = req["uid"];
   try {
     const internalAmps = db
@@ -117,7 +115,7 @@ const get_history = asyncHandler(async (req, res, next) => {
       .orderBy("createdAt", "desc")
       .paginate({
         perPage: 50,
-        currentPage: request.page,
+        currentPage: parseInt(page.toString()),
         isLengthAware: true,
       });
 
