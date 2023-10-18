@@ -1,3 +1,4 @@
+import { sanitize } from "./../library/htmlSanitization";
 import asyncHandler from "express-async-handler";
 import prisma from "../prisma/client";
 import { fetchPodcastIndexFeed } from "../library/podcastIndex/podcastIndex";
@@ -63,7 +64,7 @@ const get_external_rss_feed = asyncHandler(async (req, res, next) => {
           ...episode,
           // overwrite the description with the one from the raw feed
           // podcastindex.org truncates this
-          description: rawFeed.episodes[index]?.description ?? undefined,
+          description: sanitize(rawFeed.episodes[index]?.description),
           // manually add in time splits because podcastindex doesn't yet support them
           valueTimeSplits:
             rawFeed.episodes[index]?.value?.[0]?.timeSplits ?? [],
