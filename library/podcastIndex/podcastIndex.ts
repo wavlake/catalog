@@ -6,7 +6,7 @@ import { sanitize } from "../htmlSanitization";
 const { PODCAST_INDEX_KEY, PODCAST_INDEX_SECRET } = process.env;
 const podcastIndexApi = podcastIndex(PODCAST_INDEX_KEY, PODCAST_INDEX_SECRET);
 
-export const fetchPodcastFeed = async (guid: string) => {
+export const fetchPodcastIndexFeed = async (guid: string) => {
   const podcast: PodcastIndexPodcast = await podcastIndexApi.podcastsByGUID(
     guid
   );
