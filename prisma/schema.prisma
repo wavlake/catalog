@@ -466,6 +466,7 @@ model ExternalPayment {
   episodeGuid  String? @map("episode_guid") @db.Uuid
   ts           Int?
   isSettled    Boolean @map("is_settled")
+  name         String?
   user         User    @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "external_payment_user_id_foreign")
 
   @@map("external_payment")
