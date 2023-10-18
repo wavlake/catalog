@@ -14,12 +14,9 @@ const get_external_rss_feeds = asyncHandler(async (req, res, next) => {
 
     const timeSplitData = await Promise.all(
       responses.map(({ feed }) =>
-        getPodcastFromURL(
-          {
-            url: feed.url,
-          }
-          // podverseOptions
-        )
+        getPodcastFromURL({
+          url: feed.url,
+        })
       )
     );
 
