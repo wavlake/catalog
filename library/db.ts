@@ -1,4 +1,5 @@
 import Knex from "knex";
+import { attachPaginate } from "knex-paginate";
 
 const maxConnections = process.env.NODE_ENV === "production" ? 5 : 1;
 
@@ -17,7 +18,6 @@ const knex = Knex({
   },
 });
 
-const { attachPaginate } = require("knex-paginate");
 attachPaginate();
 
 export default {
