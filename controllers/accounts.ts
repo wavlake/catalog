@@ -6,14 +6,17 @@ import log from "loglevel";
 async function groupSplitPayments(combinedAmps) {
   // Group records by txId
   const grouped = combinedAmps.reduce((acc, curr) => {
-    if (!acc[curr.txId]) {
-      acc[curr.txId] = [];
+    // User createdAt as identifier for legacy amps
+    const identifier = curr.txId ? curr.txId : curr.createdAt;
+    if (!acc[identifier]) {
+      acc[identifier] = [];
     }
-    acc[curr.txId].push(curr);
+    acc[identifier].push(curr);
     return acc;
   }, {});
 
-  return grouped;
+  // convert grouped to array
+  return Object.keys(grouped).map((key) => grouped[key]);
 }
 
 const get_account = asyncHandler(async (req, res, next) => {
@@ -107,7 +110,8 @@ const get_history = asyncHandler(async (req, res, next) => {
         "external_payment.fee_msat as fee",
         "external_payment.tx_id as txId"
       )
-      .where("external_payment.user_id", "=", userId);
+      .where("external_payment.user_id", "=", userId)
+      .andWhere("external_payment.is_settled", "=", true);
 
     const combinedAmps = await internalAmps
       .unionAll(externalAmps)
