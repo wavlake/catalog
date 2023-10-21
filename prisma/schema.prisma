@@ -460,10 +460,10 @@ model ExternalPayment {
   pubkey       String
   message      String?
   podcast      String?
-  guid         String?   @db.Uuid
+  guid         String?
   feedId       Int?      @map("feed_id")
   episode      String?
-  episodeGuid  String?   @map("episode_guid") @db.Uuid
+  episodeGuid  String?   @map("episode_guid")
   ts           Int?
   isSettled    Boolean   @map("is_settled")
   name         String?
