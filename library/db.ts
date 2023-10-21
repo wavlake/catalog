@@ -1,7 +1,7 @@
 import Knex from "knex";
 import { attachPaginate } from "knex-paginate";
 
-const maxConnections = process.env.NODE_ENV === "production" ? 5 : 1;
+const maxConnections = process.env.NODE_ENV === "production" ? 12 : 5;
 
 const knex = Knex({
   client: "pg",
