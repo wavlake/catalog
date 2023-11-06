@@ -12,11 +12,13 @@ const get_external_rss_feeds = asyncHandler(async (req, res, next) => {
 
     res.send({
       success: true,
-      data: responses
-        // filter out any empty feeds
-        .filter((res) => !Array.isArray(res.feed))
-        // sort by most recent first
-        .sort((a, b) => b.feed.lastUpdateTime - a.feed.lastUpdateTime),
+      data: true
+        ? []
+        : responses
+            // filter out any empty feeds
+            .filter((res) => !Array.isArray(res.feed))
+            // sort by most recent first
+            .sort((a, b) => b.feed.lastUpdateTime - a.feed.lastUpdateTime),
     });
   } catch (err) {
     next(err);
