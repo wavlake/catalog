@@ -13,6 +13,7 @@ import { formatError } from "../library/errors";
 import { AWS_S3_IMAGE_PREFIX } from "../library/constants";
 const { invalidateCdn } = require("../library/cloudfrontClient");
 const Sentry = require("@sentry/node");
+import { getAllComments } from "../library/comments";
 
 const localConvertPath = `${process.env.LOCAL_CONVERT_PATH}`;
 const cdnDomain = `${process.env.AWS_CDN_DOMAIN}`;
@@ -30,60 +31,27 @@ const get_artist_by_url = asyncHandler(async (req, res, next) => {
 });
 
 const get_artist_by_id = asyncHandler(async (req, res, next) => {
-  const request = {
-    artistId: req.params.artistId,
-  };
+  const { artistId } = req.params;
 
   const artist = await prisma.artist.findFirstOrThrow({
-    where: { id: request.artistId },
+    where: { id: artistId },
   });
 
   const albums = await prisma.album.findMany({
-    where: { artistId: request.artistId, deleted: false },
+    where: { artistId: artistId, deleted: false },
     orderBy: { createdAt: "desc" },
     take: 3,
   });
 
   const tracks = await prisma.trackInfo.findMany({
-    where: { artistId: request.artistId },
+    where: { artistId: artistId },
     orderBy: { msatTotal: "desc" },
     take: 10,
   });
 
-  const amps = db
-    .knex("amp")
-    .select("type_key")
-    .sum("amp.msat_amount as ampSum")
-    .groupBy("type_key")
-    .where("type", "=", 4)
-    .from("amp")
-    .as("amps");
-
-  const comments = await db
-    .knex("comment")
-    .leftOuterJoin("user", "comment.user_id", "=", "user.id")
-    .join("amp", "comment.amp_id", "=", "amp.id")
-    .join("track", "track.id", "=", "amp.track_id")
-    .join("artist", "artist.id", "=", "track.artist_id")
-    .leftOuterJoin(amps, "comment.id", "=", "amps.type_key")
-    .select("comment.id as id", "track.id as trackId")
-    .min("track.title as title")
-    .min("artist.user_id as ownerId")
-    .min("comment.content as content")
-    .min("comment.created_at as createdAt")
-    .min("amp.msat_amount as msatAmount")
-    .min("comment.user_id as userId")
-    .min("amps.ampSum as commentMsatSum")
-    .min("user.name as name")
-    .min("user.profile_url as commenterProfileUrl")
-    .min("user.artwork_url as commenterArtworkUrl")
-    .where("artist.id", "=", request.artistId)
-    .andWhere("amp.comment", "=", true)
-    .andWhere("track.deleted", "=", false)
-    .whereNull("comment.parent_id")
-    .groupBy("comment.id", "track.id")
-    .orderBy("createdAt", "desc")
-    .limit(5);
+  // Ignoring legacy comments here, they will be included in all comments for the artist
+  // See: controllers/comments.js
+  const comments = await getAllComments(tracks.map(({ id }) => id));
 
   res.json({
     success: true,
