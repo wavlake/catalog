@@ -12,7 +12,7 @@ const get_comments = asyncHandler(async (req, res, next) => {
     return;
   }
 
-  const combinedAndSortedComments = await getAllComments([contentId]);
+  const combinedAndSortedComments = await getAllComments([contentId], 100);
 
   res.json({
     success: true,
@@ -34,7 +34,8 @@ const get_podcast_comments = asyncHandler(async (req, res, next) => {
   });
 
   const combinedAndSortedComments = await getAllComments(
-    episodes.map(({ id }) => id)
+    episodes.map(({ id }) => id),
+    100
   );
 
   res.json({ success: true, data: combinedAndSortedComments });
@@ -50,50 +51,20 @@ const get_artist_comments = asyncHandler(async (req, res, next) => {
     return;
   }
 
-  const albums = await prisma.album.findMany({
-    where: { artistId },
+  const tracks = await prisma.trackInfo.findMany({
+    where: { artistId: artistId },
   });
 
-  const tracks = await prisma.track.findMany({
-    where: {
-      OR: albums.map(({ id }) => ({
-        albumId: id,
-      })),
-    },
-  });
-
-  const comments = await getAllComments(tracks.map(({ id }) => id));
-
-  const commentsLegacy = await db
-    .knex("comment")
-    .leftOuterJoin("user", "comment.user_id", "=", "user.id")
-    .join("amp", "comment.amp_id", "=", "amp.id")
-    .join("track", "track.id", "=", "amp.track_id")
-    .join("artist", "artist.id", "=", "track.artist_id")
-    .select(
-      "comment.id as id",
-      "track.id as trackId",
-      "is_nostr as isNostr",
-      "amp.tx_id as txId"
-    )
-    .min("track.title as title")
-    .min("artist.user_id as ownerId")
-    .min("comment.content as content")
-    .min("comment.created_at as createdAt")
-    .min("amp.msat_amount as commentMsatSum")
-    .min("comment.user_id as userId")
-    .min("user.name as name")
-    .min("user.profile_url as commenterProfileUrl")
-    .min("user.artwork_url as commenterArtworkUrl")
-    .where("artist.id", "=", artistId)
-    .andWhere("amp.comment", "=", true)
-    .andWhere("track.deleted", "=", false)
-    .whereNull("comment.parent_id")
-    .groupBy("comment.id", "track.id", "amp.tx_id")
-    .orderBy("createdAt", "desc");
+  const comments = await getAllComments(
+    tracks.map(({ id }) => id),
+    100
+  );
 
   // TODO: Pagination
-  res.json({ success: true, data: [...comments, ...commentsLegacy] });
+  res.json({
+    success: true,
+    data: comments,
+  });
 });
 
 export default {

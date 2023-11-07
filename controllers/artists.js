@@ -51,7 +51,10 @@ const get_artist_by_id = asyncHandler(async (req, res, next) => {
 
   // Ignoring legacy comments here, they will be included in all comments for the artist
   // See: controllers/comments.js
-  const comments = await getAllComments(tracks.map(({ id }) => id));
+  const comments = await getAllComments(
+    tracks.map(({ id }) => id),
+    5
+  );
 
   res.json({
     success: true,
