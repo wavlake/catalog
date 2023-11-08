@@ -42,26 +42,26 @@ model Album {
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 model Amp {
-  id                Int       @id @default(autoincrement())
-  track_id          String    @db.Uuid
-  user_id           String    @db.VarChar(255)
-  msat_amount       Int
-  created_at        DateTime? @default(now()) @db.Timestamptz(6)
-  comment           Boolean   @default(false)
-  fee_msat          Int?      @default(0)
-  type              Int?
-  type_key          Int?
-  tx_id             String?   @db.Uuid
-  time_split_source String?   @db.Uuid
-  split_destination String?   @db.VarChar(64)
-  content_type      String?   @default("track") @db.VarChar(12)
+  id               Int       @id @default(autoincrement())
+  trackId          String    @map("track_id") @db.Uuid
+  userId           String    @map("user_id") @db.VarChar(255)
+  msatAmount       Int       @map("msat_amount")
+  createdAt        DateTime? @default(now()) @map("created_at") @db.Timestamptz(6)
+  comment          Boolean   @default(false)
+  feeMsat          Int?      @default(0) @map("fee_msat")
+  type             Int?
+  typeKey          Int?      @map("type_key")
+  txId             String?   @map("tx_id") @db.Uuid
+  timeSplitSource  String?   @map("time_split_source") @db.Uuid
+  splitDestination String?   @map("split_destination") @db.VarChar(64)
+  contentType      String?   @default("track") @map("content_type") @db.VarChar(12)
 
-  @@index([track_id], map: "idx_amp_track_id")
-  @@index([user_id], map: "idx_amp_user_id")
-  @@index([content_type], map: "idx_amp_content_type")
-  @@index([tx_id], map: "idx_amp_split")
-  @@index([split_destination], map: "idx_amp_split_destination")
-  @@index([time_split_source], map: "idx_amp_time_split_source")
+  @@index([trackId], map: "idx_amp_track_id")
+  @@index([userId], map: "idx_amp_user_id")
+  @@index([contentType], map: "idx_amp_content_type")
+  @@index([txId], map: "idx_amp_split")
+  @@index([splitDestination], map: "idx_amp_split_destination")
+  @@index([timeSplitSource], map: "idx_amp_time_split_source")
   @@map("amp")
 }
 
@@ -240,17 +240,18 @@ model transaction {
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 model User {
-  id                  String           @id @unique(map: "user_id_unique") @db.VarChar(64)
-  name                String           @unique(map: "user_name_unique") @db.VarChar(255)
-  msatBalance         BigInt?          @default(0) @map("msat_balance")
-  ampMsat             Int?             @default(1000) @map("amp_msat")
-  createdAt           DateTime?        @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt           DateTime?        @default(now()) @map("updated_at") @db.Timestamptz(6)
-  isLocked            Boolean          @default(false) @map("is_locked")
-  artworkUrl          String?          @map("artwork_url") @db.VarChar(255)
-  lastActivityCheckAt DateTime?        @default(now()) @map("last_activity_check_at") @db.Timestamptz(6)
-  profileUrl          String?          @unique(map: "user_profile_url_unique") @map("profile_url") @db.VarChar(255)
+  id                  String            @id @unique(map: "user_id_unique") @db.VarChar(64)
+  name                String            @unique(map: "user_name_unique") @db.VarChar(255)
+  msatBalance         BigInt?           @default(0) @map("msat_balance")
+  ampMsat             Int?              @default(1000) @map("amp_msat")
+  createdAt           DateTime?         @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt           DateTime?         @default(now()) @map("updated_at") @db.Timestamptz(6)
+  isLocked            Boolean           @default(false) @map("is_locked")
+  artworkUrl          String?           @map("artwork_url") @db.VarChar(255)
+  lastActivityCheckAt DateTime?         @default(now()) @map("last_activity_check_at") @db.Timestamptz(6)
+  profileUrl          String?           @unique(map: "user_profile_url_unique") @map("profile_url") @db.VarChar(255)
   artist              Artist[]
+  external_payment    ExternalPayment[]
   podcast             Podcast[]
   split_recipient     SplitRecipient[]
   subscriber          Subscriber?
@@ -408,18 +409,19 @@ model library {
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 model Preamp {
-  txId       String  @id @map("tx_id") @db.Uuid
-  msatAmount Int     @map("msat_amount")
+  txId       String    @id @map("tx_id") @db.Uuid
+  msatAmount Int       @map("msat_amount")
   guid       String?
   podcast    String?
-  feedId     Int?    @map("feed_id")
+  feedId     Int?      @map("feed_id")
   episode    String?
-  itemId     Int?    @map("item_id")
+  itemId     Int?      @map("item_id")
   ts         Int?
-  appName    String? @map("app_name")
-  senderName String? @map("sender_name")
-  userId     String  @map("user_id")
-  contentId  String  @map("content_id") @db.Uuid
+  appName    String?   @map("app_name")
+  senderName String?   @map("sender_name")
+  userId     String    @map("user_id")
+  contentId  String    @map("content_id") @db.Uuid
+  createdAt  DateTime? @map("created_at") @db.Timestamptz(6)
 
   @@map("preamp")
 }
@@ -440,6 +442,37 @@ model UserFlag {
   @@index([featureFlagId], map: "idx_user_feature_flag_id")
   @@index([userId], map: "idx_user_flag_id")
   @@map("user_flag")
+}
+
+model ExternalFeed {
+  guid  String @id @unique(map: "external_feed_guid_unique") @db.Uuid
+  title String
+
+  @@map("external_feed")
+}
+
+model ExternalPayment {
+  id           Int       @id @default(autoincrement())
+  userId       String    @map("user_id")
+  paymentIndex Int       @map("payment_index")
+  msatAmount   Int       @map("msat_amount")
+  feeMsat      Int       @map("fee_msat")
+  pubkey       String
+  message      String?
+  podcast      String?
+  guid         String?
+  feedId       Int?      @map("feed_id")
+  episode      String?
+  episodeGuid  String?   @map("episode_guid")
+  ts           Int?
+  isSettled    Boolean   @map("is_settled")
+  name         String?
+  txId         String?   @map("tx_id") @db.Uuid
+  createdAt    DateTime? @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime? @default(now()) @map("updated_at") @db.Timestamptz(6)
+  user         User      @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "external_payment_user_id_foreign")
+
+  @@map("external_payment")
 }
 
 view TrackInfo {
