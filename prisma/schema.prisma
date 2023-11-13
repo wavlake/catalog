@@ -240,16 +240,16 @@ model transaction {
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 model User {
-  id                  String            @id @unique(map: "user_id_unique") @db.VarChar(64)
-  name                String            @unique(map: "user_name_unique") @db.VarChar(255)
-  msatBalance         BigInt?           @default(0) @map("msat_balance")
-  ampMsat             Int?              @default(1000) @map("amp_msat")
-  createdAt           DateTime?         @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt           DateTime?         @default(now()) @map("updated_at") @db.Timestamptz(6)
-  isLocked            Boolean           @default(false) @map("is_locked")
-  artworkUrl          String?           @map("artwork_url") @db.VarChar(255)
-  lastActivityCheckAt DateTime?         @default(now()) @map("last_activity_check_at") @db.Timestamptz(6)
-  profileUrl          String?           @unique(map: "user_profile_url_unique") @map("profile_url") @db.VarChar(255)
+  id                  String             @id @unique(map: "user_id_unique") @db.VarChar(64)
+  name                String             @unique(map: "user_name_unique") @db.VarChar(255)
+  msatBalance         BigInt?            @default(0) @map("msat_balance")
+  ampMsat             Int?               @default(1000) @map("amp_msat")
+  createdAt           DateTime?          @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt           DateTime?          @default(now()) @map("updated_at") @db.Timestamptz(6)
+  isLocked            Boolean            @default(false) @map("is_locked")
+  artworkUrl          String?            @map("artwork_url") @db.VarChar(255)
+  lastActivityCheckAt DateTime?          @default(now()) @map("last_activity_check_at") @db.Timestamptz(6)
+  profileUrl          String?            @unique(map: "user_profile_url_unique") @map("profile_url") @db.VarChar(255)
   artist              Artist[]
   external_payment    ExternalPayment[]
   podcast             Podcast[]
@@ -257,6 +257,7 @@ model User {
   subscriber          Subscriber?
   transaction         transaction[]
   user_flag           UserFlag[]
+  wallet_connection   WalletConnection[]
 
   @@index([profileUrl], map: "idx_profile_url")
   @@map("user")
@@ -473,6 +474,20 @@ model ExternalPayment {
   user         User      @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "external_payment_user_id_foreign")
 
   @@map("external_payment")
+}
+
+model WalletConnection {
+  pubkey         String    @id
+  userId         String    @map("user_id")
+  name           String?
+  lastUsed       DateTime? @map("last_used") @db.Timestamptz(6)
+  pay_invoice    Boolean?
+  get_balance    Boolean?
+  make_invoice   Boolean?
+  lookup_invoice Boolean?
+  user           User      @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "wallet_connection_user_id_foreign")
+
+  @@map("wallet_connection")
 }
 
 view TrackInfo {
