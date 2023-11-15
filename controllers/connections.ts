@@ -21,10 +21,13 @@ const get_connections = asyncHandler(async (req, res, next) => {
 
 const create_connection = asyncHandler(async (req, res, next) => {
   const userId = req["uid"];
-  const { pubkey, name, requestMethods } = req.body;
+  const { pubkey, name, requestMethods, budget } = req.body;
 
-  if (!pubkey || !name || !requestMethods) {
-    const error = formatError(400, "pubkey, name, and requestMethods required");
+  if (!pubkey || !name || !requestMethods || !budget) {
+    const error = formatError(
+      400,
+      "pubkey, name, budget, and requestMethods required"
+    );
     next(error);
   }
 
@@ -33,6 +36,7 @@ const create_connection = asyncHandler(async (req, res, next) => {
       pubkey,
       userId,
       name,
+      budget,
       pay_invoice: requestMethods.includes("pay_invoice"),
       get_balance: requestMethods.includes("get_balance"),
     },

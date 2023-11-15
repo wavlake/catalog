@@ -485,6 +485,7 @@ model WalletConnection {
   get_balance    Boolean?
   make_invoice   Boolean?
   lookup_invoice Boolean?
+  budget         Int?
   user           User      @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "wallet_connection_user_id_foreign")
 
   @@map("wallet_connection")
