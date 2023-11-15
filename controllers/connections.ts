@@ -21,7 +21,7 @@ const get_connections = asyncHandler(async (req, res, next) => {
 
 const create_connection = asyncHandler(async (req, res, next) => {
   const userId = req["uid"];
-  const { pubkey, name, requestMethods, budget } = req.body;
+  const { pubkey, name, requestMethods, budget, maxPaymentAmount } = req.body;
 
   if (!pubkey || !name || !requestMethods || !budget) {
     const error = formatError(
@@ -37,6 +37,7 @@ const create_connection = asyncHandler(async (req, res, next) => {
       userId,
       name,
       budget,
+      maxPaymentAmount,
       pay_invoice: requestMethods.includes("pay_invoice"),
       get_balance: requestMethods.includes("get_balance"),
     },
