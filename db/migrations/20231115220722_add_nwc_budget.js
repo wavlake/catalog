@@ -1,21 +1,21 @@
 exports.up = function (knex) {
   return knex.schema.alterTable("wallet_connection", function (table) {
-    table.integer("budget").notNullable();
-    table.check("budget >= 0", [], "connection_budget_check");
-    table.integer("max_payment_amount").notNullable();
+    table.integer("msat_budget").notNullable();
+    table.check("msat_budget >= 0", [], "connection_msat_budget_check");
+    table.integer("max_msat_payment_amount").notNullable();
     table.check(
-      "max_payment_amount >= 0",
+      "max_msat_payment_amount >= 0",
       [],
-      "connection_max_payment_amount_check"
+      "connection_max_msat_payment_amount_check"
     );
   });
 };
 
 exports.down = function (knex) {
   return knex.schema.alterTable("wallet_connection", function (table) {
-    table.dropChecks(["connection_budget_check"]);
-    table.dropColumn("budget");
-    table.dropChecks(["connection_max_payment_amount_check"]);
-    table.dropColumn("max_payment_amount");
+    table.dropChecks(["connection_msat_budget_check"]);
+    table.dropColumn("msat_budget");
+    table.dropChecks(["connection_max_msat_payment_amount_check"]);
+    table.dropColumn("max_msat_payment_amount");
   });
 };

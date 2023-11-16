@@ -477,17 +477,17 @@ model ExternalPayment {
 }
 
 model WalletConnection {
-  pubkey           String    @id
-  userId           String    @map("user_id")
-  name             String?
-  lastUsed         DateTime? @map("last_used") @db.Timestamptz(6)
-  pay_invoice      Boolean?
-  get_balance      Boolean?
-  make_invoice     Boolean?
-  lookup_invoice   Boolean?
-  budget           Int
-  maxPaymentAmount Int       @map("max_payment_amount")
-  user             User      @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "wallet_connection_user_id_foreign")
+  pubkey               String    @id
+  userId               String    @map("user_id")
+  name                 String?
+  lastUsed             DateTime? @map("last_used") @db.Timestamptz(6)
+  pay_invoice          Boolean?
+  get_balance          Boolean?
+  make_invoice         Boolean?
+  lookup_invoice       Boolean?
+  msatBudget           Int       @map("msat_budget")
+  maxMsatPaymentAmount Int       @map("max_msat_payment_amount")
+  user                 User      @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "wallet_connection_user_id_foreign")
 
   @@map("wallet_connection")
 }
