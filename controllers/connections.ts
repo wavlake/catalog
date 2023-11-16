@@ -21,10 +21,20 @@ const get_connections = asyncHandler(async (req, res, next) => {
 
 const create_connection = asyncHandler(async (req, res, next) => {
   const userId = req["uid"];
-  const { pubkey, name, requestMethods } = req.body;
+  const { pubkey, name, requestMethods, msatBudget, maxMsatPaymentAmount } =
+    req.body;
 
-  if (!pubkey || !name || !requestMethods) {
-    const error = formatError(400, "pubkey, name, and requestMethods required");
+  if (
+    !pubkey ||
+    !name ||
+    !requestMethods ||
+    msatBudget === undefined ||
+    maxMsatPaymentAmount === undefined
+  ) {
+    const error = formatError(
+      400,
+      "pubkey, name, msatBudget, maxMsatPaymentAmount, and requestMethods required"
+    );
     next(error);
   }
 
@@ -33,6 +43,8 @@ const create_connection = asyncHandler(async (req, res, next) => {
       pubkey,
       userId,
       name,
+      msatBudget,
+      maxMsatPaymentAmount,
       pay_invoice: requestMethods.includes("pay_invoice"),
       get_balance: requestMethods.includes("get_balance"),
     },
