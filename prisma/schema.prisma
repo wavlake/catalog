@@ -477,19 +477,28 @@ model ExternalPayment {
 }
 
 model WalletConnection {
-  pubkey               String    @id
-  userId               String    @map("user_id")
-  name                 String?
-  lastUsed             DateTime? @map("last_used") @db.Timestamptz(6)
-  pay_invoice          Boolean?
-  get_balance          Boolean?
-  make_invoice         Boolean?
-  lookup_invoice       Boolean?
-  msatBudget           Int       @map("msat_budget")
-  maxMsatPaymentAmount Int       @map("max_msat_payment_amount")
-  user                 User      @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "wallet_connection_user_id_foreign")
+  pubkey                 String                   @id
+  userId                 String                   @map("user_id")
+  name                   String?
+  lastUsed               DateTime?                @map("last_used") @db.Timestamptz(6)
+  pay_invoice            Boolean?
+  get_balance            Boolean?
+  make_invoice           Boolean?
+  lookup_invoice         Boolean?
+  msatBudget             Int                      @map("msat_budget")
+  maxMsatPaymentAmount   Int                      @map("max_msat_payment_amount")
+  nwc_wallet_transaction nwc_wallet_transaction[]
+  user                   User                     @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "wallet_connection_user_id_foreign")
 
   @@map("wallet_connection")
+}
+
+model nwc_wallet_transaction {
+  id                Int              @id @default(autoincrement())
+  pubkey            String
+  msatAmount        Int              @map("msat_amount")
+  createdAt         DateTime         @map("created_at") @db.Timestamptz(6)
+  wallet_connection WalletConnection @relation(fields: [pubkey], references: [pubkey], onDelete: NoAction, onUpdate: NoAction, map: "nwc_wallet_transaction_pubkey_foreign")
 }
 
 view TrackInfo {
