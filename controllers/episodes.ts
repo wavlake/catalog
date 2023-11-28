@@ -213,6 +213,7 @@ export const update_episode = asyncHandler(async (req, res, next) => {
     order,
     isDraft,
     publishedAt: publishedAtString,
+    description,
   } = req.body;
   const uid = req["uid"];
   const publishedAt = publishedAtString
@@ -244,6 +245,7 @@ export const update_episode = asyncHandler(async (req, res, next) => {
       updatedAt,
       isDraft,
       publishedAt,
+      description,
     },
   });
   res.json({ success: true, data: updatedTrack });
