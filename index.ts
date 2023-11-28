@@ -19,6 +19,10 @@ const localUploadPath = `${process.env.LOCAL_UPLOAD_PATH}`;
 const sentryDsn = process.env.SENTRY_DSN;
 const sentryTracesSampleRate = process.env.SENTRY_TRACES_SAMPLE_RATE;
 
+// To obtain the client's IP address from behind the nginx proxy
+// Info: https://expressjs.com/en/guide/behind-proxies.html
+app.set("trust proxy", true);
+
 Sentry.init({
   dsn: sentryDsn,
   integrations: [
@@ -76,6 +80,7 @@ import meta from "./routes/meta";
 import stats from "./routes/stats";
 import tracks from "./routes/tracks";
 import episodes from "./routes/episodes";
+import payments from "./routes/payments";
 import podcasts from "./routes/podcasts";
 import search from "./routes/search";
 import splits from "./routes/splits";
@@ -94,6 +99,7 @@ app.use("/v1/meta", meta);
 app.use("/v1/stats", stats);
 app.use("/v1/tracks", tracks);
 app.use("/v1/episodes", episodes);
+app.use("/v1/payments", payments);
 app.use("/v1/podcasts", podcasts);
 app.use("/v1/search", search);
 app.use("/v1/splits", splits);
