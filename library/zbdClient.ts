@@ -1,16 +1,18 @@
-import { zbd } from "@zbd/node";
+import { sendPaymentPayload, sendPaymentResponse } from "../types/zbd";
+import log from "loglevel";
 const axios = require("axios").default;
 
 // Create ZBD instance
-const ZBD = new zbd(process.env.ZBD_API_KEY);
+const zbdApiKey = process.env.ZBD_API_KEY;
 
 export async function getProductionIps(): Promise<Array<string>> {
   const { data } = await axios
     .get("https://api.zebedee.io/v0/prod-ips", {
-      headers: { apikey: `${process.env.ZBD_API_KEY}` },
+      headers: { apikey: zbdApiKey },
     })
     .catch((err) => {
-      console.log(err);
+      log.trace(err);
+      return err.response;
     });
 
   return data.data.ips;
@@ -19,11 +21,30 @@ export async function getProductionIps(): Promise<Array<string>> {
 export async function isSupportedRegion(ipAddress: string): Promise<boolean> {
   const { data } = await axios
     .get(`https://api.zebedee.io/v0/is-supported-region/${ipAddress}`, {
-      headers: { apikey: `${process.env.ZBD_API_KEY}` },
+      headers: { apikey: zbdApiKey },
     })
     .catch((err) => {
-      console.log(err);
+      log.trace(err);
+      return err.response;
     });
 
   return data.data.isSupported;
+}
+
+export async function sendPayment(
+  payload: sendPaymentPayload
+): Promise<sendPaymentResponse> {
+  const { data } = await axios
+    .post(
+      `https://api.zebedee.io/v0/payments`,
+      { ...payload },
+      {
+        headers: { apikey: zbdApiKey },
+      }
+    )
+    .catch((err) => {
+      log.trace(err);
+      return err.response;
+    });
+  return data;
 }
