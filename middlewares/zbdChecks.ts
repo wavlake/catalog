@@ -3,7 +3,6 @@ import log from "loglevel";
 import { getProductionIps, isSupportedRegion } from "../library/zbdClient";
 
 const environment = process.env.NODE_ENV;
-log.debug(`environment: ${environment}`);
 
 // This middleware is used to check if the IP address of callbacks is coming
 // from an authorized ZBD IP. If it is, we will allow the request to continue.

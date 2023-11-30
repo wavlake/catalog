@@ -224,15 +224,17 @@ model transaction {
   user_id         String    @db.VarChar(255)
   pre_tx_balance  BigInt
   payment_request String    @db.VarChar(700)
-  payment_hash    String    @db.VarChar(255)
-  fee_msat        Int
+  payment_hash    String?
+  fee_msat        Int?
   msat_amount     BigInt
   withdraw        Boolean
-  success         Boolean
+  success         Boolean?
   failure_reason  String?   @db.VarChar(255)
   created_at      DateTime? @default(now()) @db.Timestamptz(6)
   is_pending      Boolean   @default(false)
   updated_at      DateTime? @default(now()) @db.Timestamptz(6)
+  external_id     String?   @db.VarChar(255)
+  preimage        String?   @db.VarChar(255)
   user            User      @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "transaction_user_id_foreign")
 
   @@index([user_id], map: "idx_transaction_user_id")

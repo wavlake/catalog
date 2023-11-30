@@ -1,11 +1,11 @@
 const log = require("loglevel");
 import asyncHandler from "express-async-handler";
-import { sendPayment } from "../library/zbdClient";
 import { formatError } from "../library/errors";
+const { initiatePayment, runPaymentChecks } = require("../library/payments");
 const NLInvoice = require("@node-lightning/invoice");
 
 const createPayment = asyncHandler(async (req, res, next) => {
-  const { description, invoice } = req.body;
+  const { description, invoice, msatMaxFee } = req.body;
   const userId = req["uid"];
 
   // Validate invoice
@@ -15,32 +15,35 @@ const createPayment = asyncHandler(async (req, res, next) => {
     const error = formatError(400, "Invalid invoice");
     next(error);
   }
-  log.info(`Sending payment for ${userId} via payment request: ${invoice}`);
 
-  // Construct payload
-  const payload = {
-    description: description,
-    amount: valueMsat,
-    invoice: invoice,
-    internalId: "123",
-    callbackUrl: "https://0e7c-24-12-64-25.ngrok.io/payments/callback/zbd",
-  };
+  // Run payment checks
+  const paymentChecks = await runPaymentChecks(
+    res,
+    userId,
+    invoice,
+    parseInt(valueMsat),
+    parseInt(msatMaxFee)
+  );
 
-  // Make Payment
-  const data = await sendPayment(payload);
-
-  if (!data.success) {
-    const error = formatError(500, data.message);
-    next(error);
-  } else {
-    // Response can come back as status: completed
-    res.json({ data: data });
+  if (!paymentChecks.success) {
+    log.info(`Check for ${userId} payment request failed, skipping.`);
+    return;
   }
+
+  await initiatePayment(
+    res,
+    next,
+    userId,
+    invoice,
+    parseInt(valueMsat),
+    parseInt(msatMaxFee)
+  );
 });
 
 const zbdCallback = asyncHandler(async (req, res, next) => {
   const { data } = req.body;
 
+  // TODO: Handle updates received from callbacks
   log.info(`Received callback`);
   console.log(data);
 });
