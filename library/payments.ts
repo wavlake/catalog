@@ -2,28 +2,27 @@ const log = require("loglevel");
 import db from "./db";
 import { checkUserHasSufficientSats, getUserBalance } from "./userHelper";
 import { sendPayment } from "./zbdClient";
-import { sendPaymentResponse } from "../types/zbd";
+import { SendPaymentResponse } from "../types/zbd";
 
 const checkUserHasPendingTx = async (userId: string): Promise<boolean> => {
-  return new Promise((resolve, reject) => {
-    db.knex("transaction")
-      .select("transaction.id as id", "transaction.is_pending as isPending")
-      .where("transaction.user_id", "=", userId)
-      .andWhere("transaction.is_pending", "=", true)
-      .then((data) => {
-        if (data.length > 0) {
-          resolve(true);
-        } else {
-          resolve(false);
-        }
-      })
-      .catch((err) => {
-        log.debug(
-          `Error in checkUserHasPendingTx querying transaction table: ${err}`
-        );
-        reject();
-      });
-  });
+  return db
+    .knex("transaction")
+    .select("transaction.id as id", "transaction.is_pending as isPending")
+    .where("transaction.user_id", "=", userId)
+    .andWhere("transaction.is_pending", "=", true)
+    .then((data) => {
+      if (data.length > 0) {
+        return true;
+      } else {
+        return false;
+      }
+    })
+    .catch((err) => {
+      log.debug(
+        `Error in checkUserHasPendingTx querying transaction table: ${err}`
+      );
+      return false;
+    });
 };
 
 async function createPaymentRecord(
@@ -32,35 +31,34 @@ async function createPaymentRecord(
   valueMsat: number
 ): Promise<number> {
   const userBalance = await getUserBalance(userId);
-  return new Promise((resolve, reject) => {
-    db.knex("transaction")
-      .insert(
-        {
-          user_id: userId,
-          pre_tx_balance: userBalance,
-          payment_request: invoice,
-          msat_amount: valueMsat,
-          withdraw: true,
-          is_pending: true,
-        },
-        ["id"]
-      )
-      .then((data) => {
-        if (!data[0]?.id) {
-          log.error(
-            `Error inserting new payment record into transaction table: ${data}`
-          );
-          reject();
-        }
-        resolve(data[0]?.id);
-      })
-      .catch((err) => {
-        log.debug(
-          `Error inserting new payment record into transaction table: ${err}`
+  return db
+    .knex("transaction")
+    .insert(
+      {
+        user_id: userId,
+        pre_tx_balance: userBalance,
+        payment_request: invoice,
+        msat_amount: valueMsat,
+        withdraw: true,
+        is_pending: true,
+      },
+      ["id"]
+    )
+    .then((data) => {
+      if (!data[0]?.id) {
+        log.error(
+          `Error inserting new payment record into transaction table: ${data}`
         );
-        reject();
-      });
-  });
+        return null;
+      }
+      return data[0]?.id;
+    })
+    .catch((err) => {
+      log.debug(
+        `Error inserting new payment record into transaction table: ${err}`
+      );
+      return null;
+    });
 }
 
 async function handleCompletedPayment(
@@ -68,7 +66,7 @@ async function handleCompletedPayment(
   userId: string,
   msatAmount: number,
   paymentRecordId: number,
-  paymentData: sendPaymentResponse
+  paymentData: SendPaymentResponse
 ) {
   const trx = await db.knex.transaction();
   // Update transaction table and user balance in one tx
@@ -121,7 +119,7 @@ async function handleFailedPayment(
   res: any, // TODO: Use express response type
   userId: string,
   paymentRecordId: number,
-  paymentData: sendPaymentResponse
+  paymentData: SendPaymentResponse
 ) {
   const trx = await db.knex.transaction();
   // Update transaction table and user status
@@ -155,20 +153,18 @@ async function handleFailedPayment(
     });
 }
 
-async function isDuplicatePayRequest(invoice) {
-  return new Promise((resolve, reject) => {
-    return db
-      .knex("transaction")
-      .select("payment_request")
-      .where("payment_request", "=", invoice)
-      .then((data) => {
-        resolve(data.length > 0);
-      })
-      .catch((e) => {
-        log.error(`Error looking up invoice: ${e}`);
-        reject();
-      });
-  });
+async function isDuplicatePayRequest(invoice: string): Promise<boolean> {
+  return db
+    .knex("transaction")
+    .select("payment_request")
+    .where("payment_request", "=", invoice)
+    .then((data) => {
+      return data.length > 0;
+    })
+    .catch((e) => {
+      log.error(`Error looking up invoice: ${e}`);
+      return null;
+    });
 }
 
 const runPaymentChecks = async (
@@ -190,16 +186,18 @@ const runPaymentChecks = async (
       : { success: false, error: "Another transaction is pending" };
   }
 
-  const isDupe = await isDuplicatePayRequest(invoice);
-  if (isDupe) {
-    log.info(
-      `Withdraw request canceled for user: ${userId} duplicate payment request`
-    );
-    return res
-      ? res
-          .status(400)
-          .send("Unable to process payment, duplicate payment request")
-      : { success: false, error: "Duplicate payment request" };
+  if (invoice) {
+    const isDupe = await isDuplicatePayRequest(invoice);
+    if (isDupe) {
+      log.info(
+        `Withdraw request canceled for user: ${userId} duplicate payment request`
+      );
+      return res
+        ? res
+            .status(400)
+            .send("Unable to process payment, duplicate payment request")
+        : { success: false, error: "Duplicate payment request" };
+    }
   }
 
   const totalAmount = msatAmount + msatMaxFee;
@@ -244,11 +242,10 @@ const initiatePayment = async (
     amount: msatAmount.toString(),
     invoice: invoice,
     internalId: paymentRecordId.toString(),
-    callbackUrl: `${process.env.ZBD_CALLBACK_URL}/payments/callback/zbd`,
   });
 
   log.debug(`Payment response: ${JSON.stringify(paymentResponse)}`);
-  // Something failed
+  // Payment failed
   if (!paymentResponse.success) {
     await handleFailedPayment(res, userId, paymentRecordId, paymentResponse);
   } else {
@@ -273,7 +270,9 @@ const initiatePayment = async (
     }
   }
 
-  // return sendPayment;
+  return res
+    ? res.status(500).send("Unknown error")
+    : { success: false, error: "UNKNOWN" };
 };
 
 module.exports = {
