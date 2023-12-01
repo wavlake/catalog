@@ -1,12 +1,38 @@
-export interface sendPaymentPayload {
+export interface SendKeysendRequest {
+  amount: string;
+  pubkey: string;
+  metadata?: object;
+  tlvRecords?: any[];
+}
+
+export interface SendKeysendResponse {
+  success: boolean;
+  message: string;
+  data?: {
+    keysendId: string;
+    paymentId: string;
+    transaction: {
+      id: string;
+      walletId: string;
+      type: string;
+      totalAmount: string;
+      fee: string;
+      amount: string;
+      description: string;
+      status: string;
+      confirmedAt: string;
+    };
+  };
+}
+
+export interface SendPaymentRequest {
   description: string;
   amount: string;
   invoice: string;
   internalId: string;
-  callbackUrl: string;
 }
 
-export interface sendPaymentResponse {
+export interface SendPaymentResponse {
   success: boolean;
   message: string;
   data?: {
