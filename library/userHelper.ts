@@ -40,6 +40,20 @@ export async function getUserBalance(userId: string): Promise<string> {
     });
 }
 
+export async function getUserName(userId: string): Promise<string> {
+  return db
+    .knex("user")
+    .select("name")
+    .where("id", "=", userId)
+    .first()
+    .then((data) => {
+      return data.name;
+    })
+    .catch((err) => {
+      log.error(`Error finding user from userId ${err}`);
+    });
+}
+
 export async function checkContentOwnership(req, res, next) {
   const { contentId, contentType } = req.body.contentId ? req.body : req.params;
   const userId = req["uid"];
