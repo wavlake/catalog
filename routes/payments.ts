@@ -22,11 +22,18 @@ const limiter = rateLimit({
 //////// ROUTES ////////
 
 router.post(
-  "/create-payment",
+  "/payment",
   isAuthorized,
   limiter,
   isZbdRegion,
   paymentsController.createPayment
+);
+router.post(
+  "/keysend",
+  isAuthorized,
+  limiter,
+  isZbdRegion,
+  paymentsController.createKeysend
 );
 router.post("/callback/zbd", isZbdIp, paymentsController.zbdCallback);
 
