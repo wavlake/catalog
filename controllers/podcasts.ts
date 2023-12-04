@@ -67,7 +67,10 @@ export const create_podcast = asyncHandler(async (req, res, next) => {
     instagram,
     youtube,
     website,
-    categoryId,
+    primaryCategoryId,
+    secondaryCategoryId,
+    primarySubcategoryId,
+    secondarySubcategoryId,
     // default to draft if not specified
     isDraft = true,
   } = req.body;
@@ -122,7 +125,10 @@ export const create_podcast = asyncHandler(async (req, res, next) => {
                   podcast_url: format.urlFriendly(name),
                   is_draft: isDraft,
                   published_at: db.knex.fn.now(),
-                  category_id: categoryId,
+                  primary_category_id: primaryCategoryId,
+                  secondary_category_id: secondaryCategoryId,
+                  primary_subcategory_id: primarySubcategoryId,
+                  secondary_subcategory_id: secondarySubcategoryId,
                 },
                 ["*"]
               )
@@ -206,7 +212,10 @@ export const update_podcast = asyncHandler(async (req, res, next) => {
     website,
     isDraft,
     publishedAt: publishedAtString,
-    categoryId,
+    primaryCategoryId,
+    secondaryCategoryId,
+    primarySubcategoryId,
+    secondarySubcategoryId,
   } = req.body;
   const uid = req["uid"];
 
@@ -244,7 +253,10 @@ export const update_podcast = asyncHandler(async (req, res, next) => {
       isDraft,
       updatedAt,
       publishedAt,
-      categoryId,
+      primaryCategoryId,
+      secondaryCategoryId,
+      primarySubcategoryId,
+      secondarySubcategoryId,
     },
   });
 
