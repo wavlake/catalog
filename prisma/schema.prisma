@@ -324,24 +324,26 @@ model Episode {
 }
 
 model Podcast {
-  id          String    @id @unique(map: "podcast_id_unique") @db.Uuid
-  userId      String    @map("user_id") @db.VarChar(255)
-  name        String    @db.VarChar(255)
-  artworkUrl  String?   @map("artwork_url") @db.VarChar(255)
-  podcastUrl  String    @unique(map: "podcast_podcast_url_unique") @map("podcast_url") @db.VarChar(255)
-  description String?   @db.VarChar(1000)
-  createdAt   DateTime? @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt   DateTime? @default(now()) @map("updated_at") @db.Timestamptz(6)
-  publishedAt DateTime? @default(now()) @map("published_at") @db.Timestamptz(6)
-  deleted     Boolean?  @default(false)
-  isDraft     Boolean?  @default(true) @map("is_draft")
-  twitter     String?   @db.VarChar(255)
-  instagram   String?   @db.VarChar(255)
-  youtube     String?   @db.VarChar(255)
-  website     String?   @db.VarChar(255)
-  npub        String?   @db.VarChar(255)
-  episode     Episode[]
-  user        User      @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "podcast_user_id_foreign")
+  id               String            @id @unique(map: "podcast_id_unique") @db.Uuid
+  userId           String            @map("user_id") @db.VarChar(255)
+  name             String            @db.VarChar(255)
+  artworkUrl       String?           @map("artwork_url") @db.VarChar(255)
+  podcastUrl       String            @unique(map: "podcast_podcast_url_unique") @map("podcast_url") @db.VarChar(255)
+  description      String?           @db.VarChar(1000)
+  createdAt        DateTime?         @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime?         @default(now()) @map("updated_at") @db.Timestamptz(6)
+  publishedAt      DateTime?         @default(now()) @map("published_at") @db.Timestamptz(6)
+  deleted          Boolean?          @default(false)
+  isDraft          Boolean?          @default(true) @map("is_draft")
+  twitter          String?           @db.VarChar(255)
+  instagram        String?           @db.VarChar(255)
+  youtube          String?           @db.VarChar(255)
+  website          String?           @db.VarChar(255)
+  npub             String?           @db.VarChar(255)
+  categoryId       Int?               @map("category_id")
+  episode          Episode[]
+  podcast_category podcast_category? @relation(fields: [categoryId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "podcast_category_id_foreign")
+  user             User              @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "podcast_user_id_foreign")
 
   @@index([podcastUrl], map: "idx_podcast_url")
   @@index([userId], map: "idx_podcast_user_id")
@@ -501,6 +503,15 @@ model nwc_wallet_transaction {
   msatAmount        Int              @map("msat_amount")
   createdAt         DateTime         @map("created_at") @db.Timestamptz(6)
   wallet_connection WalletConnection @relation(fields: [pubkey], references: [pubkey], onDelete: NoAction, onUpdate: NoAction, map: "nwc_wallet_transaction_pubkey_foreign")
+}
+
+model podcast_category {
+  id         Int       @id @default(autoincrement())
+  name       String    @unique(map: "podcast_category_name_unique") @db.VarChar(64)
+  created_at DateTime? @default(now()) @db.Timestamptz(6)
+  podcast    Podcast[]
+
+  @@index([name], map: "idx_podcast_category_name")
 }
 
 view TrackInfo {

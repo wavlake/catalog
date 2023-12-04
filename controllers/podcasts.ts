@@ -122,7 +122,7 @@ export const create_podcast = asyncHandler(async (req, res, next) => {
                   podcast_url: format.urlFriendly(name),
                   is_draft: isDraft,
                   published_at: db.knex.fn.now(),
-                  genre_id,
+                  category_id: categoryId,
                 },
                 ["*"]
               )
@@ -159,7 +159,7 @@ export const create_podcast = asyncHandler(async (req, res, next) => {
                     podcastUrl: data[0]["podcast_url"],
                     isDraft: data[0]["is_draft"],
                     publishedAt: data[0]["published_at"],
-                    categoryId: data[0]["genre_id"],
+                    categoryId: data[0]["category_id"],
                   },
                 });
               })
