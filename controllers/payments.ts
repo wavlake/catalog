@@ -1,7 +1,7 @@
 const log = require("loglevel");
 import asyncHandler from "express-async-handler";
 import { formatError } from "../library/errors";
-const { initiatePayment, runPaymentChecks } = require("../library/payments");
+import { initiatePayment, runPaymentChecks } from "../library/payments";
 const NLInvoice = require("@node-lightning/invoice");
 const {
   isValidExternalKeysendRequest,
