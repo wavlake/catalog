@@ -10,6 +10,7 @@ const router = express.Router();
 
 router.get("/music/genres", metaController.get_music_genre_list);
 router.get("/music/subgenres/:genreId", metaController.get_music_subgenre_list);
+router.get("/podcast/genres", metaController.get_podcast_genre_list);
 
 // Export router
 export default router;
