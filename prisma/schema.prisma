@@ -457,7 +457,7 @@ model ExternalFeed {
 model ExternalPayment {
   id           Int       @id @default(autoincrement())
   userId       String    @map("user_id")
-  paymentIndex Int       @map("payment_index")
+  paymentIndex String?   @map("payment_index")
   msatAmount   Int       @map("msat_amount")
   feeMsat      Int       @map("fee_msat")
   pubkey       String
