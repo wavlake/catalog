@@ -8,7 +8,7 @@ const {
   processKeysends,
 } = require("../library/keysend");
 
-const createKeysend = asyncHandler(async (req, res, next) => {
+const createKeysend = asyncHandler(async (req, res: any, next) => {
   // Request should include the following:
   // - array of keysends: [{msatAmount: 100, pubkey: 'abc123', customKey: customValue, }, ...]
   // - message (optional)
