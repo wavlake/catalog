@@ -45,4 +45,19 @@ const get_music_subgenre_list = asyncHandler(async (req, res, next) => {
   res.send({ success: true, data: genres });
 });
 
-export default { get_music_genre_list, get_music_subgenre_list };
+const get_podcast_category_list = asyncHandler(async (req, res, next) => {
+  const genres = await prisma.musicGenre.findMany({
+    select: {
+      id: true,
+      name: true,
+    },
+  });
+
+  res.send({ success: true, data: genres });
+});
+
+export default {
+  get_music_genre_list,
+  get_music_subgenre_list,
+  get_podcast_category_list,
+};
