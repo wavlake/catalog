@@ -5,6 +5,41 @@ import { formatError } from "../library/errors";
 
 export type SplitContentTypes = "track" | "episode" | "podcast" | "album";
 
+export async function checkUserHasSufficientSats(
+  userId: string,
+  msatAmount: number
+): Promise<boolean> {
+  return db
+    .knex("user")
+    .select("user.msat_balance as msatBalance")
+    .where("user.id", "=", userId)
+    .first()
+    .then((userData) => {
+      if (!userData) {
+        return false;
+      }
+      return parseInt(userData.msatBalance) > msatAmount;
+    })
+    .catch((err) => {
+      log.debug(`Error querying user table: ${err}`);
+      return false;
+    });
+}
+
+export async function getUserBalance(userId: string): Promise<string> {
+  return db
+    .knex("user")
+    .select("msat_balance as msatBalance")
+    .where("id", "=", userId)
+    .first()
+    .then((data) => {
+      return data.msatBalance;
+    })
+    .catch((err) => {
+      log.error(`Error finding user from userId ${err}`);
+    });
+}
+
 export async function checkContentOwnership(req, res, next) {
   const { contentId, contentType } = req.body.contentId ? req.body : req.params;
   const userId = req["uid"];
