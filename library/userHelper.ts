@@ -40,7 +40,7 @@ export async function getUserBalance(userId: string): Promise<string> {
     });
 }
 
-export async function getUserName(userId: string): Promise<string> {
+export async function getUserName(userId: string): Promise<string | undefined> {
   return db
     .knex("user")
     .select("name")

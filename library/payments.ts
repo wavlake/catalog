@@ -4,7 +4,7 @@ import { checkUserHasSufficientSats, getUserBalance } from "./userHelper";
 import { sendPayment } from "./zbdClient";
 import { SendPaymentResponse } from "../types/zbd";
 
-const checkUserHasPendingTx = async (userId: string): Promise<boolean> => {
+async function checkUserHasPendingTx(userId: string): Promise<boolean> {
   return db
     .knex("transaction")
     .select("transaction.id as id", "transaction.is_pending as isPending")
@@ -23,7 +23,7 @@ const checkUserHasPendingTx = async (userId: string): Promise<boolean> => {
       );
       return false;
     });
-};
+}
 
 async function createPaymentRecord(
   userId: string,
@@ -167,7 +167,7 @@ async function isDuplicatePayRequest(invoice: string): Promise<boolean> {
     });
 }
 
-const runPaymentChecks = async (
+export const runPaymentChecks = async (
   res: any, // TODO: Use express response type
   userId: string,
   invoice: string,
@@ -215,7 +215,7 @@ const runPaymentChecks = async (
   return { success: true };
 };
 
-const initiatePayment = async (
+export const initiatePayment = async (
   res: any, // TODO: Use express response types
   next: any,
   userId: string,
@@ -244,7 +244,7 @@ const initiatePayment = async (
     internalId: paymentRecordId.toString(),
   });
 
-  log.debug(`Payment response: ${JSON.stringify(paymentResponse)}`);
+  // log.debug(`Payment response: ${JSON.stringify(paymentResponse)}`);
   // Payment failed
   if (!paymentResponse.success) {
     await handleFailedPayment(res, userId, paymentRecordId, paymentResponse);
@@ -273,10 +273,4 @@ const initiatePayment = async (
   return res
     ? res.status(500).send("Unknown error")
     : { success: false, error: "UNKNOWN" };
-};
-
-module.exports = {
-  checkUserHasPendingTx,
-  initiatePayment,
-  runPaymentChecks,
 };
