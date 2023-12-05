@@ -1,13 +1,13 @@
 steps:
-  - name: blastshielddown/wavlake-catalog:latest
+  - name: node:16.20.0
     id: install
     entrypoint: npm
     args: ["install"]
-  - name: blastshielddown/wavlake-catalog:latest
+  - name: node:16.20.0
     id: build
     entrypoint: npm
     args: ["run", "build"]
-  - name: blastshielddown/wavlake-catalog:latest
+  - name: node:16.20.0
     id: create env
     entrypoint: npm
     args: ["run", "create-env"]
@@ -34,7 +34,7 @@ steps:
       - "PODCAST_INDEX_SECRET=${_PODCAST_INDEX_SECRET}"
       - "ZBD_CALLBACK_URL=${_ZBD_CALLBACK_URL}"
     secretEnv: ["PG_PASSWORD", "AWS_SECRET_ACCESS_KEY", "ZBD_API_KEY"]
-  - name: blastshielddown/wavlake-catalog:latest
+  - name: node:16.20.0
     id: migrate db
     entrypoint: npm
     args: ["run", "migrate"]
@@ -45,11 +45,11 @@ steps:
       - "PG_DATABASE=${_PG_DATABASE}"
       - "PG_USER=${_PG_USER}"
     secretEnv: ["PG_PASSWORD"]
-  - name: blastshielddown/wavlake-catalog:latest
+  - name: node:16.20.0
     id: generate prisma
     entrypoint: npm
     args: ["run", "generate"]
-  - name: blastshielddown/wavlake-catalog:latest
+  - name: "gcr.io/cloud-builders/gcloud"
     entrypoint: "gcloud"
     args: ["app", "deploy", "./staging.yaml"]
 availableSecrets:
