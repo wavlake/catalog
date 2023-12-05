@@ -57,45 +57,6 @@ export const get_episodes_by_podcast_id = asyncHandler(
   }
 );
 
-export const get_episodes_by_new = asyncHandler(async (req, res, next) => {
-  const limit = parseLimit(req.query.limit, 50);
-
-  res.send({ success: true, data: [] });
-
-  // TODO
-  // const episodes = db.knex
-  //   .select("episode.id as id", "episode.podcast_id as podcastId")
-  //   .join("podcast", "podcast.id", "=", "episode.podcast_id")
-  //   .rank("ranking", "track.id", "track.album_id")
-  //   .min("track.title as title")
-  //   .min("artist.name as artist")
-  //   .min("artist.artist_url as artistUrl")
-  //   .min("artist.artwork_url as avatarUrl")
-  //   .min("album.artwork_url as artworkUrl")
-  //   .min("album.title as albumTitle")
-  //   .min("track.live_url as liveUrl")
-  //   .min("track.duration as duration")
-  //   .min("track.created_at as createdAt")
-  //   .andWhere("track.deleted", "=", false)
-  //   .andWhere("track.order", "=", 1)
-  //   .from("track")
-  //   .groupBy("track.album_id", "track.id")
-  //   .as("a");
-
-  // db.knex(albumTracks)
-  //   .orderBy("createdAt", "desc")
-  //   .where("ranking", "=", 1)
-  //   .limit(limit)
-  //   .then((data) => {
-  //     // console.log(data);
-  //     res.send({ success: true, data: data });
-  //   })
-  //   .catch((err) => {
-  //     log.debug(`Error querying track table for New: ${err}`);
-  //     next(err);
-  //   });
-});
-
 export const delete_episode = asyncHandler(async (req, res, next) => {
   const { episodeId } = req.params;
   const uid = req["uid"];
