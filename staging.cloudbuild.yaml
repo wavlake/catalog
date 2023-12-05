@@ -49,7 +49,8 @@ steps:
     id: generate prisma
     entrypoint: npm
     args: ["run", "generate"]
-  - name: "gcr.io/cloud-builders/gcloud"
+  - name: blastshielddown/wavlake-catalog:latest
+    entrypoint: "gcloud"
     args: ["app", "deploy", "./staging.yaml"]
 availableSecrets:
   secretManager:
