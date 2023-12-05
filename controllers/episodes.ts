@@ -252,9 +252,10 @@ export const update_episode = asyncHandler(async (req, res, next) => {
 });
 
 export const get_new_episodes = asyncHandler(async (req, res, next) => {
+  // all episodes that are not deleted and have a publishedAt less than or equal to now (lte)
   try {
     const episodes = await prisma.episode.findMany({
-      where: { deleted: false },
+      where: { deleted: false, publishedAt: { lte: new Date() } },
       orderBy: { publishedAt: "desc" },
       take: 10,
       include: {
