@@ -30,6 +30,9 @@ export const isZbdRegion = asyncHandler(async (req, res, next) => {
   const isSupported = await isSupportedRegion(ipAddress);
   if (isSupported) {
     next();
+    return;
+  } else {
+    res.status(500).send({ error: "Not supported region" });
+    return;
   }
-  res.status(500).send({ error: "Not supported region" });
 });
