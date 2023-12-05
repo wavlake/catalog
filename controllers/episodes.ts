@@ -250,3 +250,29 @@ export const update_episode = asyncHandler(async (req, res, next) => {
   });
   res.json({ success: true, data: updatedTrack });
 });
+
+export const get_new_episodes = asyncHandler(async (req, res, next) => {
+  // all episodes that are not deleted and have a publishedAt less than or equal to now (lte)
+  try {
+    const episodes = await prisma.episode.findMany({
+      where: { deleted: false, publishedAt: { lte: new Date() } },
+      orderBy: { publishedAt: "desc" },
+      take: 10,
+      include: {
+        podcast: {
+          select: {
+            artworkUrl: true,
+            id: true,
+            name: true,
+            podcastUrl: true,
+          },
+        },
+      },
+    });
+
+    res.json({ success: true, data: episodes });
+  } catch (err) {
+    log.debug(`Error getting new episodes: ${err}`);
+    next(err);
+  }
+});
