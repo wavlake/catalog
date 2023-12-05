@@ -324,24 +324,32 @@ model Episode {
 }
 
 model Podcast {
-  id          String    @id @unique(map: "podcast_id_unique") @db.Uuid
-  userId      String    @map("user_id") @db.VarChar(255)
-  name        String    @db.VarChar(255)
-  artworkUrl  String?   @map("artwork_url") @db.VarChar(255)
-  podcastUrl  String    @unique(map: "podcast_podcast_url_unique") @map("podcast_url") @db.VarChar(255)
-  description String?   @db.VarChar(1000)
-  createdAt   DateTime? @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt   DateTime? @default(now()) @map("updated_at") @db.Timestamptz(6)
-  publishedAt DateTime? @default(now()) @map("published_at") @db.Timestamptz(6)
-  deleted     Boolean?  @default(false)
-  isDraft     Boolean?  @default(true) @map("is_draft")
-  twitter     String?   @db.VarChar(255)
-  instagram   String?   @db.VarChar(255)
-  youtube     String?   @db.VarChar(255)
-  website     String?   @db.VarChar(255)
-  npub        String?   @db.VarChar(255)
-  episode     Episode[]
-  user        User      @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "podcast_user_id_foreign")
+  id                                                                        String              @id @unique(map: "podcast_id_unique") @db.Uuid
+  userId                                                                    String              @map("user_id") @db.VarChar(255)
+  name                                                                      String              @db.VarChar(255)
+  artworkUrl                                                                String?             @map("artwork_url") @db.VarChar(255)
+  podcastUrl                                                                String              @unique(map: "podcast_podcast_url_unique") @map("podcast_url") @db.VarChar(255)
+  description                                                               String?             @db.VarChar(1000)
+  createdAt                                                                 DateTime?           @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt                                                                 DateTime?           @default(now()) @map("updated_at") @db.Timestamptz(6)
+  publishedAt                                                               DateTime?           @default(now()) @map("published_at") @db.Timestamptz(6)
+  deleted                                                                   Boolean?            @default(false)
+  isDraft                                                                   Boolean?            @default(true) @map("is_draft")
+  twitter                                                                   String?             @db.VarChar(255)
+  instagram                                                                 String?             @db.VarChar(255)
+  youtube                                                                   String?             @db.VarChar(255)
+  website                                                                   String?             @db.VarChar(255)
+  npub                                                                      String?             @db.VarChar(255)
+  primaryCategoryId                                                         Int?                @map("primary_category_id")
+  secondaryCategoryId                                                       Int?                @map("secondary_category_id")
+  primarySubcategoryId                                                      Int?                @map("primary_subcategory_id")
+  secondarySubcategoryId                                                    Int?                @map("secondary_subcategory_id")
+  episode                                                                   Episode[]
+  podcast_category_podcast_primary_category_idTopodcast_category            podcastCategory?    @relation("podcast_primary_category_idTopodcast_category", fields: [primaryCategoryId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "podcast_primary_category_id_foreign")
+  podcast_subcategory_podcast_primary_subcategory_idTopodcast_subcategory   podcastSubcategory? @relation("podcast_primary_subcategory_idTopodcast_subcategory", fields: [primarySubcategoryId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "podcast_primary_subcategory_id_foreign")
+  podcast_category_podcast_secondary_category_idTopodcast_category          podcastCategory?    @relation("podcast_secondary_category_idTopodcast_category", fields: [secondaryCategoryId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "podcast_secondary_category_id_foreign")
+  podcast_subcategory_podcast_secondary_subcategory_idTopodcast_subcategory podcastSubcategory? @relation("podcast_secondary_subcategory_idTopodcast_subcategory", fields: [secondarySubcategoryId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "podcast_secondary_subcategory_id_foreign")
+  user                                                                      User                @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "podcast_user_id_foreign")
 
   @@index([podcastUrl], map: "idx_podcast_url")
   @@index([userId], map: "idx_podcast_user_id")
@@ -501,6 +509,31 @@ model nwc_wallet_transaction {
   msatAmount        Int              @map("msat_amount")
   createdAt         DateTime         @map("created_at") @db.Timestamptz(6)
   wallet_connection WalletConnection @relation(fields: [pubkey], references: [pubkey], onDelete: NoAction, onUpdate: NoAction, map: "nwc_wallet_transaction_pubkey_foreign")
+}
+
+model podcastCategory {
+  id                                                      Int                  @id @default(autoincrement())
+  name                                                    String               @unique(map: "podcast_category_name_unique") @db.VarChar(64)
+  created_at                                              DateTime?            @default(now()) @db.Timestamptz(6)
+  podcast_podcast_primary_category_idTopodcast_category   Podcast[]            @relation("podcast_primary_category_idTopodcast_category")
+  podcast_podcast_secondary_category_idTopodcast_category Podcast[]            @relation("podcast_secondary_category_idTopodcast_category")
+  podcast_subcategory                                     podcastSubcategory[]
+
+  @@index([name], map: "idx_podcast_category_name")
+  @@map("podcast_category")
+}
+
+model podcastSubcategory {
+  id                                                            Int             @id @default(autoincrement())
+  category_id                                                   Int
+  name                                                          String          @unique(map: "podcast_subcategory_name_unique") @db.VarChar(64)
+  created_at                                                    DateTime?       @default(now()) @db.Timestamptz(6)
+  podcast_podcast_primary_subcategory_idTopodcast_subcategory   Podcast[]       @relation("podcast_primary_subcategory_idTopodcast_subcategory")
+  podcast_podcast_secondary_subcategory_idTopodcast_subcategory Podcast[]       @relation("podcast_secondary_subcategory_idTopodcast_subcategory")
+  podcast_category                                              podcastCategory @relation(fields: [category_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "podcast_subcategory_category_id_foreign")
+
+  @@index([name], map: "idx_podcast_subcategory_name")
+  @@map("podcast_subcategory")
 }
 
 view TrackInfo {

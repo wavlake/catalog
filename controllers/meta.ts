@@ -45,4 +45,36 @@ const get_music_subgenre_list = asyncHandler(async (req, res, next) => {
   res.send({ success: true, data: genres });
 });
 
-export default { get_music_genre_list, get_music_subgenre_list };
+const get_podcast_category_list = asyncHandler(async (req, res, next) => {
+  const genres = await prisma.podcastCategory.findMany({
+    select: {
+      id: true,
+      name: true,
+    },
+  });
+
+  res.send({ success: true, data: genres });
+});
+
+const get_podcast_subcategory_list = asyncHandler(async (req, res, next) => {
+  const { categoryId } = req.params;
+
+  const genres = await prisma.podcastSubcategory.findMany({
+    where: {
+      category_id: parseInt(categoryId),
+    },
+    select: {
+      id: true,
+      name: true,
+    },
+  });
+
+  res.send({ success: true, data: genres });
+});
+
+export default {
+  get_music_genre_list,
+  get_music_subgenre_list,
+  get_podcast_category_list,
+  get_podcast_subcategory_list,
+};
