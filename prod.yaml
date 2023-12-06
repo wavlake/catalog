@@ -12,7 +12,7 @@
 # limitations under the License.
 
 # [START gae_flex_quickstart_yaml_v1]
-runtime: nodejs
+runtime: custom
 env: flex
 service: catalog-prod
 

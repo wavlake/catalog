@@ -32,7 +32,8 @@ steps:
       - "SENTRY_TRACES_SAMPLE_RATE=${_SENTRY_TRACES_SAMPLE_RATE}"
       - "PODCAST_INDEX_KEY=${_PODCAST_INDEX_KEY}"
       - "PODCAST_INDEX_SECRET=${_PODCAST_INDEX_SECRET}"
-    secretEnv: ["PG_PASSWORD", "AWS_SECRET_ACCESS_KEY"]
+      - "ZBD_CALLBACK_URL=${_ZBD_CALLBACK_URL}"
+    secretEnv: ["PG_PASSWORD", "AWS_SECRET_ACCESS_KEY", "ZBD_API_KEY"]
   - name: node:16.20.0
     id: migrate db
     entrypoint: npm
@@ -56,6 +57,8 @@ availableSecrets:
       env: "PG_PASSWORD"
     - versionName: projects/$PROJECT_ID/secrets/AWS_S3_MEDIA_SECRET_PROD/versions/latest
       env: "AWS_SECRET_ACCESS_KEY"
+    - versionName: projects/$PROJECT_ID/secrets/ZBD_API_KEY/versions/latest
+      env: "ZBD_API_KEY"
 timeout: "900s"
 options:
   logging: CLOUD_LOGGING_ONLY
