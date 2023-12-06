@@ -13,7 +13,8 @@ SELECT
   episode.created_at AS "createdAt",
   episode.podcast_id AS "podcastId",
   episode."order",
-  episode.is_processing AS "isProcessing"
+  episode.is_processing AS "isProcessing",
+  episode.published_at AS "publishedAt"
 FROM
   (
     (
