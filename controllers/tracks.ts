@@ -95,6 +95,7 @@ const get_tracks_by_new = asyncHandler(async (req, res, next) => {
     .min("track.live_url as liveUrl")
     .min("track.duration as duration")
     .min("track.created_at as createdAt")
+    .andWhere("album.published_at", "<", new Date())
     .andWhere("track.deleted", "=", false)
     .andWhere("track.order", "=", 1)
     .andWhere("track.duration", "is not", null)

@@ -16,7 +16,8 @@ SELECT
   track.artist_id,
   track."order",
   track.is_processing,
-  track.msat_total
+  track.msat_total,
+  track.published_at
 FROM
   (
     (

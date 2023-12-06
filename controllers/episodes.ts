@@ -6,7 +6,6 @@ import s3Client from "../library/s3Client";
 import asyncHandler from "express-async-handler";
 import { formatError } from "../library/errors";
 import { isEpisodeOwner, isPodcastOwner } from "../library/userHelper";
-import { parseLimit } from "../library/helpers";
 import { AWS_S3_EPISODE_PREFIX, AWS_S3_RAW_PREFIX } from "../library/constants";
 
 const s3BucketName = `${process.env.AWS_S3_BUCKET_NAME}`;
@@ -48,53 +47,19 @@ export const get_episodes_by_account = asyncHandler(async (req, res, next) => {
 export const get_episodes_by_podcast_id = asyncHandler(
   async (req, res, next) => {
     const { podcastId } = req.params;
+    const { unpublished } = req.query;
 
     const episodes = await prisma.episodeInfo.findMany({
-      where: { podcastId },
+      where: {
+        podcastId,
+        ...(unpublished ? {} : { publishedAt: { lte: new Date() } }),
+      },
       orderBy: { order: "asc" },
     });
+    // console.log(episodes);
     res.json({ success: true, data: episodes });
   }
 );
-
-export const get_episodes_by_new = asyncHandler(async (req, res, next) => {
-  const limit = parseLimit(req.query.limit, 50);
-
-  res.send({ success: true, data: [] });
-
-  // TODO
-  // const episodes = db.knex
-  //   .select("episode.id as id", "episode.podcast_id as podcastId")
-  //   .join("podcast", "podcast.id", "=", "episode.podcast_id")
-  //   .rank("ranking", "track.id", "track.album_id")
-  //   .min("track.title as title")
-  //   .min("artist.name as artist")
-  //   .min("artist.artist_url as artistUrl")
-  //   .min("artist.artwork_url as avatarUrl")
-  //   .min("album.artwork_url as artworkUrl")
-  //   .min("album.title as albumTitle")
-  //   .min("track.live_url as liveUrl")
-  //   .min("track.duration as duration")
-  //   .min("track.created_at as createdAt")
-  //   .andWhere("track.deleted", "=", false)
-  //   .andWhere("track.order", "=", 1)
-  //   .from("track")
-  //   .groupBy("track.album_id", "track.id")
-  //   .as("a");
-
-  // db.knex(albumTracks)
-  //   .orderBy("createdAt", "desc")
-  //   .where("ranking", "=", 1)
-  //   .limit(limit)
-  //   .then((data) => {
-  //     // console.log(data);
-  //     res.send({ success: true, data: data });
-  //   })
-  //   .catch((err) => {
-  //     log.debug(`Error querying track table for New: ${err}`);
-  //     next(err);
-  //   });
-});
 
 export const delete_episode = asyncHandler(async (req, res, next) => {
   const { episodeId } = req.params;
@@ -241,7 +206,7 @@ export const update_episode = asyncHandler(async (req, res, next) => {
     },
     data: {
       title,
-      order,
+      order: parseInt(order),
       updatedAt,
       isDraft,
       publishedAt,
@@ -269,7 +234,7 @@ export const get_new_episodes = asyncHandler(async (req, res, next) => {
         },
       },
     });
-
+    // console.log(episodes);
     res.json({ success: true, data: episodes });
   } catch (err) {
     log.debug(`Error getting new episodes: ${err}`);

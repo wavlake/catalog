@@ -555,6 +555,7 @@ view TrackInfo {
   order           Int?
   isProcessing    Boolean?  @map("is_processing")
   msatTotal       BigInt?   @map("msat_total")
+  publishedAt    DateTime?  @map("published_at") @db.Timestamptz(6)
 
   @@map("track_info")
 }
@@ -575,6 +576,7 @@ view EpisodeInfo {
   podcastId       String?   @db.Uuid
   order           Int?
   isProcessing    Boolean?
+  publishedAt     DateTime? @db.Timestamptz(6)
 
   @@map("episode_info")
 }
