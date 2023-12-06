@@ -234,7 +234,7 @@ export const get_new_episodes = asyncHandler(async (req, res, next) => {
         },
       },
     });
-    console.log(episodes);
+    // console.log(episodes);
     res.json({ success: true, data: episodes });
   } catch (err) {
     log.debug(`Error getting new episodes: ${err}`);
