@@ -6,7 +6,6 @@ import s3Client from "../library/s3Client";
 import asyncHandler from "express-async-handler";
 import { formatError } from "../library/errors";
 import { isEpisodeOwner, isPodcastOwner } from "../library/userHelper";
-import { parseLimit } from "../library/helpers";
 import { AWS_S3_EPISODE_PREFIX, AWS_S3_RAW_PREFIX } from "../library/constants";
 
 const s3BucketName = `${process.env.AWS_S3_BUCKET_NAME}`;
@@ -48,11 +47,16 @@ export const get_episodes_by_account = asyncHandler(async (req, res, next) => {
 export const get_episodes_by_podcast_id = asyncHandler(
   async (req, res, next) => {
     const { podcastId } = req.params;
+    const { unpublished } = req.query;
 
     const episodes = await prisma.episodeInfo.findMany({
-      where: { podcastId },
+      where: {
+        podcastId,
+        ...(unpublished ? {} : { publishedAt: { lte: new Date() } }),
+      },
       orderBy: { order: "asc" },
     });
+    console.log(episodes);
     res.json({ success: true, data: episodes });
   }
 );
@@ -202,7 +206,7 @@ export const update_episode = asyncHandler(async (req, res, next) => {
     },
     data: {
       title,
-      order,
+      order: parseInt(order),
       updatedAt,
       isDraft,
       publishedAt,
@@ -230,7 +234,7 @@ export const get_new_episodes = asyncHandler(async (req, res, next) => {
         },
       },
     });
-
+    console.log(episodes);
     res.json({ success: true, data: episodes });
   } catch (err) {
     log.debug(`Error getting new episodes: ${err}`);
