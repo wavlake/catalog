@@ -126,6 +126,7 @@ exports.buildAmpTx = async ({
               ),
               split_destination: recipient.userId,
               tx_id: txId,
+              content_type: contentType ? contentType : "track", // fallback to track
             });
           })
         );
