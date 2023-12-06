@@ -497,6 +497,7 @@ model WalletConnection {
   lookup_invoice         Boolean?
   msatBudget             Int                      @map("msat_budget")
   maxMsatPaymentAmount   Int                      @map("max_msat_payment_amount")
+  deleted                Boolean                  @default(false)
   nwc_wallet_transaction nwc_wallet_transaction[]
   user                   User                     @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "wallet_connection_user_id_foreign")
 
@@ -555,7 +556,7 @@ view TrackInfo {
   order           Int?
   isProcessing    Boolean?  @map("is_processing")
   msatTotal       BigInt?   @map("msat_total")
-  publishedAt    DateTime?  @map("published_at") @db.Timestamptz(6)
+  publishedAt     DateTime? @map("published_at") @db.Timestamptz(6)
 
   @@map("track_info")
 }

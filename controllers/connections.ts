@@ -6,7 +6,7 @@ const get_connections = asyncHandler(async (req, res, next) => {
   const userId = req["uid"];
 
   const connections = await prisma.walletConnection.findMany({
-    where: { userId },
+    where: { userId, deleted: false },
   });
 
   try {
@@ -85,8 +85,9 @@ const delete_connection = asyncHandler(async (req, res, next) => {
       next(error);
     }
 
-    await prisma.walletConnection.delete({
+    await prisma.walletConnection.update({
       where: { pubkey: connection.pubkey },
+      data: { deleted: true },
     });
 
     res.send({
