@@ -56,7 +56,7 @@ export const get_episodes_by_podcast_id = asyncHandler(
       },
       orderBy: { order: "asc" },
     });
-    console.log(episodes);
+    // console.log(episodes);
     res.json({ success: true, data: episodes });
   }
 );
