@@ -27,8 +27,7 @@ import {
 const router = express.Router();
 
 router.get("/account", isAuthorized, get_podcasts_by_account);
-router.get("/:podcastUrl/url", get_podcast_by_url);
-router.get("/:podcastId", get_podcast_by_id);
+router.get("/:podcastUrl", get_podcast_by_url);
 
 router.post("/create", upload.single("artwork"), isAuthorized, create_podcast);
 router.put("/update", isAuthorized, update_podcast);
