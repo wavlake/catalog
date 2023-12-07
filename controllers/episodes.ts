@@ -58,6 +58,7 @@ export const get_episodes_by_podcast_id = asyncHandler(
     const episodes = await prisma.episodeInfo.findMany({
       where: {
         podcastId,
+        isProcessing: false,
         ...(unpublished
           ? { isDraft: false }
           : { isDraft: false, publishedAt: { lte: new Date() } }),
@@ -208,20 +209,20 @@ export const update_episode = asyncHandler(async (req, res, next) => {
   }
 
   log.debug(`Editing episode ${episodeId}`);
-  const updatedTrack = await prisma.episode.update({
+  const updatedEpisode = await prisma.episode.update({
     where: {
       id: episodeId,
     },
     data: {
       title,
-      order: parseInt(order),
+      ...(order ? { order: parseInt(order) } : {}),
       updatedAt,
       isDraft,
       publishedAt,
       description,
     },
   });
-  res.json({ success: true, data: updatedTrack });
+  res.json({ success: true, data: updatedEpisode });
 });
 
 export const get_new_episodes = asyncHandler(async (req, res, next) => {
@@ -232,6 +233,7 @@ export const get_new_episodes = asyncHandler(async (req, res, next) => {
         deleted: false,
         publishedAt: { lte: new Date() },
         isDraft: false,
+        isProcessing: false,
         podcast: { isDraft: false, publishedAt: { lte: new Date() } },
       },
       orderBy: { publishedAt: "desc" },
