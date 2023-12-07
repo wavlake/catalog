@@ -57,6 +57,7 @@ const get_tracks_by_album_id = asyncHandler(async (req, res, next) => {
   const tracks = await prisma.trackInfo.findMany({
     where: {
       albumId: request.albumId,
+      isProcessing: false,
       ...(unpublished
         ? {}
         : { isDraft: false, publishedAt: { lte: new Date() } }),
@@ -76,6 +77,7 @@ const get_tracks_by_artist_url = asyncHandler(async (req, res, next) => {
   const tracks = await prisma.trackInfo.findMany({
     where: {
       artistUrl: request.artistUrl,
+      isProcessing: false,
       ...(unpublished
         ? {}
         : { isDraft: false, publishedAt: { lte: new Date() } }),
@@ -186,6 +188,7 @@ const get_tracks_by_artist_id = asyncHandler(async (req, res, next) => {
   const tracks = await prisma.trackInfo.findMany({
     where: {
       artistId: artistId,
+      isProcessing: false,
       ...(unpublished
         ? {}
         : { isDraft: false, publishedAt: { lte: new Date() } }),
@@ -371,6 +374,7 @@ const search_tracks = asyncHandler(async (req, res, next) => {
         },
         { albumTitle: { contains: album, mode: "insensitive" } },
       ],
+      isProcessing: false,
       isDraft: false,
       publishedAt: { lte: new Date() },
     },
