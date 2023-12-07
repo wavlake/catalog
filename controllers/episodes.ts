@@ -37,8 +37,14 @@ export const get_episodes_by_account = asyncHandler(async (req, res, next) => {
   const episodes = await prisma.user.findMany({
     where: { id: userId },
     include: {
-      // podcast: {
-      // },
+      podcast: {
+        select: {
+          artworkUrl: true,
+          id: true,
+          name: true,
+          podcastUrl: true,
+        },
+      },
     },
   });
   res.json({ success: true, data: episodes });
@@ -52,11 +58,14 @@ export const get_episodes_by_podcast_id = asyncHandler(
     const episodes = await prisma.episodeInfo.findMany({
       where: {
         podcastId,
-        ...(unpublished ? {} : { publishedAt: { lte: new Date() } }),
+        isProcessing: false,
+        ...(unpublished
+          ? { isDraft: false }
+          : { isDraft: false, publishedAt: { lte: new Date() } }),
       },
       orderBy: { order: "asc" },
     });
-    // console.log(episodes);
+
     res.json({ success: true, data: episodes });
   }
 );
@@ -200,27 +209,33 @@ export const update_episode = asyncHandler(async (req, res, next) => {
   }
 
   log.debug(`Editing episode ${episodeId}`);
-  const updatedTrack = await prisma.episode.update({
+  const updatedEpisode = await prisma.episode.update({
     where: {
       id: episodeId,
     },
     data: {
       title,
-      order: parseInt(order),
+      ...(order ? { order: parseInt(order) } : {}),
       updatedAt,
       isDraft,
       publishedAt,
       description,
     },
   });
-  res.json({ success: true, data: updatedTrack });
+  res.json({ success: true, data: updatedEpisode });
 });
 
 export const get_new_episodes = asyncHandler(async (req, res, next) => {
   // all episodes that are not deleted and have a publishedAt less than or equal to now (lte)
   try {
     const episodes = await prisma.episode.findMany({
-      where: { deleted: false, publishedAt: { lte: new Date() } },
+      where: {
+        deleted: false,
+        publishedAt: { lte: new Date() },
+        isDraft: false,
+        isProcessing: false,
+        podcast: { isDraft: false, publishedAt: { lte: new Date() } },
+      },
       orderBy: { publishedAt: "desc" },
       take: 10,
       include: {
