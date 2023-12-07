@@ -67,7 +67,11 @@ const get_tracks_by_artist_url = asyncHandler(async (req, res, next) => {
   };
 
   const tracks = await prisma.trackInfo.findMany({
-    where: { artistUrl: request.artistUrl },
+    where: {
+      artistUrl: request.artistUrl,
+      isDraft: false,
+      publishedAt: { lte: new Date() },
+    },
     orderBy: { order: "asc" },
   });
 
@@ -96,6 +100,7 @@ const get_tracks_by_new = asyncHandler(async (req, res, next) => {
     .min("track.duration as duration")
     .min("track.created_at as createdAt")
     .andWhere("album.published_at", "<", new Date())
+    .andWhere("album.is_draft", "=", false)
     .andWhere("track.deleted", "=", false)
     .andWhere("track.order", "=", 1)
     .andWhere("track.duration", "is not", null)
@@ -147,6 +152,8 @@ const get_tracks_by_random = asyncHandler(async (req, res, next) => {
   randomTracks
     .distinct()
     .where("track.deleted", "=", false)
+    .andWhere("track.is_draft", "=", false)
+    .andWhere("album.is_draft", "=", false)
     .andWhere("track.duration", "is not", null)
     // .limit(request.limit)
     .then((data) => {
@@ -163,7 +170,11 @@ const get_tracks_by_artist_id = asyncHandler(async (req, res, next) => {
   const limit = parseLimit(req.query.limit);
 
   const tracks = await prisma.trackInfo.findMany({
-    where: { artistId: artistId },
+    where: {
+      artistId: artistId,
+      isDraft: false,
+      publishedAt: { lte: new Date() },
+    },
     orderBy: { msatTotal30Days: "desc" },
     take: limit,
   });
@@ -344,6 +355,8 @@ const search_tracks = asyncHandler(async (req, res, next) => {
         },
         { albumTitle: { contains: album, mode: "insensitive" } },
       ],
+      isDraft: false,
+      publishedAt: { lte: new Date() },
     },
     take: 10,
   });

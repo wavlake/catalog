@@ -52,11 +52,12 @@ export const get_episodes_by_podcast_id = asyncHandler(
     const episodes = await prisma.episodeInfo.findMany({
       where: {
         podcastId,
+        isDraft: unpublished ? true : false,
         ...(unpublished ? {} : { publishedAt: { lte: new Date() } }),
       },
       orderBy: { order: "asc" },
     });
-    // console.log(episodes);
+
     res.json({ success: true, data: episodes });
   }
 );
@@ -220,7 +221,12 @@ export const get_new_episodes = asyncHandler(async (req, res, next) => {
   // all episodes that are not deleted and have a publishedAt less than or equal to now (lte)
   try {
     const episodes = await prisma.episode.findMany({
-      where: { deleted: false, publishedAt: { lte: new Date() } },
+      where: {
+        deleted: false,
+        publishedAt: { lte: new Date() },
+        isDraft: false,
+        podcast: { isDraft: false },
+      },
       orderBy: { publishedAt: "desc" },
       take: 10,
       include: {
