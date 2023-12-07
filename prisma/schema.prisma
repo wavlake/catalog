@@ -538,26 +538,25 @@ model podcastSubcategory {
 }
 
 view TrackInfo {
-  id                 String    @unique @db.Uuid
-  title              String?   @db.VarChar(255)
-  artist             String?   @db.VarChar(255)
-  artistUrl          String?   @map("artist_url") @db.VarChar(255)
-  avatarUrl          String?   @map("avatar_url") @db.VarChar(255)
-  artworkUrl         String?   @map("artwork_url") @db.VarChar(255)
-  msatTotal30Days    BigInt?   @map("msat_total_30_days")
-  msatTotal14Days BigInt?   @map("msat_total_14_days")
-  msatTotal7Days     BigInt?   @map("msat_total_7_days")
-  msatTotal1Days     BigInt?   @map("msat_total_1_days")
-  albumTitle         String?   @map("album_title") @db.VarChar(255)
-  liveUrl            String?   @map("live_url") @db.VarChar(255)
-  duration           Int?
-  createdAt          DateTime? @map("created_at") @db.Timestamptz(6)
-  albumId            String?   @map("album_id") @db.Uuid
-  artistId           String?   @map("artist_id") @db.Uuid
-  order              Int?
-  isProcessing       Boolean?  @map("is_processing")
-  msatTotal          BigInt?   @map("msat_total")
-  publishedAt        DateTime? @map("published_at") @db.Timestamptz(6)
+  id              String    @unique @db.Uuid
+  title           String?   @db.VarChar(255)
+  artist          String?   @db.VarChar(255)
+  artistUrl       String?   @map("artist_url") @db.VarChar(255)
+  avatarUrl       String?   @map("avatar_url") @db.VarChar(255)
+  artworkUrl      String?   @map("artwork_url") @db.VarChar(255)
+  msatTotal30Days BigInt?   @map("msat_total_30_days")
+  msatTotal7Days  BigInt?   @map("msat_total_7_days")
+  msatTotal1Days  BigInt?   @map("msat_total_1_days")
+  albumTitle      String?   @map("album_title") @db.VarChar(255)
+  liveUrl         String?   @map("live_url") @db.VarChar(255)
+  duration        Int?
+  createdAt       DateTime? @map("created_at") @db.Timestamptz(6)
+  albumId         String?   @map("album_id") @db.Uuid
+  artistId        String?   @map("artist_id") @db.Uuid
+  order           Int?
+  isProcessing    Boolean?  @map("is_processing")
+  msatTotal       BigInt?   @map("msat_total")
+  publishedAt     DateTime? @map("published_at") @db.Timestamptz(6)
 
   @@map("track_info")
 }
