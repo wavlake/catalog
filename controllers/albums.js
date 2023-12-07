@@ -77,7 +77,12 @@ const get_albums_by_genre_id = asyncHandler(async (req, res, next) => {
       title: true,
       artworkUrl: true,
     },
-    where: { genreId: request.genreId, deleted: false },
+    where: {
+      genreId: request.genreId,
+      deleted: false,
+      isDraft: false,
+      publishedAt: { lte: new Date() },
+    },
   });
 
   res.json({ success: true, data: albums });
@@ -101,9 +106,16 @@ const get_albums_by_artist_id = asyncHandler(async (req, res, next) => {
     // limit: req.query.limit ? req.query.limit : 10,
     // sortBy: req.body.sortBy
   };
+  const { unpublished } = req.query;
 
   const albums = await prisma.album.findMany({
-    where: { artistId: request.artistId, deleted: false },
+    where: {
+      artistId: request.artistId,
+      deleted: false,
+      ...(unpublished
+        ? {}
+        : { isDraft: false, publishedAt: { lte: new Date() } }),
+    },
   });
 
   res.json({ success: true, data: albums });

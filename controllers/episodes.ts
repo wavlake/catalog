@@ -37,8 +37,14 @@ export const get_episodes_by_account = asyncHandler(async (req, res, next) => {
   const episodes = await prisma.user.findMany({
     where: { id: userId },
     include: {
-      // podcast: {
-      // },
+      podcast: {
+        select: {
+          artworkUrl: true,
+          id: true,
+          name: true,
+          podcastUrl: true,
+        },
+      },
     },
   });
   res.json({ success: true, data: episodes });
@@ -52,8 +58,9 @@ export const get_episodes_by_podcast_id = asyncHandler(
     const episodes = await prisma.episodeInfo.findMany({
       where: {
         podcastId,
-        isDraft: unpublished ? true : false,
-        ...(unpublished ? {} : { publishedAt: { lte: new Date() } }),
+        ...(unpublished
+          ? { isDraft: false }
+          : { publishedAt: { lte: new Date() } }),
       },
       orderBy: { order: "asc" },
     });
@@ -225,7 +232,7 @@ export const get_new_episodes = asyncHandler(async (req, res, next) => {
         deleted: false,
         publishedAt: { lte: new Date() },
         isDraft: false,
-        podcast: { isDraft: false },
+        podcast: { isDraft: false, publishedAt: { lte: new Date() } },
       },
       orderBy: { publishedAt: "desc" },
       take: 10,
