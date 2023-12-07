@@ -60,7 +60,7 @@ export const get_episodes_by_podcast_id = asyncHandler(
         podcastId,
         isProcessing: false,
         ...(unpublished
-          ? { isDraft: false }
+          ? {}
           : { isDraft: false, publishedAt: { lte: new Date() } }),
       },
       orderBy: { order: "asc" },
