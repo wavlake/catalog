@@ -17,7 +17,8 @@ SELECT
   track."order",
   track.is_processing,
   track.msat_total,
-  track.published_at
+  track.published_at,
+  album.is_draft
 FROM
   (
     (
