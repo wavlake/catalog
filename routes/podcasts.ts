@@ -26,10 +26,12 @@ import {
 // Create router
 const router = express.Router();
 
+// queries
 router.get("/account", isAuthorized, get_podcasts_by_account);
 router.get("/:podcastUrl/url", get_podcast_by_url);
 router.get("/:podcastId", get_podcast_by_id);
 
+// mutations
 router.post("/create", upload.single("artwork"), isAuthorized, create_podcast);
 router.put("/update", isAuthorized, update_podcast);
 router.put(
