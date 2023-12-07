@@ -14,7 +14,8 @@ SELECT
   episode.podcast_id AS "podcastId",
   episode."order",
   episode.is_processing AS "isProcessing",
-  episode.published_at AS "publishedAt"
+  episode.published_at AS "publishedAt",
+  podcast.is_draft AS "isDraft"
 FROM
   (
     (

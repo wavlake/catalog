@@ -52,9 +52,15 @@ const get_tracks_by_album_id = asyncHandler(async (req, res, next) => {
   const request = {
     albumId: req.params.albumId,
   };
+  const { unpublished } = req.query;
 
   const tracks = await prisma.trackInfo.findMany({
-    where: { albumId: request.albumId },
+    where: {
+      albumId: request.albumId,
+      ...(unpublished
+        ? {}
+        : { isDraft: false, publishedAt: { lte: new Date() } }),
+    },
     orderBy: { order: "asc" },
   });
 
@@ -65,9 +71,15 @@ const get_tracks_by_artist_url = asyncHandler(async (req, res, next) => {
   const request = {
     artistUrl: req.params.artistUrl,
   };
+  const { unpublished } = req.query;
 
   const tracks = await prisma.trackInfo.findMany({
-    where: { artistUrl: request.artistUrl },
+    where: {
+      artistUrl: request.artistUrl,
+      ...(unpublished
+        ? {}
+        : { isDraft: false, publishedAt: { lte: new Date() } }),
+    },
     orderBy: { order: "asc" },
   });
 
@@ -95,7 +107,10 @@ const get_tracks_by_new = asyncHandler(async (req, res, next) => {
     .min("track.live_url as liveUrl")
     .min("track.duration as duration")
     .min("track.created_at as createdAt")
+    .andWhere("track.published_at", "<", new Date())
+    .andWhere("track.is_draft", "=", false)
     .andWhere("album.published_at", "<", new Date())
+    .andWhere("album.is_draft", "=", false)
     .andWhere("track.deleted", "=", false)
     .andWhere("track.order", "=", 1)
     .andWhere("track.duration", "is not", null)
@@ -147,6 +162,10 @@ const get_tracks_by_random = asyncHandler(async (req, res, next) => {
   randomTracks
     .distinct()
     .where("track.deleted", "=", false)
+    .andWhere("track.published_at", "<", new Date())
+    .andWhere("track.is_draft", "=", false)
+    .andWhere("album.published_at", "<", new Date())
+    .andWhere("album.is_draft", "=", false)
     .andWhere("track.duration", "is not", null)
     // .limit(request.limit)
     .then((data) => {
@@ -160,10 +179,17 @@ const get_tracks_by_random = asyncHandler(async (req, res, next) => {
 
 const get_tracks_by_artist_id = asyncHandler(async (req, res, next) => {
   const { artistId } = req.params;
+  const { unpublished } = req.query;
+
   const limit = parseLimit(req.query.limit);
 
   const tracks = await prisma.trackInfo.findMany({
-    where: { artistId: artistId },
+    where: {
+      artistId: artistId,
+      ...(unpublished
+        ? {}
+        : { isDraft: false, publishedAt: { lte: new Date() } }),
+    },
     orderBy: { msatTotal30Days: "desc" },
     take: limit,
   });
@@ -322,6 +348,7 @@ const create_track = asyncHandler(async (req, res, next) => {
     });
 });
 
+// only returns published and non-draft tracks
 const search_tracks = asyncHandler(async (req, res, next) => {
   const title = String(req.query.title);
   const artist = String(req.query.artist);
@@ -344,6 +371,8 @@ const search_tracks = asyncHandler(async (req, res, next) => {
         },
         { albumTitle: { contains: album, mode: "insensitive" } },
       ],
+      isDraft: false,
+      publishedAt: { lte: new Date() },
     },
     take: 10,
   });
