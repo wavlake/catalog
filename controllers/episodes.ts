@@ -58,10 +58,13 @@ export const get_episodes_by_podcast_id = asyncHandler(
     const episodes = await prisma.episodeInfo.findMany({
       where: {
         podcastId,
-        isProcessing: false,
         ...(unpublished
           ? {}
-          : { isDraft: false, publishedAt: { lte: new Date() } }),
+          : {
+              isProcessing: false,
+              isDraft: false,
+              publishedAt: { lte: new Date() },
+            }),
       },
       orderBy: { order: "asc" },
     });
