@@ -57,10 +57,13 @@ const get_tracks_by_album_id = asyncHandler(async (req, res, next) => {
   const tracks = await prisma.trackInfo.findMany({
     where: {
       albumId: request.albumId,
-      isProcessing: false,
       ...(unpublished
         ? {}
-        : { isDraft: false, publishedAt: { lte: new Date() } }),
+        : {
+            isProcessing: false,
+            isDraft: false,
+            publishedAt: { lte: new Date() },
+          }),
     },
     orderBy: { order: "asc" },
   });
