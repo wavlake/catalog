@@ -26,12 +26,13 @@ export const fetchPodcastIndexFeed = async (guid: string) => {
   ]);
 
   const episodes: PodcastIndexPodcastEpisodes = episodesUntyped;
-
+  // description cannot be undefined, so we need to define it here and then add it to the object
+  const description = sanitize(podcast.feed.description);
   const sanitizedFeed = {
     ...podcast,
     feed: {
       ...podcast.feed,
-      description: sanitize(podcast.feed.description),
+      description,
     },
     episodes: {
       ...episodes,
@@ -42,20 +43,21 @@ export const fetchPodcastIndexFeed = async (guid: string) => {
         const valueTimeSplits = matchedEpisode
           ? matchedEpisode.value?.[0]?.timeSplits
           : [];
-
+        const description = sanitize(matchedEpisode?.description);
         return {
           ...episode,
           // overwrite the description with the one from the raw feed
           // podcastindex.org truncates this
-          description: sanitize(matchedEpisode?.description),
+          description,
           // manually add in time splits because podcastindex doesn't yet support them
           valueTimeSplits,
         };
       }),
       liveItems: episodes.liveItems.map((liveItem) => {
+        const description = sanitize(liveItem.description);
         return {
           ...liveItem,
-          description: sanitize(liveItem.description),
+          description,
         };
       }),
     },
