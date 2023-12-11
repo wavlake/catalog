@@ -215,7 +215,7 @@ const get_random_tracks_by_genre_id = asyncHandler(async (req, res, next) => {
   const { genreId } = req.params;
 
   const randomTracks = db
-    .knex(db.knex.raw(`track TABLESAMPLE BERNOULLI(${randomSampleSize})`))
+    .knex(db.knex.raw(`track TABLESAMPLE BERNOULLI(100)`))
     .join("album", "album.id", "=", "track.album_id")
     .join("artist", "artist.id", "=", "track.artist_id")
     .join("music_genre", "music_genre.id", "=", "album.genre_id")
@@ -238,7 +238,7 @@ const get_random_tracks_by_genre_id = asyncHandler(async (req, res, next) => {
   randomTracks
     .distinct()
     .where("track.deleted", "=", false)
-    // .limit(request.limit)
+    .limit(100)
     .then((data) => {
       res.send(shuffle(data));
     })
