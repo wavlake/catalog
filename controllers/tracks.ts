@@ -159,14 +159,7 @@ const get_tracks_by_random = asyncHandler(async (req, res, next) => {
       "track.live_url as liveUrl",
       "track.duration as duration"
     )
-    .from(
-      db.knex.raw(
-        `track TABLESAMPLE BERNOULLI(${
-          // expand this so we can guard against duplicates in the sample
-          (parseInt(randomSampleSize) * 10).toString()
-        })`
-      )
-    )
+    .from(db.knex.raw(`track TABLESAMPLE BERNOULLI(${randomSampleSize})`))
     .join("amp", "amp.track_id", "=", "track.id")
     .join("artist", "track.artist_id", "=", "artist.id")
     .join("album", "album.id", "=", "track.album_id");
@@ -181,8 +174,7 @@ const get_tracks_by_random = asyncHandler(async (req, res, next) => {
     .andWhere("track.duration", "is not", null)
     // .limit(request.limit)
     .then((data) => {
-      const limitedData = data.slice(0, parseInt(randomSampleSize));
-      res.send(shuffle(limitedData));
+      res.send(shuffle(data));
     })
     .catch((err) => {
       log.debug(`Error querying track table for Boosted: ${err}`);
