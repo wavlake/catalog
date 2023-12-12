@@ -206,11 +206,44 @@ const get_tracks_by_artist_id = asyncHandler(async (req, res, next) => {
 const get_random_tracks_by_genre_id = asyncHandler(async (req, res, next) => {
   const { genreId } = req.params;
 
-  const randomTracks = db
-    .knex(db.knex.raw(`track TABLESAMPLE BERNOULLI(100)`))
+  // get the total number of tracks in the genre
+  const trackCount = await db
+    .knex("track")
+    .join("album", "album.id", "=", "track.album_id")
+    .join("music_genre", "music_genre.id", "=", "album.genre_id")
+    .where("music_genre.id", "=", genreId)
+    .andWhere("track.deleted", "=", false)
+    .andWhere("track.duration", "is not", null)
+    .count("track.id as count")
+    .first();
+
+  if (!trackCount?.count || trackCount.count === 0) {
+    res.send({ success: true, data: [] });
+  }
+
+  // the target number of tracks to return
+  const sampleSizeTarget = 100;
+  // 7% buffer to account for TABLESAMPLE BERNOULLI not being exact
+  const sampleSizeBuffer = 7;
+  // the total number of tracks in the genre
+  const numberOfTracks = trackCount.count as number;
+
+  // sample size can range from 0 - 100%
+  const sampleSize =
+    // if we have more than 100 tracks, we can take a sample
+    numberOfTracks > sampleSizeTarget
+      ? // calculate the sample size % based on the target and buffer
+        sampleSizeBuffer + (100 * sampleSizeTarget) / numberOfTracks
+      : // return 100% of the tracks since there arent enough to meet the target
+        100;
+
+  db.knex(db.knex.raw(`track TABLESAMPLE BERNOULLI(${sampleSize})`))
     .join("album", "album.id", "=", "track.album_id")
     .join("artist", "artist.id", "=", "track.artist_id")
     .join("music_genre", "music_genre.id", "=", "album.genre_id")
+    .where("music_genre.id", "=", genreId)
+    .andWhere("track.deleted", "=", false)
+    .andWhere("track.duration", "is not", null)
     .select(
       "track.id as id",
       "track.title as title",
@@ -224,18 +257,12 @@ const get_random_tracks_by_genre_id = asyncHandler(async (req, res, next) => {
       "track.duration as duration",
       "artist.id as artistId"
     )
-    .where("music_genre.id", "=", genreId)
-    .andWhere("track.duration", "is not", null);
-
-  randomTracks
-    .distinct()
-    .where("track.deleted", "=", false)
     .limit(100)
     .then((data) => {
       res.send(shuffle(data));
     })
     .catch((err) => {
-      log.debug(`Error querying track table for Boosted: ${err}`);
+      log.debug(`Error querying random genre tracks: ${err}`);
       next(err);
     });
 });
