@@ -6,52 +6,44 @@ import prisma from "@prismalocal/client";
 const crypto = require("crypto");
 
 const lookbackSeconds = parseInt(process.env.LOOKBACK_MINUTES) * 60 * 1000;
-const FEED_URL = "https://wavlake.com/feed/";
+const FEED_URL = "https://wavlake.com/feed/show/";
 
 const { PODCAST_INDEX_KEY, PODCAST_INDEX_SECRET } = process.env;
 const podcastIndexApi = podcastIndex(PODCAST_INDEX_KEY, PODCAST_INDEX_SECRET);
 
+// TODO: Add music feeds
+
 const wavlakePodcastsForUpdate = async () => {
-  log.debug("fetching new episodes");
-  const newEpisodes = await prisma.episode.findMany({
+  log.debug("fetching podcasts with new episodes");
+  const updatedPodcasts = await prisma.podcast.findMany({
     where: {
-      createdAt: {
+      updatedAt: {
         // greater than now - lookbackMinutes
         gt: new Date(Date.now() - lookbackSeconds),
       },
-      publishedAt: {
-        // less than now
-        lt: new Date(Date.now()),
-      },
     },
-    include: {
-      podcast: {
-        select: {
-          id: true,
-          name: true,
-        },
-      },
+    select: {
+      id: true,
+      name: true,
     },
   });
 
-  log.debug(newEpisodes);
-
-  return newEpisodes;
+  return updatedPodcasts;
 };
 
 const publishFeeds = async () => {
-  const newEpisodes = await wavlakePodcastsForUpdate();
+  const updatedPodcasts = await wavlakePodcastsForUpdate();
 
   const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-  for (const episode of newEpisodes) {
+  for (const podcast of updatedPodcasts) {
     await sleep(2000); // sleep 2 seconds between each publish to prevent rate limiting
-    const { podcast } = episode;
-    const { id } = podcast;
+    const { id, name } = podcast;
     const feedUrl = `${FEED_URL}${id}`;
 
+    // TODO: add more attributes to chash
     // chash = md5(title+link+feedLanguage+generator+author+ownerName+ownerEmail)
-    const attributeString = `${podcast.name}${feedUrl}en-usWavLakeWavLakeWavLake`;
+    const attributeString = `${name}${feedUrl}en-usWavlakeWavlakeWavlakecontact@wavlake.com`;
     // md5 hash of attributeString
     const chash = crypto
       .createHash("md5")
