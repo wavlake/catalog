@@ -72,7 +72,7 @@ export const create_podcast = asyncHandler(async (req, res, next) => {
     primarySubcategoryId,
     secondarySubcategoryId,
     // default to draft if not specified
-    isDraft = true,
+    isDraft = false,
   } = req.body;
 
   const userId = req["uid"];
