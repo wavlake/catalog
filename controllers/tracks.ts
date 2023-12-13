@@ -219,6 +219,7 @@ const get_random_tracks_by_genre_id = asyncHandler(async (req, res, next) => {
 
   if (!trackCount?.count || trackCount.count === 0) {
     res.send({ success: true, data: [] });
+    return;
   }
 
   // the target number of tracks to return
@@ -276,6 +277,7 @@ const delete_track = asyncHandler(async (req, res, next) => {
   if (!request.trackId) {
     const error = formatError(400, "trackId field is required");
     next(error);
+    return;
   }
 
   // Check if user owns track
@@ -284,6 +286,7 @@ const delete_track = asyncHandler(async (req, res, next) => {
   if (!isOwner) {
     const error = formatError(403, "User does not own this track");
     next(error);
+    return;
   }
 
   log.debug(`Deleting track ${request.trackId}`);
@@ -293,7 +296,6 @@ const delete_track = asyncHandler(async (req, res, next) => {
     .then((data) => {
       res.send({ success: true, data: data[0] });
     })
-
     .catch((err) => {
       log.debug(`Error deleting track ${request.trackId}: ${err}`);
       next(err);
@@ -313,6 +315,7 @@ const create_track = asyncHandler(async (req, res, next) => {
   if (!request.albumId) {
     const error = formatError(400, "albumId field is required");
     next(error);
+    return;
   }
 
   const albumAccount = await isAlbumOwner(request.userId, request.albumId);
@@ -320,6 +323,7 @@ const create_track = asyncHandler(async (req, res, next) => {
   if (!albumAccount === request.userId) {
     const error = formatError(403, "User does not own this album");
     next(error);
+    return;
   }
 
   const albumDetails = await getAlbumDetails(request.albumId);
@@ -340,6 +344,23 @@ const create_track = asyncHandler(async (req, res, next) => {
   if (presignedUrl == null) {
     const error = formatError(500, "Error generating presigned URL");
     next(error);
+    return;
+  }
+
+  const duplicateTitledTrack = await db
+    .knex("track")
+    .where("artist_id", "=", albumDetails.artistId)
+    .andWhere("title", "=", request.title)
+    .andWhere("deleted", "=", false)
+    .first();
+
+  if (duplicateTitledTrack) {
+    const error = formatError(
+      400,
+      "Please pick another title, this artist already has a track with that title."
+    );
+    next(error);
+    return;
   }
 
   db.knex("track")
@@ -393,6 +414,7 @@ const search_tracks = asyncHandler(async (req, res, next) => {
       "Must include at least one search query. Either title, artist, or album"
     );
     next(error);
+    return;
   }
 
   const tracks = await prisma.trackInfo.findMany({
@@ -433,6 +455,7 @@ const update_track = asyncHandler(async (req, res, next) => {
   if (!trackId) {
     const error = formatError(400, "trackId field is required");
     next(error);
+    return;
   }
 
   // Check if user owns track
@@ -441,6 +464,27 @@ const update_track = asyncHandler(async (req, res, next) => {
   if (!isOwner) {
     const error = formatError(403, "User does not own this track");
     next(error);
+    return;
+  }
+
+  const unEditedTrack = await prisma.track.findFirst({
+    where: { id: trackId },
+  });
+
+  const duplicateTitledTrack = await db
+    .knex("track")
+    .where("artist_id", "=", unEditedTrack.artistId)
+    .andWhere("title", "=", title)
+    .andWhere("deleted", "=", false)
+    .first();
+
+  if (duplicateTitledTrack) {
+    const error = formatError(
+      400,
+      "Please pick another title, this artist already has a track with that title."
+    );
+    next(error);
+    return;
   }
 
   log.debug(`Editing track ${trackId}`);
