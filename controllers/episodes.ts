@@ -110,6 +110,7 @@ export const create_episode = asyncHandler(async (req, res, next) => {
     userId: req["uid"],
     order: req.body.order == "" ? 0 : parseInt(req.body.order),
     extension: req.body.extension ?? "mp3",
+    isDraft: req.body.isDraft ?? false,
   };
 
   if (!request.podcastId) {
@@ -148,13 +149,13 @@ export const create_episode = asyncHandler(async (req, res, next) => {
     .insert(
       {
         id: newepisodeId,
-        // artist_id: albumDetails.artistId,
         podcast_id: request.podcastId,
         live_url: liveUrl,
         title: request.title,
         order: request.order,
         raw_url: s3RawUrl,
         is_processing: true,
+        is_draft: req.body.isDraft,
       },
       ["*"]
     )
@@ -174,6 +175,7 @@ export const create_episode = asyncHandler(async (req, res, next) => {
           liveUrl: data[0]["liveUrl"],
           rawUrl: data[0]["raw_url"],
           presignedUrl: presignedUrl,
+          isDraft: data[0]["is_draft"],
         },
       });
     })
