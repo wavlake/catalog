@@ -36,6 +36,7 @@ const create_connection = asyncHandler(async (req, res, next) => {
       "pubkey, name, msatBudget, maxMsatPaymentAmount, and requestMethods required"
     );
     next(error);
+    return;
   }
 
   const newConnection = await prisma.walletConnection.create({
@@ -70,11 +71,13 @@ const delete_connection = asyncHandler(async (req, res, next) => {
     if (!pubkey) {
       const error = formatError(400, "pubkey param is required");
       next(error);
+      return;
     }
 
     if (!userId) {
       const error = formatError(400, "userId is required");
       next(error);
+      return;
     }
     const connection = await prisma.walletConnection.findFirst({
       where: { AND: [{ userId }, { pubkey }] },
@@ -83,6 +86,7 @@ const delete_connection = asyncHandler(async (req, res, next) => {
     if (!connection) {
       const error = formatError(404, "Connection not found");
       next(error);
+      return;
     }
 
     await prisma.walletConnection.update({
