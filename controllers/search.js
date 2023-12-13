@@ -8,6 +8,7 @@ const get_all_by_term = asyncHandler(async (req, res, next) => {
   if (!term) {
     const error = formatError(400, "term field is required");
     next(error);
+    return;
   }
 
   // TODO: Sort results by sats?
