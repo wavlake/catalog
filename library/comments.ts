@@ -34,7 +34,7 @@ export const getAllComments = async (contentIds: string[], limit: number) => {
         };
       } else {
         // Clean up names from other apps with @ prefix
-        comment.name = comment.name.replace("@", "");
+        comment.name = comment.name?.replace("@", "") ?? "anonymous";
         return {
           ...comment,
         };
