@@ -34,10 +34,7 @@ export const getAllComments = async (contentIds: string[], limit: number) => {
         };
       } else {
         // Clean up names from other apps with @ prefix
-        comment.name =
-          comment.name && comment.name != null // catches null and undefined names from preamp sender_name
-            ? comment.name.replace("@", "")
-            : "anonymous";
+        comment.name = comment.name?.replace("@", "") ?? "anonymous";
         return {
           ...comment,
         };
