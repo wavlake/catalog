@@ -2,7 +2,7 @@
 
 This is a cronjob that updates Podcast Index with all the latest new and revised feeds since the last run.
 
-This job is dependent on the catalog monorepo's Prisma client and library functions.
+This job is dependent on the catalog monorepo's Prisma client.
 
 #### Development
 

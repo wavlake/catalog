@@ -1,0 +1,12 @@
+steps:
+  - name: "gcr.io/cloud-builders/docker"
+    script: |
+      docker build -t publish-feeds:latest -f cronjobs/publish-feeds/Dockerfile .
+images:
+  - "publish-feeds:latest"
+timeout: "900s"
+options:
+  logging: CLOUD_LOGGING_ONLY
+  pool:
+    name: projects/$PROJECT_ID/locations/us-central1/workerPools/build-pool
+  dynamic_substitutions: true
