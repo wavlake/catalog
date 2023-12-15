@@ -57,6 +57,7 @@ const createPayment = asyncHandler(async (req, res, next) => {
   if (!valueMsat || valueMsat <= 0) {
     const error = formatError(400, "Invalid invoice");
     next(error);
+    return;
   }
 
   // Run payment checks

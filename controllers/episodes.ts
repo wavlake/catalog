@@ -80,6 +80,7 @@ export const delete_episode = asyncHandler(async (req, res, next) => {
   if (!episodeId) {
     const error = formatError(400, "episodeId field is required");
     next(error);
+    return;
   }
 
   // Check if user owns episode
@@ -88,6 +89,7 @@ export const delete_episode = asyncHandler(async (req, res, next) => {
   if (!isOwner) {
     const error = formatError(403, "User does not own this episode");
     next(error);
+    return;
   }
 
   log.debug(`Deleting episode ${episodeId}`);
@@ -116,6 +118,7 @@ export const create_episode = asyncHandler(async (req, res, next) => {
   if (!request.podcastId) {
     const error = formatError(400, "podcastId field is required");
     next(error);
+    return;
   }
 
   const isOwner = await isPodcastOwner(request.userId, request.podcastId);
@@ -123,6 +126,7 @@ export const create_episode = asyncHandler(async (req, res, next) => {
   if (!isOwner) {
     const error = formatError(403, "User does not own this album");
     next(error);
+    return;
   }
 
   // const albumDetails = await getAlbumDetails(request.albumId);
@@ -143,6 +147,7 @@ export const create_episode = asyncHandler(async (req, res, next) => {
   if (presignedUrl == null) {
     const error = formatError(500, "Error generating presigned URL");
     next(error);
+    return;
   }
 
   db.knex("episode")
@@ -203,6 +208,7 @@ export const update_episode = asyncHandler(async (req, res, next) => {
   if (!episodeId) {
     const error = formatError(403, "episodeId field is required");
     next(error);
+    return;
   }
 
   // Check if user owns episode
@@ -211,6 +217,7 @@ export const update_episode = asyncHandler(async (req, res, next) => {
   if (!isOwner) {
     const error = formatError(403, "User does not own this episode");
     next(error);
+    return;
   }
 
   log.debug(`Editing episode ${episodeId}`);
