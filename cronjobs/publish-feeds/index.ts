@@ -1,6 +1,6 @@
 require("dotenv").config();
 const log = require("loglevel");
-log.setLevel(process.env.LOGLEVEL);
+log.setLevel("debug");
 import podcastIndex from "podcast-index-api";
 import prisma from "@prismalocal/client";
 const crypto = require("crypto");
