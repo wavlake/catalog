@@ -10,21 +10,6 @@ steps:
         "cronjobs/publish-feeds/Dockerfile",
         ".",
       ]
-  # Add env vars and secrets
-  - name: "us-central1-docker.pkg.dev/$PROJECT_ID/cronjobs/publish-feeds:latest"
-    id: create env
-    entrypoint: npm
-    args: ["run", "create-env"]
-    env:
-      - "LOGLEVEL=${_LOGLEVEL}"
-      - "LOOKBACK_MINUTES=${_LOOKBACK_MINUTES}"
-      - "PG_HOST=${_PG_HOST}"
-      - "PG_PORT=${_PG_PORT}"
-      - "PG_DATABASE=${_PG_DATABASE}"
-      - "PG_USER=${_PG_USER}"
-      - "PODCAST_INDEX_KEY=${_PODCAST_INDEX_KEY}"
-      - "PODCAST_INDEX_SECRET=${_PODCAST_INDEX_SECRET}"
-    secretEnv: ["PG_PASSWORD"]
   # Push the container image to Artifact Registry
   - name: "gcr.io/cloud-builders/docker"
     args:
@@ -49,10 +34,6 @@ steps:
 images:
   - "us-central1-docker.pkg.dev/$PROJECT_ID/cronjobs/publish-feeds:latest"
 timeout: "900s"
-availableSecrets:
-  secretManager:
-    - versionName: projects/$PROJECT_ID/secrets/WAVLAKE_SERVER_PROD_RO_PASSWORD/versions/latest
-      env: "PG_PASSWORD"
 options:
   logging: CLOUD_LOGGING_ONLY
   pool:
