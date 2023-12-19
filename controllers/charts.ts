@@ -10,12 +10,14 @@ const get_top_forty = asyncHandler(async (req, res, next) => {
     phase: req.query.phase ? req.query.phase : "week", // week by default
   };
 
-  phase === "day" || phase === "week" || phase === "month"
-    ? null
-    : res.json({
-        success: false,
-        error: "Invalid phase, must be one of: day, week, month",
-      });
+  const validPhases = ["day", "week", "month"];
+  if (!validPhases.includes(phase)) {
+    res.json({
+      success: false,
+      error: "Invalid phase, must be one of: day, week, month",
+    });
+    return
+  }
 
   if (phase === "day") {
     const tracks = await prisma.trackInfo.findMany({
