@@ -37,8 +37,14 @@ export const get_episodes_by_account = asyncHandler(async (req, res, next) => {
   const episodes = await prisma.user.findMany({
     where: { id: userId },
     include: {
-      // podcast: {
-      // },
+      podcast: {
+        select: {
+          artworkUrl: true,
+          id: true,
+          name: true,
+          podcastUrl: true,
+        },
+      },
     },
   });
   res.json({ success: true, data: episodes });
@@ -52,11 +58,17 @@ export const get_episodes_by_podcast_id = asyncHandler(
     const episodes = await prisma.episodeInfo.findMany({
       where: {
         podcastId,
-        ...(unpublished ? {} : { publishedAt: { lte: new Date() } }),
+        ...(unpublished
+          ? {}
+          : {
+              isProcessing: false,
+              isDraft: false,
+              publishedAt: { lte: new Date() },
+            }),
       },
       orderBy: { order: "asc" },
     });
-    // console.log(episodes);
+
     res.json({ success: true, data: episodes });
   }
 );
@@ -68,6 +80,7 @@ export const delete_episode = asyncHandler(async (req, res, next) => {
   if (!episodeId) {
     const error = formatError(400, "episodeId field is required");
     next(error);
+    return;
   }
 
   // Check if user owns episode
@@ -76,6 +89,7 @@ export const delete_episode = asyncHandler(async (req, res, next) => {
   if (!isOwner) {
     const error = formatError(403, "User does not own this episode");
     next(error);
+    return;
   }
 
   log.debug(`Deleting episode ${episodeId}`);
@@ -98,11 +112,13 @@ export const create_episode = asyncHandler(async (req, res, next) => {
     userId: req["uid"],
     order: req.body.order == "" ? 0 : parseInt(req.body.order),
     extension: req.body.extension ?? "mp3",
+    isDraft: req.body.isDraft ?? false,
   };
 
   if (!request.podcastId) {
     const error = formatError(400, "podcastId field is required");
     next(error);
+    return;
   }
 
   const isOwner = await isPodcastOwner(request.userId, request.podcastId);
@@ -110,6 +126,7 @@ export const create_episode = asyncHandler(async (req, res, next) => {
   if (!isOwner) {
     const error = formatError(403, "User does not own this album");
     next(error);
+    return;
   }
 
   // const albumDetails = await getAlbumDetails(request.albumId);
@@ -130,19 +147,20 @@ export const create_episode = asyncHandler(async (req, res, next) => {
   if (presignedUrl == null) {
     const error = formatError(500, "Error generating presigned URL");
     next(error);
+    return;
   }
 
   db.knex("episode")
     .insert(
       {
         id: newepisodeId,
-        // artist_id: albumDetails.artistId,
         podcast_id: request.podcastId,
         live_url: liveUrl,
         title: request.title,
         order: request.order,
         raw_url: s3RawUrl,
         is_processing: true,
+        is_draft: req.body.isDraft,
       },
       ["*"]
     )
@@ -162,6 +180,7 @@ export const create_episode = asyncHandler(async (req, res, next) => {
           liveUrl: data[0]["liveUrl"],
           rawUrl: data[0]["raw_url"],
           presignedUrl: presignedUrl,
+          isDraft: data[0]["is_draft"],
         },
       });
     })
@@ -189,6 +208,7 @@ export const update_episode = asyncHandler(async (req, res, next) => {
   if (!episodeId) {
     const error = formatError(403, "episodeId field is required");
     next(error);
+    return;
   }
 
   // Check if user owns episode
@@ -197,30 +217,37 @@ export const update_episode = asyncHandler(async (req, res, next) => {
   if (!isOwner) {
     const error = formatError(403, "User does not own this episode");
     next(error);
+    return;
   }
 
   log.debug(`Editing episode ${episodeId}`);
-  const updatedTrack = await prisma.episode.update({
+  const updatedEpisode = await prisma.episode.update({
     where: {
       id: episodeId,
     },
     data: {
       title,
-      order: parseInt(order),
+      ...(order ? { order: parseInt(order) } : {}),
       updatedAt,
       isDraft,
       publishedAt,
       description,
     },
   });
-  res.json({ success: true, data: updatedTrack });
+  res.json({ success: true, data: updatedEpisode });
 });
 
 export const get_new_episodes = asyncHandler(async (req, res, next) => {
   // all episodes that are not deleted and have a publishedAt less than or equal to now (lte)
   try {
     const episodes = await prisma.episode.findMany({
-      where: { deleted: false, publishedAt: { lte: new Date() } },
+      where: {
+        deleted: false,
+        publishedAt: { lte: new Date() },
+        isDraft: false,
+        isProcessing: false,
+        podcast: { isDraft: false, publishedAt: { lte: new Date() } },
+      },
       orderBy: { publishedAt: "desc" },
       take: 10,
       include: {

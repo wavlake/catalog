@@ -17,10 +17,13 @@ const router = express.Router();
 
 //////// ROUTES ////////
 
+// queries
 router.get("/account", isAuthorized, get_episodes_by_account);
 router.get("/new", get_new_episodes);
 router.get("/:podcastId/podcast", get_episodes_by_podcast_id);
 router.get("/:episodeId", get_episode);
+
+// mutations
 router.post("/", isAuthorized, create_episode);
 router.put("/update", isAuthorized, update_episode);
 router.delete("/:episodeId", isAuthorized, delete_episode);

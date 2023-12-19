@@ -95,6 +95,7 @@ const create_artist = asyncHandler(async (req, res, next) => {
   if (!request.name) {
     const error = formatError(403, "Artist name is required");
     next(error);
+    return;
   }
 
   let uploadPath;
@@ -216,6 +217,7 @@ const search_artists_by_name = asyncHandler(async (req, res, next) => {
   if (!name) {
     const error = formatError(400, "name field is required");
     next(error);
+    return;
   }
 
   // TODO: Sort results by sats?
@@ -243,6 +245,7 @@ const update_artist = asyncHandler(async (req, res, next) => {
   if (!request.artistId) {
     const error = formatError(403, "artistId field is required");
     next(error);
+    return;
   }
 
   // Check if user owns artist
@@ -251,6 +254,7 @@ const update_artist = asyncHandler(async (req, res, next) => {
   if (!isOwner) {
     const error = formatError(403, "User does not own this artist");
     next(error);
+    return;
   }
 
   log.debug(`Editing artist ${request.artistId}`);
@@ -303,6 +307,7 @@ const update_artist_art = asyncHandler(async (req, res, next) => {
   if (!request.artistId) {
     const error = formatError(403, "artistId field is required");
     next(error);
+    return;
   }
 
   // Check if user owns artist
@@ -311,6 +316,7 @@ const update_artist_art = asyncHandler(async (req, res, next) => {
   if (!isOwner) {
     const error = formatError(403, "User does not own this artist");
     next(error);
+    return;
   }
 
   const uploadPath = request.artwork.path;
@@ -379,6 +385,7 @@ const delete_artist = asyncHandler(async (req, res, next) => {
   if (!request.artistId) {
     const error = formatError(403, "artistId field is required");
     next(error);
+    return;
   }
 
   // Check if user owns artist
@@ -387,6 +394,7 @@ const delete_artist = asyncHandler(async (req, res, next) => {
   if (!isOwner) {
     const error = formatError(403, "User does not own this artist");
     next(error);
+    return;
   }
 
   log.debug(`Checking albums for artist ${request.artistId}`);

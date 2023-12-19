@@ -52,9 +52,19 @@ const get_tracks_by_album_id = asyncHandler(async (req, res, next) => {
   const request = {
     albumId: req.params.albumId,
   };
+  const { unpublished } = req.query;
 
   const tracks = await prisma.trackInfo.findMany({
-    where: { albumId: request.albumId },
+    where: {
+      albumId: request.albumId,
+      ...(unpublished
+        ? {}
+        : {
+            isProcessing: false,
+            isDraft: false,
+            publishedAt: { lte: new Date() },
+          }),
+    },
     orderBy: { order: "asc" },
   });
 
@@ -65,9 +75,16 @@ const get_tracks_by_artist_url = asyncHandler(async (req, res, next) => {
   const request = {
     artistUrl: req.params.artistUrl,
   };
+  const { unpublished } = req.query;
 
   const tracks = await prisma.trackInfo.findMany({
-    where: { artistUrl: request.artistUrl },
+    where: {
+      artistUrl: request.artistUrl,
+      isProcessing: false,
+      ...(unpublished
+        ? {}
+        : { isDraft: false, publishedAt: { lte: new Date() } }),
+    },
     orderBy: { order: "asc" },
   });
 
@@ -95,7 +112,10 @@ const get_tracks_by_new = asyncHandler(async (req, res, next) => {
     .min("track.live_url as liveUrl")
     .min("track.duration as duration")
     .min("track.created_at as createdAt")
+    .andWhere("track.published_at", "<", new Date())
+    .andWhere("track.is_draft", "=", false)
     .andWhere("album.published_at", "<", new Date())
+    .andWhere("album.is_draft", "=", false)
     .andWhere("track.deleted", "=", false)
     .andWhere("track.order", "=", 1)
     .andWhere("track.duration", "is not", null)
@@ -147,6 +167,10 @@ const get_tracks_by_random = asyncHandler(async (req, res, next) => {
   randomTracks
     .distinct()
     .where("track.deleted", "=", false)
+    .andWhere("track.published_at", "<", new Date())
+    .andWhere("track.is_draft", "=", false)
+    .andWhere("album.published_at", "<", new Date())
+    .andWhere("album.is_draft", "=", false)
     .andWhere("track.duration", "is not", null)
     // .limit(request.limit)
     .then((data) => {
@@ -160,10 +184,18 @@ const get_tracks_by_random = asyncHandler(async (req, res, next) => {
 
 const get_tracks_by_artist_id = asyncHandler(async (req, res, next) => {
   const { artistId } = req.params;
+  const { unpublished } = req.query;
+
   const limit = parseLimit(req.query.limit);
 
   const tracks = await prisma.trackInfo.findMany({
-    where: { artistId: artistId },
+    where: {
+      artistId: artistId,
+      isProcessing: false,
+      ...(unpublished
+        ? {}
+        : { isDraft: false, publishedAt: { lte: new Date() } }),
+    },
     orderBy: { msatTotal30Days: "desc" },
     take: limit,
   });
@@ -174,11 +206,45 @@ const get_tracks_by_artist_id = asyncHandler(async (req, res, next) => {
 const get_random_tracks_by_genre_id = asyncHandler(async (req, res, next) => {
   const { genreId } = req.params;
 
-  const randomTracks = db
-    .knex(db.knex.raw(`track TABLESAMPLE BERNOULLI(${randomSampleSize})`))
+  // get the total number of tracks in the genre
+  const trackCount = await db
+    .knex("track")
+    .join("album", "album.id", "=", "track.album_id")
+    .join("music_genre", "music_genre.id", "=", "album.genre_id")
+    .where("music_genre.id", "=", genreId)
+    .andWhere("track.deleted", "=", false)
+    .andWhere("track.duration", "is not", null)
+    .count("track.id as count")
+    .first();
+
+  if (!trackCount?.count || trackCount.count === 0) {
+    res.send({ success: true, data: [] });
+    return;
+  }
+
+  // the target number of tracks to return
+  const sampleSizeTarget = 100;
+  // 7% buffer to account for TABLESAMPLE BERNOULLI not being exact
+  const sampleSizeBuffer = 7;
+  // the total number of tracks in the genre
+  const numberOfTracks = trackCount.count as number;
+
+  // sample size can range from 0 - 100%
+  const sampleSize =
+    // if we have more than 100 tracks, we can take a sample
+    numberOfTracks > sampleSizeTarget
+      ? // calculate the sample size % based on the target and buffer
+        sampleSizeBuffer + (100 * sampleSizeTarget) / numberOfTracks
+      : // return 100% of the tracks since there arent enough to meet the target
+        100;
+
+  db.knex(db.knex.raw(`track TABLESAMPLE BERNOULLI(${sampleSize})`))
     .join("album", "album.id", "=", "track.album_id")
     .join("artist", "artist.id", "=", "track.artist_id")
     .join("music_genre", "music_genre.id", "=", "album.genre_id")
+    .where("music_genre.id", "=", genreId)
+    .andWhere("track.deleted", "=", false)
+    .andWhere("track.duration", "is not", null)
     .select(
       "track.id as id",
       "track.title as title",
@@ -192,18 +258,12 @@ const get_random_tracks_by_genre_id = asyncHandler(async (req, res, next) => {
       "track.duration as duration",
       "artist.id as artistId"
     )
-    .where("music_genre.id", "=", genreId)
-    .andWhere("track.duration", "is not", null);
-
-  randomTracks
-    .distinct()
-    .where("track.deleted", "=", false)
-    // .limit(request.limit)
+    .limit(100)
     .then((data) => {
       res.send(shuffle(data));
     })
     .catch((err) => {
-      log.debug(`Error querying track table for Boosted: ${err}`);
+      log.debug(`Error querying random genre tracks: ${err}`);
       next(err);
     });
 });
@@ -217,6 +277,7 @@ const delete_track = asyncHandler(async (req, res, next) => {
   if (!request.trackId) {
     const error = formatError(400, "trackId field is required");
     next(error);
+    return;
   }
 
   // Check if user owns track
@@ -225,6 +286,7 @@ const delete_track = asyncHandler(async (req, res, next) => {
   if (!isOwner) {
     const error = formatError(403, "User does not own this track");
     next(error);
+    return;
   }
 
   log.debug(`Deleting track ${request.trackId}`);
@@ -234,7 +296,6 @@ const delete_track = asyncHandler(async (req, res, next) => {
     .then((data) => {
       res.send({ success: true, data: data[0] });
     })
-
     .catch((err) => {
       log.debug(`Error deleting track ${request.trackId}: ${err}`);
       next(err);
@@ -254,6 +315,7 @@ const create_track = asyncHandler(async (req, res, next) => {
   if (!request.albumId) {
     const error = formatError(400, "albumId field is required");
     next(error);
+    return;
   }
 
   const albumAccount = await isAlbumOwner(request.userId, request.albumId);
@@ -261,6 +323,7 @@ const create_track = asyncHandler(async (req, res, next) => {
   if (!albumAccount === request.userId) {
     const error = formatError(403, "User does not own this album");
     next(error);
+    return;
   }
 
   const albumDetails = await getAlbumDetails(request.albumId);
@@ -281,6 +344,23 @@ const create_track = asyncHandler(async (req, res, next) => {
   if (presignedUrl == null) {
     const error = formatError(500, "Error generating presigned URL");
     next(error);
+    return;
+  }
+
+  const duplicateTitledTrack = await db
+    .knex("track")
+    .where("artist_id", "=", albumDetails.artistId)
+    .andWhere("title", "=", request.title)
+    .andWhere("deleted", "=", false)
+    .first();
+
+  if (duplicateTitledTrack) {
+    const error = formatError(
+      400,
+      "Please pick another title, this artist already has a track with that title."
+    );
+    next(error);
+    return;
   }
 
   db.knex("track")
@@ -322,6 +402,7 @@ const create_track = asyncHandler(async (req, res, next) => {
     });
 });
 
+// only returns published and non-draft tracks
 const search_tracks = asyncHandler(async (req, res, next) => {
   const title = String(req.query.title);
   const artist = String(req.query.artist);
@@ -333,6 +414,7 @@ const search_tracks = asyncHandler(async (req, res, next) => {
       "Must include at least one search query. Either title, artist, or album"
     );
     next(error);
+    return;
   }
 
   const tracks = await prisma.trackInfo.findMany({
@@ -344,6 +426,9 @@ const search_tracks = asyncHandler(async (req, res, next) => {
         },
         { albumTitle: { contains: album, mode: "insensitive" } },
       ],
+      isProcessing: false,
+      isDraft: false,
+      publishedAt: { lte: new Date() },
     },
     take: 10,
   });
@@ -370,6 +455,7 @@ const update_track = asyncHandler(async (req, res, next) => {
   if (!trackId) {
     const error = formatError(400, "trackId field is required");
     next(error);
+    return;
   }
 
   // Check if user owns track
@@ -378,6 +464,27 @@ const update_track = asyncHandler(async (req, res, next) => {
   if (!isOwner) {
     const error = formatError(403, "User does not own this track");
     next(error);
+    return;
+  }
+
+  const unEditedTrack = await prisma.track.findFirst({
+    where: { id: trackId },
+  });
+
+  const duplicateTitledTrack = await db
+    .knex("track")
+    .where("artist_id", "=", unEditedTrack.artistId)
+    .andWhere("title", "=", title)
+    .andWhere("deleted", "=", false)
+    .first();
+
+  if (duplicateTitledTrack) {
+    const error = formatError(
+      400,
+      "Please pick another title, this artist already has a track with that title."
+    );
+    next(error);
+    return;
   }
 
   log.debug(`Editing track ${trackId}`);

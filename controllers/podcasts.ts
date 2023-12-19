@@ -72,7 +72,7 @@ export const create_podcast = asyncHandler(async (req, res, next) => {
     primarySubcategoryId,
     secondarySubcategoryId,
     // default to draft if not specified
-    isDraft = true,
+    isDraft = false,
   } = req.body;
 
   const userId = req["uid"];
@@ -81,6 +81,7 @@ export const create_podcast = asyncHandler(async (req, res, next) => {
   if (!name) {
     const error = formatError(403, "Podcast name is required");
     next(error);
+    return;
   }
   let uploadPath;
   let isKeeper = false;
@@ -227,6 +228,7 @@ export const update_podcast = asyncHandler(async (req, res, next) => {
   if (!podcastId) {
     const error = formatError(403, "podcastId field is required");
     next(error);
+    return;
   }
 
   // Check if user owns podcast
@@ -235,6 +237,7 @@ export const update_podcast = asyncHandler(async (req, res, next) => {
   if (!isOwner) {
     const error = formatError(403, "User does not own this podcast");
     next(error);
+    return;
   }
 
   log.debug(`Editing podcast ${podcastId}`);
@@ -273,6 +276,7 @@ export const update_podcast_art = asyncHandler(async (req, res, next) => {
   if (!request.podcastId) {
     const error = formatError(403, "podcastId field is required");
     next(error);
+    return;
   }
 
   // Check if user owns podcast
@@ -281,6 +285,7 @@ export const update_podcast_art = asyncHandler(async (req, res, next) => {
   if (!isOwner) {
     const error = formatError(403, "User does not own this podcast");
     next(error);
+    return;
   }
 
   const uploadPath = request.artwork.path;
@@ -349,6 +354,7 @@ export const delete_podcast = asyncHandler(async (req, res, next) => {
   if (!request.podcastId) {
     const error = formatError(403, "podcastId field is required");
     next(error);
+    return;
   }
 
   // Check if user owns artist
@@ -357,6 +363,7 @@ export const delete_podcast = asyncHandler(async (req, res, next) => {
   if (!isOwner) {
     const error = formatError(403, "User does not own this podcast");
     next(error);
+    return;
   }
 
   log.debug(`Checking episodes for podcast ${request.podcastId}`);
