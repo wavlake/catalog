@@ -2,7 +2,7 @@ exports.up = function (knex) {
   return knex.schema
     .alterTable("podcast", function (table) {
       table.bigInteger("msat_total").notNullable().defaultTo(0);
-      table.check("msat_total >= 0", [], "msat_total_check");
+      table.check("msat_total >= 0", [], "podcast_msat_total_check");
     })
     .alterTable("album", function (table) {
       table.bigInteger("msat_total").notNullable().defaultTo(0);
