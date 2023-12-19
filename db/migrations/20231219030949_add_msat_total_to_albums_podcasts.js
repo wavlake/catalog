@@ -17,7 +17,7 @@ exports.down = function (knex) {
       table.dropColumn("msat_total");
     })
     .alterTable("album", function (table) {
-      table.dropChecks(["msat_total_check"]);
+      table.dropChecks(["album_msat_total_check"]);
       table.dropColumn("msat_total");
     });
 };
