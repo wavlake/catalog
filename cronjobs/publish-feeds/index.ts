@@ -6,40 +6,78 @@ import prisma from "@prismalocal/client";
 const crypto = require("crypto");
 
 const lookbackSeconds = parseInt(process.env.LOOKBACK_MINUTES) * 60 * 1000;
-const FEED_URL = "https://wavlake.com/feed/show/";
+const FEED_URL = "https://www.wavlake.com/feed";
 
 const { PODCAST_INDEX_KEY, PODCAST_INDEX_SECRET } = process.env;
 const podcastIndexApi = podcastIndex(PODCAST_INDEX_KEY, PODCAST_INDEX_SECRET);
 
-// TODO: Add music feeds
+const lookbackDt = Date.now() - lookbackSeconds;
 
 const wavlakePodcastsForUpdate = async () => {
-  log.debug("fetching podcasts with new episodes");
   const updatedPodcasts = await prisma.podcast.findMany({
     where: {
       updatedAt: {
         // greater than now - lookbackMinutes
-        gt: new Date(Date.now() - lookbackSeconds),
+        gt: new Date(lookbackDt),
       },
     },
     select: {
       id: true,
       name: true,
+      updatedAt: true,
     },
+    take: 0,
   });
 
-  return updatedPodcasts;
+  return updatedPodcasts.map((podcast) => {
+    const { id, name, updatedAt } = podcast;
+    const feedUrl = `${FEED_URL}/show/${id}`;
+    return { name, feedUrl, updatedAt };
+  });
+};
+
+const wavlakeMusicFeedsForUpdate = async () => {
+  const updatedMusicFeeds = await prisma.album.findMany({
+    where: {
+      updatedAt: {
+        // greater than now - lookbackMinutes
+        gt: new Date(lookbackDt),
+      },
+      deleted: false,
+      track: {
+        some: {
+          // Returns all records where one or more ("some") related records match filtering criteria.
+          // In English: return all albums with at least one live, undeleted track
+          deleted: false,
+        },
+      },
+    },
+    include: { track: true },
+    orderBy: { updatedAt: "asc" },
+    take: 500,
+  });
+
+  return updatedMusicFeeds.map((musicFeed) => {
+    const { id, title, updatedAt } = musicFeed;
+    const feedUrl = `${FEED_URL}/${id}`;
+    return { name: title, feedUrl, updatedAt };
+  });
 };
 
 const publishFeeds = async () => {
   const updatedPodcasts = await wavlakePodcastsForUpdate();
+  const updatedMusicFeeds = await wavlakeMusicFeedsForUpdate();
+
+  const updatedFeeds = [...updatedPodcasts, ...updatedMusicFeeds];
+
+  // log.debug("last item");
+  // log.debug(updatedFeeds[updatedFeeds.length - 1]);
 
   const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-  for (const podcast of updatedPodcasts) {
-    await sleep(2000); // sleep 2 seconds between each publish to prevent rate limiting
-    const { id, name } = podcast;
-    const feedUrl = `${FEED_URL}${id}`;
+  for (const feedItem of updatedFeeds) {
+    await sleep(7000); // sleep 2 seconds between each publish to prevent rate limiting
+    const { name, feedUrl } = feedItem;
 
     // TODO: add more attributes to chash
     // chash = md5(title+link+feedLanguage+generator+author+ownerName+ownerEmail)
@@ -50,15 +88,26 @@ const publishFeeds = async () => {
       .update(attributeString)
       .digest("hex");
 
-    log.debug(`publishing ${feedUrl}`);
-    podcastIndexApi
-      .addByFeedUrl(feedUrl, chash)
-      .then((res) => {
-        log.debug(res);
-      })
-      .catch((err) => {
-        log.error(err);
+    log.debug(`checking: ${name}`);
+    const response = await podcastIndexApi
+      .podcastsByFeedUrl(feedUrl)
+      .catch((e) => {
+        log.error(e);
+        return { status: "false" };
       });
+
+    // log.debug(response);
+    if (response.status === "true") {
+      log.debug("feed already exists, notifying hub");
+      const { feed } = response;
+      const { id } = feed;
+      const { status } = await podcastIndexApi.hubPubNotifyById(id);
+      log.debug(`Update status: ${status}`);
+    } else {
+      log.debug("feed does not exist, adding");
+      const addResponse = await podcastIndexApi.addByFeedUrl(feedUrl, chash);
+      log.debug(addResponse);
+    }
   }
 };
 

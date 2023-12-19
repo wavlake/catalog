@@ -9,10 +9,10 @@ RUN apt-get update -y && apt-get install -y openssl
 COPY ./ /app/
 WORKDIR /app/cronjobs/publish-feeds
 RUN npm install --unsafe-perm ||  ((if [ -f npm-debug.log ]; then cat npm-debug.log; fi) && false)
-RUN npx tsc
 
 # Generate Prisma client from repo root
 WORKDIR /app
+RUN npx tsc
 RUN npx prisma generate
 
 # Return to publish-feeds cronjob directory
