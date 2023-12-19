@@ -6,7 +6,7 @@ exports.up = function (knex) {
     })
     .alterTable("album", function (table) {
       table.bigInteger("msat_total").notNullable().defaultTo(0);
-      table.check("msat_total >= 0", [], "msat_total_check");
+      table.check("msat_total >= 0", [], "album_msat_total_check");
     });
 };
 
