@@ -293,7 +293,13 @@ const delete_track = asyncHandler(async (req, res, next) => {
   db.knex("track")
     .where("id", "=", request.trackId)
     .update({ deleted: true }, ["id", "title", "album_id as albumId"])
-    .then((data) => {
+    .then(async (data) => {
+      const updatedAt = new Date();
+      // update the album's updatedAt field
+      await prisma.album.update({
+        where: { id: data[0].albumId },
+        data: { updatedAt },
+      });
       res.send({ success: true, data: data[0] });
     })
     .catch((err) => {
@@ -378,8 +384,16 @@ const create_track = asyncHandler(async (req, res, next) => {
       },
       ["*"]
     )
-    .then((data) => {
+    .then(async (data) => {
+      const updatedAt = new Date();
+
       log.debug(`Created new track ${request.title} with id: ${data[0]["id"]}`);
+
+      // update the album's updatedAt field
+      await prisma.album.update({
+        where: { id: data[0].albumId },
+        data: { updatedAt },
+      });
 
       res.send({
         success: true,
@@ -502,6 +516,13 @@ const update_track = asyncHandler(async (req, res, next) => {
         publishedAt,
       },
     });
+
+    // update the album's updatedAt field
+    await prisma.album.update({
+      where: { id: updatedTrack.albumId },
+      data: { updatedAt },
+    });
+
     res.json({ success: true, data: updatedTrack });
   } catch (err) {
     log.debug(`Error editing track ${trackId}: ${err}`);
