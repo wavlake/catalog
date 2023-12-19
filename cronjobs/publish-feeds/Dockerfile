@@ -3,7 +3,7 @@ FROM node:16.20.0-slim
 
 WORKDIR /app
 
-RUN apt-get update -y && apt-get install -y openssl
+RUN apt-get update -y && apt-get install -y openssl python3 python3-pip
 
 # Copy repo source and build publish-feeds cronjob
 COPY ./ /app/
@@ -12,6 +12,7 @@ RUN npm install --unsafe-perm ||  ((if [ -f npm-debug.log ]; then cat npm-debug.
 
 # Generate Prisma client from repo root
 WORKDIR /app
+RUN npm install --unsafe-perm ||  ((if [ -f npm-debug.log ]; then cat npm-debug.log; fi) && false)
 RUN npx tsc
 RUN npx prisma generate
 
