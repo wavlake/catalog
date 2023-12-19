@@ -96,7 +96,18 @@ export const delete_episode = asyncHandler(async (req, res, next) => {
   db.knex("episode")
     .where("id", "=", episodeId)
     .update({ deleted: true }, ["id", "episode", "podcast_id as podcastId"])
-    .then((data) => {
+    .then(async (data) => {
+      const updatedAt = new Date();
+      // Update podcast updatedAt
+      await prisma.podcast.update({
+        where: {
+          id: data[0].podcastId,
+        },
+        data: {
+          updatedAt,
+        },
+      });
+
       res.send({ success: true, data: data[0] });
     })
     .catch((err) => {
@@ -164,10 +175,21 @@ export const create_episode = asyncHandler(async (req, res, next) => {
       },
       ["*"]
     )
-    .then((data) => {
+    .then(async (data) => {
       log.debug(
         `Created new episode ${request.title} with id: ${data[0]["id"]}`
       );
+
+      const updatedAt = new Date();
+      // Update podcast updatedAt
+      await prisma.podcast.update({
+        where: {
+          id: data[0].podcastId,
+        },
+        data: {
+          updatedAt,
+        },
+      });
 
       res.send({
         success: true,
@@ -234,6 +256,17 @@ export const update_episode = asyncHandler(async (req, res, next) => {
       description,
     },
   });
+
+  // Update podcast updatedAt
+  await prisma.podcast.update({
+    where: {
+      id: updatedEpisode.podcastId,
+    },
+    data: {
+      updatedAt,
+    },
+  });
+
   res.json({ success: true, data: updatedEpisode });
 });
 
