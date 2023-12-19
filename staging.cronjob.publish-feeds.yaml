@@ -31,6 +31,7 @@ steps:
     args:
       [
         "run",
+        "jobs",
         "deploy",
         "publish-feeds",
         "--image",
