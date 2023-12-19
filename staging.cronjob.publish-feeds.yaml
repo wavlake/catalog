@@ -25,6 +25,9 @@ steps:
       - "PODCAST_INDEX_KEY=${_PODCAST_INDEX_KEY}"
       - "PODCAST_INDEX_SECRET=${_PODCAST_INDEX_SECRET}"
     secretEnv: ["PG_PASSWORD"]
+  # Push the container image to Container Registry
+  - name: "gcr.io/cloud-builders/docker"
+    args: ["push", "gcr.io/$PROJECT_ID/publish-feeds:latest"]
   # Deploy container image to Cloud Run
   - name: "gcr.io/google.com/cloudsdktool/cloud-sdk"
     entrypoint: gcloud
