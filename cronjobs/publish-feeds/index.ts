@@ -26,7 +26,6 @@ const wavlakePodcastsForUpdate = async () => {
       name: true,
       updatedAt: true,
     },
-    take: 0,
   });
 
   return updatedPodcasts.map((podcast) => {
@@ -54,7 +53,6 @@ const wavlakeMusicFeedsForUpdate = async () => {
     },
     include: { track: true },
     orderBy: { updatedAt: "asc" },
-    take: 500,
   });
 
   return updatedMusicFeeds.map((musicFeed) => {
