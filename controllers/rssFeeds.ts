@@ -3,18 +3,26 @@ import prisma from "../prisma/client";
 import { fetchPodcastIndexFeed } from "../library/podcastIndex/podcastIndex";
 import { formatError } from "../library/errors";
 
+const isFulfilled = <T>(
+  input: PromiseSettledResult<T>
+): input is PromiseFulfilledResult<T> => input.status === "fulfilled";
+
 const get_external_rss_feeds = asyncHandler(async (req, res, next) => {
   try {
     const feedGuids = await prisma.externalFeed.findMany();
-    const responses = await Promise.all(
+    const responses = await Promise.allSettled(
       feedGuids.map(({ guid }) => fetchPodcastIndexFeed(guid))
     );
 
+    const successfulResponses = responses
+      .filter(isFulfilled)
+      .map((feedRes) => feedRes.value);
+
     res.send({
       success: true,
-      data: responses
+      data: successfulResponses
         // filter out any empty feeds
-        .filter((res) => !Array.isArray(res.feed))
+        .filter((feedRes) => !Array.isArray(feedRes.feed))
         // sort by most recent first
         .sort((a, b) => b.feed.lastUpdateTime - a.feed.lastUpdateTime),
     });
@@ -35,6 +43,15 @@ const get_external_rss_feed = asyncHandler(async (req, res, next) => {
       return;
     }
     const podcastIndexOrgFeed = await fetchPodcastIndexFeed(guid);
+
+    if (!podcastIndexOrgFeed) {
+      const error = formatError(
+        404,
+        "Error getting feed, please try again later."
+      );
+      next(error);
+      return;
+    }
 
     res.send({
       success: true,
