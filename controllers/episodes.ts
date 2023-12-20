@@ -184,7 +184,7 @@ export const create_episode = asyncHandler(async (req, res, next) => {
       // Update podcast updatedAt
       await prisma.podcast.update({
         where: {
-          id: data[0].podcastId,
+          id: data[0].podcast_id,
         },
         data: {
           updatedAt,
