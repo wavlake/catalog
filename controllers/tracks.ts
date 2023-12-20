@@ -296,7 +296,6 @@ const delete_track = asyncHandler(async (req, res, next) => {
     .then(async (data) => {
       const updatedAt = new Date();
       // update the album's updatedAt field
-      console.log(data);
       await prisma.album.update({
         where: { id: data[0].albumId },
         data: { updatedAt },
