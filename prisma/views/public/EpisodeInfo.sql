@@ -30,7 +30,9 @@ FROM
               amp
             WHERE
               (
-                (amp.created_at > (NOW() - '30 days' :: INTERVAL))
+                (
+                  amp.created_at > date_trunc('day' :: text, (NOW() - '30 days' :: INTERVAL))
+                )
                 AND (amp.created_at < date_trunc('day' :: text, NOW()))
               )
             GROUP BY
@@ -45,7 +47,9 @@ FROM
             amp
           WHERE
             (
-              (amp.created_at > (NOW() - '7 days' :: INTERVAL))
+              (
+                amp.created_at > date_trunc('day' :: text, (NOW() - '7 days' :: INTERVAL))
+              )
               AND (amp.created_at < date_trunc('day' :: text, NOW()))
             )
           GROUP BY
@@ -60,7 +64,9 @@ FROM
           amp
         WHERE
           (
-            (amp.created_at > (NOW() - '1 day' :: INTERVAL))
+            (
+              amp.created_at > date_trunc('day' :: text, (NOW() - '1 day' :: INTERVAL))
+            )
             AND (amp.created_at < date_trunc('day' :: text, NOW()))
           )
         GROUP BY

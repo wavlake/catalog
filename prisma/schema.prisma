@@ -557,7 +557,7 @@ view TrackInfo {
   isProcessing    Boolean?  @map("is_processing")
   msatTotal       BigInt?   @map("msat_total")
   publishedAt     DateTime? @map("published_at") @db.Timestamptz(6)
-  isDraft         Boolean?  @map("is_draft") 
+  isDraft         Boolean?  @map("is_draft")
 
   @@map("track_info")
 }
