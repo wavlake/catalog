@@ -294,10 +294,57 @@ export const get_new_episodes = asyncHandler(async (req, res, next) => {
         },
       },
     });
-    // console.log(episodes);
     res.json({ success: true, data: episodes });
   } catch (err) {
     log.debug(`Error getting new episodes: ${err}`);
+    next(err);
+  }
+});
+
+// all episodes that are not deleted and have a publishedAt less than or equal to now (lte)
+// and whose parent podcast is featured (isFeatured is currently a manually set column in the database)
+export const get_featured_episodes = asyncHandler(async (req, res, next) => {
+  try {
+    const episodes = await prisma.episode.findMany({
+      where: {
+        deleted: false,
+        publishedAt: { lte: new Date() },
+        isDraft: false,
+        isProcessing: false,
+        podcast: {
+          isDraft: false,
+          publishedAt: { lte: new Date() },
+          isFeatured: true,
+        },
+      },
+      orderBy: { publishedAt: "desc" },
+      // take a lot, in case there are multiple episodes from the same podcast
+      take: 1000,
+      include: {
+        podcast: {
+          select: {
+            artworkUrl: true,
+            id: true,
+            name: true,
+            podcastUrl: true,
+          },
+        },
+      },
+    });
+
+    const mostRecentEpisodeFromEachShow = episodes.reduce((acc, episode) => {
+      if (!acc[episode.podcastId]) {
+        acc[episode.podcastId] = episode;
+      }
+      return acc;
+    }, {});
+
+    res.json({
+      success: true,
+      data: Object.values(mostRecentEpisodeFromEachShow),
+    });
+  } catch (err) {
+    log.debug(`Error getting featured episodes: ${err}`);
     next(err);
   }
 });
