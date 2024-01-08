@@ -344,6 +344,7 @@ model Podcast {
   secondaryCategoryId                                                       Int?                @map("secondary_category_id")
   primarySubcategoryId                                                      Int?                @map("primary_subcategory_id")
   secondarySubcategoryId                                                    Int?                @map("secondary_subcategory_id")
+  isFeatured                                                                Boolean             @default(false) @map("is_featured")
   episode                                                                   Episode[]
   podcast_category_podcast_primary_category_idTopodcast_category            podcastCategory?    @relation("podcast_primary_category_idTopodcast_category", fields: [primaryCategoryId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "podcast_primary_category_id_foreign")
   podcast_subcategory_podcast_primary_subcategory_idTopodcast_subcategory   podcastSubcategory? @relation("podcast_primary_subcategory_idTopodcast_subcategory", fields: [primarySubcategoryId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "podcast_primary_subcategory_id_foreign")

@@ -294,10 +294,59 @@ export const get_new_episodes = asyncHandler(async (req, res, next) => {
         },
       },
     });
-    // console.log(episodes);
     res.json({ success: true, data: episodes });
   } catch (err) {
     log.debug(`Error getting new episodes: ${err}`);
+    next(err);
+  }
+});
+
+// get the latest episode from each featured podcast
+// to be a featured podcast, edit the is_featured field in the podcast table
+export const get_featured_episodes = asyncHandler(async (req, res, next) => {
+  try {
+    const episodes = await prisma.$queryRaw`
+    SELECT 
+      JSON_BUILD_OBJECT(
+        'artworkUrl', p.artwork_url,
+        'id', p.id,
+        'name', p.name,
+        'podcastUrl', p.podcast_url
+      ) as podcast,
+      e.*
+    FROM 
+    (SELECT * FROM "podcast" 
+       WHERE "is_draft" = false AND 
+             "published_at" <= ${new Date()} AND 
+             "is_featured" = true 
+       LIMIT 10) as p
+      INNER JOIN "episode" as e ON p.id = e."podcast_id"
+      INNER JOIN (
+        SELECT
+          "podcast_id",
+          MAX("published_at") as maxDate
+        FROM 
+          "episode"
+        WHERE
+          "deleted" = false AND
+          "published_at" <= ${new Date()} AND
+          "is_draft" = false AND
+          "is_processing" = false
+        GROUP BY 
+          "podcast_id"
+      ) as latest ON e."podcast_id" = latest."podcast_id" AND e."published_at" = latest.maxDate
+    WHERE
+      p."is_draft" = false AND
+      p."published_at" <= ${new Date()} AND
+      p."is_featured" = true;
+  `;
+
+    res.json({
+      success: true,
+      data: episodes,
+    });
+  } catch (err) {
+    log.debug(`Error getting featured episodes: ${err}`);
     next(err);
   }
 });
