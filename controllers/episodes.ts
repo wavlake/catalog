@@ -313,7 +313,24 @@ export const get_featured_episodes = asyncHandler(async (req, res, next) => {
         'name', p.name,
         'podcastUrl', p.podcast_url
       ) as podcast,
-      e.*
+      e.id,
+      e.title,
+      e.description,
+      e.duration,
+      e.size,
+      e.order,
+      e.play_count as "playCount",
+      e.compressor_error as "compressorError",
+      e.created_at as "createdAt",
+      e.deleted,
+      e.is_draft as "isDraft",
+      e.is_processing as "isProcessing",
+      e.live_url as "liveUrl",
+      e.msat_total as "msatTotal",
+      e.podcast_id as "podcastId",
+      e.published_at as "publishedAt",
+      e.raw_url as "rawUrl",
+      e.updated_at as "updatedAt"
     FROM 
     (SELECT * FROM "podcast" 
        WHERE "is_draft" = false AND 
@@ -340,7 +357,7 @@ export const get_featured_episodes = asyncHandler(async (req, res, next) => {
       p."published_at" <= ${new Date()} AND
       p."is_featured" = true;
   `;
-
+    console.log(episodes);
     res.json({
       success: true,
       data: episodes,
