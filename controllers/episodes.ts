@@ -302,7 +302,7 @@ export const get_new_episodes = asyncHandler(async (req, res, next) => {
     FROM 
     (SELECT * FROM "podcast" 
        WHERE "is_draft" = false AND 
-             "published_at" <= ${new Date()} AND 
+             "published_at" <= ${new Date()} 
        LIMIT 10) as p
       INNER JOIN "episode" as e ON p.id = e."podcast_id"
       INNER JOIN (
@@ -321,7 +321,7 @@ export const get_new_episodes = asyncHandler(async (req, res, next) => {
       ) as latest ON e."podcast_id" = latest."podcast_id" AND e."published_at" = latest.maxDate
     WHERE
       p."is_draft" = false AND
-      p."published_at" <= ${new Date()} AND
+      p."published_at" <= ${new Date()}
   `;
     console.log(episodes);
     res.json({
