@@ -1,6 +1,9 @@
 import asyncHandler from "express-async-handler";
 import prisma from "../prisma/client";
-import { fetchPodcastIndexFeed } from "../library/podcastIndex/podcastIndex";
+import {
+  fetchAllFeedInfo,
+  fetchPodcastIndexFeedInfo,
+} from "../library/podcastIndex/podcastIndex";
 import { formatError } from "../library/errors";
 
 const isFulfilled = <T>(
@@ -11,7 +14,7 @@ const get_external_rss_feeds = asyncHandler(async (req, res, next) => {
   try {
     const feedGuids = await prisma.externalFeed.findMany();
     const responses = await Promise.allSettled(
-      feedGuids.map(({ guid }) => fetchPodcastIndexFeed(guid))
+      feedGuids.map(({ guid }) => fetchPodcastIndexFeedInfo(guid))
     );
 
     const successfulResponses = responses
@@ -42,7 +45,7 @@ const get_external_rss_feed = asyncHandler(async (req, res, next) => {
       next(error);
       return;
     }
-    const podcastIndexOrgFeed = await fetchPodcastIndexFeed(guid);
+    const podcastIndexOrgFeed = await fetchAllFeedInfo(guid);
 
     if (!podcastIndexOrgFeed) {
       const error = formatError(
@@ -62,4 +65,7 @@ const get_external_rss_feed = asyncHandler(async (req, res, next) => {
   }
 });
 
-export default { get_external_rss_feed, get_external_rss_feeds };
+export default {
+  get_external_rss_feed,
+  get_external_rss_feeds,
+};
