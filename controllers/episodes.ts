@@ -303,7 +303,7 @@ export const get_new_episodes = asyncHandler(async (req, res, next) => {
     (SELECT * FROM "podcast" 
        WHERE "is_draft" = false AND 
              "published_at" <= ${new Date()} 
-       LIMIT 10) as p
+       LIMIT 50) as p
       INNER JOIN "episode" as e ON p.id = e."podcast_id"
       INNER JOIN (
         SELECT
