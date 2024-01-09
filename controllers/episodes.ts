@@ -323,7 +323,6 @@ export const get_new_episodes = asyncHandler(async (req, res, next) => {
       p."is_draft" = false AND
       p."published_at" <= ${new Date()}
   `;
-    console.log(episodes);
     res.json({
       success: true,
       data: episodes,
