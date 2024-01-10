@@ -88,6 +88,7 @@ model Artist {
   deleted    Boolean?  @default(false)
   verified   Boolean?  @default(false)
   npub       String?   @db.VarChar(64)
+  msatTotal  BigInt    @map("msat_total") @default(0)
   album      Album[]
   user       User      @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "artist_user_id_foreign")
   track      Track[]
