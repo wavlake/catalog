@@ -273,31 +273,129 @@ export const update_episode = asyncHandler(async (req, res, next) => {
 export const get_new_episodes = asyncHandler(async (req, res, next) => {
   // all episodes that are not deleted and have a publishedAt less than or equal to now (lte)
   try {
-    const episodes = await prisma.episode.findMany({
-      where: {
-        deleted: false,
-        publishedAt: { lte: new Date() },
-        isDraft: false,
-        isProcessing: false,
-        podcast: { isDraft: false, publishedAt: { lte: new Date() } },
-      },
-      orderBy: { publishedAt: "desc" },
-      take: 10,
-      include: {
-        podcast: {
-          select: {
-            artworkUrl: true,
-            id: true,
-            name: true,
-            podcastUrl: true,
-          },
-        },
-      },
+    const episodes = await prisma.$queryRaw`
+    SELECT 
+      JSON_BUILD_OBJECT(
+        'artworkUrl', p.artwork_url,
+        'id', p.id,
+        'name', p.name,
+        'podcastUrl', p.podcast_url
+      ) as podcast,
+      e.id,
+      e.title,
+      e.description,
+      e.duration,
+      e.size,
+      e.order,
+      e.play_count as "playCount",
+      e.compressor_error as "compressorError",
+      e.created_at as "createdAt",
+      e.deleted,
+      e.is_draft as "isDraft",
+      e.is_processing as "isProcessing",
+      e.live_url as "liveUrl",
+      e.msat_total as "msatTotal",
+      e.podcast_id as "podcastId",
+      e.published_at as "publishedAt",
+      e.raw_url as "rawUrl",
+      e.updated_at as "updatedAt"
+    FROM 
+    (SELECT * FROM "podcast" 
+       WHERE "is_draft" = false AND 
+             "published_at" <= ${new Date()} 
+       LIMIT 50) as p
+      INNER JOIN "episode" as e ON p.id = e."podcast_id"
+      INNER JOIN (
+        SELECT
+          "podcast_id",
+          MAX("published_at") as maxDate
+        FROM 
+          "episode"
+        WHERE
+          "deleted" = false AND
+          "published_at" <= ${new Date()} AND
+          "is_draft" = false AND
+          "is_processing" = false
+        GROUP BY 
+          "podcast_id"
+      ) as latest ON e."podcast_id" = latest."podcast_id" AND e."published_at" = latest.maxDate
+    WHERE
+      p."is_draft" = false AND
+      p."published_at" <= ${new Date()}
+  `;
+    res.json({
+      success: true,
+      data: episodes,
     });
-    // console.log(episodes);
-    res.json({ success: true, data: episodes });
   } catch (err) {
     log.debug(`Error getting new episodes: ${err}`);
+    next(err);
+  }
+});
+
+// get the latest episode from each featured podcast
+// to be a featured podcast, edit the is_featured field in the podcast table
+export const get_featured_episodes = asyncHandler(async (req, res, next) => {
+  try {
+    const episodes = await prisma.$queryRaw`
+    SELECT 
+      JSON_BUILD_OBJECT(
+        'artworkUrl', p.artwork_url,
+        'id', p.id,
+        'name', p.name,
+        'podcastUrl', p.podcast_url
+      ) as podcast,
+      e.id,
+      e.title,
+      e.description,
+      e.duration,
+      e.size,
+      e.order,
+      e.play_count as "playCount",
+      e.compressor_error as "compressorError",
+      e.created_at as "createdAt",
+      e.deleted,
+      e.is_draft as "isDraft",
+      e.is_processing as "isProcessing",
+      e.live_url as "liveUrl",
+      e.msat_total as "msatTotal",
+      e.podcast_id as "podcastId",
+      e.published_at as "publishedAt",
+      e.raw_url as "rawUrl",
+      e.updated_at as "updatedAt"
+    FROM 
+    (SELECT * FROM "podcast" 
+       WHERE "is_draft" = false AND 
+             "published_at" <= ${new Date()} AND 
+             "is_featured" = true 
+       LIMIT 10) as p
+      INNER JOIN "episode" as e ON p.id = e."podcast_id"
+      INNER JOIN (
+        SELECT
+          "podcast_id",
+          MAX("published_at") as maxDate
+        FROM 
+          "episode"
+        WHERE
+          "deleted" = false AND
+          "published_at" <= ${new Date()} AND
+          "is_draft" = false AND
+          "is_processing" = false
+        GROUP BY 
+          "podcast_id"
+      ) as latest ON e."podcast_id" = latest."podcast_id" AND e."published_at" = latest.maxDate
+    WHERE
+      p."is_draft" = false AND
+      p."published_at" <= ${new Date()} AND
+      p."is_featured" = true;
+  `;
+    console.log(episodes);
+    res.json({
+      success: true,
+      data: episodes,
+    });
+  } catch (err) {
+    log.debug(`Error getting featured episodes: ${err}`);
     next(err);
   }
 });

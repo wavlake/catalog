@@ -1,6 +1,6 @@
 import express from "express";
 
-import controller from "../controllers/rssFeeds";
+import controller from "../controllers/feeds";
 
 // Create router
 const router = express.Router();
