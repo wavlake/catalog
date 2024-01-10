@@ -7,7 +7,8 @@ import { getPodcastFromURL } from "@podverse/podcast-feed-parser";
 const { PODCAST_INDEX_KEY, PODCAST_INDEX_SECRET } = process.env;
 const podcastIndexApi = podcastIndex(PODCAST_INDEX_KEY, PODCAST_INDEX_SECRET);
 
-export const fetchPodcastIndexFeed = async (guid: string) => {
+// this makes a call to podcastindex.org and also to the RSS feed url to get the timesplit data and full description
+export const fetchAllFeedInfo = async (guid: string) => {
   try {
     const podcast: PodcastIndexPodcast = await podcastIndexApi.podcastsByGUID(
       guid
@@ -56,6 +57,51 @@ export const fetchPodcastIndexFeed = async (guid: string) => {
             valueTimeSplits,
           };
         }),
+        liveItems: episodes.liveItems.map((liveItem) => {
+          const description = sanitize(liveItem.description);
+          return {
+            ...liveItem,
+            description,
+          };
+        }),
+      },
+    };
+
+    return sanitizedFeed;
+  } catch (err) {
+    log.error(`Error fetching podcast index feed: ${err}`);
+    throw err;
+  }
+};
+
+// this only makes a call to podcastindex.org using the podcast-index-api package
+export const fetchPodcastIndexFeedInfo = async (guid: string) => {
+  try {
+    const podcast: PodcastIndexPodcast = await podcastIndexApi.podcastsByGUID(
+      guid
+    );
+
+    if (Array.isArray(podcast.feed) && podcast.feed.length === 0) {
+      log.warn(
+        `Empty feed for guid: ${podcast.query.guid}, verify the guid being used is correct`
+      );
+    }
+    const episodesUntyped = await podcastIndexApi.episodesByFeedId(
+      podcast.feed.id
+    );
+
+    const episodes: PodcastIndexPodcastEpisodes = episodesUntyped;
+    // description cannot be undefined, so we need to define it here and then add it to the object
+    const description = sanitize(podcast.feed.description);
+
+    const sanitizedFeed = {
+      ...podcast,
+      feed: {
+        ...podcast.feed,
+        description,
+      },
+      episodes: {
+        ...episodes,
         liveItems: episodes.liveItems.map((liveItem) => {
           const description = sanitize(liveItem.description);
           return {
