@@ -77,7 +77,6 @@ const get_artist_comments = asyncHandler(async (req, res, next) => {
     offset
   );
 
-  // TODO: Pagination
   res.json({
     success: true,
     data: comments,
