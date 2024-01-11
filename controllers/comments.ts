@@ -19,74 +19,6 @@ const get_comments = asyncHandler(async (req, res, next) => {
   });
 });
 
-const get_artist_comments_paginated = asyncHandler(async (req, res, next) => {
-  const { id: artistId, page, pageSize } = req.params;
-  if (!artistId) {
-    const error = formatError(400, "Must include a track or episode id");
-    next(error);
-    return;
-  }
-  const pageInt = parseInt(page);
-  if (!Number.isInteger(pageInt) || pageInt <= 0) {
-    const error = formatError(400, "Page must be a positive integer");
-    next(error);
-    return;
-  }
-  const pageSizeInt = parseInt(pageSize);
-  if (!Number.isInteger(pageSizeInt) || pageSizeInt <= 0) {
-    const error = formatError(400, "Page size must be a positive integer");
-    next(error);
-    return;
-  }
-
-  // Calculate skip and take for pagination
-  const skip = (pageInt - 1) * pageSizeInt;
-  const take = pageSizeInt;
-
-  // Fetch tracks for the given artist ID
-  const tracks = await prisma.track.findMany({
-    where: {
-      artistId,
-    },
-    select: {
-      id: true,
-    },
-  });
-
-  const trackIds = tracks.map((track) => track.id);
-
-  if (trackIds.length === 0) {
-    // No tracks found for the given artist ID
-    res.json({
-      success: true,
-      data: [],
-    });
-    return;
-  }
-
-  const comments = await prisma.comment.findMany({
-    where: {
-      contentId: {
-        in: trackIds,
-      },
-    },
-    skip: skip,
-    take: take,
-    orderBy: {
-      createdAt: "desc", // newest first
-    },
-    // include: {
-    // track: true,
-    // user: true, // If you want details of the user who made the comment
-    // },
-  });
-
-  res.json({
-    success: true,
-    data: comments,
-  });
-});
-
 // looks up all episode ids for a podcast and then gets all comments for those episodes
 const get_podcast_comments = asyncHandler(async (req, res, next) => {
   const { id: podcastId } = req.params;
@@ -111,7 +43,24 @@ const get_podcast_comments = asyncHandler(async (req, res, next) => {
 // looks up all album ids for an artist, then all the track ids for each album,
 // and then gets all comments for those tracks
 const get_artist_comments = asyncHandler(async (req, res, next) => {
-  const { id: artistId } = req.params;
+  const { id: artistId, page = "0", pageSize = "100" } = req.params;
+
+  const pageInt = parseInt(page);
+  if (!Number.isInteger(pageInt) || pageInt <= 0) {
+    const error = formatError(400, "Page must be a positive integer");
+    next(error);
+    return;
+  }
+
+  const pageSizeInt = parseInt(pageSize);
+  if (!Number.isInteger(pageSizeInt) || pageSizeInt <= 0) {
+    const error = formatError(400, "Page size must be a positive integer");
+    next(error);
+    return;
+  }
+
+  const offset = (pageInt - 1) * pageSizeInt; // Calculate the offset
+
   if (!artistId) {
     const error = formatError(400, "Must include the artist id");
     next(error);
@@ -124,7 +73,8 @@ const get_artist_comments = asyncHandler(async (req, res, next) => {
 
   const comments = await getAllComments(
     tracks.map(({ id }) => id),
-    100
+    pageSizeInt,
+    offset
   );
 
   // TODO: Pagination
@@ -138,5 +88,4 @@ export default {
   get_comments,
   get_podcast_comments,
   get_artist_comments,
-  get_artist_comments_paginated,
 };
