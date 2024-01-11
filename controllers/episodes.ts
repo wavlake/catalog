@@ -66,7 +66,7 @@ export const get_episodes_by_podcast_id = asyncHandler(
               publishedAt: { lte: new Date() },
             }),
       },
-      orderBy: { order: "asc" },
+      orderBy: { order: "desc" },
     });
 
     res.json({ success: true, data: episodes });
