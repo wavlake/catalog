@@ -9,6 +9,10 @@ const router = express.Router();
 router.get("/:id", commentsController.get_comments);
 router.get("/show/:id", commentsController.get_podcast_comments);
 router.get("/artist/:id", commentsController.get_artist_comments);
+router.get(
+  "/artist/:id/:page/:pageSize",
+  commentsController.get_artist_comments_paginated
+);
 
 // Export router
 export default router;
