@@ -15,15 +15,28 @@ const s3BucketName = `${process.env.AWS_S3_BUCKET_NAME}`;
 const cdnDomain = `${process.env.AWS_CDN_DOMAIN}`;
 
 const get_track = asyncHandler(async (req, res, next) => {
-  const request = {
-    trackId: req.params.trackId,
-  };
+  const { trackId } = req.params;
 
-  const track = await prisma.trackInfo.findFirstOrThrow({
-    where: { id: request.trackId },
-  });
+  if (!trackId) {
+    const error = formatError(400, "trackId is required");
+    next(error);
+    return;
+  }
 
-  res.json({ success: true, data: track });
+  prisma.trackInfo
+    .findFirstOrThrow({
+      where: { id: trackId },
+    })
+    .then((track) => {
+      console.log("foundadasdad");
+      res.json({ success: true, data: track });
+    })
+    .catch((err) => {
+      // Prisma will throw an error if the uuid is not found or not a valid uuid
+      const error = formatError(404, `Track not found for id: ${trackId}`);
+      next(error);
+      return;
+    });
 });
 
 const get_tracks_by_account = asyncHandler(async (req, res, next) => {
