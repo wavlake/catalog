@@ -28,7 +28,6 @@ const get_track = asyncHandler(async (req, res, next) => {
       where: { id: trackId },
     })
     .then((track) => {
-      console.log("foundadasdad");
       res.json({ success: true, data: track });
     })
     .catch((err) => {
