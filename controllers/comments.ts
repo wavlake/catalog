@@ -2,7 +2,6 @@ import { formatError } from "../library/errors";
 import prisma from "../prisma/client";
 import asyncHandler from "express-async-handler";
 import { getAllComments } from "../library/comments";
-import db from "../library/db";
 
 const get_comments = asyncHandler(async (req, res, next) => {
   const { id: contentId } = req.params;
@@ -44,7 +43,24 @@ const get_podcast_comments = asyncHandler(async (req, res, next) => {
 // looks up all album ids for an artist, then all the track ids for each album,
 // and then gets all comments for those tracks
 const get_artist_comments = asyncHandler(async (req, res, next) => {
-  const { id: artistId } = req.params;
+  const { id: artistId, page = "0", pageSize = "100" } = req.params;
+
+  const pageInt = parseInt(page);
+  if (!Number.isInteger(pageInt) || pageInt <= 0) {
+    const error = formatError(400, "Page must be a positive integer");
+    next(error);
+    return;
+  }
+
+  const pageSizeInt = parseInt(pageSize);
+  if (!Number.isInteger(pageSizeInt) || pageSizeInt <= 0) {
+    const error = formatError(400, "Page size must be a positive integer");
+    next(error);
+    return;
+  }
+
+  const offset = (pageInt - 1) * pageSizeInt; // Calculate the offset
+
   if (!artistId) {
     const error = formatError(400, "Must include the artist id");
     next(error);
@@ -57,10 +73,10 @@ const get_artist_comments = asyncHandler(async (req, res, next) => {
 
   const comments = await getAllComments(
     tracks.map(({ id }) => id),
-    100
+    pageSizeInt,
+    offset
   );
 
-  // TODO: Pagination
   res.json({
     success: true,
     data: comments,
