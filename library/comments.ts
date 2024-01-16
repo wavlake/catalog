@@ -4,15 +4,16 @@ import { nip19 } from "nostr-tools";
 
 export const getAllComments = async (contentIds: string[], limit: number) => {
   const allComments = await db
-    .knex(commentsLegacy(contentIds))
-    .unionAll([
-      nostrComments(contentIds),
-      userComments(contentIds),
-      userCommentsViaKeysend(contentIds),
-    ])
+    // .knex(commentsLegacy(contentIds))
+    // .unionAll([
+    .knex(nostrComments(contentIds))
+    // userComments(contentIds),
+    // userCommentsViaKeysend(contentIds),
+    // ])
     .orderBy("createdAt", "desc")
     .limit(limit);
 
+  console.log("allComments", allComments);
   const commentsWithSatAmount = await Promise.all(
     allComments.map(async (comment) => {
       comment.msatAmount = comment.commentMsatSum;
@@ -26,12 +27,8 @@ export const getAllComments = async (contentIds: string[], limit: number) => {
     commentsWithSatAmount.map(async (comment) => {
       if (comment.isNostr) {
         const npub = nip19.npubEncode(comment.userId);
-        comment.userId = null;
-        comment.name = npub.slice(0, 5) + "..." + npub.slice(-5);
-
-        return {
-          ...comment,
-        };
+        const commenterProfileUrl = `https://primal.net/p/${npub}`;
+        return { ...comment, commenterProfileUrl };
       } else {
         // Clean up names from other apps with @ prefix
         comment.name = comment.name?.replace("@", "") ?? "anonymous";
@@ -85,25 +82,27 @@ function nostrComments(contentIds) {
     .join("preamp", "comment.tx_id", "=", "preamp.tx_id")
     .join("track", "track.id", "=", "comment.content_id")
     .join("artist", "artist.id", "=", "track.artist_id")
+    .join("npub", "npub.public_hex", "=", "comment.user_id")
     .select(
       "comment.id as id",
       "track.id as trackId",
       "is_nostr as isNostr",
-      "preamp.tx_id as txId"
+      "preamp.tx_id as txId",
+      "track.title as title",
+      "artist.user_id as ownerId",
+      "comment.content as content",
+      "comment.created_at as createdAt",
+      "preamp.msat_amount as commentMsatSum",
+      "comment.user_id as userId",
+      // this is set above based on the npub
+      "comment.user_id as commenterProfileUrl"
     )
-    .min("track.title as title")
-    .min("artist.user_id as ownerId")
-    .min("comment.content as content")
-    .min("comment.created_at as createdAt")
-    .min("preamp.msat_amount as commentMsatSum")
-    .min("comment.user_id as userId")
-    .min("comment.user_id as name") // TODO: get username via nostr profile
-    .min("user.profile_url as commenterProfileUrl")
-    .min("user.artwork_url as commenterArtworkUrl")
+    .jsonExtract("npub.metadata", "$.display_name", "name")
+    .jsonExtract("npub.metadata", "$.picture", "commenterArtworkUrl")
     .whereIn("track.id", contentIds)
     .andWhere("comment.is_nostr", "=", true)
     .whereNull("comment.parent_id")
-    .groupBy("comment.id", "track.id", "preamp.tx_id");
+    .as("nostrComments");
 }
 
 function userComments(contentIds) {
