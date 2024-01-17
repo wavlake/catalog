@@ -2,7 +2,11 @@ import prisma from "../prisma/client";
 import db from "../library/db";
 import { nip19 } from "nostr-tools";
 
-export const getAllComments = async (contentIds: string[], limit: number) => {
+export const getAllComments = async (
+  contentIds: string[],
+  limit: number,
+  offset: number = 0
+) => {
   const allComments = await db
     // .knex(commentsLegacy(contentIds))
     // .unionAll([
@@ -11,7 +15,8 @@ export const getAllComments = async (contentIds: string[], limit: number) => {
     // userCommentsViaKeysend(contentIds),
     // ])
     .orderBy("createdAt", "desc")
-    .limit(limit);
+    .limit(limit)
+    .offset(offset);
 
   const commentsWithSatAmount = await Promise.all(
     allComments.map(async (comment) => {
