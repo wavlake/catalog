@@ -48,8 +48,6 @@ app.put("/:publicHex", async (req, res) => {
 });
 
 const port = parseInt(process.env.PORT) || 8080;
-app.listen(port, () => {
+export const server = app.listen(port, () => {
   console.log(`npub-metadata listening on port ${port}`);
 });
-
-// 82341f882b6eabcd2ba7f1ef90aad961cf074af15b9ef44a09f9d2a8fbfbe6a2
