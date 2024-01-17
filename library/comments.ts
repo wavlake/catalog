@@ -13,7 +13,6 @@ export const getAllComments = async (contentIds: string[], limit: number) => {
     .orderBy("createdAt", "desc")
     .limit(limit);
 
-  console.log("allComments", allComments);
   const commentsWithSatAmount = await Promise.all(
     allComments.map(async (comment) => {
       comment.msatAmount = comment.commentMsatSum;

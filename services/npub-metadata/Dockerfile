@@ -3,9 +3,9 @@ FROM node:16.20.0-slim
 
 WORKDIR /app
 
-RUN apt-get update -y && apt-get install -y openssl python3 python3-pip
+RUN apt-get update -y
 
-# Copy repo source and build npub-metadata cronjob
+# Copy repo source and build npub-metadata service
 COPY ./ /app/
 WORKDIR /app/services/npub-metadata
 RUN npm install --unsafe-perm ||  ((if [ -f npm-debug.log ]; then cat npm-debug.log; fi) && false)

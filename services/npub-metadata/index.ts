@@ -2,15 +2,19 @@ require("dotenv").config();
 require("websocket-polyfill");
 const log = require("loglevel");
 log.setLevel(process.env.LOGLEVEL);
-import podcastIndex from "podcast-index-api";
+
 import prisma from "@prismalocal/client";
 import { getProfileMetadata } from "@library/nostr/nostr";
-const checkPublicKey = async (publicHex: string) => {
+import express from "express";
+
+const app = express();
+
+const checkPublicKey = async (publicHex: string): Promise<boolean> => {
   try {
+    // TODO - get relay list from nip-05
     const latestMetadataEvent = await getProfileMetadata(publicHex);
     const latestMetadata = JSON.parse(latestMetadataEvent.content);
 
-    console.log("updating metadata");
     await prisma.npub.upsert({
       where: { public_hex: publicHex },
       update: {
@@ -23,13 +27,29 @@ const checkPublicKey = async (publicHex: string) => {
         updated_at: new Date(latestMetadataEvent.created_at * 1000),
       },
     });
-    console.log("updated metadata");
+    return true;
   } catch (e) {
-    console.log("error", e);
+    console.log("error: ", e);
+    return false;
   }
 };
 
-// TODO figure out how cloud run passes in arguments from an incoming request
-checkPublicKey(
-  "82341f882b6eabcd2ba7f1ef90aad961cf074af15b9ef44a09f9d2a8fbfbe6a2"
-);
+app.put("/:publicHex", async (req, res) => {
+  const publicHex = req.params.publicHex;
+  log.debug(`Updating metadata for: ${publicHex}`);
+  const isSuccess = await checkPublicKey(publicHex);
+
+  log.debug(
+    isSuccess ? "Successfully updated metadata" : "Failed to update metadata"
+  );
+  res.send({
+    isSuccess,
+  });
+});
+
+const port = parseInt(process.env.PORT) || 8080;
+app.listen(port, () => {
+  console.log(`npub-metadata listening on port ${port}`);
+});
+
+// 82341f882b6eabcd2ba7f1ef90aad961cf074af15b9ef44a09f9d2a8fbfbe6a2
