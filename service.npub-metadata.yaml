@@ -24,7 +24,7 @@ steps:
       [
         "run",
         "services",
-        "deploy",
+        "replace",
         "npub-metadata",
         "--image",
         "us-central1-docker.pkg.dev/$PROJECT_ID/services/npub-metadata:latest",
