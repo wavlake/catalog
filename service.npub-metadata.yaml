@@ -23,7 +23,7 @@ steps:
     args:
       [
         "run",
-        "jobs",
+        "service",
         "deploy",
         "npub-metadata",
         "--image",
