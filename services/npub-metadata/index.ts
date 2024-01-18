@@ -17,11 +17,11 @@ const checkPublicKey = async (publicHex: string): Promise<boolean> => {
 
     // 24 hours
     const STALE_TIME = 86400000;
-    const npubUpdatedWithinLastHour =
+    const npubUpdatedRecently =
       npub?.updated_at &&
       new Date().getTime() - npub.updated_at.getTime() < STALE_TIME;
 
-    if (npubUpdatedWithinLastHour) {
+    if (npubUpdatedRecently) {
       log.debug("Skipping check, metadata was checked within the last hour");
       return true;
     }
