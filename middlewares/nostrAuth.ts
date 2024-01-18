@@ -1,8 +1,10 @@
+import log from "loglevel";
 import asyncHandler from "express-async-handler";
 import { Event, Kind, nip98, verifySignature } from "nostr-tools";
 import { formatError } from "../library/errors";
 import { sha256 } from "@noble/hashes/sha256";
 import { bytesToHex } from "@noble/hashes/utils";
+import { updateNpubMetadata } from "../library/nostr/nostr";
 
 // TODO - replace validateEvent with the nostr-tools version once the payload hash feature of NIP-98 is implemented
 // https://github.com/nbd-wtf/nostr-tools/blob/master/nip98.ts
@@ -94,6 +96,20 @@ export const isNostrAuthorized = asyncHandler(async (req, res, next) => {
       next(error);
       return;
     }
+
+    // TODO - move this to be triggered elsewhere (e.g. when a zap invoice is paid), once server migration to catalog is complete
+    // async update the npub metadata in the db
+    updateNpubMetadata(nostrEvent.pubkey)
+      .then(({ isSuccess }) => {
+        log.debug(
+          `${isSuccess ? "Updated" : "Failed to update"} nostr metadata for: ${
+            nostrEvent.pubkey
+          }`
+        );
+      })
+      .catch((err) => {
+        log.debug("error updating npub metadata: ", err);
+      });
 
     // successfull auth'd, add the event to res.locals so other middleware can use it
     // https://expressjs.com/en/api.html#res.locals
