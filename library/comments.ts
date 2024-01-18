@@ -17,7 +17,6 @@ export const getAllComments = async (
     .limit(limit)
     .offset(offset);
 
-  console.log("nostr comments: ", allComments.filter((c) => c.isNostr).length);
   const commentsWithSatAmount = await Promise.all(
     allComments.map(async (comment) => {
       comment.msatAmount = comment.commentMsatSum;
