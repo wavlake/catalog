@@ -2,6 +2,7 @@ import db from "../library/db";
 import asyncHandler from "express-async-handler";
 import prisma from "../prisma/client";
 import { formatError } from "../library/errors";
+const log = require("loglevel");
 
 async function groupSplitPayments(combinedAmps) {
   // Group records by txId
@@ -56,6 +57,7 @@ const get_account = asyncHandler(async (req, res, next) => {
     });
   } catch (err) {
     next(err);
+    return;
   }
 });
 
@@ -123,6 +125,67 @@ const get_activity = asyncHandler(async (req, res, next) => {
     })
     .catch((err) => {
       next(err);
+      return;
+    });
+});
+
+const get_notification = asyncHandler(async (req, res, next) => {
+  const request = {
+    accountId: req["uid"],
+  };
+
+  // console.log(request)
+  const lastActivityCheckAt = await db
+    .knex("user")
+    .select("last_activity_check_at")
+    .where("id", "=", request.accountId)
+    .first()
+    .then((data) => {
+      return data.last_activity_check_at;
+    })
+    .catch((err) => {
+      log.error("Error checking user's last activity check:", err);
+      next(err);
+      return;
+    });
+
+  const notifyUser = await db
+    .knex("amp")
+    .max("created_at")
+    .where("split_destination", "=", request.accountId)
+    .groupBy("split_destination")
+    .first()
+    .then((data) => {
+      return data.max > lastActivityCheckAt;
+    })
+    .catch((err) => {
+      log.error("Error checking user's latest amp:", err);
+      next(err);
+      return;
+    });
+
+  res.send({
+    success: true,
+    data: { notify: notifyUser },
+  });
+});
+
+const put_notification = asyncHandler(async (req, res, next) => {
+  const request = {
+    accountId: req["uid"],
+  };
+
+  db.knex("user")
+    .update({ last_activity_check_at: db.knex.fn.now() })
+    .where("user.id", "=", request.accountId)
+    .then(() => {
+      res.send({
+        success: true,
+      });
+    })
+    .catch((err) => {
+      next(err);
+      return;
     });
 });
 
@@ -145,6 +208,7 @@ const get_features = asyncHandler(async (req, res, next) => {
     });
   } catch (err) {
     next(err);
+    return;
   }
 });
 
@@ -204,7 +268,15 @@ const get_history = asyncHandler(async (req, res, next) => {
     });
   } catch (err) {
     next(err);
+    return;
   }
 });
 
-export default { get_account, get_activity, get_features, get_history };
+export default {
+  get_account,
+  get_activity,
+  get_notification,
+  put_notification,
+  get_features,
+  get_history,
+};
