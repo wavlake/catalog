@@ -11,10 +11,28 @@ const app = express();
 
 const checkPublicKey = async (publicHex: string): Promise<boolean> => {
   try {
+    const npub = await prisma.npub.findUnique({
+      where: { public_hex: publicHex },
+    });
+
+    // 24 hours
+    const STALE_TIME = 86400000;
+    const npubUpdatedRecently =
+      npub?.updated_at &&
+      new Date().getTime() - npub.updated_at.getTime() < STALE_TIME;
+
+    if (npubUpdatedRecently) {
+      log.debug("Skipping check, metadata was checked within the last hour");
+      return true;
+    }
+
+    log.debug(`Retrieving metadata for: ${publicHex}`);
+
     // TODO - get relay list from nip-05
     const latestMetadataEvent = await getProfileMetadata(publicHex);
     const latestMetadata = JSON.parse(latestMetadataEvent.content);
 
+    log.debug(`Updating: ${latestMetadata.name} ${publicHex}`);
     await prisma.npub.upsert({
       where: { public_hex: publicHex },
       update: {
@@ -36,7 +54,6 @@ const checkPublicKey = async (publicHex: string): Promise<boolean> => {
 
 app.put("/:publicHex", async (req, res) => {
   const publicHex = req.params.publicHex;
-  log.debug(`Updating metadata for: ${publicHex}`);
   const isSuccess = await checkPublicKey(publicHex);
 
   log.debug(
