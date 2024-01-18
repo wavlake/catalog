@@ -17,6 +17,7 @@ export const getAllComments = async (
     .limit(limit)
     .offset(offset);
 
+  console.log("nostr comments: ", allComments.filter((c) => c.isNostr).length);
   const commentsWithSatAmount = await Promise.all(
     allComments.map(async (comment) => {
       comment.msatAmount = comment.commentMsatSum;
@@ -106,7 +107,7 @@ function nostrComments(contentIds) {
     "track" ON "track"."id" = "comment"."content_id"
   INNER JOIN 
     "artist" ON "artist"."id" = "track"."artist_id"
-  INNER JOIN 
+  LEFT JOIN 
     "npub" ON "npub"."public_hex" = "comment"."user_id"
   WHERE 
     "track"."id" IN (${contentIds.map((id) => `'${id}'`).join(", ")})
