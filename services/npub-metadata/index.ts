@@ -32,7 +32,7 @@ const checkPublicKey = async (publicHex: string): Promise<boolean> => {
     const latestMetadataEvent = await getProfileMetadata(publicHex);
     const latestMetadata = JSON.parse(latestMetadataEvent.content);
 
-    log.debug(`Updating: ${latestMetadata.name} ${publicHex}`);
+    log.debug(`Updating DB: ${latestMetadata.name} ${publicHex}`);
     await prisma.npub.upsert({
       where: { public_hex: publicHex },
       update: {
@@ -56,9 +56,6 @@ app.put("/:publicHex", async (req, res) => {
   const publicHex = req.params.publicHex;
   const isSuccess = await checkPublicKey(publicHex);
 
-  log.debug(
-    isSuccess ? "Successfully updated metadata" : "Failed to update metadata"
-  );
   res.send({
     isSuccess,
   });
