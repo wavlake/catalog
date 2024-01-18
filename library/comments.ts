@@ -1,4 +1,3 @@
-import prisma from "../prisma/client";
 import db from "../library/db";
 import { nip19 } from "nostr-tools";
 
@@ -84,31 +83,40 @@ function commentsLegacy(contentIds) {
 }
 
 function nostrComments(contentIds) {
-  return db
-    .knex("comment")
-    .leftOuterJoin("user", "comment.user_id", "=", "user.id")
-    .join("preamp", "comment.tx_id", "=", "preamp.tx_id")
-    .join("track", "track.id", "=", "comment.content_id")
-    .join("artist", "artist.id", "=", "track.artist_id")
-    .select(
-      "comment.id as id",
-      "track.id as trackId",
-      "is_nostr as isNostr",
-      "preamp.tx_id as txId"
-    )
-    .min("track.title as title")
-    .min("artist.user_id as ownerId")
-    .min("comment.content as content")
-    .min("comment.created_at as createdAt")
-    .min("preamp.msat_amount as commentMsatSum")
-    .min("comment.user_id as userId")
-    .min("comment.user_id as name") // TODO: get username via nostr profile
-    .min("user.profile_url as commenterProfileUrl")
-    .min("user.artwork_url as commenterArtworkUrl")
-    .whereIn("track.id", contentIds)
-    .andWhere("comment.is_nostr", "=", true)
-    .whereNull("comment.parent_id")
-    .groupBy("comment.id", "track.id", "preamp.tx_id");
+  return db.knex.raw(`
+  SELECT 
+    "comment"."id" AS "id",
+    "track"."id" AS "trackId",
+    "is_nostr" AS "isNostr",
+    "preamp"."tx_id" AS "txId",
+    MIN("track"."title") AS "title",
+    MIN("artist"."user_id") AS "ownerId",
+    MIN("comment"."content") AS "content",
+    MIN("comment"."created_at") AS "createdAt",
+    MIN("preamp"."msat_amount") AS "commentMsatSum",
+    MIN("comment"."user_id") AS "userId",
+    MIN("comment"."user_id") AS "commenterProfileUrl",
+    MIN(JSONB_EXTRACT_PATH_TEXT("npub"."metadata", '$.display_name')::text) AS "name",
+    MIN(JSONB_EXTRACT_PATH_TEXT("npub"."metadata", '$.picture')::text) AS "commenterArtworkUrl"
+  FROM 
+    "comment"
+  INNER JOIN 
+    "preamp" ON "comment"."tx_id" = "preamp"."tx_id"
+  INNER JOIN 
+    "track" ON "track"."id" = "comment"."content_id"
+  INNER JOIN 
+    "artist" ON "artist"."id" = "track"."artist_id"
+  INNER JOIN 
+    "npub" ON "npub"."public_hex" = "comment"."user_id"
+  WHERE 
+    "track"."id" IN (${contentIds.map((id) => `'${id}'`).join(", ")})
+    AND "comment"."is_nostr" = TRUE
+    AND "comment"."parent_id" IS NULL
+  GROUP BY 
+    "comment"."id", 
+    "track"."id", 
+    "preamp"."tx_id"
+`);
 }
 
 function userComments(contentIds) {
