@@ -1,7 +1,7 @@
 import db from "../library/db";
 import asyncHandler from "express-async-handler";
 import prisma from "../prisma/client";
-import log from "loglevel";
+import { formatError } from "../library/errors";
 
 async function groupSplitPayments(combinedAmps) {
   // Group records by txId
@@ -62,32 +62,52 @@ const get_account = asyncHandler(async (req, res, next) => {
 const get_activity = asyncHandler(async (req, res, next) => {
   const request = {
     accountId: req["uid"],
-    page: req.params.page ? req.params.page : "1",
   };
 
+  const { page } = req.params;
+
+  const pageInt = parseInt(page);
+  if (!Number.isInteger(pageInt) || pageInt <= 0) {
+    const error = formatError(400, "Page must be a positive integer");
+    next(error);
+    return;
+  }
+
+  // TODO: Add support for legacy amps
   db.knex("amp")
     .join("preamp", "preamp.tx_id", "=", "amp.tx_id")
+    .leftOuterJoin("user", "user.id", "=", "amp.user_id")
     .leftOuterJoin("comment", "comment.tx_id", "=", "amp.tx_id")
+    .leftOuterJoin("track", "track.id", "=", "amp.track_id")
+    .leftOuterJoin("album", "album.id", "=", "amp.track_id")
+    .leftOuterJoin("artist", "artist.id", "=", "amp.track_id")
+    .leftOuterJoin("episode", "episode.id", "=", "amp.track_id")
     .select(
+      "amp.track_id as contentId",
       "amp.msat_amount as msatAmount",
       "amp.content_type as contentType",
       "amp.user_id as senderId",
       "amp.created_at as createdAt",
       "amp.tx_id as txId",
       "amp.track_id as contentId",
+      "amp.type as ampType",
       "preamp.msat_amount as totalMsatAmount",
       "preamp.podcast as podcast",
-      "preamp.sender_name as senderName",
       "preamp.episode as episode",
       "preamp.app_name as appName",
-      "comment.content as commentContent"
+      "comment.content as content",
+      "user.artwork_url as commenterArtworkUrl",
+      db.knex.raw('COALESCE("user"."name", "preamp"."sender_name") as name'),
+      db.knex.raw(
+        'COALESCE("track"."title", "album"."title", "artist"."name", "episode"."title") as title'
+      )
     )
     .where("amp.split_destination", "=", request.accountId)
     .whereNotNull("amp.tx_id")
     .orderBy("amp.created_at", "desc")
     .paginate({
       perPage: 50,
-      currentPage: parseInt(request.page),
+      currentPage: pageInt,
       isLengthAware: true,
     })
     .then((data) => {
