@@ -15,7 +15,8 @@ const checkPublicKey = async (publicHex: string): Promise<boolean> => {
       where: { public_hex: publicHex },
     });
 
-    const STALE_TIME = 3600000;
+    // 24 hours
+    const STALE_TIME = 86400000;
     const npubUpdatedWithinLastHour =
       npub?.updated_at &&
       new Date().getTime() - npub.updated_at.getTime() < STALE_TIME;
