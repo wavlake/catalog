@@ -86,7 +86,7 @@ const get_activity = asyncHandler(async (req, res, next) => {
       "amp.track_id as contentId",
       "amp.msat_amount as msatAmount",
       "amp.content_type as contentType",
-      "amp.user_id as senderId",
+      "amp.user_id as userId",
       "amp.created_at as createdAt",
       "amp.tx_id as txId",
       "amp.track_id as contentId",
@@ -112,7 +112,10 @@ const get_activity = asyncHandler(async (req, res, next) => {
     })
     .then((data) => {
       // console.log(data);
-      res.send(data);
+      res.send({
+        success: true,
+        data: { activities: data.data, pagination: data.pagination },
+      });
     })
     .catch((err) => {
       next(err);
