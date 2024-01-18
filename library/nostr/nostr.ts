@@ -1,4 +1,5 @@
 import { Filter, relayInit, Event } from "nostr-tools";
+import fetch from "node-fetch";
 
 const DEFAULT_READ_RELAY_URIS = [
   "wss://purplepag.es",
@@ -80,4 +81,14 @@ const getEventFromRelay = (
       reject(e);
     });
   });
+};
+
+// put request to npub-metadata with /:npub as a route param
+const npubMetadataService = "https://npub-metadata-cgi4gylh7q-uc.a.run.app";
+export const updateNpubMetadata = async function (npub) {
+  const res = await fetch(`${npubMetadataService}/${npub}`, {
+    method: "PUT",
+  });
+
+  return res.json();
 };
