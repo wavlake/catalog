@@ -1,10 +1,12 @@
 ### npub-metadata
 
-This is a cronjob that updates Podcast Index with all the latest new and revised feeds since the last run.
+This is a service that upserts an npub metadata kind 0 event into the npub table.
+
+The npub records are used as metadata for comments.
 
 This job is dependent on the catalog monorepo's Prisma client.
 
-It runs in Google Cloud Run as an automated job. The build config is in the monorepo root `./cronjob.npub-metadata.yaml`.
+It runs in Google Cloud Run as a service. The build config is in the monorepo root `./service.npub-metadata.yaml`.
 
 #### Development
 
@@ -17,7 +19,7 @@ Run:
 #### Docker
 
 Build container locally:
-`docker build -t publish -f cronjobs/npub-metadata/Dockerfile .`
+`docker build -t publish -f services/npub-metadata/Dockerfile .`
 
 Run container locally:
 `docker run publish`
