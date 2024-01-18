@@ -84,7 +84,7 @@ const getEventFromRelay = (
 };
 
 // put request to npub-metadata with /:npub as a route param
-const npubMetadataService = "https://npub-metadata-cgi4gylh7q-uc.a.run.app";
+const npubMetadataService = process.env.NPUB_UPDATE_SERVICE_URL;
 export const updateNpubMetadata = async function (npub) {
   const res = await fetch(`${npubMetadataService}/${npub}`, {
     method: "PUT",
