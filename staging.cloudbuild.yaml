@@ -33,6 +33,7 @@ steps:
       - "PODCAST_INDEX_KEY=${_PODCAST_INDEX_KEY}"
       - "PODCAST_INDEX_SECRET=${_PODCAST_INDEX_SECRET}"
       - "ZBD_CALLBACK_URL=${_ZBD_CALLBACK_URL}"
+      - "NPUB_UPDATE_SERVICE_URL=${_NPUB_UPDATE_SERVICE_URL}"
     secretEnv: ["PG_PASSWORD", "AWS_SECRET_ACCESS_KEY", "ZBD_API_KEY"]
   - name: blastshielddown/wavlake-catalog:latest
     id: migrate db
