@@ -59,6 +59,46 @@ const get_account = asyncHandler(async (req, res, next) => {
   }
 });
 
+const get_activity = asyncHandler(async (req, res, next) => {
+  const request = {
+    accountId: req["uid"],
+    page: req.params.page ? req.params.page : "1",
+  };
+
+  db.knex("amp")
+    .join("preamp", "preamp.tx_id", "=", "amp.tx_id")
+    .leftOuterJoin("comment", "comment.tx_id", "=", "amp.tx_id")
+    .select(
+      "amp.msat_amount as msatAmount",
+      "amp.content_type as contentType",
+      "amp.user_id as senderId",
+      "amp.created_at as createdAt",
+      "amp.tx_id as txId",
+      "amp.track_id as contentId",
+      "preamp.msat_amount as totalMsatAmount",
+      "preamp.podcast as podcast",
+      "preamp.sender_name as senderName",
+      "preamp.episode as episode",
+      "preamp.app_name as appName",
+      "comment.content as commentContent"
+    )
+    .where("amp.split_destination", "=", request.accountId)
+    .whereNotNull("amp.tx_id")
+    .orderBy("amp.created_at", "desc")
+    .paginate({
+      perPage: 50,
+      currentPage: parseInt(request.page),
+      isLengthAware: true,
+    })
+    .then((data) => {
+      // console.log(data);
+      res.send(data);
+    })
+    .catch((err) => {
+      next(err);
+    });
+});
+
 const get_features = asyncHandler(async (req, res, next) => {
   try {
     const userId = req["uid"];
@@ -140,4 +180,4 @@ const get_history = asyncHandler(async (req, res, next) => {
   }
 });
 
-export default { get_account, get_features, get_history };
+export default { get_account, get_activity, get_features, get_history };
