@@ -96,8 +96,8 @@ function nostrComments(contentIds) {
     MIN("preamp"."msat_amount") AS "commentMsatSum",
     MIN("comment"."user_id") AS "userId",
     MIN("comment"."user_id") AS "commenterProfileUrl",
-    JSONB_EXTRACT_PATH_TEXT("npub"."metadata", '$.display_name')::text AS "name",
-    JSONB_EXTRACT_PATH_TEXT("npub"."metadata", '$.picture')::text AS "commenterArtworkUrl"
+    MIN(JSONB_EXTRACT_PATH_TEXT("npub"."metadata", '$.display_name')::text) AS "name",
+    MIN(JSONB_EXTRACT_PATH_TEXT("npub"."metadata", '$.picture')::text) AS "commenterArtworkUrl"
   FROM 
     "comment"
   INNER JOIN 
@@ -115,8 +115,7 @@ function nostrComments(contentIds) {
   GROUP BY 
     "comment"."id", 
     "track"."id", 
-    "preamp"."tx_id", 
-    "npub"."metadata";
+    "preamp"."tx_id"
 `);
 }
 
