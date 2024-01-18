@@ -82,6 +82,7 @@ const get_activity = asyncHandler(async (req, res, next) => {
     .leftOuterJoin("album", "album.id", "=", "amp.track_id")
     .leftOuterJoin("artist", "artist.id", "=", "amp.track_id")
     .leftOuterJoin("episode", "episode.id", "=", "amp.track_id")
+    .leftOuterJoin("podcast", "podcast.id", "=", "amp.track_id")
     .select(
       "amp.track_id as contentId",
       "amp.msat_amount as msatAmount",
@@ -97,6 +98,9 @@ const get_activity = asyncHandler(async (req, res, next) => {
       "preamp.app_name as appName",
       "comment.content as content",
       "user.artwork_url as commenterArtworkUrl",
+      db.knex.raw(
+        'COALESCE("artist"."artist_url", "podcast"."podcast_url") as contentUrl'
+      ),
       db.knex.raw('COALESCE("user"."name", "preamp"."sender_name") as name'),
       db.knex.raw(
         'COALESCE("track"."title", "album"."title", "artist"."name", "episode"."title") as title'
