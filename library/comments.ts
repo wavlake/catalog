@@ -1,4 +1,3 @@
-import prisma from "../prisma/client";
 import db from "../library/db";
 import { nip19 } from "nostr-tools";
 
@@ -8,12 +7,12 @@ export const getAllComments = async (
   offset: number = 0
 ) => {
   const allComments = await db
-    // .knex(commentsLegacy(contentIds))
-    // .unionAll([
-    .knex(nostrComments(contentIds))
-    // userComments(contentIds),
-    // userCommentsViaKeysend(contentIds),
-    // ])
+    .knex(commentsLegacy(contentIds))
+    .unionAll([
+      nostrComments(contentIds),
+      userComments(contentIds),
+      userCommentsViaKeysend(contentIds),
+    ])
     .orderBy("createdAt", "desc")
     .limit(limit)
     .offset(offset);
@@ -31,8 +30,12 @@ export const getAllComments = async (
     commentsWithSatAmount.map(async (comment) => {
       if (comment.isNostr) {
         const npub = nip19.npubEncode(comment.userId);
-        const commenterProfileUrl = `https://primal.net/p/${npub}`;
-        return { ...comment, commenterProfileUrl };
+        comment.userId = null;
+        comment.name = npub.slice(0, 5) + "..." + npub.slice(-5);
+
+        return {
+          ...comment,
+        };
       } else {
         // Clean up names from other apps with @ prefix
         comment.name = comment.name?.replace("@", "") ?? "anonymous";
@@ -80,33 +83,41 @@ function commentsLegacy(contentIds) {
 }
 
 function nostrComments(contentIds) {
-  return db
-    .knex("comment")
-    .leftOuterJoin("user", "comment.user_id", "=", "user.id")
-    .join("preamp", "comment.tx_id", "=", "preamp.tx_id")
-    .join("track", "track.id", "=", "comment.content_id")
-    .join("artist", "artist.id", "=", "track.artist_id")
-    .join("npub", "npub.public_hex", "=", "comment.user_id")
-    .select(
-      "comment.id as id",
-      "track.id as trackId",
-      "is_nostr as isNostr",
-      "preamp.tx_id as txId",
-      "track.title as title",
-      "artist.user_id as ownerId",
-      "comment.content as content",
-      "comment.created_at as createdAt",
-      "preamp.msat_amount as commentMsatSum",
-      "comment.user_id as userId",
-      // this is set above based on the npub
-      "comment.user_id as commenterProfileUrl"
-    )
-    .jsonExtract("npub.metadata", "$.display_name", "name")
-    .jsonExtract("npub.metadata", "$.picture", "commenterArtworkUrl")
-    .whereIn("track.id", contentIds)
-    .andWhere("comment.is_nostr", "=", true)
-    .whereNull("comment.parent_id")
-    .as("nostrComments");
+  return db.knex.raw(`
+  SELECT 
+    "comment"."id" AS "id",
+    "track"."id" AS "trackId",
+    "is_nostr" AS "isNostr",
+    "preamp"."tx_id" AS "txId",
+    MIN("track"."title") AS "title",
+    MIN("artist"."user_id") AS "ownerId",
+    MIN("comment"."content") AS "content",
+    MIN("comment"."created_at") AS "createdAt",
+    MIN("preamp"."msat_amount") AS "commentMsatSum",
+    MIN("comment"."user_id") AS "userId",
+    MIN("comment"."user_id") AS "commenterProfileUrl",
+    JSONB_EXTRACT_PATH_TEXT("npub"."metadata", '$.display_name')::text AS "name",
+    JSONB_EXTRACT_PATH_TEXT("npub"."metadata", '$.picture')::text AS "commenterArtworkUrl"
+  FROM 
+    "comment"
+  INNER JOIN 
+    "preamp" ON "comment"."tx_id" = "preamp"."tx_id"
+  INNER JOIN 
+    "track" ON "track"."id" = "comment"."content_id"
+  INNER JOIN 
+    "artist" ON "artist"."id" = "track"."artist_id"
+  INNER JOIN 
+    "npub" ON "npub"."public_hex" = "comment"."user_id"
+  WHERE 
+    "track"."id" IN (${contentIds.map((id) => `'${id}'`).join(", ")})
+    AND "comment"."is_nostr" = TRUE
+    AND "comment"."parent_id" IS NULL
+  GROUP BY 
+    "comment"."id", 
+    "track"."id", 
+    "preamp"."tx_id", 
+    "npub"."metadata";
+`);
 }
 
 function userComments(contentIds) {
