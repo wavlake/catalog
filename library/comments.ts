@@ -1,5 +1,4 @@
 import db from "../library/db";
-import { nip19 } from "nostr-tools";
 import log from "loglevel";
 
 export const getAllComments = async (
@@ -12,7 +11,10 @@ export const getAllComments = async (
     .unionAll([nostrComments(contentIds)])
     .orderBy("createdAt", "desc")
     .limit(limit)
-    .offset(offset);
+    .offset(offset)
+    .catch((e) => {
+      log.error(e);
+    });
 
   return allComments;
 };
