@@ -98,6 +98,7 @@ const get_tracks_by_artist_url = asyncHandler(async (req, res, next) => {
         : { isDraft: false, publishedAt: { lte: new Date() } }),
     },
     orderBy: { order: "asc" },
+    take: 10,
   });
 
   res.json({ success: true, data: tracks });
