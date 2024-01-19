@@ -40,7 +40,8 @@ const get_podcast_comments = asyncHandler(async (req, res, next) => {
   res.json({ success: true, data: combinedAndSortedComments });
 });
 
-// looks up all track ids for an artist and then gets all comments for those tracks
+// looks up all album ids for an artist, then all the track ids for each album,
+// and then gets all comments for those tracks
 const get_artist_comments = asyncHandler(async (req, res, next) => {
   const { id: artistId, page = "0", pageSize = "100" } = req.params;
 
@@ -82,51 +83,8 @@ const get_artist_comments = asyncHandler(async (req, res, next) => {
   });
 });
 
-// looks up all track ids for an artist and then gets all comments for those tracks
-const get_artist_url_comments = asyncHandler(async (req, res, next) => {
-  const { artistUrl, page = "0", pageSize = "100" } = req.params;
-
-  const pageInt = parseInt(page);
-  if (!Number.isInteger(pageInt) || pageInt <= 0) {
-    const error = formatError(400, "Page must be a positive integer");
-    next(error);
-    return;
-  }
-
-  const pageSizeInt = parseInt(pageSize);
-  if (!Number.isInteger(pageSizeInt) || pageSizeInt <= 0) {
-    const error = formatError(400, "Page size must be a positive integer");
-    next(error);
-    return;
-  }
-
-  const offset = (pageInt - 1) * pageSizeInt; // Calculate the offset
-
-  if (!get_artist_url_comments) {
-    const error = formatError(400, "Must include the artist url");
-    next(error);
-    return;
-  }
-
-  const tracks = await prisma.trackInfo.findMany({
-    where: { artistUrl: artistUrl },
-  });
-
-  const comments = await getAllComments(
-    tracks.map(({ id }) => id),
-    pageSizeInt,
-    offset
-  );
-
-  res.json({
-    success: true,
-    data: comments,
-  });
-});
-
 export default {
   get_comments,
   get_podcast_comments,
   get_artist_comments,
-  get_artist_url_comments,
 };
