@@ -53,7 +53,7 @@ const get_podcast_comments = asyncHandler(async (req, res, next) => {
 // looks up all album ids for an artist, then all the track ids for each album,
 // and then gets all comments for those tracks
 const get_artist_comments = asyncHandler(async (req, res, next) => {
-  const { id: artistId, page = "0", pageSize = "100" } = req.params;
+  const { id: artistId, page = "1", pageSize = "100" } = req.params;
 
   const pageInt = parseInt(page);
   if (!Number.isInteger(pageInt) || pageInt <= 0) {
