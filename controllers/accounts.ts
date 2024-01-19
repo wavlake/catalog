@@ -1,7 +1,8 @@
 import db from "../library/db";
 import asyncHandler from "express-async-handler";
 import prisma from "../prisma/client";
-import log from "loglevel";
+import { formatError } from "../library/errors";
+const log = require("loglevel");
 
 async function groupSplitPayments(combinedAmps) {
   // Group records by txId
@@ -56,7 +57,136 @@ const get_account = asyncHandler(async (req, res, next) => {
     });
   } catch (err) {
     next(err);
+    return;
   }
+});
+
+const get_activity = asyncHandler(async (req, res, next) => {
+  const request = {
+    accountId: req["uid"],
+  };
+
+  const { page } = req.params;
+
+  const pageInt = parseInt(page);
+  if (!Number.isInteger(pageInt) || pageInt <= 0) {
+    const error = formatError(400, "Page must be a positive integer");
+    next(error);
+    return;
+  }
+
+  // TODO: Add support for legacy amps
+  db.knex("amp")
+    .join("preamp", "preamp.tx_id", "=", "amp.tx_id")
+    .leftOuterJoin("user", "user.id", "=", "amp.user_id")
+    .leftOuterJoin("comment", "comment.tx_id", "=", "amp.tx_id")
+    .leftOuterJoin("track", "track.id", "=", "amp.track_id")
+    .leftOuterJoin("album", "album.id", "=", "amp.track_id")
+    .leftOuterJoin("artist", "artist.id", "=", "amp.track_id")
+    .leftOuterJoin("episode", "episode.id", "=", "amp.track_id")
+    .leftOuterJoin("podcast", "podcast.id", "=", "amp.track_id")
+    .select(
+      "amp.track_id as contentId",
+      "amp.msat_amount as msatAmount",
+      "amp.content_type as contentType",
+      "amp.user_id as userId",
+      "amp.created_at as createdAt",
+      "amp.tx_id as txId",
+      "amp.track_id as contentId",
+      "amp.type as ampType",
+      "preamp.msat_amount as totalMsatAmount",
+      "preamp.podcast as podcast",
+      "preamp.episode as episode",
+      "preamp.app_name as appName",
+      "comment.content as content",
+      "user.artwork_url as commenterArtworkUrl",
+      db.knex.raw(
+        'COALESCE("artist"."artist_url", "podcast"."podcast_url") as contentUrl'
+      ),
+      db.knex.raw('COALESCE("user"."name", "preamp"."sender_name") as name'),
+      db.knex.raw(
+        'COALESCE("track"."title", "album"."title", "artist"."name", "episode"."title") as title'
+      )
+    )
+    .where("amp.split_destination", "=", request.accountId)
+    .whereNotNull("amp.tx_id")
+    .orderBy("amp.created_at", "desc")
+    .paginate({
+      perPage: 50,
+      currentPage: pageInt,
+      isLengthAware: true,
+    })
+    .then((data) => {
+      // console.log(data);
+      res.send({
+        success: true,
+        data: { activities: data.data, pagination: data.pagination },
+      });
+    })
+    .catch((err) => {
+      next(err);
+      return;
+    });
+});
+
+const get_notification = asyncHandler(async (req, res, next) => {
+  const request = {
+    accountId: req["uid"],
+  };
+
+  // console.log(request)
+  const lastActivityCheckAt = await db
+    .knex("user")
+    .select("last_activity_check_at")
+    .where("id", "=", request.accountId)
+    .first()
+    .then((data) => {
+      return data.last_activity_check_at;
+    })
+    .catch((err) => {
+      log.error("Error checking user's last activity check:", err);
+      next(err);
+      return;
+    });
+
+  const notifyUser = await db
+    .knex("amp")
+    .max("created_at")
+    .where("split_destination", "=", request.accountId)
+    .groupBy("split_destination")
+    .first()
+    .then((data) => {
+      return data.max > lastActivityCheckAt;
+    })
+    .catch((err) => {
+      log.error("Error checking user's latest amp:", err);
+      next(err);
+      return;
+    });
+
+  res.send({
+    success: true,
+    data: { notify: notifyUser },
+  });
+});
+
+const put_notification = asyncHandler(async (req, res, next) => {
+  const request = {
+    accountId: req["uid"],
+  };
+
+  db.knex("user")
+    .update({ last_activity_check_at: db.knex.fn.now() })
+    .where("user.id", "=", request.accountId)
+    .then(() => {
+      res.send({
+        success: true,
+      });
+    })
+    .catch((err) => {
+      next(err);
+      return;
+    });
 });
 
 const get_features = asyncHandler(async (req, res, next) => {
@@ -78,6 +208,7 @@ const get_features = asyncHandler(async (req, res, next) => {
     });
   } catch (err) {
     next(err);
+    return;
   }
 });
 
@@ -137,7 +268,15 @@ const get_history = asyncHandler(async (req, res, next) => {
     });
   } catch (err) {
     next(err);
+    return;
   }
 });
 
-export default { get_account, get_features, get_history };
+export default {
+  get_account,
+  get_activity,
+  get_notification,
+  put_notification,
+  get_features,
+  get_history,
+};
