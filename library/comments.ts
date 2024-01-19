@@ -8,7 +8,7 @@ export const getAllComments = async (
 ) => {
   const allComments = await db
     .knex(commentsLegacy(contentIds))
-    .unionAll([nostrComments(contentIds)])
+    .unionAll([commentsV2(contentIds)])
     .orderBy("createdAt", "desc")
     .limit(limit)
     .offset(offset)
@@ -27,30 +27,34 @@ function commentsLegacy(contentIds) {
     .leftOuterJoin("user", "comment.user_id", "=", "user.id")
     .join("amp", "comment.amp_id", "=", "amp.id")
     .join("track", "track.id", "=", "amp.track_id")
+    .leftOuterJoin(amps, "comment.id", "=", "amps.type_key")
+    .leftOuterJoin(reply, "comment.id", "=", "reply.parentId")
     .select(
       "comment.id as id",
-      "is_nostr as isNostr",
-      "track.id as contentId",
-      "amp.msat_amount as msatAmount",
-      "comment.user_id as userId",
-      "comment.created_at as createdAt",
-      "comment.content as content",
-      "user.artwork_url as commenterArtworkUrl",
-      "user.name as name",
-      "track.title as title"
+      db.knex.raw("JSON_AGG(DISTINCT reply) as replies"), // Thank you SO: https://stackoverflow.com/questions/48394387/how-to-group-row-into-an-array-postgresql
+      db.knex.raw("bool_or(is_nostr) as isNostr"),
+      "track.id as contentId"
     )
+    .min("amp.msat_amount as msatAmount")
+    .min("comment.user_id as userId")
+    .min("comment.created_at as createdAt")
+    .min("comment.content as content")
+    .min("user.artwork_url as commenterArtworkUrl")
+    .min("user.name as name")
+    .min("track.title as title")
     .whereIn("track.id", contentIds)
     .andWhere("amp.comment", "=", true)
-    .andWhere("track.deleted", "=", false)
     .whereNull("comment.parent_id")
     .whereNull("amp.tx_id")
+    .groupBy("comment.id", "track.id")
     .as("commentsLegacy");
 }
 
-function nostrComments(contentIds) {
+function commentsV2(contentIds) {
   return db.knex.raw(`
   SELECT 
   "comment"."id" AS "id",
+  NULL AS "replies",
   "comment"."is_nostr" AS "isNostr",
   "preamp"."content_id" AS "contentId",
   "preamp"."msat_amount" AS "msatAmount",
@@ -76,3 +80,42 @@ function nostrComments(contentIds) {
     "preamp"."content_id" IN (${contentIds.map((id) => `'${id}'`).join(", ")})
 `);
 }
+
+// REPLY QUERIES FROM LEGACY
+
+const amps = db
+  .knex("amp")
+  .select("type_key")
+  .sum("amp.msat_amount as ampSum")
+  .groupBy("type_key")
+  .where("type", "=", 4)
+  .from("amp")
+  .as("amps");
+
+const reply_amps = db
+  .knex("amp")
+  .select("type_key")
+  .min("type as type")
+  .sum("amp.msat_amount as ampSum")
+  .groupBy("type_key")
+  .where("type", "=", 3)
+  .orWhere("type", "=", 4)
+  .from("amp")
+  .as("reply_amps");
+
+const reply = db.knex
+  .select("comment.id")
+  .min("user.name as name")
+  .min("comment.user_id as userId")
+  .min("user.artwork_url as artworkUrl")
+  .min("user.profile_url as profileUrl")
+  .min("parent_id as parentId")
+  .min("content as content")
+  .min("comment.created_at as createdAt")
+  .sum("reply_amps.ampSum as ampSum")
+  .join("user", "comment.user_id", "=", "user.id")
+  .leftOuterJoin(reply_amps, "comment.id", "=", "reply_amps.type_key")
+  .groupBy("comment.id")
+  .from("comment")
+  .orderBy("comment.created_at")
+  .as("reply");
