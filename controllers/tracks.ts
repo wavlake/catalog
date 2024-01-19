@@ -497,20 +497,30 @@ const update_track = asyncHandler(async (req, res, next) => {
     where: { id: trackId },
   });
 
-  const duplicateTitledTrack = await db
-    .knex("track")
-    .where("artist_id", "=", unEditedTrack.artistId)
-    .andWhere("title", "=", title)
-    .andWhere("deleted", "=", false)
-    .first();
-
-  if (duplicateTitledTrack) {
-    const error = formatError(
-      400,
-      "Please pick another title, this artist already has a track with that title."
-    );
+  // if we dont have a track match, return a 404
+  if (!unEditedTrack) {
+    const error = formatError(404, `Track not found for id: ${trackId}`);
     next(error);
     return;
+  }
+
+  // if we are updating the title, check if the artist already has a track with that title
+  if (title !== undefined) {
+    const duplicateTitledTrack = await db
+      .knex("track")
+      .where("artist_id", "=", unEditedTrack.artistId)
+      .andWhere("title", "=", title)
+      .andWhere("deleted", "=", false)
+      .first();
+
+    if (duplicateTitledTrack) {
+      const error = formatError(
+        400,
+        "Please pick another title, this artist already has a track with that title."
+      );
+      next(error);
+      return;
+    }
   }
 
   log.debug(`Editing track ${trackId}`);
