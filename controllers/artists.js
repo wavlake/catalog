@@ -38,13 +38,22 @@ const get_artist_by_id = asyncHandler(async (req, res, next) => {
   });
 
   const albums = await prisma.album.findMany({
-    where: { artistId: artistId, deleted: false },
+    where: {
+      artistId: artistId,
+      deleted: false,
+      isDraft: false,
+      publishedAt: { lte: new Date() },
+    },
     orderBy: { createdAt: "desc" },
     take: 3,
   });
 
   const tracks = await prisma.trackInfo.findMany({
-    where: { artistId: artistId },
+    where: {
+      artistId: artistId,
+      isDraft: false,
+      publishedAt: { lte: new Date() },
+    },
     orderBy: { msatTotal: "desc" },
     take: 10,
   });
