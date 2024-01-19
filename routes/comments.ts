@@ -12,6 +12,10 @@ router.get(
   "/artist/:id/:page/:pageSize",
   commentsController.get_artist_comments
 );
+router.get(
+  "/artist-url/:artistUrl/:page/:pageSize",
+  commentsController.get_artist_url_comments
+);
 
 // Export router
 export default router;
