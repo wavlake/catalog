@@ -13,6 +13,11 @@ const get_comments = asyncHandler(async (req, res, next) => {
 
   const combinedAndSortedComments = await getAllComments([contentId], 100);
 
+  if (!combinedAndSortedComments) {
+    const error = formatError(500, "Something went wrong");
+    next(error);
+    return;
+  }
   res.json({
     success: true,
     data: combinedAndSortedComments,
@@ -37,6 +42,11 @@ const get_podcast_comments = asyncHandler(async (req, res, next) => {
     100
   );
 
+  if (!combinedAndSortedComments) {
+    const error = formatError(500, "Something went wrong");
+    next(error);
+    return;
+  }
   res.json({ success: true, data: combinedAndSortedComments });
 });
 
@@ -77,6 +87,11 @@ const get_artist_comments = asyncHandler(async (req, res, next) => {
     offset
   );
 
+  if (!comments) {
+    const error = formatError(500, "Something went wrong");
+    next(error);
+    return;
+  }
   res.json({
     success: true,
     data: comments,
