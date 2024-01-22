@@ -54,7 +54,7 @@ function commentsV2(contentIds) {
   return db.knex.raw(`
   SELECT 
   "comment"."id" AS "id",
-  NULL AS "replies",
+  '[]' AS "replies",
   "comment"."is_nostr" AS "isNostr",
   "preamp"."content_id" AS "contentId",
   "preamp"."msat_amount" AS "msatAmount",
