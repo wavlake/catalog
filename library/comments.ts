@@ -16,7 +16,6 @@ export const getAllComments = async (
       log.error(e);
     });
 
-  console.log(allComments);
   return allComments;
 };
 
