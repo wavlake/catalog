@@ -32,7 +32,7 @@ function commentsLegacy(contentIds) {
     .select(
       "comment.id as id",
       db.knex.raw("JSON_AGG(DISTINCT reply) as replies"), // Thank you SO: https://stackoverflow.com/questions/48394387/how-to-group-row-into-an-array-postgresql
-      db.knex.raw("bool_or(is_nostr) as isNostr"),
+      db.knex.raw(`bool_or(is_nostr) as "isNostr"`),
       "track.id as contentId"
     )
     .min("amp.msat_amount as msatAmount")
@@ -54,7 +54,7 @@ function commentsV2(contentIds) {
   return db.knex.raw(`
   SELECT 
   "comment"."id" AS "id",
-  NULL AS "replies",
+  '[]' AS "replies",
   "comment"."is_nostr" AS "isNostr",
   "preamp"."content_id" AS "contentId",
   "preamp"."msat_amount" AS "msatAmount",
@@ -86,7 +86,7 @@ function commentsV2(contentIds) {
 const amps = db
   .knex("amp")
   .select("type_key")
-  .sum("amp.msat_amount as ampSum")
+  .sum("amp.msat_amount as msatAmount")
   .groupBy("type_key")
   .where("type", "=", 4)
   .from("amp")
@@ -96,7 +96,7 @@ const reply_amps = db
   .knex("amp")
   .select("type_key")
   .min("type as type")
-  .sum("amp.msat_amount as ampSum")
+  .sum("amp.msat_amount as msatAmount")
   .groupBy("type_key")
   .where("type", "=", 3)
   .orWhere("type", "=", 4)
@@ -112,7 +112,7 @@ const reply = db.knex
   .min("parent_id as parentId")
   .min("content as content")
   .min("comment.created_at as createdAt")
-  .sum("reply_amps.ampSum as ampSum")
+  .sum("reply_amps.msatAmount as msatAmount")
   .join("user", "comment.user_id", "=", "user.id")
   .leftOuterJoin(reply_amps, "comment.id", "=", "reply_amps.type_key")
   .groupBy("comment.id")
