@@ -16,6 +16,7 @@ export const getAllComments = async (
       log.error(e);
     });
 
+  console.log(allComments);
   return allComments;
 };
 
@@ -32,7 +33,7 @@ function commentsLegacy(contentIds) {
     .select(
       "comment.id as id",
       db.knex.raw("JSON_AGG(DISTINCT reply) as replies"), // Thank you SO: https://stackoverflow.com/questions/48394387/how-to-group-row-into-an-array-postgresql
-      db.knex.raw("bool_or(is_nostr) as isNostr"),
+      db.knex.raw(`bool_or(is_nostr) as "isNostr"`),
       "track.id as contentId"
     )
     .min("amp.msat_amount as msatAmount")
