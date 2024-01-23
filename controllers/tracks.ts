@@ -188,7 +188,7 @@ const get_tracks_by_artist_id = asyncHandler(async (req, res, next) => {
         ? {}
         : { isDraft: false, publishedAt: { lte: new Date() } }),
     },
-    orderBy: { msatTotal30Days: "desc" },
+    orderBy: { msatTotal: "desc" },
     take: limit,
   });
 
