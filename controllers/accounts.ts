@@ -161,7 +161,7 @@ const get_notification = asyncHandler(async (req, res, next) => {
     .groupBy("split_destination")
     .first()
     .then((data) => {
-      return data.max > lastActivityCheckAt;
+      return data && data.max ? data.max > lastActivityCheckAt : false;
     })
     .catch((err) => {
       log.error("Error checking user's latest amp:", err);
