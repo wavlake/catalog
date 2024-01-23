@@ -101,7 +101,7 @@ const get_activity = asyncHandler(async (req, res, next) => {
       "comment.content as content",
       "user.artwork_url as commenterArtworkUrl",
       db.knex.raw(
-        'COALESCE("artist"."artist_url", "podcast"."podcast_url") as contenturl' // lowercase because casing not supported in raw
+        `COALESCE("artist"."artist_url", "podcast"."podcast_url") as "contentUrl"`
       ),
       db.knex.raw('COALESCE("user"."name", "preamp"."sender_name") as name'),
       db.knex.raw(
@@ -117,15 +117,9 @@ const get_activity = asyncHandler(async (req, res, next) => {
       isLengthAware: true,
     })
     .then((data) => {
-      const formatted = data.data.map((activity) => {
-        return {
-          ...activity,
-          contentUrl: activity.contenturl, // formats the key to camelCase for FE
-        };
-      });
       res.send({
         success: true,
-        data: { activities: formatted, pagination: data.pagination },
+        data: { activities: data.data, pagination: data.pagination },
       });
     })
     .catch((err) => {
