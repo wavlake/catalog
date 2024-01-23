@@ -101,7 +101,7 @@ const get_activity = asyncHandler(async (req, res, next) => {
       "comment.content as content",
       "user.artwork_url as commenterArtworkUrl",
       db.knex.raw(
-        'COALESCE("artist"."artist_url", "podcast"."podcast_url") as contentUrl'
+        `COALESCE("artist"."artist_url", "podcast"."podcast_url") as "contentUrl"`
       ),
       db.knex.raw('COALESCE("user"."name", "preamp"."sender_name") as name'),
       db.knex.raw(
@@ -117,7 +117,6 @@ const get_activity = asyncHandler(async (req, res, next) => {
       isLengthAware: true,
     })
     .then((data) => {
-      // console.log(data);
       res.send({
         success: true,
         data: { activities: data.data, pagination: data.pagination },
@@ -156,6 +155,8 @@ const get_notification = asyncHandler(async (req, res, next) => {
     .groupBy("split_destination")
     .first()
     .then((data) => {
+      if (!data?.max) return false;
+
       return data.max > lastActivityCheckAt;
     })
     .catch((err) => {
