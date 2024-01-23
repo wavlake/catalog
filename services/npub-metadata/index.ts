@@ -37,12 +37,12 @@ const checkPublicKey = async (publicHex: string): Promise<boolean> => {
       where: { public_hex: publicHex },
       update: {
         metadata: latestMetadata,
-        updated_at: new Date(latestMetadataEvent.created_at * 1000),
+        updated_at: new Date(),
       },
       create: {
         public_hex: publicHex,
         metadata: latestMetadata,
-        updated_at: new Date(latestMetadataEvent.created_at * 1000),
+        updated_at: new Date(),
       },
     });
     return true;
