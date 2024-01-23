@@ -19,7 +19,7 @@ Run:
 #### Docker
 
 Build container locally:
-`docker build -t publish -f services/npub-metadata/Dockerfile .`
+`docker build -t npub -f services/npub-metadata/Dockerfile .`
 
 Run container locally:
-`docker run publish`
+`docker run npub`
