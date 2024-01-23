@@ -212,6 +212,8 @@ export const update_podcast = asyncHandler(async (req, res, next) => {
     youtube,
     website,
     isDraft,
+    // TODO - consume this when scheduling is implemented
+    // ensure time zones are properly handled
     publishedAt: publishedAtString,
     primaryCategoryId,
     secondaryCategoryId,
@@ -220,9 +222,6 @@ export const update_podcast = asyncHandler(async (req, res, next) => {
   } = req.body;
   const uid = req["uid"];
 
-  const publishedAt = publishedAtString
-    ? new Date(publishedAtString)
-    : undefined;
   const updatedAt = new Date();
 
   if (!podcastId) {
@@ -255,7 +254,6 @@ export const update_podcast = asyncHandler(async (req, res, next) => {
       website,
       isDraft,
       updatedAt,
-      publishedAt,
       primaryCategoryId,
       secondaryCategoryId,
       primarySubcategoryId,
