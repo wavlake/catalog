@@ -40,7 +40,13 @@ const get_all_by_term = asyncHandler(async (req, res, next) => {
       deleted: false,
       isDraft: false,
       publishedAt: { lte: new Date() },
-      track: { some: { deleted: false } }, // some: at least one
+      track: {
+        some: {
+          deleted: false,
+          isDraft: false,
+          publishedAt: { lte: new Date() },
+        },
+      }, // some: at least one
     },
     include: {
       artist: true,
