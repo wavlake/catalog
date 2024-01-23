@@ -88,7 +88,7 @@ model Artist {
   deleted    Boolean?  @default(false)
   verified   Boolean?  @default(false)
   npub       String?   @db.VarChar(64)
-  msatTotal  BigInt    @map("msat_total") @default(0)
+  msatTotal  BigInt    @default(0) @map("msat_total")
   album      Album[]
   user       User      @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "artist_user_id_foreign")
   track      Track[]
@@ -539,6 +539,12 @@ model podcastSubcategory {
 
   @@index([name], map: "idx_podcast_subcategory_name")
   @@map("podcast_subcategory")
+}
+
+model npub {
+  public_hex String    @id @unique(map: "npub_public_hex_unique") @db.VarChar(255)
+  metadata   Json?
+  updated_at DateTime? @default(now()) @db.Timestamptz(6)
 }
 
 view TrackInfo {

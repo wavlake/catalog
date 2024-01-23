@@ -83,26 +83,6 @@ const get_tracks_by_album_id = asyncHandler(async (req, res, next) => {
   res.json({ success: true, data: tracks });
 });
 
-const get_tracks_by_artist_url = asyncHandler(async (req, res, next) => {
-  const request = {
-    artistUrl: req.params.artistUrl,
-  };
-  const { unpublished } = req.query;
-
-  const tracks = await prisma.trackInfo.findMany({
-    where: {
-      artistUrl: request.artistUrl,
-      isProcessing: false,
-      ...(unpublished
-        ? {}
-        : { isDraft: false, publishedAt: { lte: new Date() } }),
-    },
-    orderBy: { order: "asc" },
-  });
-
-  res.json({ success: true, data: tracks });
-});
-
 const get_tracks_by_new = asyncHandler(async (req, res, next) => {
   const limit = parseLimit(req.query.limit, 50);
 
@@ -208,7 +188,7 @@ const get_tracks_by_artist_id = asyncHandler(async (req, res, next) => {
         ? {}
         : { isDraft: false, publishedAt: { lte: new Date() } }),
     },
-    orderBy: { msatTotal30Days: "desc" },
+    orderBy: { msatTotal: "desc" },
     take: limit,
   });
 
@@ -584,7 +564,6 @@ export default {
   search_tracks,
   get_tracks_by_album_id,
   get_tracks_by_artist_id,
-  get_tracks_by_artist_url,
   get_random_tracks_by_genre_id,
   delete_track,
   create_track,
