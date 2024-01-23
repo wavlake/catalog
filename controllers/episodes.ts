@@ -389,7 +389,7 @@ export const get_featured_episodes = asyncHandler(async (req, res, next) => {
       p."published_at" <= ${new Date()} AND
       p."is_featured" = true;
   `;
-    console.log(episodes);
+    // console.log(episodes);
     res.json({
       success: true,
       data: episodes,
