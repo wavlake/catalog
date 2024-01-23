@@ -22,7 +22,7 @@ const checkPublicKey = async (publicHex: string): Promise<boolean> => {
       new Date().getTime() - npub.updated_at.getTime() < STALE_TIME;
 
     if (npubUpdatedRecently) {
-      log.debug("Skipping check, metadata was recently checked");
+      log.debug("Skipping check, metadata was recently updated");
       return true;
     }
 
