@@ -16,8 +16,20 @@ const get_all_by_term = asyncHandler(async (req, res, next) => {
     where: {
       name: { contains: term, mode: "insensitive" },
       deleted: false,
-      album: { some: { deleted: false } },
-      track: { some: { deleted: false } },
+      album: {
+        some: {
+          deleted: false,
+          isDraft: false,
+          publishedAt: { lte: new Date() },
+        },
+      },
+      track: {
+        some: {
+          deleted: false,
+          isDraft: false,
+          publishedAt: { lte: new Date() },
+        },
+      },
     },
     take: 10,
   });
@@ -26,7 +38,15 @@ const get_all_by_term = asyncHandler(async (req, res, next) => {
     where: {
       title: { contains: term, mode: "insensitive" },
       deleted: false,
-      track: { some: { deleted: false } }, // some: at least one
+      isDraft: false,
+      publishedAt: { lte: new Date() },
+      track: {
+        some: {
+          deleted: false,
+          isDraft: false,
+          publishedAt: { lte: new Date() },
+        },
+      }, // some: at least one
     },
     include: {
       artist: true,
@@ -38,6 +58,8 @@ const get_all_by_term = asyncHandler(async (req, res, next) => {
     where: {
       title: { contains: term, mode: "insensitive" },
       duration: { not: null },
+      isDraft: false,
+      publishedAt: { lte: new Date() },
     },
     orderBy: {
       msatTotal: "desc",
