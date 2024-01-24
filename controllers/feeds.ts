@@ -49,7 +49,7 @@ const get_external_rss_feed = asyncHandler(async (req, res, next) => {
 
     if (!podcastIndexOrgFeed) {
       const error = formatError(
-        404,
+        500,
         "Error getting feed, please try again later."
       );
       next(error);

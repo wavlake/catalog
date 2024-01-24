@@ -70,7 +70,7 @@ export const fetchAllFeedInfo = async (guid: string) => {
     return sanitizedFeed;
   } catch (err) {
     log.error(`Error fetching podcast index feed: ${err}`);
-    throw err;
+    return;
   }
 };
 
