@@ -245,12 +245,11 @@ const update_album = asyncHandler(async (req, res, next) => {
     genreId,
     subgenreId,
     isDraft,
+    // TODO consume this when scheduling is implemented
+    // ensure time zones are properly handled
     publishedAt: publishedAtString,
   } = req.body;
   const uid = req["uid"];
-  const publishedAt = publishedAtString
-    ? new Date(publishedAtString)
-    : undefined;
   const updatedAt = new Date();
 
   if (!albumId) {
@@ -280,7 +279,6 @@ const update_album = asyncHandler(async (req, res, next) => {
       genreId,
       subgenreId,
       isDraft,
-      publishedAt,
     },
   });
   res.json({

@@ -412,9 +412,8 @@ const create_track = asyncHandler(async (req, res, next) => {
 const search_tracks = asyncHandler(async (req, res, next) => {
   const title = String(req.query.title);
   const artist = String(req.query.artist);
-  const album = String(req.query.album);
 
-  if (!title && !artist && !album) {
+  if (!title && !artist) {
     const error = formatError(
       400,
       "Must include at least one search query. Either title, artist, or album"
@@ -430,13 +429,12 @@ const search_tracks = asyncHandler(async (req, res, next) => {
         {
           artist: { contains: artist, mode: "insensitive" },
         },
-        { albumTitle: { contains: album, mode: "insensitive" } },
       ],
       isProcessing: false,
       isDraft: false,
       publishedAt: { lte: new Date() },
     },
-    take: 10,
+    take: 50,
   });
 
   res.json({ success: true, data: tracks });
@@ -449,13 +447,12 @@ const update_track = asyncHandler(async (req, res, next) => {
     order,
     lyrics,
     isDraft,
+    // TODO - consume this when scheduling is implemented
+    // ensure time zones are properly handled
     publishedAt: publishedAtString,
   } = req.body;
   const uid = req["uid"];
 
-  const publishedAt = publishedAtString
-    ? new Date(publishedAtString)
-    : undefined;
   const updatedAt = new Date();
 
   if (!trackId) {
@@ -515,7 +512,6 @@ const update_track = asyncHandler(async (req, res, next) => {
         lyrics,
         updatedAt,
         isDraft,
-        publishedAt,
       },
     });
 
