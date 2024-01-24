@@ -218,13 +218,12 @@ export const update_episode = asyncHandler(async (req, res, next) => {
     title,
     order,
     isDraft,
+    // TODO - consume this when scheduling is implemented
+    // ensure time zones are properly handled
     publishedAt: publishedAtString,
     description,
   } = req.body;
   const uid = req["uid"];
-  const publishedAt = publishedAtString
-    ? new Date(publishedAtString)
-    : undefined;
   const updatedAt = new Date();
 
   if (!episodeId) {
@@ -252,7 +251,6 @@ export const update_episode = asyncHandler(async (req, res, next) => {
       ...(order ? { order: parseInt(order) } : {}),
       updatedAt,
       isDraft,
-      publishedAt,
       description,
     },
   });
