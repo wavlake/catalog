@@ -6,11 +6,18 @@ const router = express.Router();
 
 //////// ROUTES ////////
 
-router.get("/:id", commentsController.get_comments);
-router.get("/show/:id", commentsController.get_podcast_comments);
+router.get("/:contentId/:page?/:pageSize?", commentsController.get_comments);
 router.get(
-  "/artist/:id/:page/:pageSize",
+  "/show/:podcastId/:page?/:pageSize?",
+  commentsController.get_podcast_comments
+);
+router.get(
+  "/artist/:artistId/:page?/:pageSize?",
   commentsController.get_artist_comments
+);
+router.get(
+  "/album/:albumId/:page?/:pageSize?",
+  commentsController.get_album_comments
 );
 
 // Export router
