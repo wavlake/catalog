@@ -449,13 +449,12 @@ const update_track = asyncHandler(async (req, res, next) => {
     order,
     lyrics,
     isDraft,
+    // TODO - consume this when scheduling is implemented
+    // ensure time zones are properly handled
     publishedAt: publishedAtString,
   } = req.body;
   const uid = req["uid"];
 
-  const publishedAt = publishedAtString
-    ? new Date(publishedAtString)
-    : undefined;
   const updatedAt = new Date();
 
   if (!trackId) {
@@ -515,7 +514,6 @@ const update_track = asyncHandler(async (req, res, next) => {
         lyrics,
         updatedAt,
         isDraft,
-        publishedAt,
       },
     });
 
