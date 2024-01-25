@@ -1,36 +1,7 @@
-import { formatError } from "../library/errors";
 import prisma from "../prisma/client";
 import asyncHandler from "express-async-handler";
 import { getAllComments } from "../library/comments";
-
-// Pagination and ID validation middleware
-const validatePaginationAndId = (idField) => {
-  return async (req, res, next) => {
-    const { page = "1", pageSize = "100" } = req.params;
-    const id = req.params[idField];
-
-    const pageInt = parseInt(page);
-    if (!Number.isInteger(pageInt) || pageInt <= 0) {
-      return next(formatError(400, "Page must be a positive integer"));
-    }
-
-    const pageSizeInt = parseInt(pageSize);
-    if (!Number.isInteger(pageSizeInt) || pageSizeInt <= 0) {
-      return next(formatError(400, "Page size must be a positive integer"));
-    }
-
-    if (!id) {
-      return next(formatError(400, `Must include the ${idField}`));
-    }
-
-    req.pagination = {
-      page: pageInt,
-      pageSize: pageSizeInt,
-      offset: (pageInt - 1) * pageSizeInt,
-    };
-    next();
-  };
-};
+import { formatError } from "../library/errors";
 
 const getCommentsCommon = async (ids, res, next) => {
   const comments = await getAllComments(ids, 100);
@@ -73,14 +44,8 @@ const get_album_comments = asyncHandler(async (req, res, next) => {
 });
 
 export default {
-  get_comments: [validatePaginationAndId("contentId"), get_comments],
-  get_podcast_comments: [
-    validatePaginationAndId("podcastId"),
-    get_podcast_comments,
-  ],
-  get_artist_comments: [
-    validatePaginationAndId("artistId"),
-    get_artist_comments,
-  ],
-  get_album_comments: [validatePaginationAndId("albumId"), get_album_comments],
+  get_comments,
+  get_podcast_comments,
+  get_artist_comments,
+  get_album_comments,
 };
