@@ -8,7 +8,7 @@ It runs in Google Cloud Run as a service. The build config is in the monorepo ro
 
 #### Development
 
-Run:
+Run (from service root):
 
 `npm install`
 
