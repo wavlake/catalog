@@ -1,4 +1,5 @@
 import { formatError } from "../library/errors";
+import { validate } from "uuid";
 
 // Pagination and ID validation middleware
 export const validatePaginationAndId = (idField) => {
@@ -20,13 +21,8 @@ export const validatePaginationAndId = (idField) => {
       return next(formatError(400, `Must include the ${idField}`));
     }
 
-    if (
-      id.length !== 36 ||
-      id[8] !== "-" ||
-      id[13] !== "-" ||
-      id[18] !== "-" ||
-      id[23] !== "-"
-    ) {
+    const isValid = validate(id);
+    if (isValid) {
       return next(formatError(400, "Invalid ID format"));
     }
 
