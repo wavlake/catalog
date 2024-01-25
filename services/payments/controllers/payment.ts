@@ -1,12 +1,12 @@
 const log = require("loglevel");
 import asyncHandler from "express-async-handler";
-import { formatError } from "../library/errors";
-import { initiatePayment, runPaymentChecks } from "../library/payments";
+import { formatError } from "@library/errors";
+import { initiatePayment, runPaymentChecks } from "@library/payments";
 const NLInvoice = require("@node-lightning/invoice");
 const {
   isValidExternalKeysendRequest,
   processKeysends,
-} = require("../library/keysend");
+} = require("@library/keysend");
 
 const createKeysend = asyncHandler(async (req, res: any, next) => {
   // Request should include the following:
