@@ -11,6 +11,7 @@ const asyncHandler = require("express-async-handler");
 import { formatError } from "../library/errors";
 import { getStatus } from "../library/helpers";
 import { AWS_S3_IMAGE_PREFIX } from "../library/constants";
+import { getAllComments } from "../library/comments";
 const { invalidateCdn } = require("../library/cloudfrontClient");
 
 const localConvertPath = `${process.env.LOCAL_CONVERT_PATH}`;
@@ -97,7 +98,28 @@ const get_album_by_id = asyncHandler(async (req, res, next) => {
     where: { id: request.albumId },
   });
 
-  res.json({ success: true, data: album });
+  const albumTrackIds = await prisma.track.findMany({
+    where: {
+      albumId: request.albumId,
+      isDraft: false,
+      deleted: false,
+      publishedAt: { lte: new Date() },
+    },
+    select: { id: true },
+  });
+
+  const comments = await getAllComments(
+    albumTrackIds.map((track) => track.id),
+    10
+  );
+
+  res.json({
+    success: true,
+    data: {
+      ...album,
+      topMessages: comments,
+    },
+  });
 });
 
 const get_albums_by_artist_id = asyncHandler(async (req, res, next) => {
