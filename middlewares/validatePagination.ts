@@ -22,7 +22,7 @@ export const validatePaginationAndId = (idField) => {
     }
 
     const isValid = validate(id);
-    if (isValid) {
+    if (!isValid) {
       return next(formatError(400, "Invalid ID format"));
     }
 
