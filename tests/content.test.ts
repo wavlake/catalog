@@ -1,5 +1,5 @@
 const db = require("../library/db");
-const { getType } = require("../library/content");
+const { getParentContentTypeAndId, getType } = require("../library/content");
 const log = require("loglevel");
 const { validate } = require("uuid");
 
@@ -69,5 +69,29 @@ describe("getType", () => {
     });
 
     await expect(getType(validUuid)).rejects.toThrow("Database error");
+  });
+});
+
+describe("getParentContentTypeAndId", () => {
+  const validUuid = "valid-uuid";
+  const invalidUuid = "invalid-uuid";
+
+  beforeEach(() => {
+    validate.mockClear();
+    db.knex.mockClear();
+    log.debug.mockClear();
+  });
+
+  // Test for each type
+  it("should return null when contentId is valid but query is empty", async () => {
+    validate.mockReturnValue(true);
+    db.knex.mockImplementation(() => ({
+      select: () => ({
+        where: () => Promise.resolve(null),
+      }),
+    }));
+
+    const result = await getParentContentTypeAndId(validUuid);
+    expect(result).toBeNull();
   });
 });

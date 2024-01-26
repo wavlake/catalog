@@ -8,6 +8,9 @@ export const getParentContentTypeAndId = async (contentId) => {
     .select("album_id")
     .where("track.id", "=", contentId)
     .then((data) => {
+      if (!data) {
+        return null;
+      }
       return data[0].album_id;
     });
 
@@ -20,6 +23,9 @@ export const getParentContentTypeAndId = async (contentId) => {
     .select("podcast_id")
     .where("episode.id", "=", contentId)
     .then((data) => {
+      if (!data) {
+        return null;
+      }
       return data[0].podcast_id;
     });
 
