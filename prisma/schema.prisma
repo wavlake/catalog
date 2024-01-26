@@ -537,6 +537,16 @@ model npub {
   updated_at DateTime? @default(now()) @db.Timestamptz(6)
 }
 
+model activity {
+  id         Int       @id @default(autoincrement())
+  user_id    String    @db.VarChar(64)
+  type       Int
+  type_key   Int
+  created_at DateTime? @default(now()) @db.Timestamptz(6)
+
+  @@index([user_id], map: "idx_activity_user_id")
+}
+
 view TrackInfo {
   id              String    @unique @db.Uuid
   title           String?   @db.VarChar(255)
