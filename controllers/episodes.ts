@@ -23,6 +23,7 @@ export const get_episode = asyncHandler(async (req, res, next) => {
           id: true,
           name: true,
           podcastUrl: true,
+          userId: true,
         },
       },
     },
