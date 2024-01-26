@@ -537,22 +537,13 @@ model npub {
   updated_at DateTime? @default(now()) @db.Timestamptz(6)
 }
 
-model activity {
-  id         Int       @id @default(autoincrement())
-  user_id    String    @db.VarChar(64)
-  type       Int
-  type_key   Int
-  created_at DateTime? @default(now()) @db.Timestamptz(6)
-
-  @@index([user_id], map: "idx_activity_user_id")
-}
-
 view TrackInfo {
   id              String    @unique @db.Uuid
   title           String?   @db.VarChar(255)
   artist          String?   @db.VarChar(255)
   artistUrl       String?   @map("artist_url") @db.VarChar(255)
   avatarUrl       String?   @map("avatar_url") @db.VarChar(255)
+  userId         String?   @map("user_id") @db.VarChar(255)
   artworkUrl      String?   @map("artwork_url") @db.VarChar(255)
   msatTotal30Days BigInt?   @map("msat_total_30_days")
   msatTotal7Days  BigInt?   @map("msat_total_7_days")
@@ -590,6 +581,7 @@ view EpisodeInfo {
   isProcessing    Boolean?
   publishedAt     DateTime? @db.Timestamptz(6)
   isDraft         Boolean?
+  userId          String?   @db.VarChar(255)
 
   @@map("episode_info")
 }

@@ -8,6 +8,7 @@ exports.up = function (knex) {
         "artist",
         "artist_url",
         "avatar_url",
+        "user_id",
         "artwork_url",
         "msat_total_30_days",
         "msat_total_7_days",
@@ -23,7 +24,6 @@ exports.up = function (knex) {
         "msat_total",
         "published_at",
         "is_draft",
-        "owner_id",
       ]);
       view.as(
         knex.raw(
@@ -33,6 +33,7 @@ exports.up = function (knex) {
               artist.name as artist,
               artist.artist_url as artist_url,
               artist.artwork_url as avatar_url,
+              artist.user_id as user_id,
               album.artwork_url as artwork_url,
               thirty.msat_total_30_days as msat_total_30_days, 
               seven.msat_total_7_days as msat_total_7_days,
@@ -48,7 +49,6 @@ exports.up = function (knex) {
               track.msat_total as msat_total,
               track.published_at as published_at,
               album.is_draft as is_draft
-              artist.owner_id as owner_id
               from public.track
               full outer join 
               (select track_id, 
@@ -100,7 +100,7 @@ exports.up = function (knex) {
         "isProcessing",
         "publishedAt",
         "isDraft",
-        "ownerId",
+        "userId",
       ]);
       view.as(
         knex.raw(
@@ -121,8 +121,8 @@ exports.up = function (knex) {
             episode.order as order,
             episode.is_processing as isProcessing,
             episode.published_at as publishedAt,
-            podcast.is_draft as isDraft
-            podcast.owner_id as ownerId
+            podcast.is_draft as isDraft,
+            podcast.user_id as userId
             from public.episode
             full outer join 
             (select track_id, 
