@@ -96,6 +96,14 @@ const get_album_by_id = asyncHandler(async (req, res, next) => {
 
   const album = await prisma.album.findFirstOrThrow({
     where: { id: request.albumId },
+    // include artist.userId at the top level of the album
+    include: {
+      artist: {
+        select: {
+          userId: true,
+        },
+      },
+    },
   });
 
   const albumTrackIds = await prisma.track.findMany({
