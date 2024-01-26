@@ -1,9 +1,8 @@
 import { errorHandler } from "@middlewares/errorHandler";
 import express from "express";
-
+const log = require("loglevel");
 const config = require("dotenv").config();
 const app = express();
-const log = require("loglevel");
 const cors = require("cors");
 const compression = require("compression");
 const helmet = require("helmet");
@@ -11,7 +10,7 @@ const bodyParser = require("body-parser");
 const Sentry = require("@sentry/node");
 
 const corsHost = process.env.CORS_HOST;
-log.setLevel(process.env.LOGLEVEL);
+log.setLevel(process.env.LOGLEVEL || "info");
 const sentryDsn = process.env.SENTRY_DSN;
 const sentryTracesSampleRate = process.env.SENTRY_TRACES_SAMPLE_RATE;
 
@@ -31,7 +30,7 @@ Sentry.init({
   ],
   environment: process.env.NODE_ENV,
   // Performance Monitoring
-  tracesSampleRate: parseFloat(sentryTracesSampleRate), // Capture 100% of the transactions, reduce in production!,
+  tracesSampleRate: sentryTracesSampleRate, // Capture 100% of the transactions, reduce in production!,
 });
 
 // Trace incoming requests

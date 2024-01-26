@@ -1,6 +1,5 @@
 const log = require("loglevel");
 import asyncHandler from "express-async-handler";
-import { formatError } from "@library/errors";
 import { initiatePayment, runPaymentChecks } from "@library/payments";
 const NLInvoice = require("@node-lightning/invoice");
 const {
@@ -10,8 +9,8 @@ const {
 import { getCharge } from "@library/zbdClient";
 
 const createKeysend = asyncHandler(async (req, res: any, next) => {
-  log.debug(`TODO: Fix`);
-  return;
+  // log.debug(`TODO: Fix`);
+  // return;
   // Request should include the following:
   // - array of keysends: [{msatAmount: 100, pubkey: 'abc123', customKey: customValue, }, ...]
   // - message (optional)
@@ -107,7 +106,7 @@ const zbdCallback = asyncHandler(async (req, res, next) => {
 
   // TODO: Handle updates received from callbacks
   log.info(`Received callback`);
-  console.log(data);
+  log.debug(`ZBD callback data: ${JSON.stringify(data)}`);
 });
 
 export default { createKeysend, createPayment, getPayment, zbdCallback };
