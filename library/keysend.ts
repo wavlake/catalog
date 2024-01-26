@@ -1,4 +1,5 @@
 const log = require("loglevel");
+log.setLevel(process.env.LOGLEVEL || "info");
 import db from "./db";
 const { buildAmpTx } = require("./amp");
 const { getUserName } = require("./userHelper");
@@ -62,7 +63,7 @@ async function constructCustomRecords(keysend, keysendMetadata) {
     });
   }
 
-  console.log(customRecords);
+  log.debug(customRecords);
   return customRecords;
 }
 
@@ -144,10 +145,10 @@ async function sendExternalKeysend(keysend, keysendMetadata) {
   const sendKeysendResult = await sendKeysend({
     amount: keysend.msatAmount.toString(),
     pubkey: keysend.pubkey,
-    // tlvRecords: customRecords,
+    tlvRecords: customRecords,
   });
 
-  console.log(JSON.stringify(sendKeysendResult));
+  log.debug(JSON.stringify(sendKeysendResult));
   if (sendKeysendResult.success) {
     if (sendKeysendResult.data.transaction.status === "completed") {
       log.debug(
@@ -278,7 +279,7 @@ exports.processKeysends = async (userId, externalKeysendRequest) => {
             keysendMetadata
           );
           const trx = await db.knex.transaction();
-          console.log(
+          log.debug(
             `externalKeysendResult: ${JSON.stringify(externalKeysendResult)}`
           );
 
