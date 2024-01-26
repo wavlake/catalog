@@ -543,7 +543,6 @@ view TrackInfo {
   artist          String?   @db.VarChar(255)
   artistUrl       String?   @map("artist_url") @db.VarChar(255)
   avatarUrl       String?   @map("avatar_url") @db.VarChar(255)
-  // TODO - debug why userId is not being returned
   userId          String?   @map("user_id") @db.VarChar(255)
   artworkUrl      String?   @map("artwork_url") @db.VarChar(255)
   msatTotal30Days BigInt?   @map("msat_total_30_days")
