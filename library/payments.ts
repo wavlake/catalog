@@ -168,22 +168,22 @@ async function isDuplicatePayRequest(invoice: string): Promise<boolean> {
 }
 
 export const runPaymentChecks = async (
-  res: any, // TODO: Use express response type
   userId: string,
   invoice: string,
   msatAmount: number,
   msatMaxFee: number
-) => {
+): Promise<any> => {
   const userHasPending = await checkUserHasPendingTx(userId);
   if (userHasPending) {
     log.info(
       `Withdraw request canceled for user: ${userId} another tx is pending`
     );
-    return res
-      ? res
-          .status(400)
-          .send("Another transaction is pending, please try again later")
-      : { success: false, error: "Another transaction is pending" };
+    return {
+      success: false,
+      error: {
+        message: "Another transaction is pending, please try again later",
+      },
+    };
   }
 
   if (invoice) {
@@ -192,11 +192,12 @@ export const runPaymentChecks = async (
       log.info(
         `Withdraw request canceled for user: ${userId} duplicate payment request`
       );
-      return res
-        ? res
-            .status(400)
-            .send("Unable to process payment, duplicate payment request")
-        : { success: false, error: "Duplicate payment request" };
+      return {
+        success: false,
+        error: {
+          message: "Unable to process payment, duplicate payment request",
+        },
+      };
     }
   }
 
@@ -207,9 +208,12 @@ export const runPaymentChecks = async (
   );
 
   if (!userHasSufficientSats) {
-    return res
-      ? res.status(400).send("Insufficient funds")
-      : { success: false, error: "Insufficient funds" };
+    return {
+      success: false,
+      error: {
+        message: "Insufficient funds",
+      },
+    };
   }
 
   return { success: true };

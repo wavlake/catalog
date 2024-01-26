@@ -55,6 +55,20 @@ export async function sendKeysend(
   return data;
 }
 
+export async function getCharge(
+  paymentId: string
+): Promise<SendPaymentResponse> {
+  const { data } = await axios
+    .get(`https://api.zebedee.io/v0/charges/${paymentId}`, {
+      headers: { apikey: zbdApiKey },
+    })
+    .catch((err) => {
+      log.trace(err);
+      return err.response;
+    });
+  return data;
+}
+
 export async function sendPayment(
   request: SendPaymentRequest
 ): Promise<SendPaymentResponse> {

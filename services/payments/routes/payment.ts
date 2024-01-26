@@ -21,6 +21,7 @@ const limiter = rateLimit({
 
 //////// ROUTES ////////
 
+router.get("/", isAuthorized, paymentsController.getPayment);
 router.post(
   "/",
   isAuthorized,

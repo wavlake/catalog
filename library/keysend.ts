@@ -51,14 +51,18 @@ async function constructKeysendMetadata(userId, externalKeysendRequest) {
 async function constructCustomRecords(keysend, keysendMetadata) {
   let customRecords = [];
   // Add standard values
-  customRecords.push([7629169, JSON.stringify(keysendMetadata)]);
+  customRecords.push({ type: 7629169, value: JSON.stringify(keysendMetadata) });
   // Add custom key/value if exists
   if (keysend.customKey && keysend.customValue) {
     const customKey = parseInt(keysend.customKey);
-    customRecords.push([customKey, keysend.customValue]);
+    customRecords.push({
+      type: customKey,
+      // value: Buffer.from(keysend.customValue.toString("hex")),
+      value: keysend.customValue,
+    });
   }
 
-  log.debug(customRecords);
+  console.log(customRecords);
   return customRecords;
 }
 
@@ -140,10 +144,10 @@ async function sendExternalKeysend(keysend, keysendMetadata) {
   const sendKeysendResult = await sendKeysend({
     amount: keysend.msatAmount.toString(),
     pubkey: keysend.pubkey,
-    tlvRecords: customRecords,
+    // tlvRecords: customRecords,
   });
 
-  log.debug(sendKeysendResult);
+  console.log(JSON.stringify(sendKeysendResult));
   if (sendKeysendResult.success) {
     if (sendKeysendResult.data.transaction.status === "completed") {
       log.debug(
@@ -153,7 +157,7 @@ async function sendExternalKeysend(keysend, keysendMetadata) {
         success: true,
         // payment_index name is legacy from lnd
         // external_payment table uses payment_index to store keysendId from ZBD
-        paymentIndex: sendKeysendResult.data.keysendId,
+        paymentIndex: sendKeysendResult.data.paymentId,
         feeMsat: sendKeysendResult.data.transaction.fee,
       };
     } else {
@@ -274,6 +278,9 @@ exports.processKeysends = async (userId, externalKeysendRequest) => {
             keysendMetadata
           );
           const trx = await db.knex.transaction();
+          console.log(
+            `externalKeysendResult: ${JSON.stringify(externalKeysendResult)}`
+          );
 
           if (externalKeysendResult) {
             logExternalKeysend({

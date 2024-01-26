@@ -9,7 +9,7 @@
   "scripts": {
     "create-env": "printenv > .env",
     "start": "node -r tsconfig-paths/register -r ts-node/register ./index.ts",
-    "dev": "NODE_ENV=dev concurrently \"npx tsc --watch\" \"nodemon dist/index.js --watch\""
+    "dev": "NODE_ENV=dev DEBUG=express:router concurrently \"npx tsc --watch\" \"nodemon dist/index.js --watch\""
   },
   "author": "",
   "license": "MIT",
