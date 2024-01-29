@@ -1,7 +1,7 @@
 import express from "express";
-const { isAuthorized } = require("../middlewares/auth");
-const { isZbdIp, isZbdRegion } = require("../middlewares/zbdChecks");
-import paymentsController from "../controllers/payments";
+const { isAuthorized } = require("@middlewares/auth");
+const { isZbdIp, isZbdRegion } = require("@middlewares/zbdChecks");
+import paymentsController from "../controllers/payment";
 const { rateLimit } = require("express-rate-limit");
 
 const env = process.env.NODE_ENV || "dev";
@@ -21,8 +21,9 @@ const limiter = rateLimit({
 
 //////// ROUTES ////////
 
+router.get("/", isAuthorized, paymentsController.getPayment);
 router.post(
-  "/payment",
+  "/",
   isAuthorized,
   limiter,
   isZbdRegion,

@@ -1,14 +1,16 @@
 const log = require("loglevel");
 import asyncHandler from "express-async-handler";
-import { formatError } from "../library/errors";
-import { initiatePayment, runPaymentChecks } from "../library/payments";
+import { initiatePayment, runPaymentChecks } from "@library/payments";
 const NLInvoice = require("@node-lightning/invoice");
 const {
   isValidExternalKeysendRequest,
   processKeysends,
-} = require("../library/keysend");
+} = require("@library/keysend");
+import { getCharge } from "@library/zbdClient";
 
 const createKeysend = asyncHandler(async (req, res: any, next) => {
+  // log.debug(`TODO: Fix`);
+  // return;
   // Request should include the following:
   // - array of keysends: [{msatAmount: 100, pubkey: 'abc123', customKey: customValue, }, ...]
   // - message (optional)
@@ -25,11 +27,11 @@ const createKeysend = asyncHandler(async (req, res: any, next) => {
 
   const isValidRequest = await isValidExternalKeysendRequest(body);
   if (!isValidRequest) {
-    return res.status(500).json({ error: "Invalid request" });
+    res.status(400).json({ error: "Invalid request" });
+    return;
   }
   // Run payment checks
   const paymentChecks = await runPaymentChecks(
-    res,
     userId,
     null,
     parseInt(msatTotal),
@@ -38,6 +40,9 @@ const createKeysend = asyncHandler(async (req, res: any, next) => {
 
   if (!paymentChecks.success) {
     log.info(`Check for ${userId} payment request failed, skipping.`);
+    res
+      .status(400)
+      .send(paymentChecks.error.message || "Payment request failed");
     return;
   }
 
@@ -55,22 +60,27 @@ const createPayment = asyncHandler(async (req, res, next) => {
   const { valueMsat } = NLInvoice.decode(invoice);
 
   if (!valueMsat || valueMsat <= 0) {
-    const error = formatError(400, "Invalid invoice");
-    next(error);
+    res.status(400).send("Invalid invoice");
     return;
   }
 
   // Run payment checks
   const paymentChecks = await runPaymentChecks(
-    res,
     userId,
     invoice,
     parseInt(valueMsat),
     parseInt(msatMaxFee)
-  );
+  ).catch((e) => {
+    log.error(`Error running payment checks: ${e}`);
+    res.status(500).send("Error running user checks");
+    return;
+  });
 
   if (!paymentChecks.success) {
     log.info(`Check for ${userId} payment request failed, skipping.`);
+    res
+      .status(400)
+      .send(paymentChecks.error.message || "Payment request failed");
     return;
   }
 
@@ -84,12 +94,19 @@ const createPayment = asyncHandler(async (req, res, next) => {
   );
 });
 
+const getPayment = asyncHandler(async (req, res, next) => {
+  const { id } = req.params;
+
+  const data = await getCharge(id);
+  res.json(data);
+});
+
 const zbdCallback = asyncHandler(async (req, res, next) => {
   const { data } = req.body;
 
   // TODO: Handle updates received from callbacks
   log.info(`Received callback`);
-  console.log(data);
+  log.debug(`ZBD callback data: ${JSON.stringify(data)}`);
 });
 
-export default { createKeysend, createPayment, zbdCallback };
+export default { createKeysend, createPayment, getPayment, zbdCallback };

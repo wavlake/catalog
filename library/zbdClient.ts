@@ -11,11 +11,14 @@ const axios = require("axios").default;
 const zbdApiKey = process.env.ZBD_API_KEY;
 const zbdCallbackUrl = `${process.env.ZBD_CALLBACK_URL}/payments/callback/zbd`;
 
+const client = axios.create({
+  baseURL: "https://api.zebedee.io/v0",
+  headers: { apikey: zbdApiKey },
+});
+
 export async function getProductionIps(): Promise<Array<string>> {
-  const { data } = await axios
-    .get("https://api.zebedee.io/v0/prod-ips", {
-      headers: { apikey: zbdApiKey },
-    })
+  const { data } = await client
+    .get("https://api.zebedee.io/v0/prod-ips")
     .catch((err) => {
       log.trace(err);
       return err.response;
@@ -25,10 +28,8 @@ export async function getProductionIps(): Promise<Array<string>> {
 }
 
 export async function isSupportedRegion(ipAddress: string): Promise<boolean> {
-  const { data } = await axios
-    .get(`https://api.zebedee.io/v0/is-supported-region/${ipAddress}`, {
-      headers: { apikey: zbdApiKey },
-    })
+  const { data } = await client
+    .get(`https://api.zebedee.io/v0/is-supported-region/${ipAddress}`)
     .catch((err) => {
       log.trace(err);
       return err.response;
@@ -40,14 +41,23 @@ export async function isSupportedRegion(ipAddress: string): Promise<boolean> {
 export async function sendKeysend(
   request: SendKeysendRequest
 ): Promise<SendKeysendResponse> {
-  const { data } = await axios
-    .post(
-      `https://api.zebedee.io/v0/keysend-payment`,
-      { callbackUrl: zbdCallbackUrl, ...request },
-      {
-        headers: { apikey: zbdApiKey },
-      }
-    )
+  const { data } = await client
+    .post(`https://api.zebedee.io/v0/keysend-payment`, {
+      callbackUrl: zbdCallbackUrl,
+      ...request,
+    })
+    .catch((err) => {
+      log.trace(err);
+      return err.response;
+    });
+  return data;
+}
+
+export async function getCharge(
+  paymentId: string
+): Promise<SendPaymentResponse> {
+  const { data } = await client
+    .get(`https://api.zebedee.io/v0/charges/${paymentId}`)
     .catch((err) => {
       log.trace(err);
       return err.response;
@@ -58,14 +68,11 @@ export async function sendKeysend(
 export async function sendPayment(
   request: SendPaymentRequest
 ): Promise<SendPaymentResponse> {
-  const { data } = await axios
-    .post(
-      `https://api.zebedee.io/v0/payments`,
-      { callbackUrl: zbdCallbackUrl, ...request },
-      {
-        headers: { apikey: zbdApiKey },
-      }
-    )
+  const { data } = await client
+    .post(`https://api.zebedee.io/v0/payments`, {
+      callbackUrl: zbdCallbackUrl,
+      ...request,
+    })
     .catch((err) => {
       log.trace(err);
       return err.response;
