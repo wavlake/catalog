@@ -54,7 +54,6 @@ async function constructCustomRecords(keysend, keysendMetadata) {
   // Add standard values
   customRecords.push({
     type: "7629169",
-    // value: JSON.stringify(keysendMetadata),
     // covert to hex
     value: Buffer.from(JSON.stringify(keysendMetadata)).toString("hex"),
   });
@@ -63,8 +62,8 @@ async function constructCustomRecords(keysend, keysendMetadata) {
     const customKey = parseInt(keysend.customKey).toString();
     customRecords.push({
       type: customKey,
+      // convert to hex
       value: Buffer.from(keysend.customValue).toString("hex"),
-      // value: keysend.customValue,
     });
   }
 

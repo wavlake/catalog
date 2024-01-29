@@ -45,7 +45,6 @@ export async function sendKeysend(
   const { data } = await client
     .post(`https://api.zebedee.io/v0/keysend-payment`, {
       callbackUrl: zbdCallbackUrl,
-      metadata: { test: "anything" },
       ...request,
     })
     .catch((err) => {
