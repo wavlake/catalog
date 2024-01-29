@@ -41,9 +41,11 @@ export async function isSupportedRegion(ipAddress: string): Promise<boolean> {
 export async function sendKeysend(
   request: SendKeysendRequest
 ): Promise<SendKeysendResponse> {
+  log.debug(request);
   const { data } = await client
     .post(`https://api.zebedee.io/v0/keysend-payment`, {
       callbackUrl: zbdCallbackUrl,
+      metadata: { test: "anything" },
       ...request,
     })
     .catch((err) => {

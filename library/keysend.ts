@@ -52,14 +52,19 @@ async function constructKeysendMetadata(userId, externalKeysendRequest) {
 async function constructCustomRecords(keysend, keysendMetadata) {
   let customRecords = [];
   // Add standard values
-  customRecords.push({ type: 7629169, value: JSON.stringify(keysendMetadata) });
+  customRecords.push({
+    type: "7629169",
+    // value: JSON.stringify(keysendMetadata),
+    // covert to hex
+    value: Buffer.from(JSON.stringify(keysendMetadata)).toString("hex"),
+  });
   // Add custom key/value if exists
   if (keysend.customKey && keysend.customValue) {
-    const customKey = parseInt(keysend.customKey);
+    const customKey = parseInt(keysend.customKey).toString();
     customRecords.push({
       type: customKey,
-      // value: Buffer.from(keysend.customValue.toString("hex")),
-      value: keysend.customValue,
+      value: Buffer.from(keysend.customValue).toString("hex"),
+      // value: keysend.customValue,
     });
   }
 
