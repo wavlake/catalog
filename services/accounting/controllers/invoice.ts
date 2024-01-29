@@ -31,9 +31,8 @@ const getInvoice = asyncHandler(async (req, res, next) => {
 });
 
 const updateInvoice = asyncHandler(async (req, res, next) => {
-  const { id } = req.params;
   // TODO - determine what the body will look like
-  const bodyZBD = req.body;
+  const { id } = req.body;
 
   // validate the id param
   if (!id) {

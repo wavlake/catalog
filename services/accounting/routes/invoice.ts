@@ -7,7 +7,7 @@ const router = express.Router();
 //////// ROUTES ////////
 
 router.get("/:id", invoiceController.getInvoice);
-router.post("/update/:id", invoiceController.updateInvoice);
+router.post("/update", invoiceController.updateInvoice);
 router.post("/", invoiceController.createInvoice);
 
 // Export router
