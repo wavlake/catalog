@@ -1,7 +1,7 @@
 import express from "express";
 const { isAuthorized } = require("@middlewares/auth");
 const { isZbdIp, isZbdRegion } = require("@middlewares/zbdChecks");
-import paymentsController from "../controllers/payment";
+import sendController from "../controllers/withdraw";
 const { rateLimit } = require("express-rate-limit");
 
 const env = process.env.NODE_ENV || "dev";
@@ -21,22 +21,22 @@ const limiter = rateLimit({
 
 //////// ROUTES ////////
 
-router.get("/", isAuthorized, paymentsController.getPayment);
+router.get("/", isAuthorized, sendController.getWithdraw);
 router.post(
   "/",
   isAuthorized,
   limiter,
   isZbdRegion,
-  paymentsController.createPayment
+  sendController.createWithdraw
 );
 router.post(
   "/keysend",
   isAuthorized,
   limiter,
   isZbdRegion,
-  paymentsController.createKeysend
+  sendController.createKeysend
 );
-router.post("/callback/zbd", isZbdIp, paymentsController.zbdCallback);
+router.post("/update", isZbdIp, sendController.updateWithdraw);
 
 // Export router
 export default router;
