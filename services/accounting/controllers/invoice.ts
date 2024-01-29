@@ -18,7 +18,7 @@ const getInvoice = asyncHandler(async (req, res, next) => {
   }
 
   // query the transaction table using the provided id
-  const invoice = await prisma.transaction.findUnique({
+  const invoice = await prisma.external_receive.findUnique({
     where: { id: intId },
   });
 
