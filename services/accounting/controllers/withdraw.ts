@@ -52,7 +52,7 @@ const createKeysend = asyncHandler(async (req, res: any, next) => {
   res.status(200).json({ success: true, data: { keysends: keysendResults } });
 });
 
-const createPayment = asyncHandler(async (req, res, next) => {
+const createWithdraw = asyncHandler(async (req, res, next) => {
   const { description, invoice, msatMaxFee } = req.body;
   const userId = req["uid"];
 
@@ -94,14 +94,14 @@ const createPayment = asyncHandler(async (req, res, next) => {
   );
 });
 
-const getPayment = asyncHandler(async (req, res, next) => {
+const getWithdraw = asyncHandler(async (req, res, next) => {
   const { id } = req.params;
 
   const data = await getCharge(id);
   res.json(data);
 });
 
-const zbdCallback = asyncHandler(async (req, res, next) => {
+const updateWithdraw = asyncHandler(async (req, res, next) => {
   const { data } = req.body;
 
   // TODO: Handle updates received from callbacks
@@ -109,4 +109,4 @@ const zbdCallback = asyncHandler(async (req, res, next) => {
   log.debug(`ZBD callback data: ${JSON.stringify(data)}`);
 });
 
-export default { createKeysend, createPayment, getPayment, zbdCallback };
+export default { createKeysend, createWithdraw, getWithdraw, updateWithdraw };

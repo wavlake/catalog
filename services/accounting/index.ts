@@ -59,13 +59,18 @@ app.use(express.json());
 
 // Import routes
 // TODO: Invoice
-// import invoice from "./routes/invoice";
-import payment from "./routes/payment";
+import deposit from "./routes/deposit";
+import invoice from "./routes/invoice";
+import send from "./routes/send";
+import withdraw from "./routes/withdraw";
 app.use(cors(corsOptions));
 
 // ROUTES
-// app.use("/v1/invoice", invoice);
-app.use("/v1/payment", payment);
+// app.use("/v1/invoice", invoice);1
+app.use("/v1/deposit", deposit);
+app.use("/v1/invoice", invoice);
+app.use("/v1/send", send);
+app.use("/v1/withdraw", withdraw);
 
 // The error handler must be registered before any other error middleware and after all controllers
 app.use(Sentry.Handlers.errorHandler());
