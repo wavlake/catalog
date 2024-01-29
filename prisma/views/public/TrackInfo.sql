@@ -4,6 +4,7 @@ SELECT
   artist.name AS artist,
   artist.artist_url,
   artist.artwork_url AS avatar_url,
+  artist.user_id,
   album.artwork_url,
   thirty.msat_total_30_days,
   seven.msat_total_7_days,
