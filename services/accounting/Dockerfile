@@ -5,9 +5,9 @@ WORKDIR /app
 
 RUN apt-get update -y && apt-get install -y openssl python3 python3-pip
 
-# Copy repo source and build payments service
+# Copy repo source and build accounting service
 COPY ./ /app/
-WORKDIR /app/services/payments
+WORKDIR /app/services/accounting
 RUN npm install --unsafe-perm ||  ((if [ -f npm-debug.log ]; then cat npm-debug.log; fi) && false)
 
 # Generate Prisma client from repo root
@@ -16,6 +16,6 @@ RUN npm install --unsafe-perm ||  ((if [ -f npm-debug.log ]; then cat npm-debug.
 RUN npx tsc
 RUN npx prisma generate
 
-# Return to services/payments directory
-WORKDIR /app/services/payments
+# Return to services/accounting directory
+WORKDIR /app/services/accounting
 ENTRYPOINT ["npm", "start"]
