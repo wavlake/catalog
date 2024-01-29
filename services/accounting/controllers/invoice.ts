@@ -17,7 +17,6 @@ const getInvoice = asyncHandler(async (req, res, next) => {
     return;
   }
 
-  // query the transaction table using the provided id
   const invoice = await prisma.external_receive.findUnique({
     where: { id: intId },
   });
@@ -31,8 +30,8 @@ const getInvoice = asyncHandler(async (req, res, next) => {
 });
 
 const updateInvoice = asyncHandler(async (req, res, next) => {
-  // TODO - determine what the body will look like
-  const { id } = req.body;
+  // TODO - determine what the ZBD payload will look like
+  const { id, preimage } = req.body;
 
   // validate the id param
   if (!id) {
@@ -49,7 +48,10 @@ const updateInvoice = asyncHandler(async (req, res, next) => {
   // update the invoice status
   const updatedInvoice = await prisma.external_receive.update({
     where: { id: intId },
-    data: { status },
+    data: {
+      // TODO - determine what fields need to be updated
+      preimage,
+    },
   });
 
   if (!updatedInvoice) {
