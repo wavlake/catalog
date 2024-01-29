@@ -1,14 +1,12 @@
 import express from "express";
-const { isAuthorized } = require("@middlewares/auth");
-const { isZbdIp, isZbdRegion } = require("@middlewares/zbdChecks");
-const { rateLimit } = require("express-rate-limit");
+import invoiceController from "../controllers/invoice";
 
 // Create router
 const router = express.Router();
 
 //////// ROUTES ////////
 
-//TODO
+router.get("/:id", invoiceController.getInvoice);
 
 // Export router
 export default router;
