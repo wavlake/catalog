@@ -51,9 +51,11 @@ async function constructKeysendMetadata(userId, externalKeysendRequest) {
 
 async function constructCustomRecords(keysend, keysendMetadata) {
   let customRecords = [];
-  // Add standard values
+  // Add standard value for blip-10
+  // https://github.com/lightning/blips/blob/master/blip-0010.md
+  const BLIP0010 = "7629169";
   customRecords.push({
-    type: "7629169",
+    type: BLIP0010,
     // covert to hex
     value: Buffer.from(JSON.stringify(keysendMetadata)).toString("hex"),
   });
