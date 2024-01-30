@@ -7,14 +7,6 @@ import { TLVRecord, ZBDKeysendCallback } from "@library/zbd/interfaces";
 import { buildAmpTx } from "@library/amp";
 import db from "@library/db";
 
-const CONTENT_ID_RECORD = "säö\x00\x00\x00\x00\x00";
-const METADATA_RECORD = "qit\x00\x00\x00\x00\x00";
-
-const getRecordString = (tlvRecords: TLVRecord[] = [], type: string) => {
-  if (tlvRecords.some((record) => record.type === type)) {
-  Buffer.from(tlvRecords[type], "hex").toString();
-};
-
 const processIncomingKeysend = asyncHandler<
   core.ParamsDictionary,
   any,
@@ -23,7 +15,7 @@ const processIncomingKeysend = asyncHandler<
   log.debug(`Keysend received`);
   const { amount, pubkey, metadata, tlvRecords } = req.body.data;
 
-  // pull out the content id from the tlv records
+  // pull out the content id and any other data from the tlv records
   const contentId = "123-abc";
 
   if (!contentId || !validate(contentId)) {
@@ -51,7 +43,7 @@ const processIncomingKeysend = asyncHandler<
     boostData: metadata.boostData,
     externalTxId: null,
     isNwc: false,
-  })
+  });
 });
 
 const updateInvoice = asyncHandler(async (req, res, next) => {
