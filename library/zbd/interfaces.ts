@@ -1,5 +1,5 @@
 interface BaseResponse {
-  success?: boolean; // Optional because not all interfaces have it
+  success?: boolean;
   message: string;
 }
 
@@ -20,11 +20,9 @@ interface InvoiceBasic {
 }
 
 interface InvoiceExtended extends InvoiceBasic {
-  fastRequest?: string; // Optional because not all invoices have it
-  fastUri?: string; // Optional because not all invoices have it
+  fastRequest?: string;
+  fastUri?: string;
 }
-
-// Now, refactor the original interfaces to extend these common interfaces:
 
 export interface ZBDCreateStaticCharge extends BaseResponse {
   data: CommonDataFields & {
