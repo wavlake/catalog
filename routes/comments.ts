@@ -1,16 +1,31 @@
 import express from "express";
 import commentsController from "../controllers/comments";
+import { validatePaginationAndId } from "../middlewares/validatePagination";
 
 // Create router
 const router = express.Router();
 
 //////// ROUTES ////////
 
-router.get("/:id", commentsController.get_comments);
-router.get("/show/:id", commentsController.get_podcast_comments);
 router.get(
-  "/artist/:id/:page/:pageSize",
+  "/:contentId/:page?/:pageSize?",
+  validatePaginationAndId("contentId"),
+  commentsController.get_comments
+);
+router.get(
+  "/show/:podcastId/:page?/:pageSize?",
+  validatePaginationAndId("podcastId"),
+  commentsController.get_podcast_comments
+);
+router.get(
+  "/artist/:artistId/:page?/:pageSize?",
+  validatePaginationAndId("artistId"),
   commentsController.get_artist_comments
+);
+router.get(
+  "/album/:albumId/:page?/:pageSize?",
+  validatePaginationAndId("albumId"),
+  commentsController.get_album_comments
 );
 
 // Export router
