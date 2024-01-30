@@ -63,14 +63,16 @@ import deposit from "./routes/deposit";
 import invoice from "./routes/invoice";
 import send from "./routes/send";
 import withdraw from "./routes/withdraw";
+import callback from "./routes/callback";
+
 app.use(cors(corsOptions));
 
 // ROUTES
-// app.use("/v1/invoice", invoice);1
 app.use("/v1/deposit", deposit);
 app.use("/v1/invoice", invoice);
 app.use("/v1/send", send);
 app.use("/v1/withdraw", withdraw);
+app.use("/v1/callback", callback);
 
 // The error handler must be registered before any other error middleware and after all controllers
 app.use(Sentry.Handlers.errorHandler());
