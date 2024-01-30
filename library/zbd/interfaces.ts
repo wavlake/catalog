@@ -1,3 +1,9 @@
+// These interfaces are used to define the response of the ZBD API
+
+// Terminology:
+// ZBD charge = lightning invoice
+// ZBD Static Charge = LNURL Pay
+
 interface BaseResponse {
   success?: boolean;
   message: string;
