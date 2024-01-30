@@ -206,6 +206,7 @@ exports.isValidExternalKeysendRequest = async (externalKeysendRequest) => {
   return hasValidKeysends;
 };
 
+// outgoing keysend payments
 exports.processKeysends = async (userId, externalKeysendRequest) => {
   const { message } = externalKeysendRequest;
   // NOTE: User's balance will be decremented per keysend

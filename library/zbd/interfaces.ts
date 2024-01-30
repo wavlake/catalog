@@ -5,8 +5,7 @@
 // ZBD Static Charge = LNURL Pay
 
 interface BaseResponse {
-  success?: boolean;
-  message: string;
+  message?: string;
 }
 
 interface CommonDataFields {
@@ -66,6 +65,23 @@ export interface ZBDSendKeysendPayment extends BaseResponse {
       status: string;
       confirmedAt: string | null;
     };
+  };
+}
+
+export interface TLVRecord {
+  type: string;
+  value: string;
+}
+
+export interface ZBDKeysendCallback extends BaseResponse {
+  success: boolean;
+  data: {
+    amount: string;
+    pubkey: string;
+    callbackUrl: string;
+    // metadata: { isTest: true }; // anything
+    metadata: any;
+    tlvRecords: TLVRecord[];
   };
 }
 
