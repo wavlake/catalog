@@ -6,7 +6,7 @@ const { getUserName } = require("./userHelper");
 const crypto = require("crypto");
 const { randomUUID } = require("crypto");
 import { ExternalKeysend, ExternalKeysendRequest } from "../types/keysend";
-import { sendKeysend } from "./zbdClient";
+import { sendKeysend } from "./zbd/zbdClient";
 
 const feeLimitMsat = 5000; // Hard-coding for external keysends for now (see also controllers/ampExternal.js)
 
