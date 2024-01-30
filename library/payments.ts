@@ -1,7 +1,7 @@
 const log = require("loglevel");
 import db from "./db";
 import { checkUserHasSufficientSats, getUserBalance } from "./userHelper";
-import { sendPayment } from "./zbdClient";
+import { sendPayment } from "./zbd/zbdClient";
 import { SendPaymentResponse } from "../types/zbd";
 
 async function checkUserHasPendingTx(userId: string): Promise<boolean> {

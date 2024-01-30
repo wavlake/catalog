@@ -3,7 +3,7 @@ import {
   SendKeysendResponse,
   SendPaymentRequest,
   SendPaymentResponse,
-} from "../types/zbd";
+} from "../../types/zbd";
 import log from "loglevel";
 const axios = require("axios").default;
 

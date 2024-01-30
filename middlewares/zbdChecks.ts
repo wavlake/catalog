@@ -1,6 +1,6 @@
 import asyncHandler from "express-async-handler";
 import log from "loglevel";
-import { getProductionIps, isSupportedRegion } from "../library/zbdClient";
+import { getProductionIps, isSupportedRegion } from "../library/zbd/zbdClient";
 
 const environment = process.env.NODE_ENV;
 
