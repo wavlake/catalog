@@ -1,4 +1,6 @@
 import express from "express";
+const { isAuthorized } = require("@middlewares/auth");
+const { isZbdRegion } = require("@middlewares/zbdChecks");
 import invoiceController from "../controllers/invoice";
 
 // Create router
@@ -12,7 +14,7 @@ router.get("/:id", invoiceController.getInvoice);
 // ZBD callback to notify us of invoice updates
 router.post("/update", invoiceController.updateInvoice);
 // used by clients to create a new invoice
-router.post("/", invoiceController.createInvoice);
+router.post("/", isAuthorized, isZbdRegion, invoiceController.createInvoice);
 
 // Export router
 export default router;
