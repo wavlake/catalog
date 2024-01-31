@@ -21,7 +21,7 @@ export interface SendKeysendRequest {
   amount: string;
   pubkey: string;
   metadata?: object;
-  tlvRecords?: any[];
+  tlvRecords?: TLV[];
 }
 
 export interface SendPaymentRequest {
