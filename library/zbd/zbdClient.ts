@@ -44,7 +44,9 @@ export async function isSupportedRegion(ipAddress: string): Promise<boolean> {
         );
         return false;
       }
-
+      log.debug(
+        `ZBD is-supported-region response: ${JSON.stringify(res.data)}`
+      );
       return res.data.data.isSupported;
     })
     .catch((err) => {
