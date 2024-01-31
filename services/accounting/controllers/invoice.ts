@@ -5,6 +5,7 @@ import { getContentFromId } from "@library/content";
 import { createCharge } from "@library/zbd/zbdClient";
 
 const DEFAULT_EXPIRATION_SECONDS = 3600;
+const MAX_INVOICE_AMOUNT = 100000 * 1000; // 100k sats
 
 const getInvoice = asyncHandler(async (req, res, next) => {
   const { id } = req.params;
@@ -68,13 +69,21 @@ const updateInvoice = asyncHandler(async (req, res, next) => {
 const createInvoice = asyncHandler(async (req, res: any, next) => {
   const request = {
     trackId: req.body.trackId,
-    amount: req.body.amount * 1000, // Convert to msats
+    msatAmount: req.body.msatAmount,
     type: req.body.type ? req.body.type : "boost",
-    metadata: req.body.metadata ? req.body.metadata : null,
+    metadata: req.body.metadata,
   };
 
-  if (request.amount === 0) {
-    return res.status(400).send("Amount must be greater than 0");
+  if (
+    isNaN(request.msatAmount) ||
+    request.msatAmount < 1000 ||
+    request.msatAmount > MAX_INVOICE_AMOUNT
+  ) {
+    return res
+      .status(400)
+      .send(
+        `Amount must be a number between 1000 and ${MAX_INVOICE_AMOUNT} (msats)`
+      );
   }
 
   const isValidContentId = await getContentFromId(request.trackId);
@@ -94,7 +103,7 @@ const createInvoice = asyncHandler(async (req, res: any, next) => {
 
   const invoiceRequest = {
     description: isValidContentId.title,
-    amount: request.amount.toString(),
+    amount: request.msatAmount.toString(),
     expiresIn: DEFAULT_EXPIRATION_SECONDS,
     internalId: `external_receive-${invoice.id.toString()}`,
   };
