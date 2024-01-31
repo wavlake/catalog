@@ -11,7 +11,7 @@ const axios = require("axios").default;
 
 // Create ZBD instance
 const zbdApiKey = process.env.ZBD_API_KEY;
-const zbdCallbackUrl = `${process.env.ZBD_CALLBACK_URL}/payments/callback/zbd`;
+const accountingCallbackUrl = `${process.env.ACCOUNTING_CALLBACK_URL}`;
 
 const client = axios.create({
   baseURL: "https://api.zebedee.io/v0",
@@ -46,7 +46,7 @@ export async function sendKeysend(
   log.debug(request);
   const { data } = await client
     .post(`https://api.zebedee.io/v0/keysend-payment`, {
-      callbackUrl: zbdCallbackUrl,
+      callbackUrl: `${accountingCallbackUrl}/keysend}`,
       ...request,
     })
     .catch((err) => {
@@ -61,7 +61,7 @@ export async function createCharge(
 ): Promise<ZBDCreateChargeLightning> {
   const { data } = await client
     .post(`https://api.zebedee.io/v0/charges`, {
-      callbackUrl: zbdCallbackUrl,
+      callbackUrl: `${accountingCallbackUrl}/invoice}`,
       ...request,
     })
     .catch((err) => {
@@ -88,7 +88,7 @@ export async function sendPayment(
 ): Promise<SendPaymentResponse> {
   const { data } = await client
     .post(`https://api.zebedee.io/v0/payments`, {
-      callbackUrl: zbdCallbackUrl,
+      callbackUrl: `${accountingCallbackUrl}/payment}`,
       ...request,
     })
     .catch((err) => {
