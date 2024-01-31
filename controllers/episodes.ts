@@ -125,6 +125,7 @@ export const create_episode = asyncHandler(async (req, res, next) => {
     order: req.body.order == "" ? 0 : parseInt(req.body.order),
     extension: req.body.extension ?? "mp3",
     isDraft: req.body.isDraft ?? false,
+    description: req.body.description,
   };
 
   if (!request.podcastId) {
@@ -170,6 +171,7 @@ export const create_episode = asyncHandler(async (req, res, next) => {
         live_url: liveUrl,
         title: request.title,
         order: request.order,
+        description: request.description,
         raw_url: s3RawUrl,
         is_processing: true,
         is_draft: req.body.isDraft,
