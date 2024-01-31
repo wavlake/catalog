@@ -68,11 +68,6 @@ export interface ZBDSendKeysendPaymentResponse extends BaseResponse {
   };
 }
 
-export interface TLVRecord {
-  type: string;
-  value: string;
-}
-
 export interface ZBDCreateChargeLightningResponse extends BaseResponse {
   success: boolean;
   data: CommonDataFields & {
@@ -115,5 +110,15 @@ export interface ZBDSendPaymentResponse extends BaseResponse {
     preimage: string;
     processedAt: string;
     confirmedAt: string;
+  };
+}
+
+export interface ZBDIsSupportedRegionResponse extends BaseResponse {
+  success: boolean;
+  data: {
+    ipAddress?: string;
+    isSupported: boolean;
+    ipCountry?: string;
+    ipRegion?: string;
   };
 }
