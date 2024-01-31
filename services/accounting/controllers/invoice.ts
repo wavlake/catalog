@@ -68,9 +68,8 @@ const updateInvoice = asyncHandler(async (req, res, next) => {
 
 const createInvoice = asyncHandler(async (req, res: any, next) => {
   const request = {
-    trackId: req.body.trackId,
+    contentId: req.body.contentId,
     msatAmount: req.body.msatAmount,
-    type: req.body.type ? req.body.type : "boost",
     metadata: req.body.metadata,
   };
 
@@ -86,23 +85,23 @@ const createInvoice = asyncHandler(async (req, res: any, next) => {
       );
   }
 
-  const isValidContentId = await getContentFromId(request.trackId);
+  const isValidContentId = await getContentFromId(request.contentId);
 
   if (!isValidContentId) {
     return res.status(400).send("Invalid content id");
   }
 
-  // Create a blank invoice in the database
+  // Create a blank invoice in the database with a reference to the targeted content
   const invoice = await prisma.externalReceive.create({
     data: {
-      trackId: request.trackId,
+      trackId: request.contentId,
     },
   });
 
   log.debug(`Created placeholder invoice: ${invoice.id}`);
 
   const invoiceRequest = {
-    description: isValidContentId.title,
+    description: `Wavlake: ${isValidContentId.title}`,
     amount: request.msatAmount.toString(),
     expiresIn: DEFAULT_EXPIRATION_SECONDS,
     internalId: `external_receive-${invoice.id.toString()}`,
