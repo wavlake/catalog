@@ -3,20 +3,40 @@ import asyncHandler from "express-async-handler";
 import prisma from "@prismalocal/client";
 import { validate } from "uuid";
 import core = require("express-serve-static-core");
-import { TLVRecord, ZBDKeysendCallback } from "@library/zbd/interfaces";
+import { ZBDKeysendCallback } from "@library/zbd/interfaces";
 import { buildAmpTx } from "@library/amp";
 import db from "@library/db";
+import { KeysendMetadata } from "@library/keysend";
 
+const BLIP0010 = "7629169";
+const NOT_SURE_INTERNAL_KEY = "16180339";
 const processIncomingKeysend = asyncHandler<
   core.ParamsDictionary,
   any,
   ZBDKeysendCallback
 >(async (req, res, next) => {
   log.debug(`Keysend received`);
+
   const { amount, pubkey, metadata, tlvRecords } = req.body.data;
 
+  const metaDataRecord = tlvRecords.find((record) => record.type === BLIP0010);
+  const keysendMetadata = metaDataRecord?.value
+    ? (JSON.parse(metaDataRecord.value) as KeysendMetadata)
+    : undefined;
+
+  const maybeContentIdRecord = tlvRecords.find(
+    (record) => record.type === NOT_SURE_INTERNAL_KEY
+  );
+  const maybeContentId = maybeContentIdRecord?.value
+    ? (JSON.parse(metaDataRecord.value) as KeysendMetadata)
+    : undefined;
   // pull out the content id and any other data from the tlv records
   const contentId = "123-abc";
+
+  // for testing in deplsoyed service
+  log.debug(req.body);
+  log.debug("keysendMetadata", keysendMetadata);
+  log.debug("maybeContentId", maybeContentId);
 
   if (!contentId || !validate(contentId)) {
     log.error("Did not find a valid content id in the tlv records");

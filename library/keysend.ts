@@ -23,11 +23,25 @@ async function checkIfKeysendIsInternal(keysend) {
   }
 }
 
+export interface KeysendMetadata {
+  message?: string;
+  podcast?: string;
+  guid?: string;
+  feed_id?: string;
+  episode?: string;
+  episode_guid?: string;
+  ts?: string;
+  value_msat_total?: string;
+  action?: string;
+  app_name?: string;
+  sender_name?: string;
+}
+
 async function constructKeysendMetadata(userId, externalKeysendRequest) {
   const senderName = await getUserName(userId);
 
   // Per blip-10: https://github.com/Podcastindex-org/podcast-namespace/blob/main/value/blip-0010.md
-  let keysendRequest = {
+  let keysendRequest: KeysendMetadata = {
     message: externalKeysendRequest.message ?? null,
     podcast: externalKeysendRequest.podcast ?? null,
     guid: externalKeysendRequest.guid ?? null,
@@ -49,7 +63,10 @@ async function constructKeysendMetadata(userId, externalKeysendRequest) {
   return keysendRequest;
 }
 
-async function constructCustomRecords(keysend, keysendMetadata) {
+async function constructCustomRecords(
+  keysend,
+  keysendMetadata: KeysendMetadata
+) {
   let customRecords = [];
   // Add standard value for blip-10
   // https://github.com/lightning/blips/blob/master/blip-0010.md
@@ -134,7 +151,7 @@ function logExternalKeysend({
     });
 }
 
-async function sendExternalKeysend(keysend, keysendMetadata) {
+async function sendExternalKeysend(keysend, keysendMetadata: KeysendMetadata) {
   log.debug(
     `Sending external keysend: ${keysend.pubkey}, amount: ${keysend.msatAmount}`
   );
