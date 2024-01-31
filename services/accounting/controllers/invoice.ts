@@ -66,9 +66,6 @@ const updateInvoice = asyncHandler(async (req, res, next) => {
 });
 
 const createInvoice = asyncHandler(async (req, res: any, next) => {
-  // TODO - call ZBD api to create an invoice
-  // save the invoice data to the database
-  // return the invoice data to the client
   const request = {
     trackId: req.body.trackId,
     amount: req.body.amount * 1000, // Convert to msats
@@ -95,44 +92,56 @@ const createInvoice = asyncHandler(async (req, res: any, next) => {
 
   log.debug(`Created placeholder invoice: ${invoice.id}`);
 
-  const createInvoiceRequest = {
+  const invoiceRequest = {
     description: isValidContentId.title,
     amount: request.amount.toString(),
     expiresIn: DEFAULT_EXPIRATION_SECONDS,
     internalId: `external_receive-${invoice.id.toString()}`,
   };
 
-  log.debug(`Sending create invoice request: ${createInvoiceRequest}`);
+  log.debug(
+    `Sending create invoice request: ${JSON.stringify(invoiceRequest)}`
+  );
 
-  // TODO - call ZBD api to create an invoice
-  const invoiceResponse = await createCharge(createInvoiceRequest);
+  // call ZBD api to create an invoice
+  const invoiceResponse = await createCharge(invoiceRequest);
 
-  log.debug(`Received create invoice response: ${invoiceResponse}`);
+  if (!invoiceResponse.success) {
+    log.error(`Error creating invoice: ${invoiceResponse.message}`);
+    res.status(500).send("There has been an error generating an invoice");
+    return;
+  }
 
-  // TODO - save the invoice data to the database
-  const updatedInvoice = await prisma.externalReceive.update({
-    where: { id: invoice.id },
-    data: {
-      externalId: invoiceResponse.data.id,
-      updatedAt: new Date(),
-    },
+  log.debug(
+    `Received create invoice response: ${JSON.stringify(invoiceResponse)}`
+  );
+
+  // Update the invoice in the database
+  const updatedInvoice = await prisma.externalReceive
+    .update({
+      where: { id: invoice.id },
+      data: {
+        externalId: invoiceResponse.data.id,
+        updatedAt: new Date(),
+      },
+    })
+    .catch((e) => {
+      log.error(`Error updating invoice: ${e}`);
+      return null;
+    });
+
+  if (!updatedInvoice) {
+    log.error(`Error updating invoice: ${invoiceResponse.message}`);
+    res.status(500).send("There has been an error generating an invoice");
+    return;
+  }
+
+  log.debug(`Updated invoice: ${JSON.stringify(updatedInvoice)}`);
+
+  res.json({
+    success: true,
+    data: { ...invoiceResponse.data.invoice, invoiceId: updatedInvoice.id },
   });
-
-  log.debug(`Updated invoice: ${updatedInvoice}`);
-
-  res.json({ success: true, data: updatedInvoice });
-  // return createExternalAmpInvoice(
-  //   isValidContentId.title,
-  //   request.trackId,
-  //   request.amount,
-  //   request.type,
-  //   request.metadata
-  // )
-  //   .then((response) => res.status(200).send(response))
-  //   .catch((e) => {
-  //     log.error(`Error creating external amp invoice: ${e}`);
-  //     res.status(500).send("Error creating invoice");
-  //   });
 });
 
 export default { getInvoice, updateInvoice, createInvoice };
