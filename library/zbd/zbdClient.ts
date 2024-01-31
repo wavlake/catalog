@@ -6,10 +6,11 @@ import {
 import log from "loglevel";
 import {
   ZBDCreateChargeLightningResponse,
+  ZBDIsSupportedRegionResponse,
   ZBDSendKeysendPaymentResponse,
   ZBDSendPaymentResponse,
 } from "./responseInterfaces";
-const axios = require("axios").default;
+import axios from "axios";
 
 // Create ZBD instance
 const zbdApiKey = process.env.ZBD_API_KEY;
@@ -32,14 +33,24 @@ export async function getProductionIps(): Promise<Array<string>> {
 }
 
 export async function isSupportedRegion(ipAddress: string): Promise<boolean> {
-  const { data } = await client
-    .get(`https://api.zebedee.io/v0/is-supported-region/${ipAddress}`)
+  return client
+    .get<ZBDIsSupportedRegionResponse>(
+      `https://api.zebedee.io/v0/is-supported-region/${ipAddress}`
+    )
+    .then((res) => {
+      if (res.status !== 200) {
+        log.trace(
+          `"Unsuccessful ZBD is-supported-region call: ${res.statusText}`
+        );
+        return false;
+      }
+
+      return res.data.data.isSupported;
+    })
     .catch((err) => {
       log.trace(err);
-      return err.response;
+      return false;
     });
-
-  return data.data.isSupported;
 }
 
 export async function sendKeysend(
