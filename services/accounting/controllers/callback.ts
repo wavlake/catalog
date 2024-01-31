@@ -1,9 +1,8 @@
-const log = require("loglevel");
+import log from "loglevel";
 import asyncHandler from "express-async-handler";
-import prisma from "@prismalocal/client";
 import { validate } from "uuid";
 import core from "express-serve-static-core";
-import { ZBDKeysendCallback } from "@library/zbd/interfaces";
+import { ZBDKeysendCallbackRequest } from "@library/zbd/requestInterfaces";
 import { buildAmpTx } from "@library/amp";
 import db from "@library/db";
 import { KeysendMetadata } from "@library/keysend";
@@ -14,23 +13,26 @@ const jsonParser = (jsonString?: string) => {
     return JSON.parse(jsonString);
   } catch (e) {
     log.debug("Error parsing json", e);
-    return null;
+    return;
   }
 };
 
 const BLIP0010 = "7629169";
 const WAVLAKE_CUSTOM_KEY = "16180339";
+
 const processIncomingKeysend = asyncHandler<
   core.ParamsDictionary,
   any,
-  ZBDKeysendCallback
+  ZBDKeysendCallbackRequest
 >(async (req, res, next) => {
   log.debug(`Keysend received`);
 
-  const { amount, pubkey, metadata, tlvRecords } = req.body.data;
+  const { transaction, keysendData } = req.body;
 
-  const metaDataRecord = tlvRecords.find((record) => record.type === BLIP0010);
-  const maybeContentIdRecord = tlvRecords.find(
+  const metaDataRecord = keysendData.tlvRecords.find(
+    (record) => record.type === BLIP0010
+  );
+  const maybeContentIdRecord = keysendData.tlvRecords.find(
     (record) => record.type === WAVLAKE_CUSTOM_KEY
   );
 
@@ -53,24 +55,30 @@ const processIncomingKeysend = asyncHandler<
 
   const trx = await db.knex.transaction();
 
-  buildAmpTx({
+  const success = await buildAmpTx({
+    // type: undefined,
+    // settleIndex: null,
+    // preimage: null,
+    // rHashStr: null,
+    // externalTxId: null,
+    // boostData: metadata.boostData,
+    userId: undefined,
+    npub: undefined,
     res,
     trx,
     contentId,
-    userId: metadata.userId,
-    npub: metadata.npub,
-    msatAmount: amount,
-    contentTime: metadata.contentTime,
-    type: metadata.type,
-    settleIndex: null,
-    preimage: null,
-    rHashStr: null,
-    comment: metadata.comment,
+    msatAmount: transaction.amount,
+    contentTime: keysendMetadata.ts ? parseInt(keysendMetadata.ts) : undefined,
+    comment: keysendData.description,
     isNostr: false,
-    boostData: metadata.boostData,
-    externalTxId: null,
     isNwc: false,
   });
+
+  if (success) {
+    log.debug("Amp tx built successfully");
+  } else {
+    log.error("Error building amp tx");
+  }
 });
 
 const processOutgoingKeysend = asyncHandler(async (req, res, next) => {
