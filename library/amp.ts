@@ -10,7 +10,15 @@ import log from "loglevel";
 
 const ampFee = parseFloat(`${process.env.AMP_FEE}`);
 
-export const processSplits = async ({
+// this will look up the content and associated splits and do the following:
+// 1. process the splits and adjust user/content balances
+// 2. add a new record to the preamp table
+// 3. add a new record to the amp table, a record for each split recipient
+// 4. add a new record to the external_receive table
+// 5. if there is a comment, add a new record to the comment table
+// 6. these db operations are all wrapped in a transaction so they are atomic
+// 7. if this an internal payment, decrement the sender's balance
+export const processIncomingBoost = async ({
   contentId,
   contentTime,
   msatAmount,
