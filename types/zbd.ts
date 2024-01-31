@@ -1,3 +1,15 @@
+export interface CreateInvoiceRequest {
+  description: string;
+  amount: string;
+  expiresIn: number;
+  internalId: string;
+}
+
+export interface InvoiceResponse {
+  request: string;
+  uri: string;
+}
+
 export interface SendKeysendRequest {
   amount: string;
   pubkey: string;

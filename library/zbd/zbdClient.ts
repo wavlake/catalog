@@ -1,9 +1,11 @@
 import {
+  CreateInvoiceRequest,
   SendKeysendRequest,
   SendKeysendResponse,
   SendPaymentRequest,
   SendPaymentResponse,
 } from "../../types/zbd";
+import { ZBDCreateChargeLightning } from "./interfaces";
 import log from "loglevel";
 const axios = require("axios").default;
 
@@ -44,6 +46,21 @@ export async function sendKeysend(
   log.debug(request);
   const { data } = await client
     .post(`https://api.zebedee.io/v0/keysend-payment`, {
+      callbackUrl: zbdCallbackUrl,
+      ...request,
+    })
+    .catch((err) => {
+      log.trace(err);
+      return err.response;
+    });
+  return data;
+}
+
+export async function createCharge(
+  request: CreateInvoiceRequest
+): Promise<ZBDCreateChargeLightning> {
+  const { data } = await client
+    .post(`https://api.zebedee.io/v0/charges`, {
       callbackUrl: zbdCallbackUrl,
       ...request,
     })
