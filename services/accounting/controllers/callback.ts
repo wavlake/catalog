@@ -25,7 +25,7 @@ const processIncomingKeysend = asyncHandler<
     : undefined;
 
   const maybeContentIdRecord = tlvRecords.find(
-    (record) => record.type === NOT_SURE_INTERNAL_KEY
+    (record) => record.type === WAVLAKE_CUSTOM_KEY
   );
   const maybeContentId = maybeContentIdRecord?.value
     ? (JSON.parse(metaDataRecord.value) as KeysendMetadata)
