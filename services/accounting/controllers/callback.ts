@@ -38,14 +38,12 @@ const processIncomingKeysend = asyncHandler<
   const keysendMetadata: KeysendMetadata = jsonParser(metaDataRecord?.value);
 
   // expected to be hex string that needs to be decoded
-  const maybeContentId = contentIdRecord?.value;
-  // pull out the content id and any other data from the tlv records
-  const contentId = "123-abc";
+  const contentId = Buffer.from(contentIdRecord?.value).toString("hex");
 
   // for testing in deployed service
   log.debug("request body", req.body);
   log.debug("keysendMetadata", keysendMetadata);
-  log.debug("maybeContentId", maybeContentId);
+  log.debug("contentId", contentId);
 
   if (!contentId || !validate(contentId)) {
     log.error("Did not find a valid content id in the tlv records");
