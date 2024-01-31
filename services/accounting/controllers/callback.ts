@@ -9,7 +9,7 @@ import db from "@library/db";
 import { KeysendMetadata } from "@library/keysend";
 
 const BLIP0010 = "7629169";
-const NOT_SURE_INTERNAL_KEY = "16180339";
+const WAVLAKE_CUSTOM_KEY = "16180339";
 const processIncomingKeysend = asyncHandler<
   core.ParamsDictionary,
   any,
