@@ -16,7 +16,7 @@ const sentryTracesSampleRate = process.env.SENTRY_TRACES_SAMPLE_RATE;
 
 // To obtain the client's IP address from behind the nginx proxy
 // Info: https://expressjs.com/en/guide/behind-proxies.html
-app.set("trust proxy", 1);
+app.set("trust proxy", 2);
 
 Sentry.init({
   dsn: sentryDsn,
