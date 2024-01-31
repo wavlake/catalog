@@ -1,15 +1,19 @@
 import {
+  CreateInvoiceRequest,
   SendKeysendRequest,
-  SendKeysendResponse,
   SendPaymentRequest,
-  SendPaymentResponse,
-} from "../../types/zbd";
+} from "./requestInterfaces";
 import log from "loglevel";
+import {
+  ZBDCreateChargeLightningResponse,
+  ZBDSendKeysendPaymentResponse,
+  ZBDSendPaymentResponse,
+} from "./responseInterfaces";
 const axios = require("axios").default;
 
 // Create ZBD instance
 const zbdApiKey = process.env.ZBD_API_KEY;
-const zbdCallbackUrl = `${process.env.ZBD_CALLBACK_URL}/payments/callback/zbd`;
+const accountingCallbackUrl = `${process.env.ACCOUNTING_CALLBACK_URL}`;
 
 const client = axios.create({
   baseURL: "https://api.zebedee.io/v0",
@@ -40,11 +44,26 @@ export async function isSupportedRegion(ipAddress: string): Promise<boolean> {
 
 export async function sendKeysend(
   request: SendKeysendRequest
-): Promise<SendKeysendResponse> {
+): Promise<ZBDSendKeysendPaymentResponse> {
   log.debug(request);
   const { data } = await client
     .post(`https://api.zebedee.io/v0/keysend-payment`, {
-      callbackUrl: zbdCallbackUrl,
+      callbackUrl: `${accountingCallbackUrl}/keysend}`,
+      ...request,
+    })
+    .catch((err) => {
+      log.trace(err);
+      return err.response;
+    });
+  return data;
+}
+
+export async function createCharge(
+  request: CreateInvoiceRequest
+): Promise<ZBDCreateChargeLightningResponse> {
+  const { data } = await client
+    .post(`https://api.zebedee.io/v0/charges`, {
+      callbackUrl: `${accountingCallbackUrl}/invoice}`,
       ...request,
     })
     .catch((err) => {
@@ -56,7 +75,7 @@ export async function sendKeysend(
 
 export async function getCharge(
   paymentId: string
-): Promise<SendPaymentResponse> {
+): Promise<ZBDSendPaymentResponse> {
   const { data } = await client
     .get(`https://api.zebedee.io/v0/charges/${paymentId}`)
     .catch((err) => {
@@ -68,10 +87,10 @@ export async function getCharge(
 
 export async function sendPayment(
   request: SendPaymentRequest
-): Promise<SendPaymentResponse> {
+): Promise<ZBDSendPaymentResponse> {
   const { data } = await client
     .post(`https://api.zebedee.io/v0/payments`, {
-      callbackUrl: zbdCallbackUrl,
+      callbackUrl: `${accountingCallbackUrl}/send/invoice}`,
       ...request,
     })
     .catch((err) => {

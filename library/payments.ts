@@ -2,7 +2,7 @@ const log = require("loglevel");
 import db from "./db";
 import { checkUserHasSufficientSats, getUserBalance } from "./userHelper";
 import { sendPayment } from "./zbd";
-import { SendPaymentResponse } from "../types/zbd";
+import { ZBDSendPaymentResponse } from "./zbd/responseInterfaces";
 
 async function checkUserHasPendingTx(userId: string): Promise<boolean> {
   return db
@@ -66,7 +66,7 @@ async function handleCompletedPayment(
   userId: string,
   msatAmount: number,
   paymentRecordId: number,
-  paymentData: SendPaymentResponse
+  paymentData: ZBDSendPaymentResponse
 ) {
   const trx = await db.knex.transaction();
   // Update transaction table and user balance in one tx
@@ -119,7 +119,7 @@ async function handleFailedPayment(
   res: any, // TODO: Use express response type
   userId: string,
   paymentRecordId: number,
-  paymentData: SendPaymentResponse
+  paymentData: ZBDSendPaymentResponse
 ) {
   const trx = await db.knex.transaction();
   // Update transaction table and user status

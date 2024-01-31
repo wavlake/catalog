@@ -113,13 +113,17 @@ model event_track {
   @@index([event_id], map: "idx_event_id")
 }
 
-model external_receive {
-  id           Int       @id @default(autoincrement())
-  settle_index Int?
-  preimage     String?   @db.VarChar(64)
-  track_id     String?   @db.Uuid
-  created_at   DateTime? @default(now()) @db.Timestamptz(6)
-  payment_hash String?   @db.VarChar(255)
+model ExternalReceive {
+  id          Int       @id @default(autoincrement())
+  settleIndex Int?      @map("settle_index")
+  preimage    String?   @db.VarChar(64)
+  trackId     String?   @map("track_id") @db.Uuid
+  createdAt   DateTime? @default(now()) @map("created_at") @db.Timestamptz(6)
+  paymentHash String?   @map("payment_hash") @db.VarChar(255)
+  externalId  String?   @db.VarChar(255) @map("external_id")
+  updatedAt   DateTime? @db.Timestamptz(6) @map("updated_at")
+
+  @@map("external_receive")
 }
 
 model knex_migrations {
@@ -475,6 +479,7 @@ model ExternalPayment {
   txId         String?   @map("tx_id") @db.Uuid
   createdAt    DateTime? @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt    DateTime? @default(now()) @map("updated_at") @db.Timestamptz(6)
+  external_id  Boolean?
   user         User      @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "external_payment_user_id_foreign")
 
   @@map("external_payment")
