@@ -1,11 +1,8 @@
 const log = require("loglevel");
 log.setLevel(process.env.LOGLEVEL || "info");
 import db from "./db";
-const { buildAmpTx } = require("./amp");
 const { getUserName } = require("./userHelper");
-const crypto = require("crypto");
 const { randomUUID } = require("crypto");
-import { ExternalKeysend, ExternalKeysendRequest } from "../types/keysend";
 import { sendKeysend } from "./zbd";
 
 const feeLimitMsat = 5000; // Hard-coding for external keysends for now (see also controllers/ampExternal.js)
@@ -265,7 +262,7 @@ exports.processKeysends = async (userId, externalKeysendRequest) => {
             `Creating internal amp from external keysend for user: ${userId} to ${contentId}`
           );
 
-          const amp = buildAmpTx({
+          const amp = {
             trx: trx,
             res: null,
             npub: null,
@@ -281,7 +278,7 @@ exports.processKeysends = async (userId, externalKeysendRequest) => {
               app_name: keysendMetadata.app_name,
               sender_name: keysendMetadata.sender_name,
             },
-          });
+          };
           if (amp) {
             keysendResults.push({
               success: true,

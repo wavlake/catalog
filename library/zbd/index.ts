@@ -1,2 +1,3 @@
-export * from "./interfaces";
+export * from "./responseInterfaces";
+export * from "./requestInterfaces";
 export * from "./zbdClient";

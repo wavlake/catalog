@@ -29,7 +29,7 @@ interface InvoiceExtended extends InvoiceBasic {
   fastUri?: string;
 }
 
-export interface ZBDCreateStaticCharge extends BaseResponse {
+export interface ZBDCreateStaticChargeResponse extends BaseResponse {
   data: CommonDataFields & {
     slots: number;
     minAmount: string;
@@ -40,7 +40,7 @@ export interface ZBDCreateStaticCharge extends BaseResponse {
   };
 }
 
-export interface ZBDCreateWithdrawalRequest extends BaseResponse {
+export interface ZBDCreateWithdrawalRequestResponse extends BaseResponse {
   success: boolean;
   data: CommonDataFields & {
     amount: string;
@@ -49,7 +49,7 @@ export interface ZBDCreateWithdrawalRequest extends BaseResponse {
   };
 }
 
-export interface ZBDSendKeysendPayment extends BaseResponse {
+export interface ZBDSendKeysendPaymentResponse extends BaseResponse {
   success: boolean;
   data: {
     keysendId: string;
@@ -73,19 +73,7 @@ export interface TLVRecord {
   value: string;
 }
 
-export interface ZBDKeysendCallback extends BaseResponse {
-  success: boolean;
-  data: {
-    amount: string;
-    pubkey: string;
-    callbackUrl: string;
-    // metadata: { isTest: true }; // anything
-    metadata: any;
-    tlvRecords: TLVRecord[];
-  };
-}
-
-export interface ZBDCreateChargeLightning extends BaseResponse {
+export interface ZBDCreateChargeLightningResponse extends BaseResponse {
   success: boolean;
   data: CommonDataFields & {
     amount: string;
@@ -94,7 +82,7 @@ export interface ZBDCreateChargeLightning extends BaseResponse {
   };
 }
 
-export interface ZBDCreateChargeZBD extends BaseResponse {
+export interface ZBDCreateChargeZBDResponse extends BaseResponse {
   success: boolean;
   data: CommonDataFields & {
     amount: string;
@@ -104,7 +92,7 @@ export interface ZBDCreateChargeZBD extends BaseResponse {
   };
 }
 
-export interface ZBDPayToLightningAddress extends BaseResponse {
+export interface ZBDPayToLightningAddressResponse extends BaseResponse {
   success: boolean;
   data: CommonDataFields & {
     fee: string;
@@ -118,7 +106,7 @@ export interface ZBDPayToLightningAddress extends BaseResponse {
   };
 }
 
-export interface ZBDSendPayment extends BaseResponse {
+export interface ZBDSendPaymentResponse extends BaseResponse {
   success: boolean;
   data: CommonDataFields & {
     fee: string;
