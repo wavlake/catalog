@@ -3,9 +3,9 @@ import asyncHandler from "express-async-handler";
 import { validate } from "uuid";
 import core from "express-serve-static-core";
 import { ZBDKeysendCallbackRequest } from "@library/zbd/requestInterfaces";
-import { buildAmpTx } from "@library/amp";
 import db from "@library/db";
 import { KeysendMetadata } from "@library/keysend";
+import { processSplits } from "@library/amp2";
 
 const jsonParser = (jsonString?: string) => {
   if (!jsonString) return;
@@ -53,31 +53,24 @@ const processIncomingKeysend = asyncHandler<
     return;
   }
 
-  const trx = await db.knex.transaction();
-
-  const success = await buildAmpTx({
-    // type: undefined,
-    // settleIndex: null,
-    // preimage: null,
-    // rHashStr: null,
-    // externalTxId: null,
-    // boostData: metadata.boostData,
-    userId: undefined,
-    npub: undefined,
-    res,
-    trx,
+  const success = await processSplits({
     contentId,
-    msatAmount: transaction.amount,
     contentTime: keysendMetadata.ts ? parseInt(keysendMetadata.ts) : undefined,
-    comment: keysendData.description,
+    msatAmount: transaction.amount,
+    userId: undefined,
+    externalTxId: undefined,
+    // type 5 is keysend
+    paymentType: 5,
+    boostData: undefined,
     isNostr: false,
-    isNwc: false,
   });
 
   if (success) {
     log.debug("Amp tx built successfully");
+    res.status(200);
   } else {
     log.error("Error building amp tx");
+    res.status(500).send("Error processing keysend");
   }
 });
 
