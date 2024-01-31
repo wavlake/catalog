@@ -3,9 +3,8 @@ import asyncHandler from "express-async-handler";
 import { validate } from "uuid";
 import core from "express-serve-static-core";
 import { ZBDKeysendCallbackRequest } from "@library/zbd/requestInterfaces";
-import db from "@library/db";
 import { KeysendMetadata } from "@library/keysend";
-import { processSplits } from "@library/amp2";
+import { processSplits } from "@library/amp";
 
 const jsonParser = (jsonString?: string) => {
   if (!jsonString) return;
