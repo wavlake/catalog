@@ -1,12 +1,14 @@
 import {
   CreateInvoiceRequest,
   SendKeysendRequest,
-  SendKeysendResponse,
   SendPaymentRequest,
-  SendPaymentResponse,
-} from "../../types/zbd";
-import { ZBDCreateChargeLightning } from "./interfaces";
+} from "./requestInterfaces";
 import log from "loglevel";
+import {
+  ZBDCreateChargeLightningResponse,
+  ZBDSendKeysendPaymentResponse,
+  ZBDSendPaymentResponse,
+} from "./responseInterfaces";
 const axios = require("axios").default;
 
 // Create ZBD instance
@@ -42,7 +44,7 @@ export async function isSupportedRegion(ipAddress: string): Promise<boolean> {
 
 export async function sendKeysend(
   request: SendKeysendRequest
-): Promise<SendKeysendResponse> {
+): Promise<ZBDSendKeysendPaymentResponse> {
   log.debug(request);
   const { data } = await client
     .post(`https://api.zebedee.io/v0/keysend-payment`, {
@@ -58,7 +60,7 @@ export async function sendKeysend(
 
 export async function createCharge(
   request: CreateInvoiceRequest
-): Promise<ZBDCreateChargeLightning> {
+): Promise<ZBDCreateChargeLightningResponse> {
   const { data } = await client
     .post(`https://api.zebedee.io/v0/charges`, {
       callbackUrl: `${accountingCallbackUrl}/invoice}`,
@@ -73,7 +75,7 @@ export async function createCharge(
 
 export async function getCharge(
   paymentId: string
-): Promise<SendPaymentResponse> {
+): Promise<ZBDSendPaymentResponse> {
   const { data } = await client
     .get(`https://api.zebedee.io/v0/charges/${paymentId}`)
     .catch((err) => {
@@ -85,7 +87,7 @@ export async function getCharge(
 
 export async function sendPayment(
   request: SendPaymentRequest
-): Promise<SendPaymentResponse> {
+): Promise<ZBDSendPaymentResponse> {
   const { data } = await client
     .post(`https://api.zebedee.io/v0/payments`, {
       callbackUrl: `${accountingCallbackUrl}/send/invoice}`,

@@ -3,6 +3,34 @@ interface TLV {
   value: string;
 }
 
+export interface CreateInvoiceRequest {
+  description: string;
+  amount: string;
+  expiresIn: number;
+  internalId: string;
+}
+
+export interface CreateInvoiceRequest {
+  description: string;
+  amount: string;
+  expiresIn: number;
+  internalId: string;
+}
+
+export interface SendKeysendRequest {
+  amount: string;
+  pubkey: string;
+  metadata?: object;
+  tlvRecords?: any[];
+}
+
+export interface SendPaymentRequest {
+  description: string;
+  amount: string;
+  invoice: string;
+  internalId: string;
+}
+
 export interface ZBDKeysendCallbackRequest {
   transaction: {
     id;
