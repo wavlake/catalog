@@ -88,7 +88,7 @@ export async function sendPayment(
 ): Promise<SendPaymentResponse> {
   const { data } = await client
     .post(`https://api.zebedee.io/v0/payments`, {
-      callbackUrl: `${accountingCallbackUrl}/payment}`,
+      callbackUrl: `${accountingCallbackUrl}/send/invoice}`,
       ...request,
     })
     .catch((err) => {
