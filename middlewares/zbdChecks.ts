@@ -27,6 +27,7 @@ export const isZbdRegion = asyncHandler(async (req, res, next) => {
     return;
   }
   const ipAddress = req.ip;
+  log.debug(`Checking if ${ipAddress} is supported`);
   const isSupported = await isSupportedRegion(ipAddress);
   if (isSupported) {
     next();
