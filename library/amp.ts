@@ -5,6 +5,8 @@ import {
   getSplitRecipientsAndShares,
   getTimeSplit,
 } from "./split";
+import { getType } from "./content";
+import log from "loglevel";
 
 const ampFee = parseFloat(`${process.env.AMP_FEE}`);
 
