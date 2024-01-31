@@ -6,7 +6,7 @@ const {
   isValidExternalKeysendRequest,
   processKeysends,
 } = require("@library/keysend");
-import { getCharge } from "@library/zbd/zbdClient";
+import { getCharge } from "@library/zbd";
 
 const createKeysend = asyncHandler(async (req, res: any, next) => {
   // log.debug(`TODO: Fix`);

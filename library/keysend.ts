@@ -1,12 +1,9 @@
 const log = require("loglevel");
 log.setLevel(process.env.LOGLEVEL || "info");
 import db from "./db";
-const { buildAmpTx } = require("./amp");
 const { getUserName } = require("./userHelper");
-const crypto = require("crypto");
 const { randomUUID } = require("crypto");
-import { ExternalKeysend, ExternalKeysendRequest } from "../types/keysend";
-import { sendKeysend } from "./zbd/zbdClient";
+import { sendKeysend } from "./zbd";
 
 const feeLimitMsat = 5000; // Hard-coding for external keysends for now (see also controllers/ampExternal.js)
 
@@ -23,11 +20,25 @@ async function checkIfKeysendIsInternal(keysend) {
   }
 }
 
+export interface KeysendMetadata {
+  message?: string;
+  podcast?: string;
+  guid?: string;
+  feed_id?: string;
+  episode?: string;
+  episode_guid?: string;
+  ts?: string;
+  value_msat_total?: string;
+  action?: string;
+  app_name?: string;
+  sender_name?: string;
+}
+
 async function constructKeysendMetadata(userId, externalKeysendRequest) {
   const senderName = await getUserName(userId);
 
   // Per blip-10: https://github.com/Podcastindex-org/podcast-namespace/blob/main/value/blip-0010.md
-  let keysendRequest = {
+  let keysendRequest: KeysendMetadata = {
     message: externalKeysendRequest.message ?? null,
     podcast: externalKeysendRequest.podcast ?? null,
     guid: externalKeysendRequest.guid ?? null,
@@ -49,7 +60,10 @@ async function constructKeysendMetadata(userId, externalKeysendRequest) {
   return keysendRequest;
 }
 
-async function constructCustomRecords(keysend, keysendMetadata) {
+async function constructCustomRecords(
+  keysend,
+  keysendMetadata: KeysendMetadata
+) {
   let customRecords = [];
   // Add standard value for blip-10
   // https://github.com/lightning/blips/blob/master/blip-0010.md
@@ -134,7 +148,7 @@ function logExternalKeysend({
     });
 }
 
-async function sendExternalKeysend(keysend, keysendMetadata) {
+async function sendExternalKeysend(keysend, keysendMetadata: KeysendMetadata) {
   log.debug(
     `Sending external keysend: ${keysend.pubkey}, amount: ${keysend.msatAmount}`
   );
@@ -206,6 +220,7 @@ exports.isValidExternalKeysendRequest = async (externalKeysendRequest) => {
   return hasValidKeysends;
 };
 
+// outgoing keysend payments
 exports.processKeysends = async (userId, externalKeysendRequest) => {
   const { message } = externalKeysendRequest;
   // NOTE: User's balance will be decremented per keysend
@@ -247,7 +262,7 @@ exports.processKeysends = async (userId, externalKeysendRequest) => {
             `Creating internal amp from external keysend for user: ${userId} to ${contentId}`
           );
 
-          const amp = buildAmpTx({
+          const amp = {
             trx: trx,
             res: null,
             npub: null,
@@ -263,7 +278,7 @@ exports.processKeysends = async (userId, externalKeysendRequest) => {
               app_name: keysendMetadata.app_name,
               sender_name: keysendMetadata.sender_name,
             },
-          });
+          };
           if (amp) {
             keysendResults.push({
               success: true,
