@@ -2,11 +2,21 @@ const log = require("loglevel");
 import asyncHandler from "express-async-handler";
 import prisma from "@prismalocal/client";
 import { validate } from "uuid";
-import core = require("express-serve-static-core");
+import core from "express-serve-static-core";
 import { ZBDKeysendCallback } from "@library/zbd/interfaces";
 import { buildAmpTx } from "@library/amp";
 import db from "@library/db";
 import { KeysendMetadata } from "@library/keysend";
+
+const jsonParser = (jsonString?: string) => {
+  if (!jsonString) return;
+  try {
+    return JSON.parse(jsonString);
+  } catch (e) {
+    log.debug("Error parsing json", e);
+    return null;
+  }
+};
 
 const BLIP0010 = "7629169";
 const WAVLAKE_CUSTOM_KEY = "16180339";
@@ -20,21 +30,18 @@ const processIncomingKeysend = asyncHandler<
   const { amount, pubkey, metadata, tlvRecords } = req.body.data;
 
   const metaDataRecord = tlvRecords.find((record) => record.type === BLIP0010);
-  const keysendMetadata = metaDataRecord?.value
-    ? (JSON.parse(metaDataRecord.value) as KeysendMetadata)
-    : undefined;
-
   const maybeContentIdRecord = tlvRecords.find(
     (record) => record.type === WAVLAKE_CUSTOM_KEY
   );
-  const maybeContentId = maybeContentIdRecord?.value
-    ? (JSON.parse(metaDataRecord.value) as KeysendMetadata)
-    : undefined;
+
+  const keysendMetadata: KeysendMetadata = jsonParser(metaDataRecord?.value);
+  const maybeContentId = jsonParser(metaDataRecord?.value);
+
   // pull out the content id and any other data from the tlv records
   const contentId = "123-abc";
 
-  // for testing in deplsoyed service
-  log.debug(req.body);
+  // for testing in deployed service
+  log.debug("request body", req.body);
   log.debug("keysendMetadata", keysendMetadata);
   log.debug("maybeContentId", maybeContentId);
 
@@ -66,10 +73,27 @@ const processIncomingKeysend = asyncHandler<
   });
 });
 
-const updateInvoice = asyncHandler(async (req, res, next) => {
+const processOutgoingKeysend = asyncHandler(async (req, res, next) => {
   // TODO - update an invoice
   // the invoice status is expected to change from pending to success or fail
   res.status(200);
 });
 
-export default { processIncomingKeysend, updateInvoice };
+const processIncomingInvoice = asyncHandler(async (req, res, next) => {
+  // TODO - update an invoice
+  // the invoice status is expected to change from pending to success or fail
+  res.status(200);
+});
+
+const processOutgoingInvoice = asyncHandler(async (req, res, next) => {
+  // TODO - update an invoice
+  // the invoice status is expected to change from pending to success or fail
+  res.status(200);
+});
+
+export default {
+  processIncomingKeysend,
+  processOutgoingKeysend,
+  processIncomingInvoice,
+  processOutgoingInvoice,
+};

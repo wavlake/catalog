@@ -6,8 +6,10 @@ const router = express.Router();
 
 //////// ROUTES ////////
 
-router.post("/keysend", callbackController.processIncomingKeysend);
-router.post("/invoice", callbackController.updateInvoice);
+router.post("/receive/keysend", callbackController.processIncomingKeysend);
+router.post("/send/keysend", callbackController.processOutgoingKeysend);
+router.post("/receive/invoice", callbackController.processIncomingInvoice);
+router.post("/send/invoice", callbackController.processOutgoingInvoice);
 
 // Export router
 export default router;
