@@ -31,13 +31,14 @@ const processIncomingKeysend = asyncHandler<
   const metaDataRecord = keysendData.tlvRecords.find(
     (record) => record.type === BLIP0010
   );
-  const maybeContentIdRecord = keysendData.tlvRecords.find(
+  const contentIdRecord = keysendData.tlvRecords.find(
     (record) => record.type === WAVLAKE_CUSTOM_KEY
   );
 
   const keysendMetadata: KeysendMetadata = jsonParser(metaDataRecord?.value);
-  const maybeContentId = jsonParser(metaDataRecord?.value);
 
+  // expected to be hex string that needs to be decoded
+  const maybeContentId = contentIdRecord?.value;
   // pull out the content id and any other data from the tlv records
   const contentId = "123-abc";
 
