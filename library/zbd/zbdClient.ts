@@ -38,12 +38,6 @@ export async function isSupportedRegion(ipAddress: string): Promise<boolean> {
       `https://api.zebedee.io/v0/is-supported-region/${ipAddress}`
     )
     .then((res) => {
-      if (res.status !== 200) {
-        log.trace(
-          `"Unsuccessful ZBD is-supported-region call: ${res.statusText}`
-        );
-        return false;
-      }
       log.debug(
         `ZBD is-supported-region response: ${JSON.stringify(res.data)}`
       );
@@ -55,20 +49,23 @@ export async function isSupportedRegion(ipAddress: string): Promise<boolean> {
     });
 }
 
-export async function sendKeysend(
-  request: SendKeysendRequest
-): Promise<ZBDSendKeysendPaymentResponse> {
-  log.debug(request);
-  const { data } = await client
-    .post(`https://api.zebedee.io/v0/keysend-payment`, {
-      callbackUrl: `${accountingCallbackUrl}/keysend}`,
-      ...request,
+export async function sendKeysend(request: SendKeysendRequest) {
+  return client
+    .post<ZBDSendKeysendPaymentResponse>(
+      `https://api.zebedee.io/v0/keysend-payment`,
+      {
+        callbackUrl: `${accountingCallbackUrl}/keysend}`,
+        request,
+      }
+    )
+    .then((res) => {
+      log.debug(`ZBD send keysend response: ${JSON.stringify(res.data)}`);
+      return res.data;
     })
     .catch((err) => {
       log.trace(err);
-      return err.response;
+      return;
     });
-  return data;
 }
 
 export async function createCharge(
