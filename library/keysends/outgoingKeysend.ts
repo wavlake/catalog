@@ -1,4 +1,84 @@
+import { randomUUID } from "crypto";
 import db from "../db";
+
+const COMPLETE_STATUS = "completed";
+const FAILED_STATUS = "failed";
+const getIsInFlight = (status: string) =>
+  ![FAILED_STATUS, COMPLETE_STATUS].includes(status);
+const getIsSettled = (status: string) => status === COMPLETE_STATUS;
+
+export const recordSuccessfulKeysend = async ({
+  keysendData,
+  pubkey,
+  metadata,
+}) => {
+  // unsure what to use for payment index
+  const paymentIndex = 0;
+  const {
+    name,
+    message,
+    feedId,
+    episode,
+    episodeGuid,
+    ts,
+    podcast,
+    guid,
+    userId,
+  } = metadata;
+  const trx = await db.knex.transaction();
+  const txId = randomUUID();
+  const isSettled = getIsSettled(keysendData.transaction.status);
+  const isInFlight = getIsInFlight(keysendData.transaction.status);
+  trx("external_payment").insert(
+    {
+      user_id: userId,
+      // do we still need to store the payment_index?
+      // payment_index: paymentIndex,
+      // the msat_amount does not include the fee
+      msat_amount: keysendData.transaction.amount,
+      fee_msat: keysendData.transaction.fee,
+      pubkey,
+      name,
+      message,
+      podcast,
+      guid,
+      feed_id: feedId,
+      episode,
+      episode_guid: episodeGuid,
+      ts,
+      is_settled: isSettled,
+      in_flight: isInFlight,
+      tx_id: txId,
+    },
+    ["id"]
+  );
+
+  if (isSettled || isInFlight) {
+    // decrement the user balance
+    // if the payment fails and we are notified of the failure via callback
+    // we refund the user balance
+    trx("user")
+      .decrement({
+        msat_balance:
+          parseInt(keysendData.transaction.amount) +
+          parseInt(keysendData.transaction.fee),
+      })
+      .update({ updated_at: db.knex.fn.now() })
+      .where({ id: userId });
+  }
+
+  return trx
+    .commit()
+    .then((data) => {
+      log.debug(
+        `Created external payment record for ${userId} to ${keysend.pubkey} at payment index ${paymentIndex}`
+      );
+    })
+    .catch((err) => {
+      log.error(`Error creating external payment record: ${err}`);
+      trx.rollback;
+    });
+};
 
 export function constructCustomRecords(keysend, keysendMetadata) {
   const customRecords = [

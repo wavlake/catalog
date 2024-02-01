@@ -10,21 +10,14 @@ import {
   ExternalKeysendResult,
 } from "@library/keysends/interfaces";
 import log from "loglevel";
-import db from "@library/db";
 import { sendKeysend as zbdSendKeysend } from "@library/zbd/zbdClient";
-import { randomUUID } from "crypto";
 import {
   constructCustomRecords,
   constructKeysendMetadata,
+  recordSuccessfulKeysend,
 } from "@library/keysends/outgoingKeysend";
 import { validate } from "uuid";
 import { processSplits } from "@library/amp";
-
-const COMPLETE_STATUS = "completed";
-const FAILED_STATUS = "failed";
-const getIsInFlight = (status: string) =>
-  ![FAILED_STATUS, COMPLETE_STATUS].includes(status);
-const getIsSettled = (status: string) => status === COMPLETE_STATUS;
 
 const feeLimitMsat = 20000; // Hard-coding for external keysends for now
 
@@ -79,7 +72,17 @@ const sendKeysend = asyncHandler<
           amount: keysend.msatAmount.toString(),
           pubkey: keysend.pubkey,
           // TODO determine what we need to add here
-          // metadata: {},
+          metadata: {
+            message,
+            podcast,
+            guid,
+            feedId,
+            episode,
+            episodeGuid,
+            ts,
+            userId,
+            name: keysend.name,
+          },
           tlvRecords: customRecords,
         });
         return {
@@ -101,49 +104,25 @@ const sendKeysend = asyncHandler<
         }
 
         if (response.success) {
+          // response from zbd
           const { data } = response;
+          // request sent to zbd
           const { pubkey, name } = request;
-          const trx = await db.knex.transaction();
-          const txId = randomUUID();
-          const isSettled = getIsSettled(data.transaction.status);
-          const isInFlight = getIsInFlight(data.transaction.status);
-          trx("external_payment").insert(
-            {
-              user_id: userId,
-              // do we still need to store the payment_index?
-              // payment_index: paymentIndex,
-              // the msat_amount does not include the fee
-              msat_amount: data.transaction.amount,
-              fee_msat: data.transaction.fee,
-              pubkey,
-              name,
+          recordSuccessfulKeysend({
+            keysendData: data,
+            pubkey,
+            metadata: {
               message,
               podcast,
               guid,
-              feed_id: feedId,
+              feedId,
               episode,
-              episode_guid: episodeGuid,
+              episodeGuid,
               ts,
-              is_settled: isSettled,
-              in_flight: isInFlight,
-              tx_id: txId,
+              userId,
+              name,
             },
-            ["id"]
-          );
-
-          if (isSettled || isInFlight) {
-            // decrement the user balance
-            // if the payment fails and we are notified of the failure via callback
-            // we refund the user balance
-            trx("user")
-              .decrement({
-                msat_balance:
-                  parseInt(data.transaction.amount) +
-                  parseInt(data.transaction.fee),
-              })
-              .update({ updated_at: db.knex.fn.now() })
-              .where({ id: userId });
-          }
+          });
 
           return {
             // this is not really true if the payment is in flight
