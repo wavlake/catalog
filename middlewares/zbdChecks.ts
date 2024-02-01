@@ -14,7 +14,7 @@ export const isZbdIp = asyncHandler(async (req, res, next) => {
     next();
   }
   res
-    .status(500)
+    .status(401)
     .send({ error: "IP address of request does not match authorized list" });
 });
 
@@ -33,7 +33,7 @@ export const isZbdRegion = asyncHandler(async (req, res, next) => {
     next();
     return;
   } else {
-    res.status(500).send({ error: "Not supported region" });
+    res.status(403).send({ error: "Not supported region" });
     return;
   }
 });
