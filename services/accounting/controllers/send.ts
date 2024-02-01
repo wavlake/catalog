@@ -57,7 +57,7 @@ const sendKeysend = asyncHandler<
       res.status(500).json({ success: false, error: "Invalid request" });
       return;
     }
-    // 2. Check user balance
+    // Check user balance
     const userHasSufficientSats = await checkUserHasSufficientSats(
       userId,
       msatTotal + feeLimitMsat // Add estimated fee limit
