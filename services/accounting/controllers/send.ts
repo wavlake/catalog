@@ -14,7 +14,7 @@ const createSend = asyncHandler(async (req, res: any, next) => {
     contentTime: req.body.contentTime ? req.body.contentTime : null,
   };
 
-  if (request.msatAmount < 1000 || isNaN(request.msatAmount)) {
+  if (isNaN(request.msatAmount || request.msatAmount < 1000)) {
     return res.status(400).send("Amount should be a positive number");
   }
 
