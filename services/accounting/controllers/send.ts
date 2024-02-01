@@ -1,6 +1,4 @@
-const log = require("loglevel");
 import asyncHandler from "express-async-handler";
-import prisma from "@prismalocal/client";
 import {
   checkUserHasSufficientSats,
   isValidExternalKeysendRequest,
@@ -110,7 +108,7 @@ const sendKeysend = asyncHandler<
           trx("external_payment").insert(
             {
               user_id: userId,
-              // need to auto increment the paymentIndex
+              // do we still need to store the payment_index?
               // payment_index: paymentIndex,
               // the msat_amount does not include the fee
               msat_amount: data.transaction.amount,
