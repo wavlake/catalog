@@ -18,7 +18,7 @@ const ampFee = parseFloat(`${process.env.AMP_FEE}`);
 // 5. if there is a comment, add a new record to the comment table
 // 6. these db operations are all wrapped in a transaction so they are atomic
 // 7. if this an internal payment, decrement the sender's balance
-export const processIncomingBoost = async ({
+export const processSplits = async ({
   contentId,
   contentTime,
   msatAmount,

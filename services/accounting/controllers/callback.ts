@@ -4,7 +4,7 @@ import { validate } from "uuid";
 import core from "express-serve-static-core";
 import { ZBDKeysendCallbackRequest } from "@library/zbd/requestInterfaces";
 import { KeysendMetadata } from "@library/keysend";
-import { processIncomingBoost } from "@library/amp";
+import { processSplits } from "@library/amp";
 
 const jsonParser = (jsonString?: string) => {
   if (!jsonString) return;
@@ -51,7 +51,7 @@ const processIncomingKeysend = asyncHandler<
     return;
   }
 
-  const success = await processIncomingBoost({
+  const success = await processSplits({
     contentId,
     contentTime: keysendMetadata.ts ? parseInt(keysendMetadata.ts) : undefined,
     msatAmount: transaction.amount,
