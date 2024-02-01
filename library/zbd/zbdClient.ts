@@ -54,7 +54,7 @@ export async function sendKeysend(request: SendKeysendRequest) {
     .post<ZBDSendKeysendPaymentResponse>(
       `https://api.zebedee.io/v0/keysend-payment`,
       {
-        callbackUrl: `${accountingCallbackUrl}/keysend}`,
+        callbackUrl: `${accountingCallbackUrl}/send/keysend}`,
         request,
       }
     )

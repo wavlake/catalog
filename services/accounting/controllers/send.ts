@@ -1,23 +1,19 @@
 import asyncHandler from "express-async-handler";
 import {
-  checkUserHasSufficientSats,
   isValidExternalKeysendRequest,
-} from "@library/keysends/validations";
-import core from "express-serve-static-core";
-import {
   ExternalKeysendRequest,
   ExternalKeysendResponse,
   ExternalKeysendResult,
-} from "@library/keysends/interfaces";
-import log from "loglevel";
-import { sendKeysend as zbdSendKeysend } from "@library/zbd/zbdClient";
-import {
   constructCustomRecords,
   constructKeysendMetadata,
   recordSuccessfulKeysend,
-} from "@library/keysends/outgoingKeysend";
+} from "@library/keysends";
+import core from "express-serve-static-core";
+import log from "loglevel";
+import { sendKeysend as zbdSendKeysend } from "@library/zbd/zbdClient";
 import { validate } from "uuid";
 import { processSplits } from "@library/amp";
+import { checkUserHasSufficientSats } from "@library/userHelper";
 
 const feeLimitMsat = 20000; // Hard-coding for external keysends for now
 
@@ -71,18 +67,8 @@ const sendKeysend = asyncHandler<
         const res = await zbdSendKeysend({
           amount: keysend.msatAmount.toString(),
           pubkey: keysend.pubkey,
-          // TODO determine what we need to add here
-          metadata: {
-            message,
-            podcast,
-            guid,
-            feedId,
-            episode,
-            episodeGuid,
-            ts,
-            userId,
-            name: keysend.name,
-          },
+          // not used for anything
+          // metadata: {}
           tlvRecords: customRecords,
         });
         return {

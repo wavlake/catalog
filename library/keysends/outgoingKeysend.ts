@@ -1,6 +1,8 @@
 import { randomUUID } from "crypto";
 import db from "../db";
+import { getUserName } from "../userHelper";
 
+const BLIP0010 = "7629169";
 const COMPLETE_STATUS = "completed";
 const FAILED_STATUS = "failed";
 const getIsInFlight = (status: string) =>
@@ -83,7 +85,7 @@ export const recordSuccessfulKeysend = async ({
 export function constructCustomRecords(keysend, keysendMetadata) {
   const customRecords = [
     {
-      type: "7629169",
+      type: BLIP0010,
       value: Buffer.from(JSON.stringify(keysendMetadata)).toString("hex"),
     },
     // Add custom key/value if exists
@@ -98,20 +100,6 @@ export function constructCustomRecords(keysend, keysendMetadata) {
   ];
 
   return customRecords;
-}
-
-async function getUserName(userId) {
-  return db
-    .knex("user")
-    .select("name")
-    .where("id", "=", userId)
-    .first()
-    .then((data) => {
-      return data.name;
-    })
-    .catch((err) => {
-      log.error(`Error finding user from userId ${err}`);
-    });
 }
 
 export async function constructKeysendMetadata(userId, externalKeysendRequest) {
