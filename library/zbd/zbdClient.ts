@@ -76,7 +76,7 @@ export async function createCharge(
 ): Promise<ZBDCreateChargeLightningResponse> {
   const { data } = await client
     .post(`https://api.zebedee.io/v0/charges`, {
-      callbackUrl: `${accountingCallbackUrl}/invoice}`,
+      callbackUrl: `${accountingCallbackUrl}/receive/invoice`,
       ...request,
     })
     .catch((err) => {

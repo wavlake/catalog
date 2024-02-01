@@ -81,6 +81,7 @@ const processOutgoingKeysend = asyncHandler(async (req, res, next) => {
 const processIncomingInvoice = asyncHandler(async (req, res, next) => {
   // TODO - update an invoice
   // the invoice status is expected to change from pending to success or fail
+  log.debug("Incoming invoice", req.body);
   res.status(200);
 });
 
