@@ -73,8 +73,11 @@ const processIncomingKeysend = asyncHandler<
 });
 
 const processOutgoingKeysend = asyncHandler(async (req, res, next) => {
-  // TODO - update an invoice
-  // the invoice status is expected to change from pending to success or fail
+  const body = req.body;
+  const { msatTotal } = body;
+  const userId = req["uid"];
+  log.debug(`Processing external keysend request for user ${userId}`);
+
   res.status(200);
 });
 
