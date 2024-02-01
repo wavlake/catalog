@@ -10,6 +10,7 @@ const createSend = asyncHandler(async (req, res: any, next) => {
   const request = {
     contentId: req.body.contentId,
     msatAmount: req.body.msatAmount,
+    comment: req.body.comment,
     contentTime: req.body.contentTime ? req.body.contentTime : null,
   };
 
@@ -39,8 +40,9 @@ const createSend = asyncHandler(async (req, res: any, next) => {
     trx: trx,
     contentId: request.contentId,
     userId: userId,
-    paymentType: 1, // TODO: Modify for comments
+    paymentType: request.comment ? 2 : 1,
     msatAmount: request.msatAmount,
+    comment: request.comment,
     contentTime: request.contentTime,
   });
 
