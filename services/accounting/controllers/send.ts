@@ -120,7 +120,6 @@ const sendKeysend = asyncHandler<
         }
 
         // failed keysend
-        // TODO - should we record failed keysends in the db?
         log.debug(`Keysend failed: ${response.message}`);
         return {
           success: false,
