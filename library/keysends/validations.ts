@@ -1,6 +1,9 @@
 import db from "../db";
+import { ExternalKeysendRequest } from "./interfaces";
 
-export const isValidExternalKeysendRequest = async (externalKeysendRequest) => {
+export const isValidExternalKeysendRequest = (
+  externalKeysendRequest: ExternalKeysendRequest
+) => {
   const hasKeysendArray = Array.isArray(externalKeysendRequest?.keysends);
   if (!hasKeysendArray) {
     return false;
@@ -15,7 +18,7 @@ export const isValidExternalKeysendRequest = async (externalKeysendRequest) => {
     // Also check if msatAmounts sum up to msatTotal
     if (keysend.msatAmount && keysend.pubkey) {
       hasValidKeysends = true;
-      msatSumKeysends += parseInt(keysend.msatAmount);
+      msatSumKeysends += keysend.msatAmount;
     } else {
       return false;
     }
