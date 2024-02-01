@@ -1,14 +1,13 @@
 import express from "express";
 const { isAuthorized } = require("@middlewares/auth");
-const { isZbdIp, isZbdRegion } = require("@middlewares/zbdChecks");
-const { rateLimit } = require("express-rate-limit");
+import sendController from "controllers/send";
 
 // Create router
 const router = express.Router();
 
 //////// ROUTES ////////
 
-//TODO
+router.post("/", isAuthorized, sendController.createSend);
 
 // Export router
 export default router;
