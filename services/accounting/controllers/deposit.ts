@@ -72,6 +72,7 @@ const createDeposit = asyncHandler(async (req, res: any, next) => {
     .update({
       where: { id: invoice.id },
       data: {
+        paymentRequest: invoiceResponse.data.invoice.request,
         externalId: invoiceResponse.data.id,
         updatedAt: new Date(),
       },

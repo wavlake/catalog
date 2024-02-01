@@ -2,9 +2,13 @@ import log from "loglevel";
 import asyncHandler from "express-async-handler";
 import { validate } from "uuid";
 import core from "express-serve-static-core";
-import { ZBDKeysendCallbackRequest } from "@library/zbd/requestInterfaces";
+import {
+  ZBDKeysendCallbackRequest,
+  ZBDChargeCallbackRequest,
+} from "@library/zbd/requestInterfaces";
 import { KeysendMetadata } from "@library/keysend";
 import { processSplits } from "@library/amp";
+import { handleCompletedDeposit } from "@library/deposit";
 
 const jsonParser = (jsonString?: string) => {
   if (!jsonString) return;
@@ -82,7 +86,28 @@ const processIncomingInvoice = asyncHandler(async (req, res, next) => {
   // TODO - update an invoice
   // the invoice status is expected to change from pending to success or fail
   log.debug("Incoming invoice", req.body);
-  res.status(200);
+  const request: ZBDChargeCallbackRequest = req.body;
+
+  // Check invoice type
+  const invoiceType = request.internalId.split("-")[0];
+  const wavlakeId = parseInt(request.internalId.split("-")[1]);
+  log.debug("Invoice type", invoiceType);
+
+  const isCompleted = request.status === "completed";
+  if (!isCompleted) {
+    log.debug("Invoice not completed, skipping");
+    // TODO: update invoice status
+    res.status(200).send("OK");
+    return;
+  }
+
+  if (invoiceType === "transaction") {
+    log.debug(`Processing transaction invoice for id ${request.internalId}`);
+    // TODO - process transaction invoice
+    await handleCompletedDeposit(wavlakeId, request.amount);
+  }
+
+  res.status(200).send("OK");
 });
 
 const processOutgoingInvoice = asyncHandler(async (req, res, next) => {
