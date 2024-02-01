@@ -76,9 +76,8 @@ const processIncomingKeysend = asyncHandler<
 const processOutgoingKeysend = asyncHandler(async (req, res, next) => {
   const body = req.body;
   const { msatTotal } = body;
-  const userId = req["uid"];
-  log.debug(`Processing external keysend request for user ${userId}`);
-
+  log.debug(`Processing outgoing keysend callback`);
+  log.debug(body.toJson());
   // const recordKeysend = recordSuccessfulKeysend({
   //   pubkey: body.pubkey,
   //   feeMsat: body.feeMsat,
