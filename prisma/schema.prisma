@@ -122,7 +122,7 @@ model ExternalReceive {
   paymentHash String?   @map("payment_hash") @db.VarChar(255)
   externalId  String?   @map("external_id") @db.VarChar(255)
   updatedAt   DateTime? @map("updated_at") @db.Timestamptz(6)
-  isPending   Boolean?  @default(true) @map("is_pending")
+  isPending   Boolean?  @default(false) @map("is_pending")
 
   @@map("external_receive")
 }
