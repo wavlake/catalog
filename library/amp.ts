@@ -8,8 +8,16 @@ import {
 import { getType } from "./content";
 import log from "loglevel";
 
-const ampFee = parseFloat(`${process.env.AMP_FEE}`);
+const AMP_FEE = 0.1; // 10% fee
 
+// this will look up the content and associated splits and do the following:
+// 1. process the splits and adjust user/content balances
+// 2. add a new record to the preamp table
+// 3. add a new record to the amp table, a record for each split recipient
+// 4. add a new record to the external_receive table
+// 5. if there is a comment, add a new record to the comment table
+// 6. these db operations are all wrapped in a transaction so they are atomic
+// 7. if this an internal payment, decrement the sender's balance
 export const processSplits = async ({
   contentId,
   contentTime,
@@ -107,7 +115,7 @@ export const processSplits = async ({
         .where({ id: recipient.userId })
         .increment({
           msat_balance: Math.floor(
-            msatAmount * recipient.splitPercentage * (1 - ampFee)
+            msatAmount * recipient.splitPercentage * (1 - AMP_FEE)
           ),
         })
         .update({ updated_at: db.knex.fn.now() });
@@ -204,7 +212,7 @@ export const processSplits = async ({
         type: paymentType,
         type_key: settleIndex,
         msat_amount: Math.floor(msatAmount * recipient.splitPercentage),
-        fee_msat: Math.floor(msatAmount * recipient.splitPercentage * ampFee),
+        fee_msat: Math.floor(msatAmount * recipient.splitPercentage * AMP_FEE),
         split_destination: recipient.userId,
         tx_id: externalTxId,
         content_type: recipient.contentType ? recipient.contentType : "track", // fallback to track

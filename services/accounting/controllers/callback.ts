@@ -77,8 +77,15 @@ const processIncomingKeysend = asyncHandler<
 });
 
 const processOutgoingKeysend = asyncHandler(async (req, res, next) => {
-  // TODO - update an invoice
-  // the invoice status is expected to change from pending to success or fail
+  const body = req.body;
+  const { msatTotal } = body;
+  log.debug(`Processing outgoing keysend callback`);
+  log.debug(body.toJson());
+  // const recordKeysend = recordKeysend({
+  //   pubkey: body.pubkey,
+  //   feeMsat: body.feeMsat,
+  // });
+
   res.status(200);
 });
 
