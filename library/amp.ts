@@ -10,6 +10,17 @@ import log from "loglevel";
 
 const AMP_FEE = 0.1; // 10% fee
 
+// Payment Types:
+// 1: Standard boost
+// 2: Boost with comment
+// 3: Reply
+// 4: Comment boost
+// 5: Keysend boost
+// 6: Invoice boost
+// 7: Zap
+// 8: Party mode boost
+// 9: Internal boost via external time split
+
 // this will look up the content and associated splits and do the following:
 // 1. process the splits and adjust user/content balances
 // 2. add a new record to the preamp table
@@ -94,7 +105,7 @@ export const processSplits = async ({
   const trx = await db.knex.transaction();
   const ampTx = await trx("preamp").insert({
     tx_id: externalTxId,
-    user_id: userId,
+    user_id: userIdForDb,
     content_id: contentId,
     msat_amount: msatAmount,
     guid: boostData?.guid,
@@ -208,7 +219,7 @@ export const processSplits = async ({
       return trx("amp").insert({
         // track_id is really the content_id (track/episode/podcast/album/artist)
         track_id: recipient.contentId ? recipient.contentId : contentId,
-        user_id: userId,
+        user_id: userIdForDb,
         type: paymentType,
         type_key: settleIndex,
         msat_amount: Math.floor(msatAmount * recipient.splitPercentage),

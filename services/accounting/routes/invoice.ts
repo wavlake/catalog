@@ -11,8 +11,6 @@ const router = express.Router();
 // used by clients to long pull the invoice status
 // so the client can update the UI when the invoice is paid
 router.get("/:id", invoiceController.getInvoice);
-// ZBD callback to notify us of invoice updates
-router.post("/update", invoiceController.updateInvoice);
 // used by clients to create a new invoice
 router.post("/", isAuthorized, isZbdRegion, invoiceController.createInvoice);
 

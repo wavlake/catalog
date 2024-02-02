@@ -1,8 +1,9 @@
 const log = require("loglevel");
 import asyncHandler from "express-async-handler";
 import prisma from "@prismalocal/client";
+import { updateInvoiceIfNeeded } from "@library/invoice";
 import { getContentFromId } from "@library/content";
-import { createCharge } from "@library/zbd/zbdClient";
+import { createCharge, getCharge } from "@library/zbd/zbdClient";
 import {
   MAX_INVOICE_AMOUNT,
   DEFAULT_EXPIRATION_SECONDS,
@@ -27,44 +28,32 @@ const getInvoice = asyncHandler(async (req, res, next) => {
     where: { id: intId },
   });
 
+  // TODO: check if the invoice is stale and update it if necessary
+
   if (!invoice) {
     res.status(404).send("Invoice not found");
     return;
   }
 
-  res.json(invoice);
-});
-
-const updateInvoice = asyncHandler(async (req, res, next) => {
-  // TODO - determine what the ZBD payload will look like
-  const { id, preimage } = req.body;
-
-  // validate the id param
-  if (!id) {
-    res.status(400).send("Must include an invoice ID");
-    return;
+  if (invoice.isPending) {
+    const update = await getCharge(invoice.externalId);
+    log.debug(update);
+    const currentStatus = update.data.status;
+    const msatAmount = update.data.amount;
+    if (currentStatus != "pending") {
+      log.debug(
+        `Transaction ${intId} is stale, updating status to ${currentStatus}`
+      );
+      await updateInvoiceIfNeeded(
+        "external_receive",
+        intId,
+        currentStatus,
+        parseInt(msatAmount)
+      );
+    }
   }
 
-  const intId = parseInt(id);
-  if (isNaN(intId) || intId <= 0) {
-    res.status(400).send("Invalid invoice ID, must be a positive integer");
-    return;
-  }
-
-  // update the invoice status
-  const updatedInvoice = await prisma.externalReceive.update({
-    where: { id: intId },
-    data: {
-      // TODO - determine what fields need to be updated
-      preimage,
-    },
-  });
-
-  if (!updatedInvoice) {
-    res.status(500).send(`Error updating invoice ID: ${id}`);
-    return;
-  }
-  res.json(200);
+  res.json({ success: true, data: invoice });
 });
 
 const createInvoice = asyncHandler(async (req, res: any, next) => {
@@ -96,6 +85,7 @@ const createInvoice = asyncHandler(async (req, res: any, next) => {
   const invoice = await prisma.externalReceive.create({
     data: {
       trackId: request.contentId,
+      isPending: true,
     },
   });
 
@@ -153,4 +143,4 @@ const createInvoice = asyncHandler(async (req, res: any, next) => {
   });
 });
 
-export default { getInvoice, updateInvoice, createInvoice };
+export default { getInvoice, createInvoice };
