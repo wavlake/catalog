@@ -5,6 +5,7 @@ import core from "express-serve-static-core";
 import { ZBDKeysendCallbackRequest } from "@library/zbd/requestInterfaces";
 import { KeysendMetadata } from "@library/keysend";
 import { processSplits } from "@library/amp";
+import { recordKeysend, updateKeysend } from "@library/keysends";
 
 const jsonParser = (jsonString?: string) => {
   if (!jsonString) return;
@@ -72,17 +73,39 @@ const processIncomingKeysend = asyncHandler<
   }
 });
 
-const processOutgoingKeysend = asyncHandler(async (req, res, next) => {
-  const body = req.body;
-  const { msatTotal } = body;
-  log.debug(`Processing outgoing keysend callback`);
-  log.debug(body.toJson());
-  // const recordKeysend = recordKeysend({
-  //   pubkey: body.pubkey,
-  //   feeMsat: body.feeMsat,
-  // });
+const processOutgoingKeysend = asyncHandler<
+  core.ParamsDictionary,
+  any,
+  ZBDKeysendCallbackRequest
+>(async (req, res, next) => {
+  const { transaction } = req.body;
+  log.debug(
+    `Processing outgoing keysend callback transactionId: ${transaction.id}`
+  );
 
-  res.status(200);
+  const externalId = transaction.id;
+  const status = transaction.status;
+
+  if (!externalId || !status) {
+    log.error("Missing externalId or status");
+    res
+      .status(400)
+      .send("Must include id and status in the body's transaction object");
+    return;
+  }
+
+  await updateKeysend({
+    externalId,
+    status,
+  })
+    .then(() => {
+      log.debug(`Updated keysend ${externalId} with status ${status}`);
+      res.status(200);
+    })
+    .catch((e) => {
+      log.error(`Error updating keysend: ${e}`);
+      res.status(500).send("Error updating keysend");
+    });
 });
 
 const processIncomingInvoice = asyncHandler(async (req, res, next) => {

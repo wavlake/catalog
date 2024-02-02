@@ -1,4 +1,3 @@
-import { transaction } from "./../../node_modules/.prisma/client/index.d";
 import { randomUUID } from "crypto";
 import db from "../db";
 import { getUserName } from "../userHelper";
@@ -78,6 +77,23 @@ export const recordKeysend = async ({ keysendData, pubkey, metadata }) => {
     .catch((err) => {
       log.error(`Error creating external payment record: ${err}`);
       trx.rollback;
+    });
+};
+
+export const updateKeysend = async ({
+  externalId,
+  status,
+}: {
+  externalId: string;
+  status: string;
+}) => {
+  const isSettled = getIsSettled(status);
+  return db
+    .knex("external_payment")
+    .where({ external_id: externalId, status })
+    .update({
+      is_settled: isSettled,
+      is_pending: false,
     });
 };
 
