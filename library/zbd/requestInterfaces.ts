@@ -64,3 +64,20 @@ export interface ZBDKeysendCallbackRequest {
     expiresAt: string;
   };
 }
+
+export interface ZBDChargeCallbackRequest {
+  unit: string;
+  amount: number;
+  confirmedAt: string;
+  status: string;
+  description: string;
+  createdAt: string;
+  expiresAt: string;
+  id: string;
+  internalId: string;
+  callbackUrl: string;
+  invoice: {
+    request: string;
+    uri: string;
+  };
+}

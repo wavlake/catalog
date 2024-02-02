@@ -215,25 +215,26 @@ model Track {
 }
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
-model transaction {
-  id              Int       @id @default(autoincrement())
-  user_id         String    @db.VarChar(255)
-  pre_tx_balance  BigInt
-  payment_request String    @db.VarChar(700)
-  payment_hash    String?
-  fee_msat        Int?
-  msat_amount     BigInt
-  withdraw        Boolean
-  success         Boolean?
-  failure_reason  String?   @db.VarChar(255)
-  created_at      DateTime? @default(now()) @db.Timestamptz(6)
-  is_pending      Boolean   @default(false)
-  updated_at      DateTime? @default(now()) @db.Timestamptz(6)
-  external_id     String?   @db.VarChar(255)
-  preimage        String?   @db.VarChar(255)
-  user            User      @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "transaction_user_id_foreign")
+model Transaction {
+  id             Int       @id @default(autoincrement())
+  userId         String    @map("user_id") @db.VarChar(255)
+  preTxBalance   BigInt    @map("pre_tx_balance")
+  paymentRequest String    @map("payment_request") @db.VarChar(700)
+  paymentHash    String?   @map("payment_hash")
+  feeMsat        Int?      @map("fee_msat")
+  msatAmount     BigInt    @map("msat_amount")
+  withdraw       Boolean
+  success        Boolean?
+  failureReason  String?   @map("failure_reason") @db.VarChar(255)
+  createdAt      DateTime? @default(now()) @map("created_at") @db.Timestamptz(6)
+  isPending      Boolean   @default(false) @map("is_pending")
+  updatedAt      DateTime? @default(now()) @map("updated_at") @db.Timestamptz(6)
+  externalId     String?   @map("external_id") @db.VarChar(255)
+  preimage       String?   @db.VarChar(255)
+  user           User      @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "transaction_user_id_foreign")
 
-  @@index([user_id], map: "idx_transaction_user_id")
+  @@index([userId], map: "idx_transaction_user_id")
+  @@map("transaction")
 }
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
@@ -253,7 +254,7 @@ model User {
   podcast             Podcast[]
   split_recipient     SplitRecipient[]
   subscriber          Subscriber?
-  transaction         transaction[]
+  transaction         Transaction[]
   user_flag           UserFlag[]
   wallet_connection   WalletConnection[]
 

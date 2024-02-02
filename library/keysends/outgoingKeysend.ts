@@ -1,4 +1,3 @@
-import { transaction } from "./../../node_modules/.prisma/client/index.d";
 import { randomUUID } from "crypto";
 import db from "../db";
 import { getUserName } from "../userHelper";

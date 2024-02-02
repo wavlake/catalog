@@ -1,4 +1,5 @@
 import express from "express";
+import depositController from "../controllers/deposit";
 const { isAuthorized } = require("@middlewares/auth");
 const { isZbdIp, isZbdRegion } = require("@middlewares/zbdChecks");
 const { rateLimit } = require("express-rate-limit");
@@ -8,7 +9,8 @@ const router = express.Router();
 
 //////// ROUTES ////////
 
-//TODO
+router.get("/:transactionId", isAuthorized, depositController.getDeposit);
+router.post("/", isAuthorized, depositController.createDeposit);
 
 // Export router
 export default router;
