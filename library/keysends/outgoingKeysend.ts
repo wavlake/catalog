@@ -1,3 +1,4 @@
+import { transaction } from "./../../node_modules/.prisma/client/index.d";
 import { randomUUID } from "crypto";
 import db from "../db";
 import { getUserName } from "../userHelper";
@@ -28,13 +29,17 @@ export const recordKeysend = async ({ keysendData, pubkey, metadata }) => {
   const txId = randomUUID();
   const isSettled = getIsSettled(keysendData.transaction.status);
   const isInFlight = getIsInFlight(keysendData.transaction.status);
+
+  const BUFFER_AMOUNT = 0.15;
+  const defaultFee = keysendData.transaction.amount * BUFFER_AMOUNT;
   trx("external_payment").insert(
     {
       user_id: userId,
       external_id: keysendData.transaction.id,
       // the msat_amount does not include the fee
       msat_amount: keysendData.transaction.amount,
-      fee_msat: keysendData.transaction.fee,
+      // if the keysend is inflight, we estimate the fee
+      fee_msat: keysendData.transaction.fee || defaultFee,
       pubkey,
       name,
       message,
