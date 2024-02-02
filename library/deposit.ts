@@ -1,4 +1,4 @@
-const log = require("loglevel");
+import log from "loglevel";
 import db from "./db";
 import { ZBDSendPaymentResponse } from "./zbd/responseInterfaces";
 
