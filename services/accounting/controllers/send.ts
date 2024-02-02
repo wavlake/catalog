@@ -14,6 +14,7 @@ import { sendKeysend as zbdSendKeysend } from "@library/zbd/zbdClient";
 import { validate } from "uuid";
 import { processSplits } from "@library/amp";
 import { checkUserHasSufficientSats } from "@library/userHelper";
+import { TransactionStatus } from "@library/zbd/constants";
 
 const sendKeysend = asyncHandler<
   core.ParamsDictionary,
@@ -118,6 +119,10 @@ const sendKeysend = asyncHandler<
           return {
             // this is not really true if the payment is in flight, but we report it as true to the client
             success: true,
+            message:
+              response.data.transaction.status === TransactionStatus.Processing
+                ? "Keysend payment is in flight"
+                : undefined,
             msatAmount: request.msatAmount,
             pubkey: request.pubkey,
             feeMsat: parseInt(data.transaction.fee),

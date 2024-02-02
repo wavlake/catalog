@@ -26,6 +26,7 @@ export interface ExternalKeysendResult {
   feeMsat: number;
   pubkey: string;
   success: boolean;
+  message?: string;
 }
 
 export interface ExternalKeysendResponse {
