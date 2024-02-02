@@ -29,13 +29,6 @@ router.post(
   isZbdRegion,
   sendController.createWithdraw
 );
-router.post(
-  "/keysend",
-  isAuthorized,
-  limiter,
-  isZbdRegion,
-  sendController.createKeysend
-);
 router.post("/update", isZbdIp, sendController.updateWithdraw);
 
 // Export router

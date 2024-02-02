@@ -6,7 +6,7 @@ import {
   ExternalKeysendResult,
   constructCustomRecords,
   constructKeysendMetadata,
-  recordKeysend,
+  recordInProgressKeysend,
 } from "@library/keysends";
 import core from "express-serve-static-core";
 import log from "loglevel";
@@ -14,6 +14,7 @@ import { sendKeysend as zbdSendKeysend } from "@library/zbd/zbdClient";
 import { validate } from "uuid";
 import { processSplits } from "@library/amp";
 import { checkUserHasSufficientSats } from "@library/userHelper";
+import { TransactionStatus } from "@library/zbd/constants";
 
 const sendKeysend = asyncHandler<
   core.ParamsDictionary,
@@ -62,6 +63,7 @@ const sendKeysend = asyncHandler<
       return;
     }
 
+    // Send keysends using service provider (ZBD)
     const responses = await Promise.all(
       keysends.map(async (keysend) => {
         const keysendMetadata = await constructKeysendMetadata(userId, body);
@@ -84,6 +86,7 @@ const sendKeysend = asyncHandler<
     const processedResponses: ExternalKeysendResult[] = await Promise.all(
       responses.map(async ({ response, request }) => {
         if (!response) {
+          log.error("Error sending keysend to ZBD. No response.");
           return {
             success: false,
             msatAmount: request.msatAmount,
@@ -97,7 +100,7 @@ const sendKeysend = asyncHandler<
           const { data } = response;
           // request sent to zbd
           const { pubkey, name } = request;
-          recordKeysend({
+          recordInProgressKeysend({
             keysendData: data,
             pubkey,
             metadata: {
@@ -114,8 +117,12 @@ const sendKeysend = asyncHandler<
           });
 
           return {
-            // this is not really true if the payment is in flight
+            // this is not really true if the payment is in flight, but we report it as true to the client
             success: true,
+            message:
+              response.data.transaction.status === TransactionStatus.Processing
+                ? "Keysend payment is in flight"
+                : undefined,
             msatAmount: request.msatAmount,
             pubkey: request.pubkey,
             feeMsat: parseInt(data.transaction.fee),
