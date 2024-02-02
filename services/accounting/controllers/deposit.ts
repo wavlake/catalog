@@ -1,4 +1,5 @@
 const log = require("loglevel");
+import db from "@library/db";
 import asyncHandler from "express-async-handler";
 import prisma from "@prismalocal/client";
 import { getUserBalance } from "@library/userHelper";
@@ -7,6 +8,60 @@ import {
   MAX_INVOICE_AMOUNT,
   DEFAULT_EXPIRATION_SECONDS,
 } from "@library/constants";
+import { updateInvoiceIfNeeded } from "@library/invoice";
+import { getCharge } from "@library/zbd";
+
+const getDeposit = asyncHandler(async (req, res, next) => {
+  const userId = req["uid"];
+  const { transactionId } = req.params;
+
+  // validate the id param
+  if (!transactionId) {
+    res.status(400).send("Must include transactionId");
+    return;
+  }
+
+  const intId = parseInt(transactionId);
+  if (isNaN(intId) || intId <= 0) {
+    res.status(400).send("Invalid transactionId, must be a positive integer");
+    return;
+  }
+
+  const deposit = await db
+    .knex("transaction")
+    .select("*")
+    .where("id", "=", intId)
+    .where("user_id", "=", userId)
+    .first()
+    .catch((e) => {
+      log.error(`Error finding deposit: ${e}`);
+      return null;
+    });
+
+  if (!deposit) {
+    res.status(404).send("Deposit not found");
+    return;
+  }
+
+  if (deposit.is_pending) {
+    const update = await getCharge(deposit.external_id);
+    log.debug(update);
+    const currentStatus = update.data.status;
+    const msatAmount = update.data.amount;
+    if (update.data.status != "pending") {
+      log.debug(
+        `Transaction ${intId} is stale, updating status to ${currentStatus}`
+      );
+      await updateInvoiceIfNeeded(
+        `transaction-${intId}`,
+        currentStatus,
+        parseInt(msatAmount)
+      );
+    }
+  }
+
+  res.json({ success: true, data: deposit });
+});
 
 const createDeposit = asyncHandler(async (req, res: any, next) => {
   const userId = req["uid"];
@@ -96,4 +151,4 @@ const createDeposit = asyncHandler(async (req, res: any, next) => {
   });
 });
 
-export default { createDeposit };
+export default { getDeposit, createDeposit };

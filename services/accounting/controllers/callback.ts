@@ -8,8 +8,7 @@ import {
 } from "@library/zbd/requestInterfaces";
 import { KeysendMetadata } from "@library/keysend";
 import { processSplits } from "@library/amp";
-import { handleCompletedDeposit } from "@library/deposit";
-import prisma from "@prismalocal/client";
+import { updateInvoiceIfNeeded } from "@library/invoice";
 
 const jsonParser = (jsonString?: string) => {
   if (!jsonString) return;
@@ -87,30 +86,11 @@ const processIncomingInvoice = asyncHandler(async (req, res, next) => {
   // the invoice status is expected to change from pending to success or fail
   const request: ZBDChargeCallbackRequest = req.body;
 
-  // Check invoice type
-  const invoiceType = request.internalId.split("-")[0];
-  const wavlakeId = parseInt(request.internalId.split("-")[1]);
-  log.debug("Invoice type", invoiceType);
-
-  const isCompleted = request.status === "completed";
-  if (!isCompleted) {
-    log.debug("Invoice failed");
-    await handleFailedOrExpiredInvoice(wavlakeId);
-    res.status(200).send("OK");
-    return;
-  }
-
-  if (invoiceType === "transaction") {
-    log.debug(`Processing transaction invoice for id ${request.internalId}`);
-    await handleCompletedDeposit(wavlakeId, request.amount);
-  }
-  // TODO: handle external_receive invoices
-  if (invoiceType === "external_receive") {
-    log.debug(
-      `Processing external_receive invoice for id ${request.internalId}`
-    );
-    // Process should account for plain invoices and zaps
-  }
+  await updateInvoiceIfNeeded(
+    request.internalId,
+    request.status,
+    request.amount
+  );
 
   res.status(200).send("OK");
   return;
@@ -121,17 +101,6 @@ const processOutgoingInvoice = asyncHandler(async (req, res, next) => {
   // the invoice status is expected to change from pending to success or fail
   res.status(200);
 });
-
-async function handleFailedOrExpiredInvoice(internalId: number) {
-  await prisma.transaction.update({
-    where: { id: internalId },
-    data: {
-      isPending: false,
-      success: false,
-      updatedAt: new Date(),
-    },
-  });
-}
 
 export default {
   processIncomingKeysend,

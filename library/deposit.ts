@@ -18,32 +18,30 @@ async function getUserIdFromTransactionId(
     });
 }
 
-async function wasTransactionAlreadyLogged(
-  transactionId: number
-): Promise<boolean> {
+export const wasTransactionAlreadyLogged = async (
+  invoiceId: number,
+  invoiceType: string
+): Promise<boolean> => {
   return db
-    .knex("transaction")
-    .select("transaction.is_pending as isPending")
-    .where("transaction.id", "=", transactionId)
+    .knex(invoiceType)
+    .select("is_pending as isPending")
+    .where("id", "=", invoiceId)
     .first()
     .then((data) => {
       return !data.isPending; // If transaction is not pending, it was already logged
     })
     .catch((err) => {
-      log.error(`Error finding transactionId ${err}`);
+      log.error(
+        `Error finding invoice id ${invoiceId} in ${invoiceType}: ${err}`
+      );
       return false;
     });
-}
+};
 
 export const handleCompletedDeposit = async (
   transactionId: number,
   msatAmount: number
 ) => {
-  const wasLogged = await wasTransactionAlreadyLogged(transactionId);
-  if (wasLogged) {
-    log.debug(`Transaction ${transactionId} was already logged, skipping.`);
-    return true;
-  }
   const userId = await getUserIdFromTransactionId(transactionId);
   const trx = await db.knex.transaction();
   // Update transaction table and user balance in one tx
