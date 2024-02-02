@@ -9,7 +9,7 @@ import {
 import { KeysendMetadata } from "@library/keysend";
 import { processSplits } from "@library/amp";
 import { updateKeysend } from "@library/keysends";
-
+import { updateInvoiceIfNeeded } from "@library/invoice";
 
 const jsonParser = (jsonString?: string) => {
   if (!jsonString) return;
@@ -101,6 +101,7 @@ const processOutgoingKeysend = asyncHandler<
   await updateKeysend({
     externalId,
     status,
+    fee: transaction.fee,
   })
     .then(() => {
       log.debug(`Updated keysend ${externalId} with status ${status}`);

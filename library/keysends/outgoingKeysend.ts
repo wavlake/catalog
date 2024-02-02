@@ -83,17 +83,54 @@ export const recordKeysend = async ({ keysendData, pubkey, metadata }) => {
 export const updateKeysend = async ({
   externalId,
   status,
+  fee,
 }: {
   externalId: string;
   status: string;
+  fee: any;
 }) => {
-  const isSettled = getIsSettled(status);
-  return db
+  const feeMsat = parseInt(fee);
+  const currentKeysend = await db
     .knex("external_payment")
+    .where({ external_id: externalId })
+    .select("is_settled", "user_id", "msat_amount")
+    .first();
+
+  if (currentKeysend.is_settled) {
+    log.debug("Keysend already settled, skipping update");
+    return;
+  }
+
+  const isSettled = getIsSettled(status);
+  const trx = await db.knex.transaction();
+
+  if (isSettled) {
+    // decrement the user balance if the payment is settled
+    trx("user")
+      .decrement({
+        msat_balance: parseInt(currentKeysend.msat_amount) + feeMsat,
+      })
+      .update({ updated_at: db.knex.fn.now() })
+      .where({ id: currentKeysend.user_id });
+  }
+
+  await trx("external_payment")
     .where({ external_id: externalId, status })
     .update({
       is_settled: isSettled,
       is_pending: false,
+      fee_msat: feeMsat,
+    });
+  return trx
+    .commit()
+    .then((data) => {
+      log.debug(
+        `Updated external payment record for ${externalId} with status ${status}`
+      );
+    })
+    .catch((err) => {
+      log.error(`Error updating external payment record: ${err}`);
+      trx.rollback;
     });
 };
 
