@@ -1,9 +1,146 @@
-const log = require("loglevel");
-const { checkUserHasSufficientSats } = require("@library/userHelper");
-const { validate } = require("uuid");
-const { processSplits } = require("@library/amp");
-import db from "@library/db";
 import asyncHandler from "express-async-handler";
+import {
+  isValidExternalKeysendRequest,
+  ExternalKeysendRequest,
+  ExternalKeysendResponse,
+  ExternalKeysendResult,
+  constructCustomRecords,
+  constructKeysendMetadata,
+  recordKeysend,
+} from "@library/keysends";
+import core from "express-serve-static-core";
+import log from "loglevel";
+import { sendKeysend as zbdSendKeysend } from "@library/zbd/zbdClient";
+import { validate } from "uuid";
+import { processSplits } from "@library/amp";
+import { checkUserHasSufficientSats } from "@library/userHelper";
+
+const sendKeysend = asyncHandler<
+  core.ParamsDictionary,
+  ExternalKeysendResponse,
+  ExternalKeysendRequest
+>(async (req, res, next) => {
+  // Request should include the following:
+  // - array of keysends: [{msatAmount: 100, pubkey: 'abc123', customKey: customValue, }, ...]
+  // - message (optional)
+  // - podcast info (podcast, guid, feedID, episode, episode title)
+  // - ts
+  // - value_msat_total
+  const body = req.body;
+  const {
+    msatTotal,
+    keysends,
+    message,
+    podcast,
+    guid,
+    feedId,
+    episode,
+    episodeGuid,
+    ts,
+  } = body;
+  const userId = req["uid"];
+  log.debug(`Processing external keysend request for user ${userId}`);
+  try {
+    const isValidRequest = isValidExternalKeysendRequest(body);
+    if (!isValidRequest) {
+      res.status(500).json({ success: false, error: "Invalid request" });
+      return;
+    }
+
+    // estimate a 15% total fee
+    const BUFFER_AMOUNT = 0.15;
+    const feeEstimate = BUFFER_AMOUNT * msatTotal;
+
+    // Check user balance
+    const userHasSufficientSats = await checkUserHasSufficientSats(
+      userId,
+      msatTotal + feeEstimate // Add estimated fee
+    );
+
+    if (!userHasSufficientSats) {
+      res.status(403).json({ success: false, error: "Insufficient balance" });
+      return;
+    }
+
+    const responses = await Promise.all(
+      keysends.map(async (keysend) => {
+        const keysendMetadata = await constructKeysendMetadata(userId, body);
+
+        const customRecords = constructCustomRecords(keysend, keysendMetadata);
+        const res = await zbdSendKeysend({
+          amount: keysend.msatAmount.toString(),
+          pubkey: keysend.pubkey,
+          // not used for anything
+          // metadata: {}
+          tlvRecords: customRecords,
+        });
+        return {
+          response: res,
+          request: keysend,
+        };
+      })
+    );
+
+    const processedResponses: ExternalKeysendResult[] = await Promise.all(
+      responses.map(async ({ response, request }) => {
+        if (!response) {
+          return {
+            success: false,
+            msatAmount: request.msatAmount,
+            pubkey: request.pubkey,
+            feeMsat: 0,
+          };
+        }
+
+        if (response.success) {
+          // response from zbd
+          const { data } = response;
+          // request sent to zbd
+          const { pubkey, name } = request;
+          recordKeysend({
+            keysendData: data,
+            pubkey,
+            metadata: {
+              message,
+              podcast,
+              guid,
+              feedId,
+              episode,
+              episodeGuid,
+              ts,
+              userId,
+              name,
+            },
+          });
+
+          return {
+            // this is not really true if the payment is in flight
+            success: true,
+            msatAmount: request.msatAmount,
+            pubkey: request.pubkey,
+            feeMsat: parseInt(data.transaction.fee),
+          };
+        }
+
+        // failed keysend
+        log.debug(`Keysend failed: ${response.message}`);
+        return {
+          success: false,
+          msatAmount: request.msatAmount,
+          pubkey: request.pubkey,
+          feeMsat: 0,
+        };
+      })
+    );
+
+    res
+      .status(200)
+      .json({ success: true, data: { keysends: processedResponses } });
+  } catch (e) {
+    log.error(`Error processing external keysends: ${e}`);
+    res.status(500).json({ success: false, error: "External keysend failed" });
+  }
+});
 
 const createSend = asyncHandler(async (req, res: any, next) => {
   const userId = req["uid"];
@@ -34,10 +171,8 @@ const createSend = asyncHandler(async (req, res: any, next) => {
   }
 
   log.debug(`Creating amp transaction for user ${userId}`);
-  const trx = await db.knex.transaction();
 
   const amp = await processSplits({
-    trx: trx,
     contentId: request.contentId,
     userId: userId,
     paymentType: request.comment ? 2 : 1,
@@ -54,4 +189,4 @@ const createSend = asyncHandler(async (req, res: any, next) => {
   return res.status(200).json({ success: true, data: { amp } });
 });
 
-export default { createSend };
+export default { createSend, sendKeysend };

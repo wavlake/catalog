@@ -9,16 +9,41 @@ export async function checkUserHasSufficientSats(
   userId: string,
   msatAmount: number
 ): Promise<boolean> {
+  const inflightKeysends = await db
+    .knex("external_payment")
+    .sum("msat_amount as totalAmount")
+    .sum("fee_msat as totalFee")
+    .where("is_pending", "=", true)
+    .andWhere("user_id", "=", userId)
+    .groupBy("user_id")
+    .first();
+  const inflightTransactions = await db
+    .knex("transaction")
+    .sum("msat_amount as totalAmount")
+    .sum("fee_msat as totalFee")
+    .where("is_pending", "=", true)
+    .andWhere("user_id", "=", userId)
+    .groupBy("user_id")
+    .first();
+
+  const inFlightSats =
+    parseInt(inflightKeysends?.totalAmount || 0) +
+    parseInt(inflightKeysends?.totalFee || 0) +
+    parseInt(inflightTransactions?.totalAmount || 0) +
+    parseInt(inflightTransactions?.totalFee || 0);
+
   return db
     .knex("user")
     .select("user.msat_balance as msatBalance")
+
     .where("user.id", "=", userId)
     .first()
     .then((userData) => {
       if (!userData) {
         return false;
       }
-      return parseInt(userData.msatBalance) > msatAmount;
+      // adjust available balance and subtract any inflight sats
+      return parseInt(userData.msatBalance) - inFlightSats > msatAmount;
     })
     .catch((err) => {
       log.debug(`Error querying user table: ${err}`);

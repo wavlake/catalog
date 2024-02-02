@@ -120,8 +120,8 @@ model ExternalReceive {
   trackId     String?   @map("track_id") @db.Uuid
   createdAt   DateTime? @default(now()) @map("created_at") @db.Timestamptz(6)
   paymentHash String?   @map("payment_hash") @db.VarChar(255)
-  externalId  String?   @db.VarChar(255) @map("external_id")
-  updatedAt   DateTime? @db.Timestamptz(6) @map("updated_at")
+  externalId  String?   @map("external_id") @db.VarChar(255)
+  updatedAt   DateTime? @map("updated_at") @db.Timestamptz(6)
 
   @@map("external_receive")
 }
@@ -480,6 +480,7 @@ model ExternalPayment {
   createdAt    DateTime? @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt    DateTime? @default(now()) @map("updated_at") @db.Timestamptz(6)
   external_id  Boolean?
+  isPending    Boolean?  @default(true) @map("is_pending")
   user         User      @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "external_payment_user_id_foreign")
 
   @@map("external_payment")
