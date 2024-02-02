@@ -89,17 +89,16 @@ const processOutgoingKeysend = asyncHandler(async (req, res, next) => {
   res.status(200);
 });
 
-const processIncomingInvoice = asyncHandler(async (req, res, next) => {
+const processIncomingInvoice = asyncHandler<
+  core.ParamsDictionary,
+  any,
+  ZBDChargeCallbackRequest
+>(async (req, res, next) => {
   // the invoice status is expected to change from pending to success or fail
-  const request: ZBDChargeCallbackRequest = req.body;
+  const { internalId, status, amount } = req.body;
 
-  const [invoiceType, invoiceId] = request.internalId.split("-");
-  await updateInvoiceIfNeeded(
-    invoiceType,
-    invoiceId,
-    request.status,
-    request.amount
-  );
+  const [invoiceType, invoiceId] = internalId.split("-");
+  await updateInvoiceIfNeeded(invoiceType, parseInt(invoiceId), status, amount);
 
   res.status(200).send("OK");
   return;
