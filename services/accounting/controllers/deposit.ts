@@ -48,7 +48,7 @@ const getDeposit = asyncHandler(async (req, res, next) => {
     log.debug(update);
     const currentStatus = update.data.status;
     const msatAmount = update.data.amount;
-    if (update.data.status != "pending") {
+    if (currentStatus != "pending") {
       log.debug(
         `Transaction ${intId} is stale, updating status to ${currentStatus}`
       );
