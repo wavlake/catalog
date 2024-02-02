@@ -50,7 +50,7 @@ export const recordKeysend = async ({ keysendData, pubkey, metadata }) => {
       episode_guid: episodeGuid,
       ts,
       is_settled: isSettled,
-      in_flight: isInFlight,
+      is_pending: isInFlight,
       tx_id: txId,
     },
     ["id"]

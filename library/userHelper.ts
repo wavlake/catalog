@@ -13,7 +13,7 @@ export async function checkUserHasSufficientSats(
     .knex("external_payment")
     .sum("msat_amount as totalAmount")
     .sum("fee_msat as totalFee")
-    .where("in_flight", "=", true)
+    .where("is_pending", "=", true)
     .andWhere("user_id", "=", userId)
     .groupBy("user_id")
     .first();
@@ -21,7 +21,7 @@ export async function checkUserHasSufficientSats(
     .knex("transaction")
     .sum("msat_amount as totalAmount")
     .sum("fee_msat as totalFee")
-    .where("in_flight", "=", true)
+    .where("is_pending", "=", true)
     .andWhere("user_id", "=", userId)
     .groupBy("user_id")
     .first();
