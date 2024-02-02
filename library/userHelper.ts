@@ -9,8 +9,16 @@ export async function checkUserHasSufficientSats(
   userId: string,
   msatAmount: number
 ): Promise<boolean> {
-  const inflight = await db
+  const inflightKeysends = await db
     .knex("external_payment")
+    .sum("msat_amount as totalAmount")
+    .sum("fee_msat as totalFee")
+    .where("in_flight", "=", true)
+    .andWhere("user_id", "=", userId)
+    .groupBy("user_id")
+    .first();
+  const inflightTransactions = await db
+    .knex("transaction")
     .sum("msat_amount as totalAmount")
     .sum("fee_msat as totalFee")
     .where("in_flight", "=", true)
@@ -19,7 +27,10 @@ export async function checkUserHasSufficientSats(
     .first();
 
   const inFlightSats =
-    parseInt(inflight?.totalAmount || 0) + parseInt(inflight?.totalFee || 0);
+    parseInt(inflightKeysends?.totalAmount || 0) +
+    parseInt(inflightKeysends?.totalFee || 0) +
+    parseInt(inflightTransactions?.totalAmount || 0) +
+    parseInt(inflightTransactions?.totalFee || 0);
 
   return db
     .knex("user")
