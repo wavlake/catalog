@@ -93,8 +93,7 @@ const processIncomingInvoice = asyncHandler(async (req, res, next) => {
   // the invoice status is expected to change from pending to success or fail
   const request: ZBDChargeCallbackRequest = req.body;
 
-  const invoiceType = request.internalId.split("-")[0];
-  const invoiceId = parseInt(request.internalId.split("-")[1]);
+  const [invoiceType, invoiceId] = request.internalId.split("-");
   await updateInvoiceIfNeeded(
     invoiceType,
     invoiceId,
