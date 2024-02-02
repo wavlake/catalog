@@ -1,6 +1,7 @@
 import { randomUUID } from "crypto";
 import db from "../db";
 import { getUserName } from "../userHelper";
+import log from "loglevel";
 
 const BLIP0010 = "7629169";
 const COMPLETE_STATUS = "completed";
@@ -66,7 +67,7 @@ export const recordKeysend = async ({ keysendData, pubkey, metadata }) => {
     .commit()
     .then((data) => {
       log.debug(
-        `Created external payment record for ${userId} to ${keysend.pubkey}, external_id: ${keysendData.transaction.id}`
+        `Created external payment record for ${userId} to ${keysendData.pubkey}, external_id: ${keysendData.transaction.id}`
       );
     })
     .catch((err) => {
