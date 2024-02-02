@@ -5,10 +5,7 @@ import log from "loglevel";
 
 const BLIP0010 = "7629169";
 const COMPLETE_STATUS = "completed";
-const FAILED_STATUS = "failed";
-// this needs to be updated once we know all possible statuses
-const getIsInFlight = (status: string) =>
-  ![FAILED_STATUS, COMPLETE_STATUS].includes(status);
+
 const getIsSettled = (status: string) => status === COMPLETE_STATUS;
 
 export const recordKeysend = async ({ keysendData, pubkey, metadata }) => {
@@ -24,21 +21,17 @@ export const recordKeysend = async ({ keysendData, pubkey, metadata }) => {
     guid,
     userId,
   } = metadata;
-  const trx = await db.knex.transaction();
-  const txId = randomUUID();
-  const isSettled = getIsSettled(keysendData.transaction.status);
-  const isInFlight = getIsInFlight(keysendData.transaction.status);
-
   const BUFFER_AMOUNT = 0.15;
-  const defaultFee = keysendData.transaction.amount * BUFFER_AMOUNT;
-  trx("external_payment").insert(
+  const estimatedFee = keysendData.transaction.amount * BUFFER_AMOUNT;
+  return db.knex("external_payment").insert(
     {
       user_id: userId,
       external_id: keysendData.transaction.id,
       // the msat_amount does not include the fee
       msat_amount: keysendData.transaction.amount,
       // if the keysend is inflight, we estimate the fee
-      fee_msat: keysendData.transaction.fee || defaultFee,
+      // sometimes the payment is already settled and we have the actual fee
+      fee_msat: keysendData.transaction.fee || estimatedFee,
       pubkey,
       name,
       message,
@@ -48,36 +41,13 @@ export const recordKeysend = async ({ keysendData, pubkey, metadata }) => {
       episode,
       episode_guid: episodeGuid,
       ts,
-      is_settled: isSettled,
-      is_pending: isInFlight,
-      tx_id: txId,
+      // we rely on the callback to update the payment as settled and is_pending = false
+      is_settled: false,
+      is_pending: true,
+      tx_id: randomUUID(),
     },
     ["id"]
   );
-
-  // decrement the user balance if the payment is settled
-  if (isSettled) {
-    trx("user")
-      .decrement({
-        msat_balance:
-          parseInt(keysendData.transaction.amount) +
-          parseInt(keysendData.transaction.fee),
-      })
-      .update({ updated_at: db.knex.fn.now() })
-      .where({ id: userId });
-  }
-
-  return trx
-    .commit()
-    .then((data) => {
-      log.debug(
-        `Created external payment record for ${userId} to ${keysendData.pubkey}, external_id: ${keysendData.transaction.id}`
-      );
-    })
-    .catch((err) => {
-      log.error(`Error creating external payment record: ${err}`);
-      trx.rollback;
-    });
 };
 
 export const updateKeysend = async ({
