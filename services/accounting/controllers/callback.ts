@@ -5,7 +5,6 @@ import core from "express-serve-static-core";
 import { ZBDKeysendCallbackRequest } from "@library/zbd/requestInterfaces";
 import { KeysendMetadata } from "@library/keysend";
 import { processSplits } from "@library/amp";
-import { recordSuccessfulKeysend } from "@library/keysends/outgoingKeysend";
 
 const jsonParser = (jsonString?: string) => {
   if (!jsonString) return;
@@ -78,7 +77,7 @@ const processOutgoingKeysend = asyncHandler(async (req, res, next) => {
   const { msatTotal } = body;
   log.debug(`Processing outgoing keysend callback`);
   log.debug(body.toJson());
-  // const recordKeysend = recordSuccessfulKeysend({
+  // const recordKeysend = recordKeysend({
   //   pubkey: body.pubkey,
   //   feeMsat: body.feeMsat,
   // });

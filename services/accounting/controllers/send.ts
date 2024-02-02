@@ -6,7 +6,7 @@ import {
   ExternalKeysendResult,
   constructCustomRecords,
   constructKeysendMetadata,
-  recordSuccessfulKeysend,
+  recordKeysend,
 } from "@library/keysends";
 import core from "express-serve-static-core";
 import log from "loglevel";
@@ -14,8 +14,6 @@ import { sendKeysend as zbdSendKeysend } from "@library/zbd/zbdClient";
 import { validate } from "uuid";
 import { processSplits } from "@library/amp";
 import { checkUserHasSufficientSats } from "@library/userHelper";
-
-const feeLimitMsat = 20000; // Hard-coding for external keysends for now
 
 const sendKeysend = asyncHandler<
   core.ParamsDictionary,
@@ -48,10 +46,15 @@ const sendKeysend = asyncHandler<
       res.status(500).json({ success: false, error: "Invalid request" });
       return;
     }
+
+    // estimate a 15% total fee
+    const BUFFER_AMOUNT = 0.15;
+    const feeEstimate = BUFFER_AMOUNT * msatTotal;
+
     // Check user balance
     const userHasSufficientSats = await checkUserHasSufficientSats(
       userId,
-      msatTotal + feeLimitMsat // Add estimated fee limit
+      msatTotal + feeEstimate // Add estimated fee
     );
 
     if (!userHasSufficientSats) {
@@ -94,7 +97,7 @@ const sendKeysend = asyncHandler<
           const { data } = response;
           // request sent to zbd
           const { pubkey, name } = request;
-          recordSuccessfulKeysend({
+          recordKeysend({
             keysendData: data,
             pubkey,
             metadata: {

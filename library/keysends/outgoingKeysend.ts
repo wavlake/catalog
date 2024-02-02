@@ -5,17 +5,13 @@ import { getUserName } from "../userHelper";
 const BLIP0010 = "7629169";
 const COMPLETE_STATUS = "completed";
 const FAILED_STATUS = "failed";
+// this needs to be updated once we know all possible statuses
 const getIsInFlight = (status: string) =>
   ![FAILED_STATUS, COMPLETE_STATUS].includes(status);
 const getIsSettled = (status: string) => status === COMPLETE_STATUS;
 
-export const recordSuccessfulKeysend = async ({
-  keysendData,
-  pubkey,
-  metadata,
-}) => {
+export const recordKeysend = async ({ keysendData, pubkey, metadata }) => {
   // unsure what to use for payment index
-  const paymentIndex = 0;
   const {
     name,
     message,
@@ -34,8 +30,7 @@ export const recordSuccessfulKeysend = async ({
   trx("external_payment").insert(
     {
       user_id: userId,
-      // do we still need to store the payment_index?
-      // payment_index: paymentIndex,
+      external_id: keysendData.transaction.id,
       // the msat_amount does not include the fee
       msat_amount: keysendData.transaction.amount,
       fee_msat: keysendData.transaction.fee,
@@ -55,10 +50,8 @@ export const recordSuccessfulKeysend = async ({
     ["id"]
   );
 
-  if (isSettled || isInFlight) {
-    // decrement the user balance
-    // if the payment fails and we are notified of the failure via callback
-    // we refund the user balance
+  // decrement the user balance if the payment is settled
+  if (isSettled) {
     trx("user")
       .decrement({
         msat_balance:
@@ -73,7 +66,7 @@ export const recordSuccessfulKeysend = async ({
     .commit()
     .then((data) => {
       log.debug(
-        `Created external payment record for ${userId} to ${keysend.pubkey} at payment index ${paymentIndex}`
+        `Created external payment record for ${userId} to ${keysend.pubkey}, external_id: ${keysendData.transaction.id}`
       );
     })
     .catch((err) => {
