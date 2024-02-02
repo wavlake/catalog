@@ -8,7 +8,7 @@ import {
 } from "@library/zbd/requestInterfaces";
 import { KeysendMetadata } from "@library/keysend";
 import { processSplits } from "@library/amp";
-import { recordKeysend, updateKeysend } from "@library/keysends";
+import { updateKeysend } from "@library/keysends";
 
 
 const jsonParser = (jsonString?: string) => {
