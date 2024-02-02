@@ -3,9 +3,10 @@ import asyncHandler from "express-async-handler";
 import prisma from "@prismalocal/client";
 import { getContentFromId } from "@library/content";
 import { createCharge } from "@library/zbd/zbdClient";
-
-const DEFAULT_EXPIRATION_SECONDS = 3600;
-const MAX_INVOICE_AMOUNT = 100000 * 1000; // 100k sats
+import {
+  MAX_INVOICE_AMOUNT,
+  DEFAULT_EXPIRATION_SECONDS,
+} from "@library/constants";
 
 const getInvoice = asyncHandler(async (req, res, next) => {
   const { id } = req.params;

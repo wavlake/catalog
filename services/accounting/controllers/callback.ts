@@ -2,10 +2,14 @@ import log from "loglevel";
 import asyncHandler from "express-async-handler";
 import { validate } from "uuid";
 import core from "express-serve-static-core";
-import { ZBDKeysendCallbackRequest } from "@library/zbd/requestInterfaces";
+import {
+  ZBDKeysendCallbackRequest,
+  ZBDChargeCallbackRequest,
+} from "@library/zbd/requestInterfaces";
 import { KeysendMetadata } from "@library/keysend";
 import { processSplits } from "@library/amp";
 import { recordKeysend, updateKeysend } from "@library/keysends";
+
 
 const jsonParser = (jsonString?: string) => {
   if (!jsonString) return;
@@ -108,10 +112,19 @@ const processOutgoingKeysend = asyncHandler<
     });
 });
 
-const processIncomingInvoice = asyncHandler(async (req, res, next) => {
-  // TODO - update an invoice
+const processIncomingInvoice = asyncHandler<
+  core.ParamsDictionary,
+  any,
+  ZBDChargeCallbackRequest
+>(async (req, res, next) => {
   // the invoice status is expected to change from pending to success or fail
-  res.status(200);
+  const { internalId, status, amount } = req.body;
+
+  const [invoiceType, invoiceId] = internalId.split("-");
+  await updateInvoiceIfNeeded(invoiceType, parseInt(invoiceId), status, amount);
+
+  res.status(200).send("OK");
+  return;
 });
 
 const processOutgoingInvoice = asyncHandler(async (req, res, next) => {
