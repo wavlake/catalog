@@ -1,3 +1,5 @@
+import { ChargeStatus, TransactionStatus } from "./constants";
+
 interface TLV {
   type: string;
   value: string;
@@ -33,23 +35,23 @@ export interface SendPaymentRequest {
 
 export interface ZBDKeysendCallbackRequest {
   transaction: {
-    id;
-    type;
-    flow;
-    unit;
-    status;
-    fee;
-    amount;
-    walletId;
-    entityId;
-    invoiceId;
-    totalAmount;
-    description;
-    confirmedAt;
-    totalAmountUsd;
-    invoiceRequest;
-    updatedAt;
-    createdAt;
+    id: string;
+    type: string;
+    flow: any;
+    unit: any;
+    status: TransactionStatus;
+    fee: any;
+    amount: any;
+    walletId: any;
+    entityId: any;
+    invoiceId: any;
+    totalAmount: any;
+    description: any;
+    confirmedAt: any;
+    totalAmountUsd: any;
+    invoiceRequest: any;
+    updatedAt: any;
+    createdAt: any;
   };
   keysendData: {
     paymentHash: string;
@@ -69,7 +71,7 @@ export interface ZBDChargeCallbackRequest {
   unit: string;
   amount: number;
   confirmedAt: string;
-  status: string;
+  status: ChargeStatus;
   description: string;
   createdAt: string;
   expiresAt: string;

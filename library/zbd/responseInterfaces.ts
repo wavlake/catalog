@@ -1,5 +1,7 @@
 // These interfaces are used to define the response of the ZBD API
 
+import { ChargeStatus, PaymentStatus, TransactionStatus } from "./constants";
+
 // Terminology:
 // ZBD charge = lightning invoice
 // ZBD Static Charge = LNURL Pay
@@ -16,7 +18,7 @@ interface CommonDataFields {
   internalId: string;
   description: string;
   callbackUrl: string;
-  status: string;
+  status: PaymentStatus | ChargeStatus;
 }
 
 interface InvoiceBasic {
@@ -62,7 +64,7 @@ export interface ZBDSendKeysendPaymentResponse extends BaseResponse {
       fee: string;
       amount: string;
       description: string;
-      status: string;
+      status: TransactionStatus;
       confirmedAt: string | null;
     };
   };

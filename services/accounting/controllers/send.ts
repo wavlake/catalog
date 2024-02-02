@@ -6,7 +6,7 @@ import {
   ExternalKeysendResult,
   constructCustomRecords,
   constructKeysendMetadata,
-  recordKeysend,
+  recordInProgressKeysend,
 } from "@library/keysends";
 import core from "express-serve-static-core";
 import log from "loglevel";
@@ -99,7 +99,7 @@ const sendKeysend = asyncHandler<
           const { data } = response;
           // request sent to zbd
           const { pubkey, name } = request;
-          recordKeysend({
+          recordInProgressKeysend({
             keysendData: data,
             pubkey,
             metadata: {

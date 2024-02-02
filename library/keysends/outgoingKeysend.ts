@@ -1,14 +1,16 @@
+import { TransactionStatus } from "./../zbd/constants";
 import { randomUUID } from "crypto";
 import db from "../db";
 import { getUserName } from "../userHelper";
 import log from "loglevel";
 
 const BLIP0010 = "7629169";
-const COMPLETE_STATUS = "completed";
 
-const getIsSettled = (status: string) => status === COMPLETE_STATUS;
-
-export const recordKeysend = async ({ keysendData, pubkey, metadata }) => {
+export const recordInProgressKeysend = async ({
+  keysendData,
+  pubkey,
+  metadata,
+}) => {
   // unsure what to use for payment index
   const {
     name,
@@ -56,32 +58,32 @@ export const updateKeysend = async ({
   fee,
 }: {
   externalId: string;
-  status: string;
+  status: TransactionStatus;
   fee: any;
 }) => {
   const feeMsat = parseInt(fee);
-  const currentKeysend = await db
+  const staleKeysend = await db
     .knex("external_payment")
     .where({ external_id: externalId })
     .select("is_settled", "user_id", "msat_amount")
     .first();
 
-  if (currentKeysend.is_settled) {
+  if (staleKeysend.is_settled) {
     log.debug("Keysend already settled, skipping update");
     return;
   }
 
-  const isSettled = getIsSettled(status);
+  const isSettled = status === TransactionStatus.Completed;
   const trx = await db.knex.transaction();
 
   if (isSettled) {
     // decrement the user balance if the payment is settled
     trx("user")
       .decrement({
-        msat_balance: parseInt(currentKeysend.msat_amount) + feeMsat,
+        msat_balance: parseInt(staleKeysend.msat_amount) + feeMsat,
       })
       .update({ updated_at: db.knex.fn.now() })
-      .where({ id: currentKeysend.user_id });
+      .where({ id: staleKeysend.user_id });
   }
 
   await trx("external_payment")
