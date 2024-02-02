@@ -3,15 +3,11 @@ import db from "./db";
 import { handleCompletedDeposit, wasTransactionAlreadyLogged } from "./deposit";
 
 export const updateInvoiceIfNeeded = async (
-  internalId: string,
+  invoiceType: string,
+  invoiceId: number,
   status: string,
   amount: number
 ) => {
-  // Check invoice type
-  const invoiceType = internalId.split("-")[0];
-  const invoiceId = parseInt(internalId.split("-")[1]);
-  log.debug("Invoice type", invoiceType);
-
   const wasLogged = await wasTransactionAlreadyLogged(invoiceId, invoiceType);
   if (wasLogged) {
     log.debug(`Transaction ${invoiceId} was already logged, skipping.`);
@@ -30,12 +26,12 @@ export const updateInvoiceIfNeeded = async (
   }
 
   if (invoiceType === "transaction") {
-    log.debug(`Processing transaction invoice for id ${internalId}`);
+    log.debug(`Processing transaction invoice for id ${invoiceId}`);
     await handleCompletedDeposit(invoiceId, amount);
   }
   // TODO: handle external_receive invoices
   if (invoiceType === "external_receive") {
-    log.debug(`Processing external_receive invoice for id ${internalId}`);
+    log.debug(`Processing external_receive invoice for id ${invoiceId}`);
     // Process should account for plain invoices and zaps
   }
   return { success: true, data: { status: status } };

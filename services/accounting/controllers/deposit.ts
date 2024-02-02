@@ -53,7 +53,8 @@ const getDeposit = asyncHandler(async (req, res, next) => {
         `Transaction ${intId} is stale, updating status to ${currentStatus}`
       );
       await updateInvoiceIfNeeded(
-        `transaction-${intId}`,
+        "transaction",
+        intId,
         currentStatus,
         parseInt(msatAmount)
       );
