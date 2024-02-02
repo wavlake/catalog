@@ -9,6 +9,7 @@ import {
 import { KeysendMetadata } from "@library/keysend";
 import { processSplits } from "@library/amp";
 import { handleCompletedDeposit } from "@library/deposit";
+import prisma from "@prismalocal/client";
 
 const jsonParser = (jsonString?: string) => {
   if (!jsonString) return;
@@ -93,8 +94,8 @@ const processIncomingInvoice = asyncHandler(async (req, res, next) => {
 
   const isCompleted = request.status === "completed";
   if (!isCompleted) {
-    // TODO: Handle failed invoices
     log.debug("Invoice failed");
+    await handleFailedOrExpiredInvoice(wavlakeId);
     res.status(200).send("OK");
     return;
   }
@@ -120,6 +121,17 @@ const processOutgoingInvoice = asyncHandler(async (req, res, next) => {
   // the invoice status is expected to change from pending to success or fail
   res.status(200);
 });
+
+async function handleFailedOrExpiredInvoice(internalId: number) {
+  await prisma.transaction.update({
+    where: { id: internalId },
+    data: {
+      isPending: false,
+      success: false,
+      updatedAt: new Date(),
+    },
+  });
+}
 
 export default {
   processIncomingKeysend,
