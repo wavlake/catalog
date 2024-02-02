@@ -121,7 +121,7 @@ model ExternalReceive {
   createdAt   DateTime? @default(now()) @map("created_at") @db.Timestamptz(6)
   paymentHash String?   @map("payment_hash") @db.VarChar(255)
   externalId  String?   @map("external_id") @db.VarChar(255)
-  updatedAt   DateTime? @default(now()) @map("updated_at") @db.Timestamptz(6)
+  updatedAt   DateTime? @map("updated_at") @db.Timestamptz(6)
 
   @@map("external_receive")
 }
@@ -231,6 +231,7 @@ model transaction {
   updated_at      DateTime? @default(now()) @db.Timestamptz(6)
   external_id     String?   @db.VarChar(255)
   preimage        String?   @db.VarChar(255)
+  inFlight        Boolean?  @default(true) @map("in_flight")
   user            User      @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "transaction_user_id_foreign")
 
   @@index([user_id], map: "idx_transaction_user_id")
