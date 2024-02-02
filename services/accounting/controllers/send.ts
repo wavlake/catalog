@@ -62,6 +62,7 @@ const sendKeysend = asyncHandler<
       return;
     }
 
+    // Send keysends using service provider (ZBD)
     const responses = await Promise.all(
       keysends.map(async (keysend) => {
         const keysendMetadata = await constructKeysendMetadata(userId, body);
@@ -84,6 +85,7 @@ const sendKeysend = asyncHandler<
     const processedResponses: ExternalKeysendResult[] = await Promise.all(
       responses.map(async ({ response, request }) => {
         if (!response) {
+          log.error("Error sending keysend to ZBD. No response.");
           return {
             success: false,
             msatAmount: request.msatAmount,
@@ -114,7 +116,7 @@ const sendKeysend = asyncHandler<
           });
 
           return {
-            // this is not really true if the payment is in flight
+            // this is not really true if the payment is in flight, but we report it as true to the client
             success: true,
             msatAmount: request.msatAmount,
             pubkey: request.pubkey,
