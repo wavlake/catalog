@@ -11,16 +11,11 @@ export async function checkUserHasSufficientSats(
 ): Promise<boolean> {
   const inflight = await db
     .knex("external_payment")
-    .select(
-      "external_payment.msat_amount as msatAmount",
-      "external_payment.fee_msat as feeMsat"
-    )
-    .select(
-      db.knex.raw(`SUM(external_payment.msat_amount) OVER () as "totalAmount"`)
-    )
-    .select(db.knex.raw(`SUM(external_payment.fee_msat) OVER () as "totalFee"`))
-    .where("external_payment.in_flight", "=", true)
-    .andWhere("external_payment.user_id", "=", userId)
+    .sum("msat_amount as totalAmount")
+    .sum("fee_msat as totalFee")
+    .where("in_flight", "=", true)
+    .andWhere("user_id", "=", userId)
+    .groupBy("user_id")
     .first();
 
   const inFlightSats =
@@ -28,7 +23,6 @@ export async function checkUserHasSufficientSats(
 
   return db
     .knex("user")
-    .join("external_payment", "user.id", "=", "external_payment.user_id")
     .select("user.msat_balance as msatBalance")
 
     .where("user.id", "=", userId)
