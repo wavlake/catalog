@@ -85,3 +85,17 @@ export const getContentFromId = async (contentId) => {
 
   return content;
 };
+
+export const getContentFromEventId = async (eventId) => {
+  const { content_id } = await db
+    // the event_track table used to be only for tracks, but now it's for all content types
+    .knex("event_track")
+    // track_id is really content_id (tracks/episodes/podcasts/al)
+    .select("track_id as content_id")
+    .where("event_id", "=", eventId)
+    .first();
+
+  const content = await getContentFromId(content_id);
+
+  return content;
+};

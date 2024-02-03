@@ -6,17 +6,11 @@ interface TLV {
 }
 
 export interface CreateInvoiceRequest {
-  description: string;
+  description?: string;
   amount: string;
   expiresIn: number;
   internalId: string;
-}
-
-export interface CreateInvoiceRequest {
-  description: string;
-  amount: string;
-  expiresIn: number;
-  internalId: string;
+  descriptionHash?: string;
 }
 
 export interface SendKeysendRequest {
