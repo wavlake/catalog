@@ -32,8 +32,6 @@ const getInvoice = asyncHandler(async (req, res, next) => {
     where: { id: intId },
   });
 
-  // TODO: check if the invoice is stale and update it if necessary
-
   if (!invoice) {
     res.status(404).send("Invoice not found");
     return;
