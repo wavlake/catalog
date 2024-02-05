@@ -97,8 +97,11 @@ export const processSplits = async ({
     : splitRecipients;
 
   const keysendType = 5;
-  const userIdForDb =
-    userId || paymentType === keysendType ? "keysend" : "invoice";
+  const userIdForDb = userId
+    ? userId
+    : paymentType === keysendType
+    ? "keysend"
+    : "invoice";
 
   log.info(`AMP attempt: ${msatAmount} msat by ${userIdForDb} to ${contentId}`);
 
@@ -247,13 +250,13 @@ export const processSplits = async ({
     await trx("user")
       .decrement({ msat_balance: msatAmount })
       .update({ updated_at: db.knex.fn.now() })
-      .where({ id: userId });
+      .where({ id: userIdForDb });
   }
 
   // Add comment if present
   if (comment) {
     await trx("comment").insert({
-      user_id: userId,
+      user_id: userIdForDb,
       content: comment,
       amp_id: 0, // Irrelevant now b/c amps can be split but keeping for backwards compatibility
       tx_id: externalTxId,
@@ -267,7 +270,7 @@ export const processSplits = async ({
     .commit()
     .then(() => {
       log.info(
-        `AMP type ${paymentType} success: ${msatAmount} msat by ${userId} to ${contentId}`
+        `AMP type ${paymentType} success: ${msatAmount} msat by ${userIdForDb} to ${contentId}`
       );
       return true;
     })
@@ -275,7 +278,7 @@ export const processSplits = async ({
       log.error(`Error commiting amp tx: ${e}`);
       trx.rollback;
       log.info(
-        `ERROR: AMP type ${paymentType}: ${msatAmount} msat by ${userId} to ${contentId}`
+        `ERROR: AMP type ${paymentType}: ${msatAmount} msat by ${userIdForDb} to ${contentId}`
       );
       // If there is no response object we don't need to do anything
       // This is mainly so the external keysend function can use this function
