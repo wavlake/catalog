@@ -1,7 +1,7 @@
 const log = require("loglevel");
 import asyncHandler from "express-async-handler";
 import prisma from "@prismalocal/client";
-import { updateInvoiceIfNeeded } from "@library/invoice";
+import { logZapRequest, updateInvoiceIfNeeded } from "@library/invoice";
 import { getContentFromId } from "@library/content";
 import { createCharge, getCharge } from "@library/zbd/zbdClient";
 import {
@@ -160,7 +160,13 @@ const createZapInvoice = asyncHandler<
   const { amount, nostr, lnurl } = req.query;
   log.debug(`Zap request: ${JSON.stringify(nostr)}`);
   // Validate nostr object
-  const zapRequestEvent = JSON.parse(nostr);
+  let zapRequestEvent;
+  try {
+    zapRequestEvent = JSON.parse(nostr);
+  } catch (e) {
+    res.status(400).json({ error: "Invalid nostr object" });
+    return;
+  }
   let ok = validateEvent(zapRequestEvent);
   let veryOk = verifySignature(zapRequestEvent);
   if (!ok || !veryOk) {
@@ -207,8 +213,8 @@ const createZapInvoice = asyncHandler<
     },
   });
 
-  // TODO: Create zap request record
-  // logZapRequest(invoice.payment_hash, zapRequestEvent.id, request.nostr);
+  // Create zap request record
+  await logZapRequest(invoice.id, zapRequestEvent.id, zapRequestEvent);
 
   log.debug(`Created placeholder invoice: ${invoice.id}`);
 

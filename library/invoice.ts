@@ -3,6 +3,13 @@ log.setLevel("debug");
 import db from "./db";
 import { handleCompletedDeposit, wasTransactionAlreadyLogged } from "./deposit";
 import { processSplits } from "./amp";
+import { getZapPubkeyAndContent } from "./zap";
+
+enum PaymentType {
+  Zap = 7,
+  PartyMode = 8,
+  Invoice = 6,
+}
 
 export const updateInvoiceIfNeeded = async (
   invoiceType: string,
@@ -60,16 +67,22 @@ async function handleCompletedAmpInvoice(invoiceId: number, amount: number) {
   // 3. Update invoice status
 
   // TODO: Look up zap or party mode
-  const isZap = false;
+  const isZap = await checkIfAmpIsZap(invoiceId);
   const isPartyMode = false;
 
-  // const paymentTypes = {
-  //   6: "invoice",
-  //   7: "zap",
-  //   8: "party",
-  // };
+  const paymentType = isZap
+    ? PaymentType.Zap
+    : isPartyMode
+    ? PaymentType.PartyMode
+    : PaymentType.Invoice;
 
-  const paymentType = isZap ? 7 : isPartyMode ? 8 : 6;
+  let pubkey, content;
+  if (isZap) {
+    log.debug(`Processing zap details for invoice id ${invoiceId}`);
+    const zapInfo = await getZapPubkeyAndContent(invoiceId);
+    pubkey = zapInfo.pubkey;
+    content = zapInfo.content;
+  }
   const contentId = await getContentIdFromInvoiceId(invoiceId);
   log.debug(`Processing amp invoice for content id ${contentId}`);
 
@@ -78,11 +91,14 @@ async function handleCompletedAmpInvoice(invoiceId: number, amount: number) {
     return;
   }
 
+  log.debug(`paymentType: ${paymentType}`);
   const amp = await processSplits({
     contentId: contentId,
     msatAmount: amount,
     paymentType: paymentType,
     contentTime: null,
+    userId: pubkey ? pubkey : null,
+    comment: content ? content : null,
   });
 
   if (!amp) {
@@ -104,6 +120,21 @@ async function handleCompletedAmpInvoice(invoiceId: number, amount: number) {
   return true;
 }
 
+// We use the `payment_hash` field for our internalId, which is unique in our system
+async function checkIfAmpIsZap(invoiceId: number) {
+  const zap = await db
+    .knex("zap_request")
+    .where("payment_hash", `external_receive-${invoiceId}`)
+    .first()
+    .then((data) => {
+      return data ? true : false;
+    })
+    .catch((err) => {
+      log.error(`Error checking if invoice is a zap: ${err}`);
+    });
+  return zap;
+}
+
 async function handleFailedOrExpiredInvoice(
   invoiceType: string,
   internalId: number
@@ -121,3 +152,20 @@ async function handleFailedOrExpiredInvoice(
       );
     });
 }
+
+export const logZapRequest = async (
+  invoiceId: number,
+  eventId: string,
+  event: string
+) => {
+  return db
+    .knex("zap_request")
+    .insert({
+      payment_hash: `external_receive-${invoiceId}`,
+      event_id: eventId,
+      event: event,
+    })
+    .catch((err) => {
+      throw new Error(`Error inserting zap request: ${err}`);
+    });
+};
