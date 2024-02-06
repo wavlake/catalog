@@ -123,7 +123,16 @@ const processIncomingInvoice = asyncHandler<
   const { internalId } = req.body;
 
   const [invoiceType, invoiceId] = internalId.split("-");
-  await updateInvoiceIfNeeded(invoiceType, parseInt(invoiceId), req.body);
+  const { success, message } = await updateInvoiceIfNeeded(
+    invoiceType,
+    parseInt(invoiceId),
+    req.body
+  );
+
+  if (!success) {
+    res.status(500).send(`Error updating invoice ${message}`);
+    return;
+  }
 
   res.status(200).send("OK");
   return;
