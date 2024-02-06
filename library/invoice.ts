@@ -4,6 +4,7 @@ import db from "./db";
 import { handleCompletedDeposit, wasTransactionAlreadyLogged } from "./deposit";
 import { processSplits } from "./amp";
 import { getZapPubkeyAndContent, publishZapReceipt } from "./zap";
+import { ZBDChargeCallbackRequest } from "./zbd/requestInterfaces";
 import { ChargeStatus } from "./zbd/constants";
 
 enum PaymentType {
@@ -15,37 +16,48 @@ enum PaymentType {
 export const updateInvoiceIfNeeded = async (
   invoiceType: string,
   invoiceId: number,
-  status: ChargeStatus,
-  amount: number
+  charge: ZBDChargeCallbackRequest
 ) => {
   const wasLogged = await wasTransactionAlreadyLogged(invoiceId, invoiceType);
   if (wasLogged) {
     log.debug(`Transaction ${invoiceId} was already logged, skipping.`);
-    return true;
+    return { success: true, message: "Transaction was already logged" };
   }
 
-  const isCompleted = status === "completed";
-  if (!isCompleted) {
-    log.debug("Invoice failed");
-    await handleFailedOrExpiredInvoice(invoiceType, invoiceId);
-    return {
-      success: true,
-      data: { status: "failed" },
-      message: "The invoice has failed or expired.",
-    };
+  const status = charge.status;
+  const msatAmount = parseInt(charge.amount);
+  if (!Object.values(ChargeStatus).includes(status as ChargeStatus)) {
+    log.error(`Invalid status: ${status}`);
+    return { success: false, message: "Invalid invoice status" };
   }
 
-  if (invoiceType === "transaction") {
-    log.debug(`Processing transaction invoice for id ${invoiceId}`);
-    await handleCompletedDeposit(invoiceId, amount);
+  // Handle finalized invoices
+  if (status != ChargeStatus.Pending) {
+    log.debug(
+      `Transaction ${invoiceId} is stale, updating status to ${status}`
+    );
+
+    if (status === ChargeStatus.Error || status === ChargeStatus.Expired) {
+      log.debug("Invoice failed or expired");
+      await handleFailedOrExpiredInvoice(invoiceType, invoiceId);
+      return {
+        success: true,
+        data: { status: status },
+        message: "The invoice has failed or expired.",
+      };
+    } else {
+      if (invoiceType === "transaction") {
+        log.debug(`Processing transaction invoice for id ${invoiceId}`);
+        await handleCompletedDeposit(invoiceId, msatAmount);
+      }
+      if (invoiceType === "external_receive") {
+        log.debug(`Processing external_receive invoice for id ${invoiceId}`);
+        // Process should account for plain invoices and zaps
+        await handleCompletedAmpInvoice(invoiceId, msatAmount);
+      }
+      return { success: true, data: { status: status } };
+    }
   }
-  // TODO: handle external_receive invoices
-  if (invoiceType === "external_receive") {
-    log.debug(`Processing external_receive invoice for id ${invoiceId}`);
-    // Process should account for plain invoices and zaps
-    await handleCompletedAmpInvoice(invoiceId, amount);
-  }
-  return { success: true, data: { status: status } };
 };
 
 async function getContentIdFromInvoiceId(invoiceId: number) {

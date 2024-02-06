@@ -120,10 +120,10 @@ const processIncomingInvoice = asyncHandler<
 >(async (req, res, next) => {
   log.debug(`Incoming invoice received`);
   // the invoice status is expected to change from pending to success or fail
-  const { internalId, status, amount } = req.body;
+  const { internalId } = req.body;
 
   const [invoiceType, invoiceId] = internalId.split("-");
-  await updateInvoiceIfNeeded(invoiceType, parseInt(invoiceId), status, amount);
+  await updateInvoiceIfNeeded(invoiceType, parseInt(invoiceId), req.body);
 
   res.status(200).send("OK");
   return;

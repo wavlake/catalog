@@ -5,6 +5,7 @@ import {
 } from "./requestInterfaces";
 import log from "loglevel";
 import {
+  ZBDGetChargeResponse,
   ZBDCreateChargeLightningResponse,
   ZBDIsSupportedRegionResponse,
   ZBDSendKeysendPaymentResponse,
@@ -85,7 +86,7 @@ export async function createCharge(
 
 export async function getCharge(
   paymentId: string
-): Promise<ZBDSendPaymentResponse> {
+): Promise<ZBDGetChargeResponse> {
   const { data } = await client
     .get(`https://api.zebedee.io/v0/charges/${paymentId}`)
     .catch((err) => {

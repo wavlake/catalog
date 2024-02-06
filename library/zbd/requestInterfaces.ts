@@ -63,7 +63,7 @@ export interface ZBDKeysendCallbackRequest {
 
 export interface ZBDChargeCallbackRequest {
   unit: string;
-  amount: number;
+  amount: string;
   confirmedAt: string;
   status: ChargeStatus;
   description: string;

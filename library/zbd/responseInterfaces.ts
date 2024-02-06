@@ -79,13 +79,22 @@ export interface ZBDCreateChargeLightningResponse extends BaseResponse {
   };
 }
 
-export interface ZBDCreateChargeZBDResponse extends BaseResponse {
+export interface ZBDCreateChargeResponse extends BaseResponse {
   success: boolean;
   data: CommonDataFields & {
     amount: string;
     invoiceRequest: string;
     invoiceExpiresAt: string;
     invoiceDescriptionHash: string | null;
+  };
+}
+
+export interface ZBDGetChargeResponse extends BaseResponse {
+  success: boolean;
+  data: CommonDataFields & {
+    amount: string;
+    confirmedAt: string | null;
+    invoice: InvoiceBasic;
   };
 }
 
