@@ -21,7 +21,6 @@ const limiter = rateLimit({
 
 //////// ROUTES ////////
 
-router.get("/", isAuthorized, sendController.getWithdraw);
 router.post(
   "/",
   isAuthorized,
@@ -29,7 +28,6 @@ router.post(
   isZbdRegion,
   sendController.createWithdraw
 );
-router.post("/update", isZbdIp, sendController.updateWithdraw);
 
 // Export router
 export default router;

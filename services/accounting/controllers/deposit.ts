@@ -1,5 +1,4 @@
 const log = require("loglevel");
-import db from "@library/db";
 import asyncHandler from "express-async-handler";
 import prisma from "@prismalocal/client";
 import { getUserBalance } from "@library/userHelper";
@@ -8,59 +7,6 @@ import {
   MAX_INVOICE_AMOUNT,
   DEFAULT_EXPIRATION_SECONDS,
 } from "@library/constants";
-import { updateInvoiceIfNeeded } from "@library/invoice";
-import { getCharge } from "@library/zbd";
-import { ZBDChargeCallbackRequest } from "@library/zbd/requestInterfaces";
-
-const getDeposit = asyncHandler(async (req, res, next) => {
-  const userId = req["uid"];
-  const { id } = req.params;
-
-  // validate the id param
-  if (!id) {
-    res.status(400).send("Must include id");
-    return;
-  }
-
-  const intId = parseInt(id);
-  if (isNaN(intId) || intId <= 0) {
-    res.status(400).send("Invalid id, must be a positive integer");
-    return;
-  }
-
-  const deposit = await db
-    .knex("transaction")
-    .select("*")
-    .where("id", "=", intId)
-    .where("user_id", "=", userId)
-    .first()
-    .catch((e) => {
-      log.error(`Error finding deposit: ${e}`);
-      return null;
-    });
-
-  if (!deposit) {
-    res.status(404).send("Deposit not found");
-    return;
-  }
-
-  if (deposit.is_pending) {
-    const charge = await getCharge(deposit.external_id);
-
-    const update = await updateInvoiceIfNeeded(
-      "transaction",
-      intId,
-      charge.data as ZBDChargeCallbackRequest
-    );
-    if (!update.success) {
-      log.error(`Error updating invoice: ${update.message}`);
-      res.status(500).send("There has been an error updating the invoice");
-      return;
-    }
-  }
-
-  res.json({ success: true, data: deposit });
-});
 
 const createDeposit = asyncHandler(async (req, res: any, next) => {
   const userId = req["uid"];
@@ -150,4 +96,4 @@ const createDeposit = asyncHandler(async (req, res: any, next) => {
   });
 });
 
-export default { getDeposit, createDeposit };
+export default { createDeposit };
