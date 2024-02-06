@@ -3,7 +3,7 @@ log.setLevel("debug");
 import db from "./db";
 import { handleCompletedDeposit, wasTransactionAlreadyLogged } from "./deposit";
 import { processSplits } from "./amp";
-import { getZapPubkeyAndContent } from "./zap";
+import { getZapPubkeyAndContent, publishZapReceipt } from "./zap";
 
 enum PaymentType {
   Zap = 7,
@@ -62,10 +62,6 @@ async function getContentIdFromInvoiceId(invoiceId: number) {
 }
 
 async function handleCompletedAmpInvoice(invoiceId: number, amount: number) {
-  // 1. Zap or regular invoice?
-  // 2. Process splits
-  // 3. Update invoice status
-
   // TODO: Look up zap or party mode
   const isZap = await checkIfAmpIsZap(invoiceId);
   const isPartyMode = false;
@@ -104,6 +100,17 @@ async function handleCompletedAmpInvoice(invoiceId: number, amount: number) {
   if (!amp) {
     log.error(`Error processing splits for content id ${contentId}`);
     return;
+  }
+
+  // Publish zap receipt if isZap
+  if (isZap) {
+    log.debug(`Publishing zap receipt for invoice id ${invoiceId}`);
+    await publishZapReceipt(
+      content,
+      "paymentrequest", // TODO: get payment request
+      "preimage", // TODO: use preimage
+      Date.now().toString()
+    );
   }
 
   await db
