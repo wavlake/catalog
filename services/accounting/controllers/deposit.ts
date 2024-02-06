@@ -10,6 +10,7 @@ import {
 } from "@library/constants";
 import { updateInvoiceIfNeeded } from "@library/invoice";
 import { getCharge } from "@library/zbd";
+import { ChargeStatus } from "@library/zbd/constants";
 
 const getDeposit = asyncHandler(async (req, res, next) => {
   const userId = req["uid"];
@@ -48,7 +49,7 @@ const getDeposit = asyncHandler(async (req, res, next) => {
     log.debug(update);
     const currentStatus = update.data.status;
     const msatAmount = update.data.amount;
-    if (currentStatus != "pending") {
+    if (currentStatus != ChargeStatus.Pending) {
       log.debug(
         `Transaction ${intId} is stale, updating status to ${currentStatus}`
       );
