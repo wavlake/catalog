@@ -19,6 +19,7 @@ export const fetchAllFeedInfo = async (guid: string) => {
         `Empty feed for guid: ${podcast.query.guid}, verify the guid being used is correct`
       );
     }
+
     const [rawFeed, episodesUntyped] = await Promise.all([
       // this parser grabs the raw RSS feed contents
       getPodcastFromURL({
@@ -81,11 +82,21 @@ export const fetchPodcastIndexFeedInfo = async (guid: string) => {
       guid
     );
 
-    if (Array.isArray(podcast.feed) && podcast.feed.length === 0) {
-      log.warn(
-        `Empty feed for guid: ${podcast.query.guid}, verify the guid being used is correct`
+    // validate the feed response is json and not empty or an html error page
+    if (typeof podcast?.feed !== "object") {
+      log.error(
+        `Response from podacstindex API (first 500 chars): ${JSON.stringify(
+          podcast
+        ).slice(0, 500)}`
       );
+      throw `Unexpected response for feed guid: ${guid}`;
     }
+
+    // if the feed is empty, log a warning and return
+    if (Array.isArray(podcast.feed) && podcast.feed.length === 0) {
+      throw `Empty feed for guid: ${podcast.query.guid}, verify the guid being used is correct`;
+    }
+
     const episodesUntyped = await podcastIndexApi.episodesByFeedId(
       podcast.feed.id
     );
@@ -115,6 +126,7 @@ export const fetchPodcastIndexFeedInfo = async (guid: string) => {
     return sanitizedFeed;
   } catch (err) {
     log.error(`Error fetching podcast index feed: ${err}`);
+    // we need to rethrow here so that this feed can be filtered out by the Promise.allSettled in the controller
     throw err;
   }
 };
