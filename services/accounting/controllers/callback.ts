@@ -118,6 +118,7 @@ const processIncomingInvoice = asyncHandler<
   any,
   ZBDChargeCallbackRequest
 >(async (req, res, next) => {
+  log.debug(`Incoming invoice received`);
   // the invoice status is expected to change from pending to success or fail
   const { internalId, status, amount } = req.body;
 

@@ -8,11 +8,10 @@ const router = express.Router();
 
 //////// ROUTES ////////
 
+router.get("/zap", isZbdRegion, invoiceController.createZapInvoice);
 // used by clients to long pull the invoice status
 // so the client can update the UI when the invoice is paid
-router.get("/:id", invoiceController.getInvoice);
-// ZBD callback to notify us of invoice updates
-router.post("/update", invoiceController.updateInvoice);
+// router.get("/:id", invoiceController.getInvoice);
 // used by clients to create a new invoice
 router.post("/", isAuthorized, isZbdRegion, invoiceController.createInvoice);
 
