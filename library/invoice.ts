@@ -17,7 +17,11 @@ export const updateInvoiceIfNeeded = async (
   invoiceType: string,
   invoiceId: number,
   charge: ZBDChargeCallbackRequest
-) => {
+): Promise<{
+  success: boolean;
+  data?: { status: ChargeStatus };
+  message?: string;
+}> => {
   const wasLogged = await wasTransactionAlreadyLogged(invoiceId, invoiceType);
   if (wasLogged) {
     log.debug(`Transaction ${invoiceId} was already logged, skipping.`);
