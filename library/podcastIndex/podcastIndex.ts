@@ -7,7 +7,6 @@ import { getPodcastFromURL } from "@podverse/podcast-feed-parser";
 const { PODCAST_INDEX_KEY, PODCAST_INDEX_SECRET } = process.env;
 const podcastIndexApi = podcastIndex(PODCAST_INDEX_KEY, PODCAST_INDEX_SECRET);
 
-console.log({ PODCAST_INDEX_KEY });
 // this makes a call to podcastindex.org and also to the RSS feed url to get the timesplit data and full description
 export const fetchAllFeedInfo = async (guid: string) => {
   try {
