@@ -10,20 +10,21 @@ import {
 } from "@library/constants";
 import { updateInvoiceIfNeeded } from "@library/invoice";
 import { getCharge } from "@library/zbd";
+import { ZBDChargeCallbackRequest } from "@library/zbd/requestInterfaces";
 
 const getDeposit = asyncHandler(async (req, res, next) => {
   const userId = req["uid"];
-  const { transactionId } = req.params;
+  const { id } = req.params;
 
   // validate the id param
-  if (!transactionId) {
-    res.status(400).send("Must include transactionId");
+  if (!id) {
+    res.status(400).send("Must include id");
     return;
   }
 
-  const intId = parseInt(transactionId);
+  const intId = parseInt(id);
   if (isNaN(intId) || intId <= 0) {
-    res.status(400).send("Invalid transactionId, must be a positive integer");
+    res.status(400).send("Invalid id, must be a positive integer");
     return;
   }
 
@@ -44,20 +45,17 @@ const getDeposit = asyncHandler(async (req, res, next) => {
   }
 
   if (deposit.is_pending) {
-    const update = await getCharge(deposit.external_id);
-    log.debug(update);
-    const currentStatus = update.data.status;
-    const msatAmount = update.data.amount;
-    if (currentStatus != "pending") {
-      log.debug(
-        `Transaction ${intId} is stale, updating status to ${currentStatus}`
-      );
-      await updateInvoiceIfNeeded(
-        "transaction",
-        intId,
-        currentStatus,
-        parseInt(msatAmount)
-      );
+    const charge = await getCharge(deposit.external_id);
+
+    const update = await updateInvoiceIfNeeded(
+      "transaction",
+      intId,
+      charge.data as ZBDChargeCallbackRequest
+    );
+    if (!update.success) {
+      log.error(`Error updating invoice: ${update.message}`);
+      res.status(500).send("There has been an error updating the invoice");
+      return;
     }
   }
 

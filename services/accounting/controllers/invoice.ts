@@ -11,6 +11,7 @@ import {
 import core from "express-serve-static-core";
 const { validateEvent, verifySignature } = require("nostr-tools");
 import { getContentFromEventId } from "@library/content";
+import { ZBDChargeCallbackRequest } from "@library/zbd";
 const crypto = require("crypto");
 
 const getInvoice = asyncHandler(async (req, res, next) => {
@@ -38,20 +39,17 @@ const getInvoice = asyncHandler(async (req, res, next) => {
   }
 
   if (invoice.isPending) {
-    const update = await getCharge(invoice.externalId);
-    log.debug(update);
-    const currentStatus = update.data.status;
-    const msatAmount = update.data.amount;
-    if (currentStatus != "pending") {
-      log.debug(
-        `Transaction ${intId} is stale, updating status to ${currentStatus}`
-      );
-      await updateInvoiceIfNeeded(
-        "external_receive",
-        intId,
-        currentStatus,
-        parseInt(msatAmount)
-      );
+    const charge = await getCharge(invoice.externalId);
+
+    const update = await updateInvoiceIfNeeded(
+      "external_receive",
+      intId,
+      charge.data as ZBDChargeCallbackRequest
+    );
+    if (!update.success) {
+      log.error(`Error updating invoice: ${update.message}`);
+      res.status(500).send("There has been an error updating the invoice");
+      return;
     }
   }
 
