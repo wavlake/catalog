@@ -4,6 +4,7 @@ import db from "./db";
 import { handleCompletedDeposit, wasTransactionAlreadyLogged } from "./deposit";
 import { processSplits } from "./amp";
 import { getZapPubkeyAndContent, publishZapReceipt } from "./zap";
+import { ChargeStatus } from "./zbd/constants";
 
 enum PaymentType {
   Zap = 7,
@@ -14,7 +15,7 @@ enum PaymentType {
 export const updateInvoiceIfNeeded = async (
   invoiceType: string,
   invoiceId: number,
-  status: string,
+  status: ChargeStatus,
   amount: number
 ) => {
   const wasLogged = await wasTransactionAlreadyLogged(invoiceId, invoiceType);
