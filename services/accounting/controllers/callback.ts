@@ -12,7 +12,6 @@ import { processSplits } from "@library/amp";
 import { updateKeysend } from "@library/keysends";
 import { updateInvoiceIfNeeded } from "@library/invoice";
 import { handleCompletedWithdrawal } from "@library/withdraw";
-import { parse } from "path";
 
 const jsonParser = (jsonString?: string) => {
   if (!jsonString) return;
