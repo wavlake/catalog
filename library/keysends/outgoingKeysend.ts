@@ -109,7 +109,7 @@ export const updateKeysend = async ({
 export function constructCustomRecords(keysend, keysendMetadata) {
   const customRecords = [
     {
-      type: BLIP0010.toString(),
+      type: BLIP0010,
       value: Buffer.from(JSON.stringify(keysendMetadata)).toString("hex"),
     },
     // Add custom key/value if exists
