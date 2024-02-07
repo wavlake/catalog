@@ -8,8 +8,13 @@ const crypto = require("crypto");
 const lookbackSeconds = parseInt(process.env.LOOKBACK_MINUTES) * 60 * 1000;
 const FEED_URL = "https://www.wavlake.com/feed";
 
-const { PODCAST_INDEX_KEY, PODCAST_INDEX_SECRET } = process.env;
-const podcastIndexApi = podcastIndex(PODCAST_INDEX_KEY, PODCAST_INDEX_SECRET);
+const { PODCAST_INDEX_KEY, PODCAST_INDEX_SECRET, PODCAST_INDEX_UA } =
+  process.env;
+const podcastIndexApi = podcastIndex(
+  PODCAST_INDEX_KEY,
+  PODCAST_INDEX_SECRET,
+  PODCAST_INDEX_UA
+);
 
 const lookbackDt = Date.now() - lookbackSeconds;
 
