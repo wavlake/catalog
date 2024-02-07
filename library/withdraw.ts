@@ -30,7 +30,7 @@ export const handleCompletedWithdrawal = async ({
     .where({ id: transactionId })
     .then(() => {
       if (status === PaymentStatus.Completed) {
-        // Increment user balance and unlock user
+        // Decrement user balance and unlock user
         return trx("user")
           .decrement({
             msat_balance: msatAmount + fee,

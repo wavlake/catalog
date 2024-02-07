@@ -53,12 +53,4 @@ const getWithdraw = asyncHandler(async (req, res, next) => {
   res.json(data);
 });
 
-const updateWithdraw = asyncHandler(async (req, res, next) => {
-  const { data } = req.body;
-
-  // TODO: Handle updates received from callbacks
-  log.info(`Received callback`);
-  log.debug(`ZBD callback data: ${JSON.stringify(data)}`);
-});
-
-export default { createWithdraw, getWithdraw, updateWithdraw };
+export default { createWithdraw, getWithdraw };
