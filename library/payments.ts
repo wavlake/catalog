@@ -245,7 +245,7 @@ export const initiatePayment = async (
     description: "Withdrawal",
     amount: msatAmount.toString(),
     invoice: invoice,
-    internalId: paymentRecordId.toString(),
+    internalId: `transaction-${paymentRecordId.toString()}`,
   });
 
   // log.debug(`Payment response: ${JSON.stringify(paymentResponse)}`);

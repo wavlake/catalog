@@ -1,8 +1,7 @@
 import log from "loglevel";
 import db from "./db";
-import { ZBDSendPaymentResponse } from "./zbd/responseInterfaces";
 
-async function getUserIdFromTransactionId(
+export async function getUserIdFromTransactionId(
   transactionId: number
 ): Promise<string> {
   return db

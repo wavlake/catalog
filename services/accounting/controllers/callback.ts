@@ -5,11 +5,13 @@ import core from "express-serve-static-core";
 import {
   ZBDKeysendCallbackRequest,
   ZBDChargeCallbackRequest,
+  ZBDPaymentCallbackRequest,
 } from "@library/zbd/requestInterfaces";
 import { KeysendMetadata } from "@library/keysend";
 import { processSplits } from "@library/amp";
 import { updateKeysend } from "@library/keysends";
 import { updateInvoiceIfNeeded } from "@library/invoice";
+import { handleCompletedWithdrawal } from "@library/withdraw";
 
 const jsonParser = (jsonString?: string) => {
   if (!jsonString) return;
@@ -138,9 +140,37 @@ const processIncomingInvoice = asyncHandler<
   return;
 });
 
-const processOutgoingInvoice = asyncHandler(async (req, res, next) => {
-  // TODO - update an invoice
-  // the invoice status is expected to change from pending to success or fail
+const processOutgoingInvoice = asyncHandler<
+  core.ParamsDictionary,
+  any,
+  ZBDPaymentCallbackRequest
+>(async (req, res, next) => {
+  log.debug(`Received outgoing invoice callback: ${JSON.stringify(req.body)}`);
+
+  const { status, internalId, fee, preimage, amount } = req.body;
+
+  const [invoiceType, internalIdString] = internalId.split("-");
+  if (invoiceType !== "transaction") {
+    log.error(`Invalid internalId type: ${invoiceType}`);
+    res.status(400).send("Expected internalId to be of type 'transaction'");
+    return;
+  }
+
+  const intId = parseInt(internalIdString);
+  const isSuccess = await handleCompletedWithdrawal({
+    transactionId: intId,
+    status,
+    fee: parseInt(fee),
+    preimage,
+    msatAmount: parseInt(amount),
+  });
+
+  if (!isSuccess) {
+    log.error(`Error updating invoice id ${intId} with status ${status}`);
+    res.status(500).send("Invoice update failed");
+    return;
+  }
+
   res.status(200);
 });
 

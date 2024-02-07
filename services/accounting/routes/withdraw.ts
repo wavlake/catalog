@@ -29,7 +29,6 @@ router.post(
   isZbdRegion,
   sendController.createWithdraw
 );
-router.post("/update", isZbdIp, sendController.updateWithdraw);
 
 // Export router
 export default router;
