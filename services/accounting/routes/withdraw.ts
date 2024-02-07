@@ -24,9 +24,9 @@ const limiter = rateLimit({
 router.get("/", isAuthorized, sendController.getWithdraw);
 router.post(
   "/",
-  isAuthorized,
-  limiter,
-  isZbdRegion,
+  // isAuthorized,
+  // limiter,
+  // isZbdRegion,
   sendController.createWithdraw
 );
 router.post("/update", isZbdIp, sendController.updateWithdraw);
