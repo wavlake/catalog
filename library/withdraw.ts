@@ -33,7 +33,7 @@ export const handleCompletedWithdrawal = async ({
         // Increment user balance and unlock user
         return trx("user")
           .decrement({
-            msat_balance: msatAmount,
+            msat_balance: msatAmount + fee,
           })
           .update({ updated_at: db.knex.fn.now(), is_locked: false })
           .where({ id: userId });
