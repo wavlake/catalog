@@ -29,13 +29,17 @@ export const handleCompletedWithdrawal = async ({
     })
     .where({ id: transactionId })
     .then(() => {
-      // Increment user balance and unlock user
-      return trx("user")
-        .decrement({
-          msat_balance: msatAmount,
-        })
-        .update({ updated_at: db.knex.fn.now(), is_locked: false })
-        .where({ id: userId });
+      if (status === PaymentStatus.Completed) {
+        // Increment user balance and unlock user
+        return trx("user")
+          .decrement({
+            msat_balance: msatAmount,
+          })
+          .update({ updated_at: db.knex.fn.now(), is_locked: false })
+          .where({ id: userId });
+      } else {
+        return;
+      }
     })
     .then(trx.commit)
     .then(() => {
