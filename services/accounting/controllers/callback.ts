@@ -5,14 +5,14 @@ import core from "express-serve-static-core";
 import {
   ZBDKeysendCallbackRequest,
   ZBDChargeCallbackRequest,
+  ZBDPaymentCallbackRequest,
 } from "@library/zbd/requestInterfaces";
 import { KeysendMetadata } from "@library/keysend";
 import { processSplits } from "@library/amp";
 import { updateKeysend } from "@library/keysends";
 import { updateInvoiceIfNeeded } from "@library/invoice";
-import { ZBDSendPaymentResponse } from "@library/zbd";
-import prisma from "@prismalocal/client";
-import { PaymentStatus } from "@library/zbd/constants";
+import { handleCompletedWithdrawal } from "@library/withdraw";
+import { parse } from "path";
 
 const jsonParser = (jsonString?: string) => {
   if (!jsonString) return;
@@ -144,40 +144,29 @@ const processIncomingInvoice = asyncHandler<
 const processOutgoingInvoice = asyncHandler<
   core.ParamsDictionary,
   any,
-  // TODO - validate the callback request looks the same as the send payment response
-  ZBDSendPaymentResponse
+  ZBDPaymentCallbackRequest
 >(async (req, res, next) => {
   log.debug(`Received outgoing invoice callback: ${JSON.stringify(req.body)}`);
 
-  const {
-    data: { status, internalId },
-  } = req.body;
+  const { status, internalId, fee, preimage, amount } = req.body;
 
-  const [type, internalIdString] = internalId.split("-");
-  if (type !== "transaction") {
-    log.error(`Invalid internalId type: ${type}`);
+  const [invoiceType, internalIdString] = internalId.split("-");
+  if (invoiceType !== "transaction") {
+    log.error(`Invalid internalId type: ${invoiceType}`);
     res.status(400).send("Expected internalId to be of type 'transaction'");
     return;
   }
 
   const intId = parseInt(internalIdString);
+  const isSuccess = await handleCompletedWithdrawal({
+    transactionId: intId,
+    status,
+    fee: parseInt(fee),
+    preimage,
+    msatAmount: parseInt(amount),
+  });
 
-  // Update the invoice in the database
-  const updatedInvoice = await prisma.transaction
-    .update({
-      where: { id: intId },
-      data: {
-        updatedAt: new Date(),
-        success: status === PaymentStatus.Completed,
-        isPending: false,
-      },
-    })
-    .catch((e) => {
-      log.error(`Error updating invoice: ${e}`);
-      return null;
-    });
-
-  if (!updatedInvoice) {
+  if (!isSuccess) {
     log.error(`Error updating invoice id ${intId} with status ${status}`);
     res.status(500).send("Invoice update failed");
     return;
