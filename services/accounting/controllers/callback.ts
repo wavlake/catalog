@@ -10,6 +10,9 @@ import { KeysendMetadata } from "@library/keysend";
 import { processSplits } from "@library/amp";
 import { updateKeysend } from "@library/keysends";
 import { updateInvoiceIfNeeded } from "@library/invoice";
+import { ZBDSendPaymentResponse } from "@library/zbd";
+import prisma from "@prismalocal/client";
+import { PaymentStatus } from "@library/zbd/constants";
 
 const jsonParser = (jsonString?: string) => {
   if (!jsonString) return;
@@ -138,9 +141,48 @@ const processIncomingInvoice = asyncHandler<
   return;
 });
 
-const processOutgoingInvoice = asyncHandler(async (req, res, next) => {
-  // TODO - update an invoice
-  // the invoice status is expected to change from pending to success or fail
+const processOutgoingInvoice = asyncHandler<
+  core.ParamsDictionary,
+  any,
+  // TODO - validate the callback request looks the same as the send payment response
+  ZBDSendPaymentResponse
+>(async (req, res, next) => {
+  log.debug(`Received outgoing invoice callback: ${JSON.stringify(req.body)}`);
+
+  const {
+    data: { status, internalId },
+  } = req.body;
+
+  const [type, internalIdString] = internalId.split("-");
+  if (type !== "transaction") {
+    log.error(`Invalid internalId type: ${type}`);
+    res.status(400).send("Expected internalId to be of type 'transaction'");
+    return;
+  }
+
+  const intId = parseInt(internalIdString);
+
+  // Update the invoice in the database
+  const updatedInvoice = await prisma.transaction
+    .update({
+      where: { id: intId },
+      data: {
+        updatedAt: new Date(),
+        success: status === PaymentStatus.Completed,
+        isPending: false,
+      },
+    })
+    .catch((e) => {
+      log.error(`Error updating invoice: ${e}`);
+      return null;
+    });
+
+  if (!updatedInvoice) {
+    log.error(`Error updating invoice id ${intId} with status ${status}`);
+    res.status(500).send("Invoice update failed");
+    return;
+  }
+
   res.status(200);
 });
 
