@@ -3,6 +3,8 @@ const setup = require("./splitAccountingSetup");
 const seeds = require("./splitAccountingSeeds");
 const amp = require("../../library/amp");
 
+const AMP_FEE = 0.1;
+
 describe("Accounting integration tests", () => {
   beforeAll(() => {
     return setup.setup();
@@ -15,10 +17,11 @@ describe("Accounting integration tests", () => {
   // NOTE: Since db setup happens only once for all tests, the order of tests matters
 
   it("adjusts all balances correctly for a split", async () => {
+    const ampAmount = 10000;
     await amp.processSplits({
       contentId: seeds.testerOneTrackId,
       contentType: "track",
-      msatAmount: 10000,
+      msatAmount: ampAmount,
       paymentType: 1,
       userId: seeds.testerTwoId,
     });
@@ -51,9 +54,13 @@ describe("Accounting integration tests", () => {
       .first()
       .then((track) => track.msat_total);
 
-    expect(testerOneBalance).toBe("18100");
-    expect(testerTwoBalance).toBe("1000");
-    expect(testerThreeBalance).toBe("10900");
-    expect(trackBalance).toBe("10000");
+    expect(parseInt(testerOneBalance)).toBe(
+      seeds.testerOneMsatBalance + ampAmount * 0.9 * (1 - AMP_FEE)
+    );
+    expect(parseInt(testerTwoBalance)).toBe(1000);
+    expect(parseInt(testerThreeBalance)).toBe(
+      seeds.testerThreeMsatBalance + ampAmount * 0.1 * (1 - AMP_FEE)
+    );
+    expect(parseInt(trackBalance)).toBe(ampAmount);
   });
 });
