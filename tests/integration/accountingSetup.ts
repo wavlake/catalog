@@ -1,5 +1,5 @@
 import db from "../../library/db";
-const seeds = require("./seeds");
+const seeds = require("./accountingSeeds");
 
 export const setup = async () => {
   const trx = await db.knex.transaction();

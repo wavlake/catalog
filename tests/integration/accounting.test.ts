@@ -1,15 +1,15 @@
 import db from "../../library/db";
-const database = require("./database");
-const seeds = require("./seeds");
+const setup = require("./accountingSetup");
+const seeds = require("./accountingSeeds");
 const amp = require("../../library/amp");
 
 describe("Accounting integration tests", () => {
   beforeAll(() => {
-    return database.setup();
+    return setup.setup();
   });
 
   afterAll(() => {
-    return database.teardown();
+    return setup.teardown();
   });
 
   // NOTE: Since db setup happens only once for all tests, the order of tests matters
