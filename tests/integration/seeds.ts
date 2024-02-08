@@ -44,4 +44,5 @@ export const testerOneTrackRecord = {
   title: "testerOneTrack",
   order: 1,
   live_url: "mock url",
+  msat_total: 0,
 };
