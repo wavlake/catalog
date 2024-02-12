@@ -107,23 +107,6 @@ export const getPlaylist = async (req, res, next) => {
     return;
   }
 
-  //   const trackInfo = await prisma.trackInfo.findMany({
-  //     where: {
-  //       id: {
-  //         in: playlistTracks.map((track) => track.trackId),
-  //       },
-  //     },
-  //     select: {
-  //       id: true,
-  //       title: true,
-  //       duration: true,
-  //       artist: true,
-  //       artworkUrl: true,
-  //       artistUrl: true,
-  //     },
-  //     orderBy: { order: "asc" },
-  //   });
-
   const trackInfo = await db
     .knex("track_info")
     .join("playlist_track", "track_info.id", "playlist_track.track_id")
