@@ -3,7 +3,7 @@ import { randomUUID, validate } from "uuid";
 import { formatError } from "../library/errors";
 import prisma from "../prisma/client";
 
-export const get_playlists = async (req, res, next) => {
+export const getPlaylists = async (req, res, next) => {
   const { id } = req.params;
 
   if (!id) {
