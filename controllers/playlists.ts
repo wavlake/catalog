@@ -4,8 +4,9 @@ import { randomUUID } from "crypto";
 import { formatError } from "../library/errors";
 import prisma from "../prisma/client";
 import { Event } from "nostr-tools";
+import log from "loglevel";
 
-export const getPlaylists = async (req, res, next) => {
+export const getPlaylist = async (req, res, next) => {
   const { id } = req.params;
 
   if (!id) {
