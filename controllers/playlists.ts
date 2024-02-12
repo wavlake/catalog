@@ -1,7 +1,9 @@
 import asyncHandler from "express-async-handler";
-import { randomUUID, validate } from "uuid";
+import { validate } from "uuid";
+import { randomUUID } from "crypto";
 import { formatError } from "../library/errors";
 import prisma from "../prisma/client";
+import { Event } from "nostr-tools";
 
 export const getPlaylists = async (req, res, next) => {
   const { id } = req.params;
@@ -50,15 +52,27 @@ export const getPlaylists = async (req, res, next) => {
 };
 
 export const createPlaylist = asyncHandler(async (req, res, next) => {
-  const userId = req["uid"];
-  const newPlaylistId = randomUUID();
-  const { title } = req.body;
+  let userId: string;
+  try {
+    const { pubkey } = res.locals.authEvent as Event;
 
+    if (!pubkey) {
+      res.json({ status: "error", message: "No pubkey found" });
+      return;
+    }
+    userId = pubkey;
+  } catch (error) {
+    res.json({ status: "error", message: "Error parsing event" });
+    return;
+  }
+
+  const { title } = req.body;
   if (!title) {
     res.json({ status: "error", message: "Title is required" });
     return;
   }
 
+  const newPlaylistId = randomUUID();
   const newPlaylist = await prisma.playlist.create({
     data: {
       id: newPlaylistId,

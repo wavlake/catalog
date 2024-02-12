@@ -1,6 +1,6 @@
 import express from "express";
 import { getPlaylists, createPlaylist } from "../controllers/playlists";
-import { isAuthorized } from "../middlewares/auth";
+import { isNostrAuthorized } from "../middlewares/nostrAuth";
 
 // Create router
 const router = express.Router();
@@ -11,7 +11,7 @@ const router = express.Router();
 router.get("/:id", getPlaylists);
 
 // mutations
-router.post("/", isAuthorized, createPlaylist);
+router.post("/", isNostrAuthorized, createPlaylist);
 
 // Export router
 export default router;
