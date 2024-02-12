@@ -13,19 +13,19 @@ export const addTrackToPlaylist = asyncHandler(async (req, res, next) => {
     const { pubkey } = res.locals.authEvent as Event;
 
     if (!pubkey) {
-      res.json({ status: "error", message: "No pubkey found" });
+      res.status(400).json({ status: "error", message: "No pubkey found" });
       return;
     }
     userId = pubkey;
   } catch (error) {
-    res.json({ status: "error", message: "Error parsing event" });
+    res.status(400).json({ status: "error", message: "Error parsing event" });
     return;
   }
 
   const { playlistId, trackId } = req.body;
 
   if (!playlistId || !trackId) {
-    res.json({
+    res.status(400).json({
       status: "error",
       message: "Playlist ID and track ID are required",
     });
@@ -33,7 +33,9 @@ export const addTrackToPlaylist = asyncHandler(async (req, res, next) => {
   }
 
   if (validate(playlistId) === false || validate(trackId) === false) {
-    res.json({ status: "error", message: "Invalid playlist ID or track ID" });
+    res
+      .status(400)
+      .json({ status: "error", message: "Invalid playlist ID or track ID" });
     return;
   }
 
@@ -42,7 +44,9 @@ export const addTrackToPlaylist = asyncHandler(async (req, res, next) => {
   });
 
   if (!playlist) {
-    res.json({ status: "error", message: `Playlist ${playlistId} not found` });
+    res
+      .status(404)
+      .json({ status: "error", message: `Playlist ${playlistId} not found` });
     return;
   }
 
@@ -54,10 +58,11 @@ export const addTrackToPlaylist = asyncHandler(async (req, res, next) => {
   const existingTrack = await prisma.trackInfo.findUnique({
     where: { id: trackId },
   });
-  console.log(existingTrack);
 
   if (!existingTrack) {
-    res.json({ status: "error", message: `Track ${trackId} does not exist` });
+    res
+      .status(404)
+      .json({ status: "error", message: `Track ${trackId} does not exist` });
     return;
   }
 
@@ -84,12 +89,18 @@ export const getPlaylist = async (req, res, next) => {
   const { id } = req.params;
 
   if (!id) {
-    next(formatError(400, "Missing playlist ID"));
+    res.status(400).json({
+      status: "error",
+      message: "Playlist ID is required",
+    });
     return;
   }
 
   if (validate(id) === false) {
-    next(formatError(400, "Invalid playlist ID"));
+    res.status(400).json({
+      status: "error",
+      message: "Invalid playlist id",
+    });
     return;
   }
 
@@ -103,7 +114,10 @@ export const getPlaylist = async (req, res, next) => {
   });
 
   if (!playlistTracks) {
-    next(formatError(404, "Playlist ID not found"));
+    res.status(404).json({
+      status: "error",
+      message: "Playlist not found",
+    });
     return;
   }
 
@@ -135,18 +149,18 @@ export const createPlaylist = asyncHandler(async (req, res, next) => {
     const { pubkey } = res.locals.authEvent as Event;
 
     if (!pubkey) {
-      res.json({ status: "error", message: "No pubkey found" });
+      res.status(400).json({ status: "error", message: "No pubkey found" });
       return;
     }
     userId = pubkey;
   } catch (error) {
-    res.json({ status: "error", message: "Error parsing event" });
+    res.status(400).json({ status: "error", message: "Error parsing event" });
     return;
   }
 
   const { title } = req.body;
   if (!title) {
-    res.json({ status: "error", message: "Title is required" });
+    res.status(400).json({ status: "error", message: "Title is required" });
     return;
   }
 
