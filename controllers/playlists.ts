@@ -13,12 +13,12 @@ export const addTrackToPlaylist = asyncHandler(async (req, res, next) => {
     const { pubkey } = res.locals.authEvent as Event;
 
     if (!pubkey) {
-      res.status(400).json({ status: "error", message: "No pubkey found" });
+      res.status(400).json({ success: false, error: "No pubkey found" });
       return;
     }
     userId = pubkey;
   } catch (error) {
-    res.status(400).json({ status: "error", message: "Error parsing event" });
+    res.status(400).json({ success: false, error: "Error parsing event" });
     return;
   }
 
@@ -26,8 +26,8 @@ export const addTrackToPlaylist = asyncHandler(async (req, res, next) => {
 
   if (!playlistId || !trackId) {
     res.status(400).json({
-      status: "error",
-      message: "Playlist ID and track ID are required",
+      success: false,
+      error: "Playlist ID and track ID are required",
     });
     return;
   }
@@ -35,7 +35,7 @@ export const addTrackToPlaylist = asyncHandler(async (req, res, next) => {
   if (validate(playlistId) === false || validate(trackId) === false) {
     res
       .status(400)
-      .json({ status: "error", message: "Invalid playlist ID or track ID" });
+      .json({ success: false, error: "Invalid playlist ID or track ID" });
     return;
   }
 
@@ -46,12 +46,12 @@ export const addTrackToPlaylist = asyncHandler(async (req, res, next) => {
   if (!playlist) {
     res
       .status(404)
-      .json({ status: "error", message: `Playlist ${playlistId} not found` });
+      .json({ success: false, error: `Playlist ${playlistId} not found` });
     return;
   }
 
   if (playlist.userId !== userId) {
-    res.status(403).json({ status: "error", message: "Forbidden" });
+    res.status(403).json({ success: false, error: "Forbidden" });
     return;
   }
 
@@ -62,7 +62,7 @@ export const addTrackToPlaylist = asyncHandler(async (req, res, next) => {
   if (!existingTrack) {
     res
       .status(404)
-      .json({ status: "error", message: `Track ${trackId} does not exist` });
+      .json({ success: false, error: `Track ${trackId} does not exist` });
     return;
   }
 
@@ -90,16 +90,16 @@ export const getPlaylist = async (req, res, next) => {
 
   if (!id) {
     res.status(400).json({
-      status: "error",
-      message: "Playlist ID is required",
+      success: false,
+      error: "Playlist ID is required",
     });
     return;
   }
 
   if (validate(id) === false) {
     res.status(400).json({
-      status: "error",
-      message: "Invalid playlist id",
+      success: false,
+      error: "Invalid playlist id",
     });
     return;
   }
@@ -115,8 +115,8 @@ export const getPlaylist = async (req, res, next) => {
 
   if (!playlistTracks) {
     res.status(404).json({
-      status: "error",
-      message: "Playlist not found",
+      success: false,
+      error: "Playlist not found",
     });
     return;
   }
@@ -149,18 +149,18 @@ export const createPlaylist = asyncHandler(async (req, res, next) => {
     const { pubkey } = res.locals.authEvent as Event;
 
     if (!pubkey) {
-      res.status(400).json({ status: "error", message: "No pubkey found" });
+      res.status(400).json({ success: false, error: "No pubkey found" });
       return;
     }
     userId = pubkey;
   } catch (error) {
-    res.status(400).json({ status: "error", message: "Error parsing event" });
+    res.status(400).json({ success: false, error: "Error parsing event" });
     return;
   }
 
   const { title } = req.body;
   if (!title) {
-    res.status(400).json({ status: "error", message: "Title is required" });
+    res.status(400).json({ success: false, error: "Title is required" });
     return;
   }
 
@@ -174,6 +174,6 @@ export const createPlaylist = asyncHandler(async (req, res, next) => {
     },
   });
 
-  res.json({ status: "success", data: newPlaylist });
+  res.json({ success: true, data: newPlaylist });
   return;
 });
