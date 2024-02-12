@@ -4,7 +4,81 @@ import { randomUUID } from "crypto";
 import { formatError } from "../library/errors";
 import prisma from "../prisma/client";
 import { Event } from "nostr-tools";
+import db from "../library/db";
 import log from "loglevel";
+
+export const addTrackToPlaylist = asyncHandler(async (req, res, next) => {
+  let userId: string;
+  try {
+    const { pubkey } = res.locals.authEvent as Event;
+
+    if (!pubkey) {
+      res.json({ status: "error", message: "No pubkey found" });
+      return;
+    }
+    userId = pubkey;
+  } catch (error) {
+    res.json({ status: "error", message: "Error parsing event" });
+    return;
+  }
+
+  const { playlistId, trackId } = req.body;
+
+  if (!playlistId || !trackId) {
+    res.json({
+      status: "error",
+      message: "Playlist ID and track ID are required",
+    });
+    return;
+  }
+
+  if (validate(playlistId) === false || validate(trackId) === false) {
+    res.json({ status: "error", message: "Invalid playlist ID or track ID" });
+    return;
+  }
+
+  const playlist = await prisma.playlist.findUnique({
+    where: { id: playlistId },
+  });
+
+  if (!playlist) {
+    res.json({ status: "error", message: `Playlist ${playlistId} not found` });
+    return;
+  }
+
+  if (playlist.userId !== userId) {
+    res.status(403).json({ status: "error", message: "Forbidden" });
+    return;
+  }
+
+  const existingTrack = await prisma.trackInfo.findUnique({
+    where: { id: trackId },
+  });
+  console.log(existingTrack);
+
+  if (!existingTrack) {
+    res.json({ status: "error", message: `Track ${trackId} does not exist` });
+    return;
+  }
+
+  const lastPlaylistTrack = await prisma.playlistTrack.findFirst({
+    where: { playlistId: playlistId },
+    orderBy: { order: "desc" },
+  });
+
+  // If there are no tracks in the playlist, set the order to 0
+  const order = lastPlaylistTrack ? parseInt(lastPlaylistTrack.order) + 1 : 0;
+  const playlistTrack = await prisma.playlistTrack.create({
+    data: {
+      playlistId: playlistId,
+      trackId: trackId,
+      order: order.toString(),
+    },
+  });
+
+  res.json({ success: true, data: playlistTrack });
+  return;
+});
 
 export const getPlaylist = async (req, res, next) => {
   const { id } = req.params;
@@ -33,21 +107,41 @@ export const getPlaylist = async (req, res, next) => {
     return;
   }
 
-  const trackInfo = await prisma.trackInfo.findMany({
-    where: {
-      id: {
-        in: playlistTracks.map((track) => track.trackId),
-      },
-    },
-    select: {
-      id: true,
-      title: true,
-      duration: true,
-      artist: true,
-      artworkUrl: true,
-      artistUrl: true,
-    },
-  });
+  //   const trackInfo = await prisma.trackInfo.findMany({
+  //     where: {
+  //       id: {
+  //         in: playlistTracks.map((track) => track.trackId),
+  //       },
+  //     },
+  //     select: {
+  //       id: true,
+  //       title: true,
+  //       duration: true,
+  //       artist: true,
+  //       artworkUrl: true,
+  //       artistUrl: true,
+  //     },
+  //     orderBy: { order: "asc" },
+  //   });
+
+  const trackInfo = await db
+    .knex("track_info")
+    .join("playlist_track", "track_info.id", "playlist_track.track_id")
+    .select(
+      "track_info.id",
+      "title",
+      "duration",
+      "artist",
+      "artwork_url as artworkUrl",
+      "artist_url as artistUrl",
+      "live_url as liveUrl",
+      "album_title as albumTitle",
+      "album_id as albumId",
+      "artist_id as artistId",
+      "playlist_track.order as order"
+    )
+    .where("playlist_track.playlist_id", id)
+    .orderBy("order", "asc");
 
   res.json({ success: true, data: trackInfo });
 };

@@ -1,5 +1,9 @@
 import express from "express";
-import { getPlaylist, createPlaylist } from "../controllers/playlists";
+import {
+  addTrackToPlaylist,
+  getPlaylist,
+  createPlaylist,
+} from "../controllers/playlists";
 import { isNostrAuthorized } from "../middlewares/nostrAuth";
 
 // Create router
@@ -11,6 +15,7 @@ const router = express.Router();
 router.get("/:id", getPlaylist);
 
 // mutations
+router.post("/add-track", isNostrAuthorized, addTrackToPlaylist);
 router.post("/", isNostrAuthorized, createPlaylist);
 
 // Export router
