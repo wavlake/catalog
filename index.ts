@@ -101,6 +101,7 @@ app.use("/v1/stats", stats);
 app.use("/v1/tracks", tracks);
 app.use("/v1/episodes", episodes);
 app.use("/v1/payments", payments);
+app.use("/v1/playlists", playlists);
 app.use("/v1/podcasts", podcasts);
 app.use("/v1/search", search);
 app.use("/v1/splits", splits);

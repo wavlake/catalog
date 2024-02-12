@@ -1,8 +1,9 @@
-import { validate } from "uuid";
+import asyncHandler from "express-async-handler";
+import { randomUUID, validate } from "uuid";
 import { formatError } from "../library/errors";
 import prisma from "../prisma/client";
 
-const get_playlists = async (req, res, next) => {
+export const get_playlists = async (req, res, next) => {
   const { id } = req.params;
 
   if (!id) {
@@ -48,6 +49,25 @@ const get_playlists = async (req, res, next) => {
   res.json({ success: true, data: trackInfo });
 };
 
-export default {
-  get_playlists,
-};
+export const createPlaylist = asyncHandler(async (req, res, next) => {
+  const userId = req["uid"];
+  const newPlaylistId = randomUUID();
+  const { title } = req.body;
+
+  if (!title) {
+    res.json({ status: "error", message: "Title is required" });
+    return;
+  }
+
+  const newPlaylist = await prisma.playlist.create({
+    data: {
+      id: newPlaylistId,
+      title: title,
+      userId: userId,
+      isFavorites: false,
+    },
+  });
+
+  res.json({ status: "success", data: newPlaylist });
+  return;
+});

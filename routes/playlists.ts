@@ -1,12 +1,17 @@
 import express from "express";
-import playlistsController from "../controllers/playlists";
+import { get_playlists, createPlaylist } from "../controllers/playlists";
+import { isAuthorized } from "../middlewares/auth";
 
 // Create router
 const router = express.Router();
 
 //////// ROUTES ////////
 
-router.get("/:id", playlistsController.get_playlists);
+// queries
+router.get("/:id", get_playlists);
+
+// mutations
+router.post("/", isAuthorized, createPlaylist);
 
 // Export router
 export default router;
