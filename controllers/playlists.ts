@@ -85,8 +85,11 @@ export const addTrackToPlaylist = asyncHandler(async (req, res, next) => {
   return;
 });
 
+const SORT_BY_SATS = "sats";
+
 export const getPlaylist = async (req, res, next) => {
   const { id } = req.params;
+  const { sort } = req.query;
 
   if (!id) {
     res.status(400).json({
@@ -140,7 +143,39 @@ export const getPlaylist = async (req, res, next) => {
     .where("playlist_track.playlist_id", id)
     .orderBy("order", "asc");
 
-  res.json({ success: true, data: trackInfo });
+  if (sort === SORT_BY_SATS) {
+    const BEGIN_DATE = new Date("2023-10-01");
+    const END_DATE = new Date("2024-4-20");
+
+    log.debug("Sorting playlist by sats");
+    const trackIds = trackInfo.map((track) => track.id);
+    const trackSatsInTimeframe = await db
+      .knex("amp")
+      .select("track_id")
+      .sum("msat_amount as mSatsInTimePeriod")
+      .where("created_at", ">=", BEGIN_DATE)
+      .andWhere("created_at", "<=", END_DATE)
+      .whereIn("track_id", trackIds)
+      .groupBy("track_id");
+
+    trackInfo.forEach((track) => {
+      const trackSatInfo = trackSatsInTimeframe.find(
+        (t) => t.track_id === track.id
+      );
+      track.mSatsInTimePeriod = trackSatInfo?.mSatsInTimePeriod ?? 0;
+    });
+
+    trackInfo.sort((a, b) => {
+      const aTotal = parseInt(a.mSatsInTimePeriod);
+      const bTotal = parseInt(b.mSatsInTimePeriod);
+      return bTotal - aTotal;
+    });
+  }
+
+  res.json({
+    success: true,
+    data: trackInfo,
+  });
 };
 
 export const createPlaylist = asyncHandler(async (req, res, next) => {
