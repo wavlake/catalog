@@ -1,4 +1,4 @@
-import { ChargeStatus, TransactionStatus } from "./constants";
+import { ChargeStatus, PaymentStatus, TransactionStatus } from "./constants";
 
 interface TLV {
   type: string;
@@ -76,4 +76,18 @@ export interface ZBDChargeCallbackRequest {
     request: string;
     uri: string;
   };
+}
+
+export interface ZBDPaymentCallbackRequest {
+  id: string;
+  fee: string;
+  unit: string;
+  amount: string;
+  invoice: string;
+  preimage: string;
+  internalId: string;
+  processedAt: string;
+  confirmedAt: string;
+  description: string;
+  status: PaymentStatus;
 }
