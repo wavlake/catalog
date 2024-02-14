@@ -46,11 +46,4 @@ const createWithdraw = asyncHandler(async (req, res, next) => {
   );
 });
 
-const getWithdraw = asyncHandler(async (req, res, next) => {
-  const { id } = req.params;
-
-  const data = await getCharge(id);
-  res.json(data);
-});
-
-export default { createWithdraw, getWithdraw };
+export default { createWithdraw };

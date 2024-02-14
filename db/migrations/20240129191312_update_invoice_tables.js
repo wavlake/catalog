@@ -5,7 +5,7 @@ exports.up = function (knex) {
       table.timestamp("updated_at").nullable();
     })
     .alterTable("external_payment", function (table) {
-      table.boolean("external_id").nullable();
+      table.string("external_id").nullable();
     });
 };
 

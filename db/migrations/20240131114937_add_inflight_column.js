@@ -1,6 +1,6 @@
 exports.up = function (knex) {
   return knex.schema.alterTable("external_payment", function (table) {
-    table.boolean("is_pending").defaultTo(true);
+    table.boolean("is_pending").defaultTo(false);
   });
 };
 

@@ -34,15 +34,15 @@ export const recordInProgressKeysend = async ({
       // if the keysend is inflight, we estimate the fee
       // sometimes the payment is already settled and we have the actual fee
       fee_msat: keysendData.transaction.fee || estimatedFee,
-      pubkey,
-      name,
-      message,
-      podcast,
-      guid,
+      pubkey: pubkey,
+      name: name,
+      message: message,
+      podcast: podcast,
+      guid: guid,
       feed_id: feedId,
-      episode,
+      episode: episode,
       episode_guid: episodeGuid,
-      ts,
+      ts: ts,
       // we rely on the callback to update the payment as settled and is_pending = false
       is_settled: false,
       is_pending: true,

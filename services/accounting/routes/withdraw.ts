@@ -21,7 +21,6 @@ const limiter = rateLimit({
 
 //////// ROUTES ////////
 
-router.get("/", isAuthorized, sendController.getWithdraw);
 router.post(
   "/",
   isAuthorized,
