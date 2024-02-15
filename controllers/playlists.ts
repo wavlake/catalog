@@ -1,7 +1,6 @@
 import asyncHandler from "express-async-handler";
 import { validate } from "uuid";
 import { randomUUID } from "crypto";
-import { formatError } from "../library/errors";
 import prisma from "../prisma/client";
 import { Event } from "nostr-tools";
 import db from "../library/db";
@@ -27,7 +26,7 @@ export const addTrackToPlaylist = asyncHandler(async (req, res, next) => {
   if (!playlistId || !trackId) {
     res.status(400).json({
       success: false,
-      error: "Playlist ID and track ID are required",
+      error: "playlistId and trackId are required",
     });
     return;
   }
@@ -35,7 +34,7 @@ export const addTrackToPlaylist = asyncHandler(async (req, res, next) => {
   if (validate(playlistId) === false || validate(trackId) === false) {
     res
       .status(400)
-      .json({ success: false, error: "Invalid playlist ID or track ID" });
+      .json({ success: false, error: "Invalid playlistId or trackId" });
     return;
   }
 
@@ -94,7 +93,7 @@ export const getPlaylist = async (req, res, next) => {
   if (!id) {
     res.status(400).json({
       success: false,
-      error: "Playlist ID is required",
+      error: "playlistId is required",
     });
     return;
   }
@@ -102,7 +101,19 @@ export const getPlaylist = async (req, res, next) => {
   if (validate(id) === false) {
     res.status(400).json({
       success: false,
-      error: "Invalid playlist id",
+      error: "Invalid playlistId",
+    });
+    return;
+  }
+
+  const playlist = await prisma.playlist.findUnique({
+    where: { id: id },
+  });
+
+  if (!playlist) {
+    res.status(404).json({
+      success: false,
+      error: `Playlist ${id} not found`,
     });
     return;
   }
@@ -117,9 +128,9 @@ export const getPlaylist = async (req, res, next) => {
   });
 
   if (!playlistTracks) {
-    res.status(404).json({
-      success: false,
-      error: "Playlist not found",
+    res.json({
+      success: true,
+      data: [],
     });
     return;
   }
@@ -233,7 +244,7 @@ export const removeTrackFromPlaylist = asyncHandler(async (req, res, next) => {
   if (!playlistId || !trackId) {
     res.status(400).json({
       success: false,
-      error: "Playlist ID and track ID are required",
+      error: "playlistId and trackId are required",
     });
     return;
   }
@@ -241,7 +252,7 @@ export const removeTrackFromPlaylist = asyncHandler(async (req, res, next) => {
   if (validate(playlistId) === false || validate(trackId) === false) {
     res
       .status(400)
-      .json({ success: false, error: "Invalid playlist ID or track ID" });
+      .json({ success: false, error: "Invalid playlistId or trackId" });
     return;
   }
 
