@@ -224,6 +224,58 @@ export const createPlaylist = asyncHandler(async (req, res, next) => {
   return;
 });
 
+export const deletePlaylist = asyncHandler(async (req, res, next) => {
+  let userId: string;
+  try {
+    const { pubkey } = res.locals.authEvent as Event;
+
+    if (!pubkey) {
+      res.status(400).json({ success: false, error: "No pubkey found" });
+      return;
+    }
+    userId = pubkey;
+  } catch (error) {
+    res.status(400).json({ success: false, error: "Error parsing event" });
+    return;
+  }
+
+  const { id } = req.params;
+  if (!id) {
+    res.status(400).json({ success: false, error: "playlistId is required" });
+    return;
+  }
+
+  if (validate(id) === false) {
+    res.status(400).json({ success: false, error: "Invalid playlistId" });
+    return;
+  }
+
+  const playlist = await prisma.playlist.findUnique({
+    where: { id: id },
+  });
+
+  if (!playlist) {
+    res.status(404).json({ success: false, error: `Playlist ${id} not found` });
+    return;
+  }
+
+  if (playlist.userId !== userId) {
+    res.status(403).json({ success: false, error: "Forbidden" });
+    return;
+  }
+
+  await prisma.playlistTrack.deleteMany({
+    where: { playlistId: id },
+  });
+
+  await prisma.playlist.delete({
+    where: { id: id },
+  });
+
+  res.json({ success: true });
+  return;
+});
+
 export const removeTrackFromPlaylist = asyncHandler(async (req, res, next) => {
   let userId: string;
   try {
