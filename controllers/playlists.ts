@@ -343,3 +343,87 @@ export const removeTrackFromPlaylist = asyncHandler(async (req, res, next) => {
   res.json({ success: true });
   return;
 });
+
+export const reorderPlaylist = asyncHandler(async (req, res, next) => {
+  let userId: string;
+  try {
+    const { pubkey } = res.locals.authEvent as Event;
+
+    if (!pubkey) {
+      res.status(400).json({ success: false, error: "No pubkey found" });
+      return;
+    }
+    userId = pubkey;
+  } catch (error) {
+    res.status(400).json({ success: false, error: "Error parsing event" });
+    return;
+  }
+
+  const { playlistId, trackList } = req.body;
+
+  if (
+    !playlistId ||
+    !trackList ||
+    !Array.isArray(trackList) ||
+    trackList.length === 0
+  ) {
+    res.status(400).json({
+      success: false,
+      error: "playlistId and trackList are required",
+    });
+    return;
+  }
+
+  if (
+    validate(playlistId) === false ||
+    trackList.some((t) => validate(t) === false)
+  ) {
+    res.status(400).json({
+      success: false,
+      error: "Invalid playlistId or trackId in trackList",
+    });
+    return;
+  }
+
+  const playlist = await prisma.playlist.findUnique({
+    where: { id: playlistId },
+  });
+
+  if (!playlist) {
+    res
+      .status(404)
+      .json({ success: false, error: `Playlist ${playlistId} not found` });
+    return;
+  }
+
+  if (playlist.userId !== userId) {
+    res.status(403).json({ success: false, error: "Forbidden" });
+    return;
+  }
+
+  const playlistTrack = await prisma.playlistTrack.findMany({
+    where: { playlistId: playlistId, trackId: { in: trackList } },
+  });
+
+  if (playlistTrack.length != trackList.length) {
+    res.status(400).json({
+      success: false,
+      error: `trackList does not match playlist tracks`,
+    });
+    return;
+  }
+
+  const newPlaylistOrder = trackList.map((trackId, index) => {
+    return { playlist_id: playlistId, track_id: trackId, order: index };
+  });
+
+  // Delete all tracks from the playlist and reinsert them in the new order
+  await prisma.playlistTrack.deleteMany({
+    where: { playlistId: playlistId },
+  });
+
+  await db.knex("playlist_track").insert(newPlaylistOrder);
+
+  res.json({ success: true });
+  return;
+});
