@@ -3,6 +3,7 @@ import {
   addTrackToPlaylist,
   getPlaylist,
   createPlaylist,
+  removeTrackFromPlaylist,
 } from "../controllers/playlists";
 import { isNostrAuthorized } from "../middlewares/nostrAuth";
 
@@ -16,6 +17,7 @@ router.get("/:id", getPlaylist);
 
 // mutations
 router.post("/add-track", isNostrAuthorized, addTrackToPlaylist);
+router.post("/remove-track", isNostrAuthorized, removeTrackFromPlaylist);
 router.post("/", isNostrAuthorized, createPlaylist);
 
 // Export router

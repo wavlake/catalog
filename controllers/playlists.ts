@@ -212,3 +212,71 @@ export const createPlaylist = asyncHandler(async (req, res, next) => {
   res.json({ success: true, data: newPlaylist });
   return;
 });
+
+export const removeTrackFromPlaylist = asyncHandler(async (req, res, next) => {
+  let userId: string;
+  try {
+    const { pubkey } = res.locals.authEvent as Event;
+
+    if (!pubkey) {
+      res.status(400).json({ success: false, error: "No pubkey found" });
+      return;
+    }
+    userId = pubkey;
+  } catch (error) {
+    res.status(400).json({ success: false, error: "Error parsing event" });
+    return;
+  }
+
+  const { playlistId, trackId } = req.body;
+
+  if (!playlistId || !trackId) {
+    res.status(400).json({
+      success: false,
+      error: "Playlist ID and track ID are required",
+    });
+    return;
+  }
+
+  if (validate(playlistId) === false || validate(trackId) === false) {
+    res
+      .status(400)
+      .json({ success: false, error: "Invalid playlist ID or track ID" });
+    return;
+  }
+
+  const playlist = await prisma.playlist.findUnique({
+    where: { id: playlistId },
+  });
+
+  if (!playlist) {
+    res
+      .status(404)
+      .json({ success: false, error: `Playlist ${playlistId} not found` });
+    return;
+  }
+
+  if (playlist.userId !== userId) {
+    res.status(403).json({ success: false, error: "Forbidden" });
+    return;
+  }
+
+  const playlistTrack = await prisma.playlistTrack.findFirst({
+    where: { playlistId: playlistId, trackId: trackId },
+  });
+
+  if (!playlistTrack) {
+    res.status(404).json({
+      success: false,
+      error: `Track ${trackId} not found in playlist`,
+    });
+    return;
+  }
+
+  await prisma.playlistTrack.deleteMany({
+    where: { playlistId: playlistId, id: playlistTrack.id },
+  });
+
+  res.json({ success: true });
+  return;
+});
