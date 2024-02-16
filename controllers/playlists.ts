@@ -5,7 +5,7 @@ import { formatError } from "../library/errors";
 import prisma from "../prisma/client";
 import { Event } from "nostr-tools";
 import db from "../library/db";
-import log from "loglevel";
+import { isValidDateString } from "../library/validation";
 
 export const addTrackToPlaylist = asyncHandler(async (req, res, next) => {
   let userId: string;
@@ -89,7 +89,7 @@ const SORT_BY_SATS = "sats";
 
 export const getPlaylist = async (req, res, next) => {
   const { id } = req.params;
-  const { sort } = req.query;
+  const { sort, startDate, endDate } = req.query;
 
   if (!id) {
     res.status(400).json({
@@ -144,10 +144,39 @@ export const getPlaylist = async (req, res, next) => {
     .orderBy("order", "asc");
 
   if (sort === SORT_BY_SATS) {
-    const BEGIN_DATE = new Date("2023-10-01");
-    const END_DATE = new Date("2024-4-20");
+    if (!startDate || !endDate) {
+      res.status(400).json({
+        success: false,
+        error: "Start and end date are required when sorting by sats",
+      });
+      return;
+    }
 
-    log.debug("Sorting playlist by sats");
+    const startDateValid = await isValidDateString(startDate);
+    const endDateValid = await isValidDateString(endDate);
+
+    if (!startDateValid || !endDateValid) {
+      res.status(400).json({
+        success: false,
+        error: "Invalid start or end date (format: YYYY-MM-DD)",
+      });
+      return;
+    }
+
+    const BEGIN_DATE = new Date(startDate);
+    const END_DATE = new Date(endDate);
+
+    const daysWindow =
+      (END_DATE.getTime() - BEGIN_DATE.getTime()) / (1000 * 60 * 60 * 24);
+
+    if (daysWindow < 0 || daysWindow > 90) {
+      res.status(400).json({
+        success: false,
+        error: "Date range must be between 0 and 90 days",
+      });
+      return;
+    }
+
     const trackIds = trackInfo.map((track) => track.id);
     const trackSatsInTimeframe = await db
       .knex("amp")
