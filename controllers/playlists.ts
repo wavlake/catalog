@@ -401,14 +401,15 @@ export const reorderPlaylist = asyncHandler(async (req, res, next) => {
     return;
   }
 
-  const playlistTrack = await prisma.playlistTrack.findMany({
-    where: { playlistId: playlistId, trackId: { in: trackList } },
+  // Ensure all tracks exist
+  const validTracks = await prisma.trackInfo.findMany({
+    where: { id: { in: trackList } },
   });
 
-  if (playlistTrack.length != trackList.length) {
+  if (validTracks.length != trackList.length) {
     res.status(400).json({
       success: false,
-      error: `trackList does not match playlist tracks`,
+      error: `trackList contains one or more invalid track ids`,
     });
     return;
   }
@@ -422,8 +423,10 @@ export const reorderPlaylist = asyncHandler(async (req, res, next) => {
     where: { playlistId: playlistId },
   });
 
-  await db.knex("playlist_track").insert(newPlaylistOrder);
+  const newPlaylist = await db
+    .knex("playlist_track")
+    .insert(newPlaylistOrder, ["track_id as trackId", "order"]);
 
-  res.json({ success: true });
+  res.json({ success: true, data: newPlaylist });
   return;
 });
