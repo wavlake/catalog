@@ -47,12 +47,12 @@ const get_top_forty = asyncHandler(async (req, res, next) => {
 const get_custom_chart = asyncHandler(async (req, res, next) => {
   const { sort, startDate, endDate, limit } = req.query;
 
-  const validSorts = ["sats", "plays"];
+  const validSorts = ["sats"];
 
   if (!validSorts.includes(sort)) {
     res.json({
       success: false,
-      error: "Invalid sort, must be one of: sats, plays",
+      error: "Invalid sort, must be one of: sats",
     });
     return;
   }
