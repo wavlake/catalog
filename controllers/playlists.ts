@@ -5,7 +5,7 @@ import { formatError } from "../library/errors";
 import prisma from "../prisma/client";
 import { Event } from "nostr-tools";
 import db from "../library/db";
-import log from "loglevel";
+import { isValidDateString } from "../library/validation";
 
 export const addTrackToPlaylist = asyncHandler(async (req, res, next) => {
   let userId: string;
@@ -152,8 +152,8 @@ export const getPlaylist = async (req, res, next) => {
       return;
     }
 
-    const startDateValid = await validateDateString(startDate);
-    const endDateValid = await validateDateString(endDate);
+    const startDateValid = await isValidDateString(startDate);
+    const endDateValid = await isValidDateString(endDate);
 
     if (!startDateValid || !endDateValid) {
       res.status(400).json({
@@ -241,11 +241,3 @@ export const createPlaylist = asyncHandler(async (req, res, next) => {
   res.json({ success: true, data: newPlaylist });
   return;
 });
-
-async function validateDateString(dateString: string) {
-  const date = new Date(dateString);
-  if (isNaN(date.getTime())) {
-    return false;
-  }
-  return true;
-}
