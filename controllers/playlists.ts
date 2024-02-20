@@ -1,7 +1,6 @@
 import asyncHandler from "express-async-handler";
 import { validate } from "uuid";
 import { randomUUID } from "crypto";
-import { formatError } from "../library/errors";
 import prisma from "../prisma/client";
 import { Event } from "nostr-tools";
 import db from "../library/db";
@@ -27,7 +26,7 @@ export const addTrackToPlaylist = asyncHandler(async (req, res, next) => {
   if (!playlistId || !trackId) {
     res.status(400).json({
       success: false,
-      error: "Playlist ID and track ID are required",
+      error: "playlistId and trackId are required",
     });
     return;
   }
@@ -35,7 +34,7 @@ export const addTrackToPlaylist = asyncHandler(async (req, res, next) => {
   if (validate(playlistId) === false || validate(trackId) === false) {
     res
       .status(400)
-      .json({ success: false, error: "Invalid playlist ID or track ID" });
+      .json({ success: false, error: "Invalid playlistId or trackId" });
     return;
   }
 
@@ -94,7 +93,7 @@ export const getPlaylist = async (req, res, next) => {
   if (!id) {
     res.status(400).json({
       success: false,
-      error: "Playlist ID is required",
+      error: "playlistId is required",
     });
     return;
   }
@@ -102,7 +101,19 @@ export const getPlaylist = async (req, res, next) => {
   if (validate(id) === false) {
     res.status(400).json({
       success: false,
-      error: "Invalid playlist id",
+      error: "Invalid playlistId",
+    });
+    return;
+  }
+
+  const playlist = await prisma.playlist.findUnique({
+    where: { id: id },
+  });
+
+  if (!playlist) {
+    res.status(404).json({
+      success: false,
+      error: `Playlist ${id} not found`,
     });
     return;
   }
@@ -117,9 +128,9 @@ export const getPlaylist = async (req, res, next) => {
   });
 
   if (!playlistTracks) {
-    res.status(404).json({
-      success: false,
-      error: "Playlist not found",
+    res.json({
+      success: true,
+      data: [],
     });
     return;
   }
@@ -237,6 +248,213 @@ export const createPlaylist = asyncHandler(async (req, res, next) => {
       isFavorites: false,
     },
   });
+
+  res.json({ success: true, data: newPlaylist });
+  return;
+});
+
+export const deletePlaylist = asyncHandler(async (req, res, next) => {
+  let userId: string;
+  try {
+    const { pubkey } = res.locals.authEvent as Event;
+
+    if (!pubkey) {
+      res.status(400).json({ success: false, error: "No pubkey found" });
+      return;
+    }
+    userId = pubkey;
+  } catch (error) {
+    res.status(400).json({ success: false, error: "Error parsing event" });
+    return;
+  }
+
+  const { id } = req.params;
+  if (!id) {
+    res.status(400).json({ success: false, error: "playlistId is required" });
+    return;
+  }
+
+  if (validate(id) === false) {
+    res.status(400).json({ success: false, error: "Invalid playlistId" });
+    return;
+  }
+
+  const playlist = await prisma.playlist.findUnique({
+    where: { id: id },
+  });
+
+  if (!playlist) {
+    res.status(404).json({ success: false, error: `Playlist ${id} not found` });
+    return;
+  }
+
+  if (playlist.userId !== userId) {
+    res.status(403).json({ success: false, error: "Forbidden" });
+    return;
+  }
+
+  await prisma.playlistTrack.deleteMany({
+    where: { playlistId: id },
+  });
+
+  await prisma.playlist.delete({
+    where: { id: id },
+  });
+
+  res.json({ success: true });
+  return;
+});
+
+export const removeTrackFromPlaylist = asyncHandler(async (req, res, next) => {
+  let userId: string;
+  try {
+    const { pubkey } = res.locals.authEvent as Event;
+
+    if (!pubkey) {
+      res.status(400).json({ success: false, error: "No pubkey found" });
+      return;
+    }
+    userId = pubkey;
+  } catch (error) {
+    res.status(400).json({ success: false, error: "Error parsing event" });
+    return;
+  }
+
+  const { playlistId, trackId } = req.body;
+
+  if (!playlistId || !trackId) {
+    res.status(400).json({
+      success: false,
+      error: "playlistId and trackId are required",
+    });
+    return;
+  }
+
+  if (validate(playlistId) === false || validate(trackId) === false) {
+    res
+      .status(400)
+      .json({ success: false, error: "Invalid playlistId or trackId" });
+    return;
+  }
+
+  const playlist = await prisma.playlist.findUnique({
+    where: { id: playlistId },
+  });
+
+  if (!playlist) {
+    res
+      .status(404)
+      .json({ success: false, error: `Playlist ${playlistId} not found` });
+    return;
+  }
+
+  if (playlist.userId !== userId) {
+    res.status(403).json({ success: false, error: "Forbidden" });
+    return;
+  }
+
+  const playlistTrack = await prisma.playlistTrack.findFirst({
+    where: { playlistId: playlistId, trackId: trackId },
+  });
+
+  if (!playlistTrack) {
+    res.status(404).json({
+      success: false,
+      error: `Track ${trackId} not found in playlist`,
+    });
+    return;
+  }
+
+  await prisma.playlistTrack.deleteMany({
+    where: { playlistId: playlistId, id: playlistTrack.id },
+  });
+
+  res.json({ success: true });
+  return;
+});
+
+export const reorderPlaylist = asyncHandler(async (req, res, next) => {
+  let userId: string;
+  try {
+    const { pubkey } = res.locals.authEvent as Event;
+
+    if (!pubkey) {
+      res.status(400).json({ success: false, error: "No pubkey found" });
+      return;
+    }
+    userId = pubkey;
+  } catch (error) {
+    res.status(400).json({ success: false, error: "Error parsing event" });
+    return;
+  }
+
+  const { playlistId, trackList } = req.body;
+
+  if (
+    !playlistId ||
+    !trackList ||
+    !Array.isArray(trackList) ||
+    trackList.length === 0
+  ) {
+    res.status(400).json({
+      success: false,
+      error: "playlistId and trackList are required",
+    });
+    return;
+  }
+
+  if (
+    validate(playlistId) === false ||
+    !trackList.every(validate)
+  ) {
+    res.status(400).json({
+      success: false,
+      error: "Invalid playlistId or trackId in trackList",
+    });
+    return;
+  }
+
+  const playlist = await prisma.playlist.findUnique({
+    where: { id: playlistId },
+  });
+
+  if (!playlist) {
+    res
+      .status(404)
+      .json({ success: false, error: `Playlist ${playlistId} not found` });
+    return;
+  }
+
+  if (playlist.userId !== userId) {
+    res.status(403).json({ success: false, error: "Forbidden" });
+    return;
+  }
+
+  // Ensure all tracks exist
+  const validTracks = await prisma.trackInfo.findMany({
+    where: { id: { in: trackList } },
+  });
+
+  if (validTracks.length != trackList.length) {
+    res.status(400).json({
+      success: false,
+      error: `trackList contains one or more invalid track ids`,
+    });
+    return;
+  }
+
+  const newPlaylistOrder = trackList.map((trackId, index) => {
+    return { playlist_id: playlistId, track_id: trackId, order: index };
+  });
+
+  // Delete all tracks from the playlist and reinsert them in the new order
+  await prisma.playlistTrack.deleteMany({
+    where: { playlistId: playlistId },
+  });
+
+  const newPlaylist = await db
+    .knex("playlist_track")
+    .insert(newPlaylistOrder, ["track_id as trackId", "order"]);
 
   res.json({ success: true, data: newPlaylist });
   return;
