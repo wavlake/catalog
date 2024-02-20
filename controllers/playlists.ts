@@ -376,7 +376,7 @@ export const reorderPlaylist = asyncHandler(async (req, res, next) => {
 
   if (
     validate(playlistId) === false ||
-    trackList.some((t) => validate(t) === false)
+    !trackList.every(validate)
   ) {
     res.status(400).json({
       success: false,
