@@ -192,7 +192,7 @@ export const getPlaylist = async (req, res, next) => {
     const trackSatsInTimeframe = await db
       .knex("amp")
       .select("track_id")
-      .sum("msat_amount as mSatsInTimePeriod")
+      .sum("msat_amount as msatTotal")
       .where("created_at", ">=", BEGIN_DATE)
       .andWhere("created_at", "<=", END_DATE)
       .whereIn("track_id", trackIds)
@@ -202,12 +202,12 @@ export const getPlaylist = async (req, res, next) => {
       const trackSatInfo = trackSatsInTimeframe.find(
         (t) => t.track_id === track.id
       );
-      track.mSatsInTimePeriod = trackSatInfo?.mSatsInTimePeriod ?? 0;
+      track.msatTotal = trackSatInfo?.msatTotal ?? 0;
     });
 
     trackInfo.sort((a, b) => {
-      const aTotal = parseInt(a.mSatsInTimePeriod);
-      const bTotal = parseInt(b.mSatsInTimePeriod);
+      const aTotal = parseInt(a.msatTotal);
+      const bTotal = parseInt(b.msatTotal);
       return bTotal - aTotal;
     });
   }
@@ -403,10 +403,7 @@ export const reorderPlaylist = asyncHandler(async (req, res, next) => {
     return;
   }
 
-  if (
-    validate(playlistId) === false ||
-    !trackList.every(validate)
-  ) {
+  if (validate(playlistId) === false || !trackList.every(validate)) {
     res.status(400).json({
       success: false,
       error: "Invalid playlistId or trackId in trackList",
