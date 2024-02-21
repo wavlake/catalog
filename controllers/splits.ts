@@ -245,7 +245,7 @@ const update_split = asyncHandler(async (req, res, next) => {
 
 const check_usernames = asyncHandler(async (req, res, next) => {
   const { usernames } = req.body;
-  console.log("checking:", usernames);
+
   if (!usernames || !usernames.length) {
     const error = formatError(400, "Must include at least one username");
     next(error);
