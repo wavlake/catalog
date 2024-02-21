@@ -27,6 +27,8 @@ router.get(
   isAuthorized,
   timeSplitsController.get_time_splits
 );
+router.post("/check-usernames", isAuthorized, splitsController.check_usernames);
+
 router.post("/time", isAuthorized, timeSplitsController.create_time_splits);
 router.put("/time", isAuthorized, timeSplitsController.update_time_splits);
 // Export router
