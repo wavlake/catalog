@@ -6,6 +6,8 @@ export const getAllComments = async (
   limit: number,
   offset: number = 0
 ) => {
+  if (!contentIds.length) return [];
+
   const allComments = await db
     .knex(commentsLegacy(contentIds))
     .unionAll([commentsV2(contentIds)])
