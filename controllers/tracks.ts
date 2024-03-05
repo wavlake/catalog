@@ -461,6 +461,16 @@ const update_track = asyncHandler(async (req, res, next) => {
     return;
   }
 
+  const intOrder = parseInt(order);
+  if (!intOrder || isNaN(intOrder)) {
+    const error = formatError(
+      400,
+      "order field is required, and must be an integer"
+    );
+    next(error);
+    return;
+  }
+
   // Check if user owns track
   const isOwner = await isTrackOwner(uid, trackId);
 
@@ -508,7 +518,7 @@ const update_track = asyncHandler(async (req, res, next) => {
       },
       data: {
         title,
-        order,
+        order: intOrder,
         lyrics,
         updatedAt,
         isDraft,
