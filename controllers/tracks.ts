@@ -500,7 +500,7 @@ const update_track = asyncHandler(async (req, res, next) => {
       .andWhere("deleted", "=", false)
       .first();
 
-    if (duplicateTitledTrack) {
+    if (duplicateTitledTrack && duplicateTitledTrack.id !== trackId) {
       const error = formatError(
         400,
         "Please pick another title, this artist already has a track with that title."
