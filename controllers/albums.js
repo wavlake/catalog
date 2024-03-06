@@ -163,6 +163,7 @@ const create_album = asyncHandler(async (req, res, next) => {
     subgenreId: req.body.subgenreId,
     description: req.body.description,
     isDraft: req.body.isDraft,
+    isSingle: req.body.isSingle,
   };
 
   // Check if user owns artist
@@ -215,6 +216,7 @@ const create_album = asyncHandler(async (req, res, next) => {
                 subgenre_id: request.subgenreId,
                 is_draft: request.isDraft,
                 published_at: db.knex.fn.now(),
+                is_single: request.isSingle || false,
               },
               ["*"]
             )
@@ -247,6 +249,7 @@ const create_album = asyncHandler(async (req, res, next) => {
                   subgenreId: data[0]["subgenre_id"],
                   isDraft: data[0]["is_draft"],
                   publishedAt: data[0]["published_at"],
+                  isSingle: data[0]["is_single"],
                 },
               });
             })
@@ -278,6 +281,7 @@ const update_album = asyncHandler(async (req, res, next) => {
     // TODO consume this when scheduling is implemented
     // ensure time zones are properly handled
     publishedAt: publishedAtString,
+    isSingle,
   } = req.body;
   const uid = req["uid"];
   const updatedAt = new Date();
@@ -309,6 +313,7 @@ const update_album = asyncHandler(async (req, res, next) => {
       genreId,
       subgenreId,
       isDraft,
+      isSingle,
     },
   });
   res.json({
