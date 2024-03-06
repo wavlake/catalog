@@ -45,7 +45,7 @@ const get_top_forty = asyncHandler(async (req, res, next) => {
 });
 
 const get_custom_chart = asyncHandler(async (req, res, next) => {
-  const { sort, startDate, endDate, limit } = req.query;
+  const { sort, startDate, endDate, limit = 100 } = req.query;
 
   const validSorts = ["sats"];
 
@@ -57,16 +57,20 @@ const get_custom_chart = asyncHandler(async (req, res, next) => {
     return;
   }
 
-  if (!startDate || !endDate) {
+  if (!startDate) {
     res.json({
       success: false,
-      error: "startDate and endDate are required",
+      error: "startDate is required",
     });
     return;
   }
 
+  const endDateResolved = endDate
+    ? endDate
+    : new Date().toISOString().split("T")[0];
+
   const startDateValid = await isValidDateString(startDate);
-  const endDateValid = await isValidDateString(endDate);
+  const endDateValid = await isValidDateString(endDateResolved);
 
   if (!startDateValid || !endDateValid) {
     res.status(400).json({
@@ -76,11 +80,12 @@ const get_custom_chart = asyncHandler(async (req, res, next) => {
     return;
   }
 
-  const BEGIN_DATE = new Date(startDate);
-  const END_DATE = new Date(endDate);
+  const startDateFormatted = new Date(startDate);
+  const endDateFormatted = new Date(endDateResolved);
 
   const daysWindow =
-    (END_DATE.getTime() - BEGIN_DATE.getTime()) / (1000 * 60 * 60 * 24);
+    (endDateFormatted.getTime() - startDateFormatted.getTime()) /
+    (1000 * 60 * 60 * 24);
 
   if (daysWindow < 0 || daysWindow > 90) {
     res.status(400).json({
@@ -115,8 +120,8 @@ const get_custom_chart = asyncHandler(async (req, res, next) => {
     .min("track_info.duration as duration")
     .min("track_info.live_url as liveUrl")
     .sum("amp.msat_amount as msatTotal")
-    .where("amp.created_at", ">=", BEGIN_DATE)
-    .andWhere("amp.created_at", "<=", END_DATE)
+    .where("amp.created_at", ">=", startDateFormatted)
+    .andWhere("amp.created_at", "<=", endDateFormatted)
     .groupBy("track_info.id")
     .orderBy("msatTotal", "desc")
     .limit(limit ? parseInt(limit) : 10);
