@@ -164,7 +164,7 @@ const create_album = asyncHandler(async (req, res, next) => {
     subgenreId: req.body.subgenreId,
     description: req.body.description,
     isDraft: req.body.isDraft,
-    isSingle: req.body.isSingle,
+    isSingle: req.body.isSingle ?? false,
   };
 
   // Check if user owns artist
@@ -217,7 +217,7 @@ const create_album = asyncHandler(async (req, res, next) => {
                 subgenre_id: request.subgenreId,
                 is_draft: request.isDraft,
                 published_at: db.knex.fn.now(),
-                is_single: request.isSingle || false,
+                is_single: request.isSingle,
               },
               ["*"]
             )
