@@ -45,7 +45,7 @@ const get_top_forty = asyncHandler(async (req, res, next) => {
 });
 
 const get_custom_chart = asyncHandler(async (req, res, next) => {
-  const { sort, startDate, endDate, limit = 100 } = req.query;
+  const { sort = "sats", startDate, endDate, limit = 100, genre } = req.query;
 
   const validSorts = ["sats"];
 
@@ -103,28 +103,73 @@ const get_custom_chart = asyncHandler(async (req, res, next) => {
     return;
   }
 
-  const tracks = await db
-    .knex("track_info")
-    .join("amp", "track_info.id", "amp.track_id")
-    .select(
-      "track_info.id as id",
-      db.knex.raw("min(track_info.album_id::text) as albumId"),
-      db.knex.raw("min(track_info.artist_id::text) as artistId")
-    )
-    .min("track_info.title as title")
-    .min("track_info.artist as artist")
-    .min("track_info.artist_url as artistUrl")
-    .min("track_info.avatar_url as avatarUrl")
-    .min("track_info.artwork_url as artworkUrl")
-    .min("track_info.album_title as albumTitle")
-    .min("track_info.duration as duration")
-    .min("track_info.live_url as liveUrl")
-    .sum("amp.msat_amount as msatTotal")
-    .where("amp.created_at", ">=", startDateFormatted)
-    .andWhere("amp.created_at", "<=", endDateFormatted)
-    .groupBy("track_info.id")
-    .orderBy("msatTotal", "desc")
-    .limit(limit ? parseInt(limit) : 10);
+  let genreId: { id: number } = null;
+  if (genre) {
+    console.log("genre", genre);
+    genreId = await prisma.musicGenre.findFirst({
+      where: { name: { contains: genre, mode: "insensitive" } }, // case insensitive lookup
+      select: {
+        id: true,
+      },
+    });
+    console.log("genreId", genreId);
+
+    if (!genreId) {
+      res.status(400).json({
+        success: false,
+        error: "Genre does not exist",
+      });
+      return;
+    }
+  }
+
+  const tracks = !genreId
+    ? await db
+        .knex("track_info")
+        .join("amp", "track_info.id", "amp.track_id")
+        .select(
+          "track_info.id as id",
+          db.knex.raw("min(track_info.album_id::text) as albumId"),
+          db.knex.raw("min(track_info.artist_id::text) as artistId")
+        )
+        .min("track_info.title as title")
+        .min("track_info.artist as artist")
+        .min("track_info.artist_url as artistUrl")
+        .min("track_info.avatar_url as avatarUrl")
+        .min("track_info.artwork_url as artworkUrl")
+        .min("track_info.album_title as albumTitle")
+        .min("track_info.duration as duration")
+        .min("track_info.live_url as liveUrl")
+        .sum("amp.msat_amount as msatTotal")
+        .where("amp.created_at", ">=", startDateFormatted)
+        .andWhere("amp.created_at", "<=", endDateFormatted)
+        .groupBy("track_info.id")
+        .orderBy("msatTotal", "desc")
+        .limit(limit ? parseInt(limit) : 10)
+    : await db
+        .knex("track_info")
+        .join("amp", "track_info.id", "amp.track_id")
+        .join("music_genre", "track_info.genre_id", "music_genre.id")
+        .select(
+          "track_info.id as id",
+          db.knex.raw("min(track_info.album_id::text) as albumId"),
+          db.knex.raw("min(track_info.artist_id::text) as artistId")
+        )
+        .min("track_info.title as title")
+        .min("track_info.artist as artist")
+        .min("track_info.artist_url as artistUrl")
+        .min("track_info.avatar_url as avatarUrl")
+        .min("track_info.artwork_url as artworkUrl")
+        .min("track_info.album_title as albumTitle")
+        .min("track_info.duration as duration")
+        .min("track_info.live_url as liveUrl")
+        .sum("amp.msat_amount as msatTotal")
+        .where("amp.created_at", ">=", startDateFormatted)
+        .andWhere("amp.created_at", "<=", endDateFormatted)
+        .andWhere("track_info.genre_id", "=", genreId.id)
+        .groupBy("track_info.id")
+        .orderBy("msatTotal", "desc")
+        .limit(limit ? parseInt(limit) : 10);
 
   res.json({ success: true, data: tracks });
 });
