@@ -218,6 +218,29 @@ export const getPlaylist = async (req, res, next) => {
   });
 };
 
+export const getUserPlaylists = asyncHandler(async (req, res, next) => {
+  let userId: string;
+  try {
+    const { pubkey } = res.locals.authEvent as Event;
+
+    if (!pubkey) {
+      res.status(400).json({ success: false, error: "No pubkey found" });
+      return;
+    }
+    userId = pubkey;
+  } catch (error) {
+    res.status(400).json({ success: false, error: "Error parsing event" });
+    return;
+  }
+
+  const playlists = await prisma.playlist.findMany({
+    where: { userId: userId },
+  });
+
+  res.json({ success: true, data: playlists });
+  return;
+});
+
 export const createPlaylist = asyncHandler(async (req, res, next) => {
   let userId: string;
   try {

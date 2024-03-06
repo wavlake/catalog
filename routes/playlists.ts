@@ -6,6 +6,7 @@ import {
   deletePlaylist,
   removeTrackFromPlaylist,
   reorderPlaylist,
+  getUserPlaylists,
 } from "../controllers/playlists";
 import { isNostrAuthorized } from "../middlewares/nostrAuth";
 
@@ -16,6 +17,7 @@ const router = express.Router();
 
 // queries
 router.get("/:id", getPlaylist);
+router.get("/", getUserPlaylists);
 
 // mutations
 router.post("/add-track", isNostrAuthorized, addTrackToPlaylist);
