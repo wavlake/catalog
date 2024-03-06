@@ -145,7 +145,7 @@ const get_custom_chart = asyncHandler(async (req, res, next) => {
         .andWhere("amp.created_at", "<=", endDateFormatted)
         .groupBy("track_info.id")
         .orderBy("msatTotal", "desc")
-        .limit(limit ? parseInt(limit) : 10)
+        .limit(parseInt(limit))
     : await db
         .knex("track_info")
         .join("amp", "track_info.id", "amp.track_id")
@@ -169,7 +169,7 @@ const get_custom_chart = asyncHandler(async (req, res, next) => {
         .andWhere("track_info.genre_id", "=", genreId.id)
         .groupBy("track_info.id")
         .orderBy("msatTotal", "desc")
-        .limit(limit ? parseInt(limit) : 10);
+        .limit(parseInt(limit));
 
   res.json({ success: true, data: tracks });
 });
