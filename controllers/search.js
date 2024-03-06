@@ -1,8 +1,6 @@
 import prisma from "../prisma/client";
 const asyncHandler = require("express-async-handler");
 import { formatError } from "../library/errors";
-import { validate } from "uuid";
-import log from "loglevel";
 
 const get_all_by_term = asyncHandler(async (req, res, next) => {
   const term = String(req.query.term);
@@ -11,25 +9,6 @@ const get_all_by_term = asyncHandler(async (req, res, next) => {
     const error = formatError(400, "term field is required");
     next(error);
     return;
-  }
-
-  const isUuid = validate(term);
-
-  if (isUuid) {
-    log.debug("Searching for track by id: ", term);
-    const track = await prisma.trackInfo.findFirst({
-      where: {
-        id: term,
-        isDraft: false,
-        publishedAt: { lte: new Date() },
-      },
-    });
-    log.debug("Found track", track);
-
-    if (track) {
-      res.json({ success: true, data: [track] });
-      return;
-    }
   }
 
   // TODO: Sort results by sats?
