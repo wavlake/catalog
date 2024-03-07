@@ -308,6 +308,7 @@ const create_track = asyncHandler(async (req, res, next) => {
     order: req.body.order == "" ? 0 : parseInt(req.body.order),
     lyrics: req.body.lyrics,
     extension: req.body.extension ?? "mp3",
+    isExplicit: req.body.isExplicit ?? false,
   };
 
   if (!request.albumId) {
@@ -373,6 +374,7 @@ const create_track = asyncHandler(async (req, res, next) => {
         lyrics: request.lyrics,
         raw_url: s3RawUrl,
         is_processing: true,
+        is_explicit: request.isExplicit,
       },
       ["*"]
     )
@@ -399,6 +401,7 @@ const create_track = asyncHandler(async (req, res, next) => {
           rawUrl: data[0]["raw_url"],
           lyrics: data[0]["lyrics"],
           presignedUrl: presignedUrl,
+          isExplicit: data[0]["is_explicit"],
         },
       });
     })
@@ -450,6 +453,7 @@ const update_track = asyncHandler(async (req, res, next) => {
     // TODO - consume this when scheduling is implemented
     // ensure time zones are properly handled
     publishedAt: publishedAtString,
+    isExplicit,
   } = req.body;
   const uid = req["uid"];
 
@@ -522,6 +526,7 @@ const update_track = asyncHandler(async (req, res, next) => {
         lyrics,
         updatedAt,
         isDraft,
+        isExplicit,
       },
     });
 
