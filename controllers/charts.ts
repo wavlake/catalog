@@ -132,7 +132,6 @@ const get_custom_chart = asyncHandler(async (req, res, next) => {
 
   let genreId: { id: number } = null;
   if (genre) {
-    console.log("genre", genre);
     genreId = await prisma.musicGenre.findFirst({
       where: { name: { contains: genre, mode: "insensitive" } }, // case insensitive lookup
       select: {
