@@ -45,9 +45,29 @@ const get_top_forty = asyncHandler(async (req, res, next) => {
 });
 
 const get_custom_chart = asyncHandler(async (req, res, next) => {
-  const { sort, startDate, endDate, limit } = req.query;
+  const {
+    sort = "sats",
+    startDate,
+    endDate,
+    limit = 100,
+    genre,
+    days,
+  } = req.query;
 
   const validSorts = ["sats"];
+
+  let daysInt = null;
+  if (!!days) {
+    daysInt = parseInt(days);
+  }
+
+  if ((!!daysInt && !!startDate) || (!!daysInt && !!endDate)) {
+    res.json({
+      success: false,
+      error: "Cannot use days and date values together",
+    });
+    return;
+  }
 
   if (!validSorts.includes(sort)) {
     res.json({
@@ -57,30 +77,42 @@ const get_custom_chart = asyncHandler(async (req, res, next) => {
     return;
   }
 
-  if (!startDate || !endDate) {
+  if (!daysInt && !startDate && !endDate) {
     res.json({
       success: false,
-      error: "startDate and endDate are required",
+      error: "startDate and endDate is required",
     });
     return;
   }
 
-  const startDateValid = await isValidDateString(startDate);
-  const endDateValid = await isValidDateString(endDate);
+  let startDateResolved;
+  let endDateResolved;
 
-  if (!startDateValid || !endDateValid) {
-    res.status(400).json({
-      success: false,
-      error: "Invalid start or end date (format: YYYY-MM-DD)",
-    });
-    return;
+  if (!!days) {
+    const date = new Date();
+    startDateResolved = new Date(date.setDate(date.getDate() - days));
+    endDateResolved = new Date();
+  } else {
+    const startDateValid = await isValidDateString(startDate);
+    const endDateValid = await isValidDateString(endDate);
+
+    if (!startDateValid || !endDateValid) {
+      res.status(400).json({
+        success: false,
+        error: "Invalid start or end date (format: YYYY-MM-DD)",
+      });
+      return;
+    }
+    startDateResolved = new Date(startDate);
+    endDateResolved = new Date(endDate);
   }
 
-  const BEGIN_DATE = new Date(startDate);
-  const END_DATE = new Date(endDate);
+  const startDateFormatted = new Date(startDateResolved);
+  const endDateFormatted = new Date(endDateResolved);
 
   const daysWindow =
-    (END_DATE.getTime() - BEGIN_DATE.getTime()) / (1000 * 60 * 60 * 24);
+    (endDateFormatted.getTime() - startDateFormatted.getTime()) /
+    (1000 * 60 * 60 * 24);
 
   if (daysWindow < 0 || daysWindow > 90) {
     res.status(400).json({
@@ -98,28 +130,71 @@ const get_custom_chart = asyncHandler(async (req, res, next) => {
     return;
   }
 
-  const tracks = await db
-    .knex("track_info")
-    .join("amp", "track_info.id", "amp.track_id")
-    .select(
-      "track_info.id as id",
-      db.knex.raw("min(track_info.album_id::text) as albumId"),
-      db.knex.raw("min(track_info.artist_id::text) as artistId")
-    )
-    .min("track_info.title as title")
-    .min("track_info.artist as artist")
-    .min("track_info.artist_url as artistUrl")
-    .min("track_info.avatar_url as avatarUrl")
-    .min("track_info.artwork_url as artworkUrl")
-    .min("track_info.album_title as albumTitle")
-    .min("track_info.duration as duration")
-    .min("track_info.live_url as liveUrl")
-    .sum("amp.msat_amount as msatTotal")
-    .where("amp.created_at", ">=", BEGIN_DATE)
-    .andWhere("amp.created_at", "<=", END_DATE)
-    .groupBy("track_info.id")
-    .orderBy("msatTotal", "desc")
-    .limit(limit ? parseInt(limit) : 10);
+  let genreId: { id: number } = null;
+  if (genre) {
+    genreId = await prisma.musicGenre.findFirst({
+      where: { name: { contains: genre, mode: "insensitive" } }, // case insensitive lookup
+      select: {
+        id: true,
+      },
+    });
+
+    if (!genreId) {
+      res.status(400).json({
+        success: false,
+        error: "Genre does not exist",
+      });
+      return;
+    }
+  }
+
+  const tracks = !genreId
+    ? await db
+        .knex("track_info")
+        .join("amp", "track_info.id", "amp.track_id")
+        .select(
+          "track_info.id as id",
+          db.knex.raw("min(track_info.album_id::text) as albumId"),
+          db.knex.raw("min(track_info.artist_id::text) as artistId")
+        )
+        .min("track_info.title as title")
+        .min("track_info.artist as artist")
+        .min("track_info.artist_url as artistUrl")
+        .min("track_info.avatar_url as avatarUrl")
+        .min("track_info.artwork_url as artworkUrl")
+        .min("track_info.album_title as albumTitle")
+        .min("track_info.duration as duration")
+        .min("track_info.live_url as liveUrl")
+        .sum("amp.msat_amount as msatTotal")
+        .where("amp.created_at", ">=", startDateFormatted)
+        .andWhere("amp.created_at", "<=", endDateFormatted)
+        .groupBy("track_info.id")
+        .orderBy("msatTotal", "desc")
+        .limit(parseInt(limit))
+    : await db
+        .knex("track_info")
+        .join("amp", "track_info.id", "amp.track_id")
+        .join("music_genre", "track_info.genre_id", "music_genre.id")
+        .select(
+          "track_info.id as id",
+          db.knex.raw("min(track_info.album_id::text) as albumId"),
+          db.knex.raw("min(track_info.artist_id::text) as artistId")
+        )
+        .min("track_info.title as title")
+        .min("track_info.artist as artist")
+        .min("track_info.artist_url as artistUrl")
+        .min("track_info.avatar_url as avatarUrl")
+        .min("track_info.artwork_url as artworkUrl")
+        .min("track_info.album_title as albumTitle")
+        .min("track_info.duration as duration")
+        .min("track_info.live_url as liveUrl")
+        .sum("amp.msat_amount as msatTotal")
+        .where("amp.created_at", ">=", startDateFormatted)
+        .andWhere("amp.created_at", "<=", endDateFormatted)
+        .andWhere("track_info.genre_id", "=", genreId.id)
+        .groupBy("track_info.id")
+        .orderBy("msatTotal", "desc")
+        .limit(parseInt(limit));
 
   res.json({ success: true, data: tracks });
 });

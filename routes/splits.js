@@ -10,6 +10,8 @@ const router = express.Router();
 
 //////// ROUTES ////////
 
+router.post("/check-usernames", isAuthorized, splitsController.check_usernames);
+
 //// SPLITS ////
 
 router.post("/", isAuthorized, splitsController.create_split);

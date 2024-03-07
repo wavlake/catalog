@@ -1,5 +1,6 @@
 import { errorHandler } from "./middlewares/errorHandler";
 import express from "express";
+import { logger } from "./middlewares/logger";
 
 const config = require("dotenv").config();
 const fs = require("fs");
@@ -70,6 +71,7 @@ app.use(compression());
 app.use(express.urlencoded({ extended: true }));
 app.use(bodyParser.json());
 app.use(express.json());
+app.use(logger);
 
 // Import routes
 import accounts from "./routes/accounts";
