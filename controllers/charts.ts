@@ -45,9 +45,29 @@ const get_top_forty = asyncHandler(async (req, res, next) => {
 });
 
 const get_custom_chart = asyncHandler(async (req, res, next) => {
-  const { sort = "sats", startDate, endDate, limit = 100, genre } = req.query;
+  const {
+    sort = "sats",
+    startDate,
+    endDate,
+    limit = 100,
+    genre,
+    days,
+  } = req.query;
 
   const validSorts = ["sats"];
+
+  let daysInt = null;
+  if (!!days) {
+    daysInt = parseInt(days);
+  }
+
+  if ((!!daysInt && !!startDate) || (!!daysInt && !!endDate)) {
+    res.json({
+      success: false,
+      error: "Cannot use days and date values together",
+    });
+    return;
+  }
 
   if (!validSorts.includes(sort)) {
     res.json({
@@ -57,30 +77,37 @@ const get_custom_chart = asyncHandler(async (req, res, next) => {
     return;
   }
 
-  if (!startDate) {
+  if (!daysInt && !startDate && !endDate) {
     res.json({
       success: false,
-      error: "startDate is required",
+      error: "startDate and endDate is required",
     });
     return;
   }
 
-  const endDateResolved = endDate
-    ? endDate
-    : new Date().toISOString().split("T")[0];
+  let startDateResolved;
+  let endDateResolved;
 
-  const startDateValid = await isValidDateString(startDate);
-  const endDateValid = await isValidDateString(endDateResolved);
+  if (!!days) {
+    const date = new Date();
+    startDateResolved = new Date(date.setDate(date.getDate() - days));
+    endDateResolved = new Date();
+  } else {
+    const startDateValid = await isValidDateString(startDate);
+    const endDateValid = await isValidDateString(endDate);
 
-  if (!startDateValid || !endDateValid) {
-    res.status(400).json({
-      success: false,
-      error: "Invalid start or end date (format: YYYY-MM-DD)",
-    });
-    return;
+    if (!startDateValid || !endDateValid) {
+      res.status(400).json({
+        success: false,
+        error: "Invalid start or end date (format: YYYY-MM-DD)",
+      });
+      return;
+    }
+    startDateResolved = new Date(startDate);
+    endDateResolved = new Date(endDate);
   }
 
-  const startDateFormatted = new Date(startDate);
+  const startDateFormatted = new Date(startDateResolved);
   const endDateFormatted = new Date(endDateResolved);
 
   const daysWindow =
