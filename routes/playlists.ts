@@ -17,7 +17,7 @@ const router = express.Router();
 
 // queries
 router.get("/:id", getPlaylist);
-router.get("/", getUserPlaylists);
+router.get("/", isNostrAuthorized, getUserPlaylists);
 
 // mutations
 router.post("/add-track", isNostrAuthorized, addTrackToPlaylist);
