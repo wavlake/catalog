@@ -139,7 +139,6 @@ const get_custom_chart = asyncHandler(async (req, res, next) => {
         id: true,
       },
     });
-    console.log("genreId", genreId);
 
     if (!genreId) {
       res.status(400).json({
