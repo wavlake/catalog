@@ -89,12 +89,13 @@ async function handleCompletedAmpInvoice(invoiceId: number, amount: number) {
     ? PaymentType.PartyMode
     : PaymentType.Invoice;
 
-  let pubkey, content;
+  let pubkey, content, timestamp;
   if (isZap) {
     log.debug(`Processing zap details for invoice id ${invoiceId}`);
     const zapInfo = await getZapPubkeyAndContent(invoiceId);
     pubkey = zapInfo.pubkey;
     content = zapInfo.content;
+    timestamp = zapInfo.timestamp;
   }
   const contentId = await getContentIdFromInvoiceId(invoiceId);
   log.debug(`Processing amp invoice for content id ${contentId}`);
@@ -109,7 +110,7 @@ async function handleCompletedAmpInvoice(invoiceId: number, amount: number) {
     contentId: contentId,
     msatAmount: amount,
     paymentType: paymentType,
-    contentTime: null,
+    contentTime: timestamp ?? null,
     userId: pubkey ? pubkey : null,
     comment: content ? content : null,
   });

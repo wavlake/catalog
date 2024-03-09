@@ -43,6 +43,7 @@ export const getZapPubkeyAndContent = async (invoiceId: number) => {
   return {
     pubkey: parsedZap.pubkey,
     content: parsedZap.content,
+    timestamp: parsedZap.tags?.timestamp,
   };
 };
 
