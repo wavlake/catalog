@@ -93,7 +93,7 @@ const get_user_library = ({
             )
             .orderBy("library.created_at", "desc")
             .where({
-              user_id: pubkey,
+              "library.user_id": pubkey,
             })
         : [];
 

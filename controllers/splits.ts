@@ -243,8 +243,44 @@ const update_split = asyncHandler(async (req, res, next) => {
   }
 });
 
+const check_usernames = asyncHandler(async (req, res, next) => {
+  const { usernames } = req.body;
+
+  if (!usernames || !usernames.length) {
+    const error = formatError(400, "Must include at least one username");
+    next(error);
+    return;
+  }
+
+  const usernameMatches = await prisma.user.findMany({
+    where: {
+      name: {
+        in: usernames,
+      },
+    },
+    select: {
+      name: true,
+    },
+  });
+
+  const foundUsernames = usernameMatches.map((user) => user.name);
+  const notFoundUsernames = usernames.filter(
+    (username) => !foundUsernames.includes(username)
+  );
+
+  // return the list of usernames with an isValid flag
+  const response = usernames.map((username) => {
+    return {
+      username,
+      isValid: !notFoundUsernames.includes(username),
+    };
+  });
+  res.status(200).json({ success: true, data: response });
+});
+
 export default {
   create_split,
   get_split,
   update_split,
+  check_usernames,
 };

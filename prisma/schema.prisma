@@ -22,6 +22,7 @@ model Album {
   isDraft       Boolean?       @default(false) @map("is_draft")
   publishedAt   DateTime?      @default(now()) @map("published_at") @db.Timestamptz(6)
   msatTotal     BigInt         @default(0) @map("msat_total")
+  isSingle      Boolean?       @default(false) @map("is_single")
   artist        Artist         @relation(fields: [artistId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "album_artist_id_foreign")
   musicGenre    MusicGenre?    @relation(fields: [genreId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "album_genre_id_foreign")
   musicSubgenre MusicSubgenre? @relation(fields: [subgenreId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "album_subgenre_id_foreign")
@@ -207,6 +208,7 @@ model Track {
   compressorError Boolean?  @default(false) @map("compressor_error")
   isDraft         Boolean?  @default(false) @map("is_draft")
   publishedAt     DateTime? @default(now()) @map("published_at") @db.Timestamptz(6)
+  isExplicit      Boolean?  @default(false) @map("is_explicit")
   album           Album     @relation(fields: [albumId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "track_album_id_foreign")
   artist          Artist    @relation(fields: [artistId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "track_artist_id_foreign")
 
@@ -315,6 +317,7 @@ model Episode {
   updatedAt        DateTime? @default(now()) @map("updated_at") @db.Timestamptz(6)
   publishedAt      DateTime? @default(now()) @map("published_at") @db.Timestamptz(6)
   compressor_error Boolean?  @default(false)
+  isExplicit       Boolean?  @default(false) @map("is_explicit")
   podcast          Podcast   @relation(fields: [podcastId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "episode_podcast_id_foreign")
 
   @@index([podcastId], map: "idx_episode_podcast_id")
@@ -567,6 +570,9 @@ view TrackInfo {
   msatTotal       BigInt?   @map("msat_total")
   publishedAt     DateTime? @map("published_at") @db.Timestamptz(6)
   isDraft         Boolean?  @map("is_draft")
+  is_explicit     Boolean?
+  genreId         Int?      @map("genre_id")
+  subgenreId      Int?      @map("subgenre_id")
 
   @@map("track_info")
 }
@@ -590,6 +596,7 @@ view EpisodeInfo {
   publishedAt     DateTime? @db.Timestamptz(6)
   isDraft         Boolean?
   userId          String?   @db.VarChar(255)
+  isExplicit      Boolean?
 
   @@map("episode_info")
 }
