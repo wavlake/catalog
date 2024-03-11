@@ -467,7 +467,9 @@ export const reorderPlaylist = asyncHandler(async (req, res, next) => {
     where: { id: { in: trackList } },
   });
 
-  if (validTracks.length != trackList.length) {
+  // validTracks is a deduped array of trackInfo objects
+  const deduplicatedTrackList = Array.from(new Set(trackList));
+  if (validTracks.length != deduplicatedTrackList.length) {
     res.status(400).json({
       success: false,
       error: `trackList contains one or more invalid track ids`,
