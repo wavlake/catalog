@@ -118,6 +118,14 @@ export const getPlaylist = async (req, res, next) => {
     return;
   }
 
+  const playlistMetadata = await prisma.playlist.findUnique({
+    where: { id: id },
+    select: {
+      title: true,
+      userId: true,
+    },
+  });
+
   const playlistTracks = await prisma.playlistTrack.findMany({
     where: { playlistId: id },
     select: {
@@ -214,7 +222,11 @@ export const getPlaylist = async (req, res, next) => {
 
   res.json({
     success: true,
-    data: trackInfo,
+    data: {
+      title: playlistMetadata.title,
+      userId: playlistMetadata.userId,
+      tracks: trackInfo,
+    },
   });
 };
 
