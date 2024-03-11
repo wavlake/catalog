@@ -7,6 +7,7 @@ import {
   removeTrackFromPlaylist,
   reorderPlaylist,
   getUserPlaylists,
+  updatePlaylist,
 } from "../controllers/playlists";
 import { isNostrAuthorized } from "../middlewares/nostrAuth";
 
@@ -25,6 +26,7 @@ router.post("/remove-track", isNostrAuthorized, removeTrackFromPlaylist);
 router.post("/", isNostrAuthorized, createPlaylist);
 router.delete("/:id", isNostrAuthorized, deletePlaylist);
 router.post("/reorder", isNostrAuthorized, reorderPlaylist);
+router.put("/:id", isNostrAuthorized, updatePlaylist);
 
 // Export router
 export default router;

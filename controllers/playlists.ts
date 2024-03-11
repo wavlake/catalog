@@ -479,3 +479,59 @@ export const reorderPlaylist = asyncHandler(async (req, res, next) => {
   res.json({ success: true, data: newPlaylist });
   return;
 });
+
+export const updatePlaylist = asyncHandler(async (req, res, next) => {
+  let userId: string;
+  try {
+    const { pubkey } = res.locals.authEvent as Event;
+
+    if (!pubkey) {
+      res.status(400).json({ success: false, error: "No pubkey found" });
+      return;
+    }
+    userId = pubkey;
+  } catch (error) {
+    res.status(400).json({ success: false, error: "Error parsing event" });
+    return;
+  }
+
+  const { id } = req.params;
+  const { title } = req.body;
+
+  if (!id) {
+    res.status(400).json({ success: false, error: "playlistId is required" });
+    return;
+  }
+
+  if (validate(id) === false) {
+    res.status(400).json({ success: false, error: "Invalid playlistId" });
+    return;
+  }
+
+  if (!title) {
+    res.status(400).json({ success: false, error: "Title is required" });
+    return;
+  }
+
+  const playlist = await prisma.playlist.findUnique({
+    where: { id: id },
+  });
+
+  if (!playlist) {
+    res.status(404).json({ success: false, error: `Playlist ${id} not found` });
+    return;
+  }
+
+  if (playlist.userId !== userId) {
+    res.status(403).json({ success: false, error: "Forbidden" });
+    return;
+  }
+
+  const updatedPlaylist = await prisma.playlist.update({
+    where: { id: id },
+    data: { title: title },
+  });
+
+  res.json({ success: true, data: updatedPlaylist });
+  return;
+});
