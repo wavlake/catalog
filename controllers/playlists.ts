@@ -6,6 +6,7 @@ import { Event } from "nostr-tools";
 import db from "../library/db";
 import { isValidDateString } from "../library/validation";
 
+const MAX_PLAYLIST_LENGTH = 200;
 export const addTrackToPlaylist = asyncHandler(async (req, res, next) => {
   let userId: string;
   try {
@@ -65,10 +66,20 @@ export const addTrackToPlaylist = asyncHandler(async (req, res, next) => {
     return;
   }
 
-  const lastPlaylistTrack = await prisma.playlistTrack.findFirst({
+  const currentPlaylistTracks = await prisma.playlistTrack.findMany({
     where: { playlistId: playlistId },
     orderBy: { order: "desc" },
   });
+
+  if (currentPlaylistTracks.length >= MAX_PLAYLIST_LENGTH) {
+    res.status(400).json({
+      success: false,
+      error: `Playlist ${playlistId} is at max length of ${MAX_PLAYLIST_LENGTH}`,
+    });
+    return;
+  }
+  const lastPlaylistTrack =
+    currentPlaylistTracks[0];
 
   // If there are no tracks in the playlist, set the order to 0
   const order = lastPlaylistTrack ? parseInt(lastPlaylistTrack.order) + 1 : 0;
@@ -249,7 +260,31 @@ export const getUserPlaylists = asyncHandler(async (req, res, next) => {
     where: { userId: userId },
   });
 
-  res.json({ success: true, data: playlists });
+  const playlistsWithTracks = [];
+  for (const playlist of playlists) {
+    const tracks = await db
+      .knex("playlist_track")
+      .select(
+        "track_info.id",
+        "track_info.title",
+        "track_info.duration",
+        "track_info.artist",
+        "track_info.artwork_url",
+        "playlist_track.order"
+      )
+      .join("track_info", "track_info.id", "=", "playlist_track.track_id")
+      .where("playlist_track.playlist_id", playlist.id)
+      .orderBy("playlist_track.order", "asc");
+
+    const playlistObject = {
+      id: playlist.id,
+      title: playlist.title,
+      tracks: tracks,
+    };
+
+    playlistsWithTracks.push(playlistObject);
+  }
+  res.json({ success: true, data: playlistsWithTracks });
   return;
 });
 
