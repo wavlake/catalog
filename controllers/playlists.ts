@@ -249,8 +249,8 @@ export const getUserPlaylists = asyncHandler(async (req, res, next) => {
   const playlists = await prisma.playlist.findMany({
     where: { userId: userId },
   });
-  const playlistsWithTracks = [];
 
+  const playlistsWithTracks = [];
   for (const playlist of playlists) {
     const tracks = await db
       .knex("playlist_track")
@@ -269,7 +269,7 @@ export const getUserPlaylists = asyncHandler(async (req, res, next) => {
     const playlistObject = {
       id: playlist.id,
       title: playlist.title,
-      tracks: tracks.map((track) => track.trackInfo),
+      tracks: tracks,
     };
 
     playlistsWithTracks.push(playlistObject);
