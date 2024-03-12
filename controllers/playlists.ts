@@ -5,8 +5,8 @@ import prisma from "../prisma/client";
 import { Event } from "nostr-tools";
 import db from "../library/db";
 import { isValidDateString } from "../library/validation";
-import knex from "knex";
 
+const MAX_PLAYLIST_LENGTH = 200;
 export const addTrackToPlaylist = asyncHandler(async (req, res, next) => {
   let userId: string;
   try {
@@ -66,10 +66,20 @@ export const addTrackToPlaylist = asyncHandler(async (req, res, next) => {
     return;
   }
 
-  const lastPlaylistTrack = await prisma.playlistTrack.findFirst({
+  const currentPlaylistTracks = await prisma.playlistTrack.findMany({
     where: { playlistId: playlistId },
     orderBy: { order: "desc" },
   });
+
+  if (currentPlaylistTracks.length >= MAX_PLAYLIST_LENGTH) {
+    res.status(400).json({
+      success: false,
+      error: `Playlist ${playlistId} is at max length of ${MAX_PLAYLIST_LENGTH}`,
+    });
+    return;
+  }
+  const lastPlaylistTrack =
+    currentPlaylistTracks[currentPlaylistTracks.length - 1];
 
   // If there are no tracks in the playlist, set the order to 0
   const order = lastPlaylistTrack ? parseInt(lastPlaylistTrack.order) + 1 : 0;
