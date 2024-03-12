@@ -79,7 +79,7 @@ export const addTrackToPlaylist = asyncHandler(async (req, res, next) => {
     return;
   }
   const lastPlaylistTrack =
-    currentPlaylistTracks[currentPlaylistTracks.length - 1];
+    currentPlaylistTracks[0];
 
   // If there are no tracks in the playlist, set the order to 0
   const order = lastPlaylistTrack ? parseInt(lastPlaylistTrack.order) + 1 : 0;
