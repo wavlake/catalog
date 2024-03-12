@@ -5,6 +5,7 @@ import prisma from "../prisma/client";
 import { Event } from "nostr-tools";
 import db from "../library/db";
 import { isValidDateString } from "../library/validation";
+import knex from "knex";
 
 export const addTrackToPlaylist = asyncHandler(async (req, res, next) => {
   let userId: string;
@@ -248,8 +249,32 @@ export const getUserPlaylists = asyncHandler(async (req, res, next) => {
   const playlists = await prisma.playlist.findMany({
     where: { userId: userId },
   });
+  const playlistsWithTracks = [];
 
-  res.json({ success: true, data: playlists });
+  for (const playlist of playlists) {
+    const tracks = await db
+      .knex("playlist_track")
+      .select(
+        "track_info.id",
+        "track_info.title",
+        "track_info.duration",
+        "track_info.artist",
+        "track_info.artwork_url",
+        "playlist_track.order"
+      )
+      .join("track_info", "track_info.id", "=", "playlist_track.track_id")
+      .where("playlist_track.playlist_id", playlist.id)
+      .orderBy("playlist_track.order", "asc");
+
+    const playlistObject = {
+      id: playlist.id,
+      title: playlist.title,
+      tracks: tracks.map((track) => track.trackInfo),
+    };
+
+    playlistsWithTracks.push(playlistObject);
+  }
+  res.json({ success: true, data: playlistsWithTracks });
   return;
 });
 
