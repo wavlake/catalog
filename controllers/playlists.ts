@@ -269,7 +269,7 @@ export const getUserPlaylists = asyncHandler(async (req, res, next) => {
         "track_info.title",
         "track_info.duration",
         "track_info.artist",
-        "track_info.artwork_url",
+        "track.artwork_url as artworkUrl",
         "playlist_track.order"
       )
       .join("track_info", "track_info.id", "=", "playlist_track.track_id")
