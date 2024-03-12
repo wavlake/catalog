@@ -125,6 +125,10 @@ const get_album_by_id = asyncHandler(async (req, res, next) => {
       return;
     });
 
+  if (!album) {
+    return;
+  }
+
   const albumTrackIds = await prisma.track.findMany({
     where: {
       albumId: request.albumId,
