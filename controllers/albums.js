@@ -6,6 +6,7 @@ const multer = require("multer");
 const Jimp = require("jimp");
 const s3Client = require("../library/s3Client");
 import prisma from "../prisma/client";
+import { validate } from "uuid";
 import { isAlbumOwner, isArtistOwner } from "../library/userHelper";
 const asyncHandler = require("express-async-handler");
 import { formatError } from "../library/errors";
@@ -95,17 +96,34 @@ const get_album_by_id = asyncHandler(async (req, res, next) => {
     albumId: req.params.albumId,
   };
 
-  const album = await prisma.album.findFirstOrThrow({
-    where: { id: request.albumId },
-    // include artist.userId at the top level of the album
-    include: {
-      artist: {
-        select: {
-          userId: true,
+  if (!validate(request.albumId)) {
+    res.status(400).json({
+      success: false,
+      error: "Invalid albumId",
+    });
+    return;
+  }
+
+  const album = await prisma.album
+    .findFirstOrThrow({
+      where: { id: request.albumId },
+      // include artist.userId at the top level of the album
+      include: {
+        artist: {
+          select: {
+            userId: true,
+          },
         },
       },
-    },
-  });
+    })
+    .catch((err) => {
+      // Prisma will throw an error if the uuid is not found or not a valid uuid
+      res.status(400).json({
+        success: false,
+        error: "No album found with that id",
+      });
+      return;
+    });
 
   const albumTrackIds = await prisma.track.findMany({
     where: {
@@ -293,6 +311,14 @@ const update_album = asyncHandler(async (req, res, next) => {
     return;
   }
 
+  if (!validate(albumId)) {
+    res.status(400).json({
+      success: false,
+      error: "Invalid albumId",
+    });
+    return;
+  }
+
   // Check if user owns album
   const isOwner = await isAlbumOwner(uid, albumId);
 
@@ -332,6 +358,14 @@ const update_album_art = asyncHandler(async (req, res, next) => {
 
   if (!request.albumId) {
     res.status(400).send("albumId is required");
+  }
+
+  if (!validate(request.albumId)) {
+    res.status(400).json({
+      success: false,
+      error: "Invalid albumId",
+    });
+    return;
   }
 
   // Check if user owns album
@@ -409,6 +443,14 @@ const delete_album = asyncHandler(async (req, res, next) => {
 
   if (!request.albumId) {
     res.status(400).send("albumId is required");
+  }
+
+  if (!validate(request.albumId)) {
+    res.status(400).json({
+      success: false,
+      error: "Invalid albumId",
+    });
+    return;
   }
 
   // Check if user owns album
