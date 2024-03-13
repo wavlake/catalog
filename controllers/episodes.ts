@@ -125,6 +125,8 @@ export const create_episode = asyncHandler(async (req, res, next) => {
     order: req.body.order == "" ? 0 : parseInt(req.body.order),
     extension: req.body.extension ?? "mp3",
     isDraft: req.body.isDraft ?? false,
+    description: req.body.description,
+    isExplicit: req.body.isExplicit ?? false,
   };
 
   if (!request.podcastId) {
@@ -170,9 +172,11 @@ export const create_episode = asyncHandler(async (req, res, next) => {
         live_url: liveUrl,
         title: request.title,
         order: request.order,
+        description: request.description,
         raw_url: s3RawUrl,
         is_processing: true,
         is_draft: req.body.isDraft,
+        is_explicit: req.body.isExplicit,
       },
       ["*"]
     )
@@ -204,6 +208,7 @@ export const create_episode = asyncHandler(async (req, res, next) => {
           rawUrl: data[0]["raw_url"],
           presignedUrl: presignedUrl,
           isDraft: data[0]["is_draft"],
+          isExplicit: data[0]["is_explicit"],
         },
       });
     })
@@ -223,6 +228,7 @@ export const update_episode = asyncHandler(async (req, res, next) => {
     // ensure time zones are properly handled
     publishedAt: publishedAtString,
     description,
+    isExplicit,
   } = req.body;
   const uid = req["uid"];
   const updatedAt = new Date();
@@ -253,6 +259,7 @@ export const update_episode = asyncHandler(async (req, res, next) => {
       updatedAt,
       isDraft,
       description,
+      isExplicit,
     },
   });
 
@@ -297,7 +304,8 @@ export const get_new_episodes = asyncHandler(async (req, res, next) => {
       e.podcast_id as "podcastId",
       e.published_at as "publishedAt",
       e.raw_url as "rawUrl",
-      e.updated_at as "updatedAt"
+      e.updated_at as "updatedAt",
+      e.is_explicit as "isExplicit"
     FROM 
     (SELECT * FROM "podcast" 
        WHERE "is_draft" = false AND 
@@ -361,7 +369,8 @@ export const get_featured_episodes = asyncHandler(async (req, res, next) => {
       e.podcast_id as "podcastId",
       e.published_at as "publishedAt",
       e.raw_url as "rawUrl",
-      e.updated_at as "updatedAt"
+      e.updated_at as "updatedAt",
+      e.is_explicit as "isExplicit"
     FROM 
     (SELECT * FROM "podcast" 
        WHERE "is_draft" = false AND 

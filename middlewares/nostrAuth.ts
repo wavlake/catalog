@@ -81,7 +81,7 @@ export const isNostrAuthorized = asyncHandler(async (req, res, next) => {
     // req.protocol may be "http" when express is behind a proxy or load balancer
     // so we hardcode it as HTTPS here, since that is what the client will be using
     const fullUrl = `${
-      host === "localhost" ? req.protocol : "https"
+      host.includes("localhost") ? req.protocol : "https"
     }://${host}${req.originalUrl}`;
 
     const eventIsValid = await validateEvent(
@@ -90,6 +90,7 @@ export const isNostrAuthorized = asyncHandler(async (req, res, next) => {
       req.method,
       req.body
     );
+
     // TODO- replace with nip98.validateEvent, imported from nostr-tools
     if (!eventIsValid) {
       const error = formatError(401, "Invalid event");

@@ -19,7 +19,10 @@ SELECT
   track.is_processing,
   track.msat_total,
   track.published_at,
-  album.is_draft
+  album.is_draft,
+  track.is_explicit,
+  album.genre_id,
+  album.subgenre_id
 FROM
   (
     (

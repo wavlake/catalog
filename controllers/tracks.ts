@@ -308,6 +308,7 @@ const create_track = asyncHandler(async (req, res, next) => {
     order: req.body.order == "" ? 0 : parseInt(req.body.order),
     lyrics: req.body.lyrics,
     extension: req.body.extension ?? "mp3",
+    isExplicit: req.body.isExplicit ?? false,
   };
 
   if (!request.albumId) {
@@ -373,6 +374,7 @@ const create_track = asyncHandler(async (req, res, next) => {
         lyrics: request.lyrics,
         raw_url: s3RawUrl,
         is_processing: true,
+        is_explicit: request.isExplicit,
       },
       ["*"]
     )
@@ -399,6 +401,7 @@ const create_track = asyncHandler(async (req, res, next) => {
           rawUrl: data[0]["raw_url"],
           lyrics: data[0]["lyrics"],
           presignedUrl: presignedUrl,
+          isExplicit: data[0]["is_explicit"],
         },
       });
     })
@@ -412,9 +415,8 @@ const create_track = asyncHandler(async (req, res, next) => {
 const search_tracks = asyncHandler(async (req, res, next) => {
   const title = String(req.query.title);
   const artist = String(req.query.artist);
-  const album = String(req.query.album);
 
-  if (!title && !artist && !album) {
+  if (!title && !artist) {
     const error = formatError(
       400,
       "Must include at least one search query. Either title, artist, or album"
@@ -430,13 +432,12 @@ const search_tracks = asyncHandler(async (req, res, next) => {
         {
           artist: { contains: artist, mode: "insensitive" },
         },
-        { albumTitle: { contains: album, mode: "insensitive" } },
       ],
       isProcessing: false,
       isDraft: false,
       publishedAt: { lte: new Date() },
     },
-    take: 10,
+    take: 50,
   });
 
   res.json({ success: true, data: tracks });
@@ -452,6 +453,7 @@ const update_track = asyncHandler(async (req, res, next) => {
     // TODO - consume this when scheduling is implemented
     // ensure time zones are properly handled
     publishedAt: publishedAtString,
+    isExplicit,
   } = req.body;
   const uid = req["uid"];
 
@@ -459,6 +461,16 @@ const update_track = asyncHandler(async (req, res, next) => {
 
   if (!trackId) {
     const error = formatError(400, "trackId field is required");
+    next(error);
+    return;
+  }
+
+  const intOrder = parseInt(order);
+  if (!intOrder || isNaN(intOrder)) {
+    const error = formatError(
+      400,
+      "order field is required, and must be an integer"
+    );
     next(error);
     return;
   }
@@ -492,7 +504,7 @@ const update_track = asyncHandler(async (req, res, next) => {
       .andWhere("deleted", "=", false)
       .first();
 
-    if (duplicateTitledTrack) {
+    if (duplicateTitledTrack && duplicateTitledTrack.id !== trackId) {
       const error = formatError(
         400,
         "Please pick another title, this artist already has a track with that title."
@@ -510,10 +522,11 @@ const update_track = asyncHandler(async (req, res, next) => {
       },
       data: {
         title,
-        order,
+        order: intOrder,
         lyrics,
         updatedAt,
         isDraft,
+        isExplicit,
       },
     });
 
