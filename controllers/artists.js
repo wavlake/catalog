@@ -7,6 +7,7 @@ const Jimp = require("jimp");
 const s3Client = require("../library/s3Client");
 const format = require("../library/format");
 import { isArtistOwner } from "../library/userHelper";
+import { validate } from "uuid";
 import prisma from "../prisma/client";
 const asyncHandler = require("express-async-handler");
 import { formatError } from "../library/errors";
@@ -23,15 +24,35 @@ const get_artist_by_url = asyncHandler(async (req, res, next) => {
     artistUrl: req.params.artistUrl,
   };
 
-  const artist = await prisma.artist.findFirstOrThrow({
-    where: { artistUrl: request.artistUrl },
-  });
+  const artist = await prisma.artist
+    .findFirstOrThrow({
+      where: { artistUrl: request.artistUrl },
+    })
+    .catch((e) => {
+      res.status(400).json({
+        success: false,
+        error: "No artist found with that url",
+      });
+      return;
+    });
+
+  if (!artist) {
+    return;
+  }
 
   res.json({ success: true, data: artist });
 });
 
 const get_artist_by_id = asyncHandler(async (req, res, next) => {
   const { artistId } = req.params;
+
+  if (!validate(artistId)) {
+    res.status(400).json({
+      success: false,
+      error: "Invalid artistId",
+    });
+    return;
+  }
 
   const artist = await prisma.artist.findFirstOrThrow({
     where: { id: artistId },
