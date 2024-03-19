@@ -1,5 +1,5 @@
 const run = async () => {
-  console.log("Hello");
+  console.log("Hello, World");
 };
 
 run();
