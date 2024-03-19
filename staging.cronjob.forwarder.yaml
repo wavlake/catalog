@@ -5,7 +5,7 @@ steps:
       [
         "build",
         "-t",
-        "us-central1-docker.pkg.dev/$PROJECT_ID/cronjobs/staging-forwarder:latest",
+        "us-central1-docker.pkg.dev/$PROJECT_ID/cronjobs/forwarder-staging:latest",
         "-f",
         "cronjobs/forwarder/Dockerfile",
         ".",
@@ -15,7 +15,7 @@ steps:
     args:
       [
         "push",
-        "us-central1-docker.pkg.dev/$PROJECT_ID/cronjobs/staging-forwarder:latest",
+        "us-central1-docker.pkg.dev/$PROJECT_ID/cronjobs/forwarder-staging:latest",
       ]
   # Deploy container image to Cloud Run
   - name: "gcr.io/google.com/cloudsdktool/cloud-sdk"
@@ -25,14 +25,14 @@ steps:
         "run",
         "jobs",
         "deploy",
-        "staging-forwarder",
+        "forwarder-staging",
         "--image",
-        "us-central1-docker.pkg.dev/$PROJECT_ID/cronjobs/staging-forwarder:latest",
+        "us-central1-docker.pkg.dev/$PROJECT_ID/cronjobs/forwarder-staging:latest",
         "--region",
         "us-central1",
       ]
 images:
-  - "us-central1-docker.pkg.dev/$PROJECT_ID/cronjobs/staging-forwarder:latest"
+  - "us-central1-docker.pkg.dev/$PROJECT_ID/cronjobs/forwarder-staging:latest"
 timeout: "900s"
 options:
   logging: CLOUD_LOGGING_ONLY
