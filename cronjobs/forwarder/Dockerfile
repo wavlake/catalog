@@ -3,7 +3,7 @@ FROM node:16.20.0-slim
 
 WORKDIR /app
 
-RUN apt-get update -y && apt-get install -y openssl
+RUN apt-get update -y && apt-get install -y openssl python3 python3-pip
 
 # Copy repo source and build forwarder cronjob
 COPY ./ /app/
