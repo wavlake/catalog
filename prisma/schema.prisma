@@ -246,6 +246,7 @@ model User {
   artworkUrl          String?            @map("artwork_url") @db.VarChar(255)
   lastActivityCheckAt DateTime?          @default(now()) @map("last_activity_check_at") @db.Timestamptz(6)
   profileUrl          String?            @unique(map: "user_profile_url_unique") @map("profile_url") @db.VarChar(255)
+  lightningAddress    String?            @map("lightning_address") @db.VarChar(255)
   artist              Artist[]
   external_payment    ExternalPayment[]
   podcast             Podcast[]
