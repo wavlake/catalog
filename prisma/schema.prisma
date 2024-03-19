@@ -246,7 +246,7 @@ model User {
   artworkUrl          String?            @map("artwork_url") @db.VarChar(255)
   lastActivityCheckAt DateTime?          @default(now()) @map("last_activity_check_at") @db.Timestamptz(6)
   profileUrl          String?            @unique(map: "user_profile_url_unique") @map("profile_url") @db.VarChar(255)
-  lightningAddress    String?            @map("lightning_address") @db.VarChar(255)
+  lightningAddress    String?            @map("lightning_address")
   artist              Artist[]
   external_payment    ExternalPayment[]
   podcast             Podcast[]
@@ -539,6 +539,22 @@ model npub {
   public_hex String    @id @unique(map: "npub_public_hex_unique") @db.VarChar(255)
   metadata   Json?
   updated_at DateTime? @default(now()) @db.Timestamptz(6)
+}
+
+model Forward {
+  id                Int       @id @default(autoincrement())
+  userId            String    @map("user_id")
+  lightningAddress  String    @map("lightning_address")
+  msatAmount        Int       @map("msat_amount")
+  inFlight          Boolean   @default(false) @map("in_flight")
+  isSettled         Boolean   @default(false) @map("is_settled")
+  error             String?
+  externalPaymentId String?   @map("external_payment_id")
+  createdAt         DateTime? @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime? @default(now()) @map("updated_at") @db.Timestamptz(6)
+
+  @@index([userId], map: "idx_forward_user_id")
+  @@map("forward")
 }
 
 view TrackInfo {
