@@ -1,6 +1,7 @@
 import { randomUUID } from "crypto";
 import db from "./db";
 import {
+  addLightningAddresses,
   calculateCombinedSplits,
   getSplitRecipientsAndShares,
   getTimeSplit,
@@ -96,6 +97,8 @@ export const processSplits = async ({
     ? await calculateCombinedSplits(splitRecipients, timeSplit)
     : splitRecipients;
 
+  const lightningAddressSplits = await addLightningAddresses(calculatedSplits);
+
   const keysendType = 5;
   const userIdForDb = userId
     ? userId
@@ -122,23 +125,40 @@ export const processSplits = async ({
     created_at: db.knex.fn.now(),
   });
 
-  // Increment recipient balances
+  // Increment balances for recipients without lightning addresses
   await Promise.all(
-    calculatedSplits.map((recipient) => {
-      return trx("user")
-        .where({ id: recipient.userId })
-        .increment({
-          msat_balance: Math.floor(
+    lightningAddressSplits.map((recipient) => {
+      if (!recipient.lightningAddress || recipient.lightningAddress == "") {
+        return trx("user")
+          .where({ id: recipient.userId })
+          .increment({
+            msat_balance: Math.floor(
+              msatAmount * recipient.splitPercentage * (1 - AMP_FEE)
+            ),
+          })
+          .update({ updated_at: db.knex.fn.now() });
+      }
+    })
+  );
+
+  // Create forward records for lightning address users
+  await Promise.all(
+    lightningAddressSplits.map((recipient) => {
+      if (recipient.lightningAddress && recipient.lightningAddress !== "") {
+        return trx("forward").insert({
+          user_id: recipient.userId,
+          msat_amount: Math.floor(
             msatAmount * recipient.splitPercentage * (1 - AMP_FEE)
           ),
-        })
-        .update({ updated_at: db.knex.fn.now() });
+          lightning_address: recipient.lightningAddress,
+        });
+      }
     })
   );
 
   // Increment track balances
   await Promise.all(
-    calculatedSplits.map((recipient) => {
+    lightningAddressSplits.map((recipient) => {
       if (recipient.contentType === "track") {
         return trx("track")
           .where({ id: recipient.contentId })
@@ -154,7 +174,7 @@ export const processSplits = async ({
 
   // Increment episode balances
   await Promise.all(
-    calculatedSplits.map((recipient) => {
+    lightningAddressSplits.map((recipient) => {
       if (recipient.contentType === "episode") {
         return trx("episode")
           .where({ id: recipient.contentId })
@@ -170,7 +190,7 @@ export const processSplits = async ({
 
   // Increment podcast balances
   await Promise.all(
-    calculatedSplits.map((recipient) => {
+    lightningAddressSplits.map((recipient) => {
       if (recipient.contentType === "podcast") {
         return trx("podcast")
           .where({ id: recipient.contentId })
@@ -186,7 +206,7 @@ export const processSplits = async ({
 
   // Increment album balances
   await Promise.all(
-    calculatedSplits.map((recipient) => {
+    lightningAddressSplits.map((recipient) => {
       if (recipient.contentType === "album") {
         return trx("album")
           .where({ id: recipient.contentId })
@@ -202,7 +222,7 @@ export const processSplits = async ({
 
   // Increment artist balances
   await Promise.all(
-    calculatedSplits.map((recipient) => {
+    lightningAddressSplits.map((recipient) => {
       if (recipient.contentType === "artist") {
         return trx("artist")
           .where({ id: recipient.contentId })
@@ -218,7 +238,7 @@ export const processSplits = async ({
 
   // Add individual amp records
   await Promise.all(
-    calculatedSplits.map((recipient) => {
+    lightningAddressSplits.map((recipient) => {
       return trx("amp").insert({
         // track_id is really the content_id (track/episode/podcast/album/artist)
         track_id: recipient.contentId ? recipient.contentId : contentId,

@@ -2,6 +2,26 @@ import db from "./db";
 const log = require("loglevel");
 const content = require("./content");
 
+export const addLightningAddresses = async (splitRecipients) => {
+  const addresses = await Promise.all(
+    splitRecipients.map((recipient) => {
+      return db
+        .knex("user")
+        .select("lightning_address")
+        .where("id", "=", recipient.userId)
+        .first()
+        .then((data) => {
+          return data.lightning_address;
+        });
+    })
+  );
+
+  return splitRecipients.map((recipient, index) => {
+    recipient.lightningAddress = addresses[index];
+    return recipient;
+  });
+};
+
 export const calculateCombinedSplits = async (splitRecipients, timeSplit) => {
   const contentType = await content.getType(timeSplit.recipientContentId);
 
