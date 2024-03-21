@@ -2,6 +2,7 @@ import {
   CreateInvoiceRequest,
   SendKeysendRequest,
   SendPaymentRequest,
+  LightningAddressPaymentRequest,
 } from "./requestInterfaces";
 import log from "loglevel";
 import {
@@ -101,6 +102,21 @@ export async function sendPayment(
 ): Promise<ZBDSendPaymentResponse> {
   const { data } = await client
     .post(`https://api.zebedee.io/v0/payments`, {
+      callbackUrl: `${accountingCallbackUrl}/send/invoice`,
+      ...request,
+    })
+    .catch((err) => {
+      log.trace(err);
+      return err.response;
+    });
+  return data;
+}
+
+export async function payToLightningAddress(
+  request: LightningAddressPaymentRequest
+): Promise<ZBDSendPaymentResponse> {
+  const { data } = await client
+    .post(`https://api.zebedee.io/v0/ln-address/send-payment`, {
       callbackUrl: `${accountingCallbackUrl}/send/invoice`,
       ...request,
     })

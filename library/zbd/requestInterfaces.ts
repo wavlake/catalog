@@ -27,6 +27,13 @@ export interface SendPaymentRequest {
   internalId: string;
 }
 
+export interface LightningAddressPaymentRequest {
+  lnAddress: string;
+  amount: string;
+  comment?: string;
+  internalId: string;
+}
+
 export interface ZBDKeysendCallbackRequest {
   transaction: {
     id: string;
