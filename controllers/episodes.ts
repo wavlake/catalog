@@ -124,7 +124,6 @@ export const create_episode = asyncHandler(async (req, res, next) => {
     userId: req["uid"],
     order: req.body.order == "" ? 0 : parseInt(req.body.order),
     extension: req.body.extension ?? "mp3",
-    isDraft: req.body.isDraft ?? false,
     description: req.body.description,
     isExplicit: req.body.isExplicit ?? false,
   };
@@ -175,7 +174,8 @@ export const create_episode = asyncHandler(async (req, res, next) => {
         description: request.description,
         raw_url: s3RawUrl,
         is_processing: true,
-        is_draft: req.body.isDraft,
+        // all newly created content starts a draft, user must publish after creation
+        is_draft: true,
         is_explicit: req.body.isExplicit,
       },
       ["*"]
@@ -219,17 +219,7 @@ export const create_episode = asyncHandler(async (req, res, next) => {
 });
 
 export const update_episode = asyncHandler(async (req, res, next) => {
-  const {
-    episodeId,
-    title,
-    order,
-    isDraft,
-    // TODO - consume this when scheduling is implemented
-    // ensure time zones are properly handled
-    publishedAt: publishedAtString,
-    description,
-    isExplicit,
-  } = req.body;
+  const { episodeId, title, order, description, isExplicit } = req.body;
   const uid = req["uid"];
   const updatedAt = new Date();
 
@@ -305,7 +295,6 @@ export const update_episode = asyncHandler(async (req, res, next) => {
       title,
       ...(order ? { order: intOrder } : {}),
       updatedAt,
-      isDraft,
       description,
       isExplicit,
       publishedAt: calculatedPublishedAt(),

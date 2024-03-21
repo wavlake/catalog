@@ -409,6 +409,8 @@ const create_track = asyncHandler(async (req, res, next) => {
         lyrics: request.lyrics,
         raw_url: s3RawUrl,
         is_processing: true,
+        // all newly created content starts a draft, user must publish after creation
+        is_draft: true,
         is_explicit: request.isExplicit,
       },
       ["*"]
@@ -479,17 +481,7 @@ const search_tracks = asyncHandler(async (req, res, next) => {
 });
 
 const update_track = asyncHandler(async (req, res, next) => {
-  const {
-    trackId,
-    title,
-    order,
-    lyrics,
-    isDraft,
-    // TODO - consume this when scheduling is implemented
-    // ensure time zones are properly handled
-    publishedAt: publishedAtString,
-    isExplicit,
-  } = req.body;
+  const { trackId, title, order, lyrics, isExplicit } = req.body;
   const uid = req["uid"];
 
   const updatedAt = new Date();
@@ -555,23 +547,6 @@ const update_track = asyncHandler(async (req, res, next) => {
     }
   }
 
-  const calculatedPublishedAt = () => {
-    // now in server UTC time
-    const now = new Date();
-    // TODO - consume the date from the request when scheduling is implemented
-    const scheduledDate = new Date();
-
-    // if the track is being published (isDraft being changed from true to false) set the publishedAt field to the current time
-    if (unEditedTrack.isDraft === true && isDraft === false) {
-      return now;
-    }
-
-    // if the track is being unpublished (isDraft being changed from false to true) set the publishedAt field to undefined
-    if (unEditedTrack.isDraft === false && isDraft === true) {
-      return undefined;
-    }
-  };
-
   log.debug(`Editing track ${trackId}`);
   try {
     const updatedTrack = await prisma.track.update({
@@ -583,9 +558,7 @@ const update_track = asyncHandler(async (req, res, next) => {
         ...(order ? { order: intOrder } : {}),
         lyrics,
         updatedAt,
-        isDraft,
         isExplicit,
-        publishedAt: calculatedPublishedAt(),
       },
     });
 
