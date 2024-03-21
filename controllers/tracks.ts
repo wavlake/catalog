@@ -509,7 +509,8 @@ const update_track = asyncHandler(async (req, res, next) => {
   }
 
   const intOrder = parseInt(order);
-  if (!intOrder || isNaN(intOrder)) {
+  // only validate the order if it's present
+  if (!!order && (!intOrder || isNaN(intOrder))) {
     const error = formatError(
       400,
       "order field is required, and must be an integer"
@@ -565,7 +566,7 @@ const update_track = asyncHandler(async (req, res, next) => {
       },
       data: {
         title,
-        order: intOrder,
+        ...(order ? { order: intOrder } : {}),
         lyrics,
         updatedAt,
         isDraft,
