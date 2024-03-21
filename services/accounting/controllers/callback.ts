@@ -169,6 +169,9 @@ const processOutgoingInvoice = asyncHandler<
     const isSuccess = await handleCompletedForward({
       externalPaymentId: id,
       status,
+      msatAmount: parseInt(amount),
+      fee: parseInt(fee),
+      preimage,
     });
     res.status(200);
     return;

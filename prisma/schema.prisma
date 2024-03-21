@@ -121,7 +121,7 @@ model ExternalReceive {
   trackId     String?   @map("track_id") @db.Uuid
   createdAt   DateTime? @default(now()) @map("created_at") @db.Timestamptz(6)
   paymentHash String?   @map("payment_hash") @db.VarChar(255)
-  externalId  String?   @map("external_id") @db.VarChar(255)
+  externalId  String?   @map("external_id")
   updatedAt   DateTime? @map("updated_at") @db.Timestamptz(6)
   isPending   Boolean?  @default(false) @map("is_pending")
 
@@ -485,7 +485,7 @@ model ExternalPayment {
   txId         String?   @map("tx_id") @db.Uuid
   createdAt    DateTime? @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt    DateTime? @default(now()) @map("updated_at") @db.Timestamptz(6)
-  externalId   String?   @map("external_id") @db.VarChar(255)
+  externalId   String?   @map("external_id")
   isPending    Boolean?  @default(false) @map("is_pending")
   user         User      @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "external_payment_user_id_foreign")
 
@@ -563,6 +563,19 @@ model Forward {
 
   @@index([userId], map: "idx_forward_user_id")
   @@map("forward")
+}
+
+model ForwardDetail {
+  id                Int       @id @default(autoincrement())
+  externalPaymentId String    @map("external_payment_id")
+  msatAmount        Int       @map("msat_amount")
+  feeMsat           Int       @map("fee_msat")
+  preimage          String
+  success           Boolean   @default(false)
+  error             String?
+  createdAt         DateTime? @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@map("forward_detail")
 }
 
 view TrackInfo {
