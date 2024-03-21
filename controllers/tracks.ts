@@ -566,7 +566,7 @@ const update_track = asyncHandler(async (req, res, next) => {
       return now;
     }
 
-    // if the track is being unpublished (isDraft being changed from false to true) set the publishedAt field to null
+    // if the track is being unpublished (isDraft being changed from false to true) set the publishedAt field to undefined
     if (unEditedTrack.isDraft === false && isDraft === true) {
       return undefined;
     }

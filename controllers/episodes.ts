@@ -290,7 +290,7 @@ export const update_episode = asyncHandler(async (req, res, next) => {
       return now;
     }
 
-    // if the track is being unpublished (isDraft being changed from false to true) set the publishedAt field to null
+    // if the track is being unpublished (isDraft being changed from false to true) set the publishedAt field to undefined
     if (unEditedEpisode.isDraft === false && isDraft === true) {
       return undefined;
     }
@@ -311,7 +311,7 @@ export const update_episode = asyncHandler(async (req, res, next) => {
       publishedAt: calculatedPublishedAt(),
     },
   });
-  console.log({ updatedEpisode, episodeId });
+
   // Update podcast updatedAt
   await prisma.podcast.update({
     where: {
