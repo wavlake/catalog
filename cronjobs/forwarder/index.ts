@@ -1,8 +1,8 @@
-const log = require("loglevel");
-log.setLevel(process.env.LOGLEVEL);
 import prisma from "@prismalocal/client";
 import { LightningAddressPaymentRequest } from "@library/zbd/requestInterfaces";
 import { payToLightningAddress } from "@library/zbd/zbdClient";
+const log = require("loglevel");
+log.setLevel(process.env.LOGLEVEL);
 
 const MIN_FORWARD_AMOUNT = 1000;
 const CURRENT_DATE = new Date();
@@ -64,7 +64,7 @@ const handlePayments = async (groupedForwards: groupedForwards) => {
       const request: LightningAddressPaymentRequest = {
         lnAddress: lightningAddress,
         amount: msatAmount.toString(),
-        internalId: "forward",
+        internalId: `forward-${ids[0]}`,
       };
       const response = await payToLightningAddress(request);
       // If successful, update the forward record with the external transaction id
@@ -75,7 +75,8 @@ const handlePayments = async (groupedForwards: groupedForwards) => {
             id: { in: ids },
           },
           data: {
-            externalPaymentId: response.data.internalId,
+            inFlight: true,
+            externalPaymentId: response.data.id,
           },
         });
       } else {

@@ -3,6 +3,37 @@ import { PaymentStatus } from "./zbd/constants";
 import log from "loglevel";
 import db from "./db";
 
+export const handleCompletedForward = async ({
+  externalPaymentId,
+  status,
+}: {
+  externalPaymentId: string;
+  status: PaymentStatus;
+}): Promise<boolean> => {
+  if (status === PaymentStatus.Completed) {
+    const trx = await db.knex.transaction();
+    return trx("forward")
+      .update({
+        in_flight: false,
+        is_settled: true,
+        updated_at: db.knex.fn.now(),
+      })
+      .where({ external_payment_id: externalPaymentId })
+      .then(trx.commit)
+      .then(() => {
+        log.debug(`Successfully logged forward for ${externalPaymentId}`);
+        return true;
+      })
+      .catch((err) => {
+        log.error(
+          `Error updating forward table on handleCompletedForward: ${err}`
+        );
+        return false;
+      });
+  }
+  return true;
+};
+
 export const handleCompletedWithdrawal = async ({
   transactionId,
   msatAmount,

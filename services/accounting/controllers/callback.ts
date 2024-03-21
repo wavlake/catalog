@@ -11,7 +11,10 @@ import { KeysendMetadata } from "@library/keysend";
 import { processSplits } from "@library/amp";
 import { updateKeysend } from "@library/keysends";
 import { updateInvoiceIfNeeded } from "@library/invoice";
-import { handleCompletedWithdrawal } from "@library/withdraw";
+import {
+  handleCompletedForward,
+  handleCompletedWithdrawal,
+} from "@library/withdraw";
 
 const jsonParser = (jsonString?: string) => {
   if (!jsonString) return;
@@ -147,12 +150,27 @@ const processOutgoingInvoice = asyncHandler<
 >(async (req, res, next) => {
   log.debug(`Received outgoing invoice callback: ${JSON.stringify(req.body)}`);
 
-  const { status, internalId, fee, preimage, amount } = req.body;
+  const { id, status, internalId, fee, preimage, amount } = req.body;
+
+  const validInvoiceTypes = ["transaction", "forward"];
 
   const [invoiceType, internalIdString] = internalId.split("-");
-  if (invoiceType !== "transaction") {
+  if (!validInvoiceTypes.includes(invoiceType)) {
     log.error(`Invalid internalId type: ${invoiceType}`);
-    res.status(400).send("Expected internalId to be of type 'transaction'");
+    res
+      .status(400)
+      .send(`Expected internalId to be of type: ${validInvoiceTypes}`);
+    return;
+  }
+
+  if (invoiceType === "forward") {
+    log.debug("Forward invoice");
+    // TODO: Update all forwards with the same externalId
+    const isSuccess = await handleCompletedForward({
+      externalPaymentId: id,
+      status,
+    });
+    res.status(200);
     return;
   }
 
