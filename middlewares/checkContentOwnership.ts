@@ -10,9 +10,7 @@ export async function checkContentOwnership(req, res, next) {
   if (!req.body.contentType) {
     req.body.contentType = contentType;
   }
-  console.log("valid", contentId, contentType);
-  next();
-  return;
+
   if (
     !contentId ||
     !["track", "episode", "podcast", "album"].includes(contentType)
@@ -29,5 +27,5 @@ export async function checkContentOwnership(req, res, next) {
   }
 
   next();
-  return true;
+  return;
 }
