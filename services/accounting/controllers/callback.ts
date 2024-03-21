@@ -164,8 +164,6 @@ const processOutgoingInvoice = asyncHandler<
   }
 
   if (invoiceType === "forward") {
-    log.debug("Forward invoice");
-    // TODO: Update all forwards with the same externalId
     const isSuccess = await handleCompletedForward({
       externalPaymentId: id,
       status,
@@ -173,22 +171,33 @@ const processOutgoingInvoice = asyncHandler<
       fee: parseInt(fee),
       preimage,
     });
+
+    if (!isSuccess) {
+      log.error(`Error updating forward ${internalId} with status ${status}`);
+      res.status(500).send("Forward update failed");
+      return;
+    }
+
     res.status(200);
     return;
   }
 
-  const intId = parseInt(internalIdString);
-  const isSuccess = await handleCompletedWithdrawal({
-    transactionId: intId,
-    status,
-    fee: parseInt(fee),
-    preimage,
-    msatAmount: parseInt(amount),
-  });
+  if (invoiceType === "transaction") {
+    const intId = parseInt(internalIdString);
+    const isSuccess = await handleCompletedWithdrawal({
+      transactionId: intId,
+      status,
+      fee: parseInt(fee),
+      preimage,
+      msatAmount: parseInt(amount),
+    });
 
-  if (!isSuccess) {
-    log.error(`Error updating invoice id ${intId} with status ${status}`);
-    res.status(500).send("Invoice update failed");
+    if (!isSuccess) {
+      log.error(`Error updating invoice id ${intId} with status ${status}`);
+      res.status(500).send("Withdrawal update failed");
+      return;
+    }
+    res.status(200);
     return;
   }
 

@@ -16,40 +16,41 @@ export const handleCompletedForward = async ({
   fee: number;
   preimage: string;
 }): Promise<boolean> => {
-  if (status === PaymentStatus.Completed) {
-    const trx = await db.knex.transaction();
-    return (
-      trx("forward")
-        .update({
-          in_flight: false,
-          is_settled: true,
-          updated_at: db.knex.fn.now(),
-        })
-        // updates all records with the same external_payment_id
-        .where({ external_payment_id: externalPaymentId })
-        .then(() => {
-          // Store payment details
-          return trx("forward_detail").insert({
-            external_payment_id: externalPaymentId,
-            msat_amount: msatAmount,
-            fee_msat: fee,
-            success: true,
-            preimage: preimage,
-          });
-        })
-        .then(trx.commit)
-        .then(() => {
-          log.debug(`Successfully logged forward for ${externalPaymentId}`);
-          return true;
-        })
-        .catch((err) => {
-          log.error(
-            `Error updating forward table on handleCompletedForward: ${err}`
-          );
-          return false;
-        })
-    );
-  }
+  log.debug(
+    `Received forward callback for ${externalPaymentId}, status: ${status}`
+  );
+  const trx = await db.knex.transaction();
+  return (
+    trx("forward")
+      .update({
+        in_flight: false,
+        is_settled: status === PaymentStatus.Completed,
+        updated_at: db.knex.fn.now(),
+      })
+      // updates all records with the same external_payment_id
+      .where({ external_payment_id: externalPaymentId })
+      .then(() => {
+        // Store payment details
+        return trx("forward_detail").insert({
+          external_payment_id: externalPaymentId,
+          msat_amount: msatAmount,
+          fee_msat: fee,
+          success: status === PaymentStatus.Completed,
+          preimage: preimage,
+        });
+      })
+      .then(trx.commit)
+      .then(() => {
+        log.debug(`Successfully logged forward for ${externalPaymentId}`);
+        return true;
+      })
+      .catch((err) => {
+        log.error(
+          `Error updating forward table on handleCompletedForward: ${err}`
+        );
+        return false;
+      })
+  );
   return true;
 };
 
