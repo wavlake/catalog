@@ -1,5 +1,4 @@
 import asyncHandler from "express-async-handler";
-import prisma from "../prisma/client";
 import log from "loglevel";
 import { validate } from "uuid";
 import { SplitContentTypes } from "../library/userHelper";
