@@ -104,15 +104,18 @@ const handlePayments = async (groupedForwards: groupedForwards) => {
             externalPaymentId: response.data.id,
           },
         });
-        log.debug(`Creating remainder forward record for ${remainderMsats}`);
-        await prisma.forward.create({
-          data: {
-            userId: userId,
-            msatAmount: remainderMsats,
-            lightningAddress: lightningAddress,
-            attemptCount: 0,
-          },
-        });
+        // If there is a remainder, create a new forward record for the remainder
+        if (remainderMsats > 0) {
+          log.debug(`Creating remainder forward record for ${remainderMsats}`);
+          await prisma.forward.create({
+            data: {
+              userId: userId,
+              msatAmount: remainderMsats,
+              lightningAddress: lightningAddress,
+              attemptCount: 0,
+            },
+          });
+        }
       } else {
         // If the payment fails, update the record with the error message
         await prisma.forward.updateMany({
