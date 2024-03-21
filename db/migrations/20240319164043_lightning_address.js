@@ -7,12 +7,12 @@ exports.up = function (knex) {
       table.integer("msat_amount").notNullable();
       table.boolean("in_flight").notNullable().defaultTo(false);
       table.boolean("is_settled").notNullable().defaultTo(false);
-      table.text("error").nullable();
       table.text("external_payment_id").nullable();
       table.timestamp("created_at").defaultTo(knex.fn.now());
       table.timestamp("updated_at").defaultTo(knex.fn.now());
       table.integer("attempt_count").notNullable().defaultTo(0);
       table.text("remainder_id").nullable();
+      table.text("error").nullable();
     })
     .alterTable("user", function (table) {
       table.text("lightning_address");

@@ -71,7 +71,6 @@ export const handleCompletedForward = async ({
         return false;
       })
   );
-  return true;
 };
 
 export const handleCompletedWithdrawal = async ({

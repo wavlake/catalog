@@ -556,12 +556,12 @@ model Forward {
   msatAmount        Int       @map("msat_amount")
   inFlight          Boolean   @default(false) @map("in_flight")
   isSettled         Boolean   @default(false) @map("is_settled")
-  error             String?
   externalPaymentId String?   @map("external_payment_id")
   createdAt         DateTime? @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt         DateTime? @default(now()) @map("updated_at") @db.Timestamptz(6)
   attemptCount      Int       @default(0) @map("attempt_count")
   remainderId       String?   @map("remainder_id")
+  error             String?
 
   @@index([userId], map: "idx_forward_user_id")
   @@map("forward")
