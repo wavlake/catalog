@@ -239,6 +239,17 @@ export const update_episode = asyncHandler(async (req, res, next) => {
     return;
   }
 
+  const intOrder = parseInt(order);
+  // only validate the order if it's present
+  if (!!order && (!intOrder || isNaN(intOrder))) {
+    const error = formatError(
+      400,
+      "order field is required, and must be an integer"
+    );
+    next(error);
+    return;
+  }
+
   // Check if user owns episode
   const isOwner = await isEpisodeOwner(uid, episodeId);
 
@@ -255,14 +266,14 @@ export const update_episode = asyncHandler(async (req, res, next) => {
     },
     data: {
       title,
-      ...(order ? { order: parseInt(order) } : {}),
+      ...(order ? { order: intOrder } : {}),
       updatedAt,
       isDraft,
       description,
       isExplicit,
     },
   });
-
+  console.log({ updatedEpisode, episodeId });
   // Update podcast updatedAt
   await prisma.podcast.update({
     where: {
