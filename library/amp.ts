@@ -128,7 +128,7 @@ export const processSplits = async ({
   // Increment balances for recipients without lightning addresses
   await Promise.all(
     lightningAddressSplits.map((recipient) => {
-      if (!recipient.lightningAddress || recipient.lightningAddress == "") {
+      if (!recipient.lightningAddress || recipient.lightningAddress === "") {
         return trx("user")
           .where({ id: recipient.userId })
           .increment({
