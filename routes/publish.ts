@@ -10,7 +10,7 @@ const router = express.Router();
 // mutations
 router.post(
   "/:contentId",
-  // isAuthorized,
+  isAuthorized,
   checkContentOwnership,
   publish_content
 );
