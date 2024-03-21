@@ -54,6 +54,7 @@ const handlePayments = async (groupedForwards: groupedForwards) => {
   for (const [lightningAddress, { msatAmount, ids }] of Object.entries(
     groupedForwards
   )) {
+    const internalId = `forward-${ids[0]}`;
     // Add sleep to avoid rate limiting
     await new Promise((resolve) => setTimeout(resolve, 2000));
     log.debug(
@@ -64,7 +65,8 @@ const handlePayments = async (groupedForwards: groupedForwards) => {
       const request: LightningAddressPaymentRequest = {
         lnAddress: lightningAddress,
         amount: msatAmount.toString(),
-        internalId: `forward-${ids[0]}`,
+        internalId: internalId,
+        comment: `Wavlake forwarding service ${internalId}`,
       };
       const response = await payToLightningAddress(request);
       // If successful, update the forward record with the external transaction id
