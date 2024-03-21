@@ -4,6 +4,7 @@ import { payToLightningAddress } from "@library/zbd/zbdClient";
 const log = require("loglevel");
 log.setLevel(process.env.LOGLEVEL);
 
+const TIME_BETWEEN_REQUESTS = 2000; // 2 seconds
 const MIN_BATCH_FORWARD_AMOUNT = 10000; // min amount in msat to batch forward
 const MIN_FORWARD_AMOUNT = 1000; // min amount in msat to forward
 const MAX_ATTEMPT_COUNT = 3;
@@ -20,6 +21,7 @@ interface groupedForwards {
 
 const run = async () => {
   // Check the forward table for any records with a status of in_flight = false and is_settled = false
+  // and where attempt_count is less than or equal to MAX_ATTEMPT_COUNT
   const forwardsOutstanding = await prisma.forward.findMany({
     where: {
       inFlight: false,
@@ -76,7 +78,7 @@ const handlePayments = async (groupedForwards: groupedForwards) => {
       new Date(createdAt) < new Date(Date.now() - 24 * 60 * 60 * 1000) &&
       msatAmount >= MIN_FORWARD_AMOUNT;
     // Add sleep to avoid rate limiting
-    await new Promise((resolve) => setTimeout(resolve, 2000));
+    await new Promise((resolve) => setTimeout(resolve, TIME_BETWEEN_REQUESTS));
     if (
       (msatAmount as number) >= MIN_BATCH_FORWARD_AMOUNT ||
       isDayOldAndEnough
@@ -89,7 +91,7 @@ const handlePayments = async (groupedForwards: groupedForwards) => {
         lnAddress: lightningAddress,
         amount: amountToSend.toString(),
         internalId: internalId,
-        comment: `Wavlake forwarding service ${internalId}`,
+        comment: `Wavlake forwarding service: ${internalId}`,
       };
       const response = await payToLightningAddress(request);
       // If successful, update the forward record with the external transaction id
@@ -113,6 +115,7 @@ const handlePayments = async (groupedForwards: groupedForwards) => {
               msatAmount: remainderMsats,
               lightningAddress: lightningAddress,
               attemptCount: 0,
+              remainderId: response.data.id,
             },
           });
         }

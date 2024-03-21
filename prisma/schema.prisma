@@ -561,6 +561,7 @@ model Forward {
   createdAt         DateTime? @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt         DateTime? @default(now()) @map("updated_at") @db.Timestamptz(6)
   attemptCount      Int       @default(0) @map("attempt_count")
+  remainderId       String?   @map("remainder_id")
 
   @@index([userId], map: "idx_forward_user_id")
   @@map("forward")

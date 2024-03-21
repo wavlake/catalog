@@ -21,6 +21,7 @@ export const handleCompletedForward = async ({
   );
   const trx = await db.knex.transaction();
   return (
+    // updates all records with the same external_payment_id that is not a remainder
     trx("forward")
       .update({
         in_flight: false,
@@ -28,8 +29,26 @@ export const handleCompletedForward = async ({
         updated_at: db.knex.fn.now(),
       })
       .increment("attempt_count", 1)
-      // updates all records with the same external_payment_id
       .where({ external_payment_id: externalPaymentId })
+      .then(() => {
+        // Update remainder record
+        if (status === PaymentStatus.Completed) {
+          return trx("forward")
+            .update({
+              in_flight: false,
+              updated_at: db.knex.fn.now(),
+            })
+            .where({
+              remainder_id: externalPaymentId,
+            });
+        } else {
+          // Delete remainder record if not successful
+          return trx("forward").delete().where({
+            remainder_id: externalPaymentId,
+            is_remainder: true,
+          });
+        }
+      })
       .then(() => {
         // Store payment details
         return trx("forward_detail").insert({

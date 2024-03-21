@@ -12,6 +12,7 @@ exports.up = function (knex) {
       table.timestamp("created_at").defaultTo(knex.fn.now());
       table.timestamp("updated_at").defaultTo(knex.fn.now());
       table.integer("attempt_count").notNullable().defaultTo(0);
+      table.text("remainder_id").nullable();
     })
     .alterTable("user", function (table) {
       table.text("lightning_address");
