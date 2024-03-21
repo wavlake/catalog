@@ -65,6 +65,22 @@ export async function getUserBalance(userId: string): Promise<string> {
     });
 }
 
+export async function getUserLightningAddress(
+  userId: string
+): Promise<string | undefined> {
+  return db
+    .knex("user")
+    .select("lightning_address")
+    .where("id", "=", userId)
+    .first()
+    .then((data) => {
+      return data.lightning_address ?? undefined;
+    })
+    .catch((err) => {
+      log.error(`Error finding lightning address from userId ${err}`);
+    });
+}
+
 export async function getUserName(userId: string): Promise<string | undefined> {
   return db
     .knex("user")
