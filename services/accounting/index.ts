@@ -13,10 +13,11 @@ const corsHost = process.env.CORS_HOST;
 log.setLevel(process.env.LOGLEVEL || "info");
 const sentryDsn = process.env.SENTRY_DSN;
 const sentryTracesSampleRate = process.env.SENTRY_TRACES_SAMPLE_RATE;
+const proxyCount = parseInt(process.env.PROXY_COUNT) || 2;
 
 // To obtain the client's IP address from behind the nginx proxy
 // Info: https://expressjs.com/en/guide/behind-proxies.html
-app.set("trust proxy", 2);
+app.set("trust proxy", proxyCount);
 
 Sentry.init({
   dsn: sentryDsn,
