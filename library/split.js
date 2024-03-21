@@ -1,12 +1,12 @@
-const log = require("loglevel");
 import db from "./db";
+const log = require("loglevel");
 const content = require("./content");
 
-exports.calculateCombinedSplits = async (splitRecipients, timeSplit) => {
-  const contentType = await content.getType(timeSplit.content_id);
+export const calculateCombinedSplits = async (splitRecipients, timeSplit) => {
+  const contentType = await content.getType(timeSplit.recipientContentId);
 
   const timeSplitRecipients = await exports.getSplitRecipientsAndShares(
-    timeSplit.content_id,
+    timeSplit.recipientContentId,
     contentType
   );
 
@@ -30,7 +30,11 @@ exports.calculateCombinedSplits = async (splitRecipients, timeSplit) => {
     .filter((recipient) => recipient.splitPercentage > 0);
 };
 
-exports.calculatePercentages = async (splitRecipients) => {
+export const calculatePercentages = async (
+  splitRecipients,
+  contentId,
+  type
+) => {
   const totalShares = splitRecipients.reduce((acc, curr) => {
     return acc + curr.share;
   }, 0);
@@ -38,67 +42,103 @@ exports.calculatePercentages = async (splitRecipients) => {
 
   return splitRecipients.map((recipient) => {
     return {
+      contentId: contentId,
+      contentType: type,
       userId: recipient.userId,
       splitPercentage: recipient.share / totalShares,
     };
   });
 };
 
-exports.getOwnerId = async (contentId, type) => {
-  if (type == "track") {
-    return db
-      .knex("track")
-      .join("artist", "track.artist_id", "=", "artist.id")
-      .join("user", "artist.user_id", "=", "user.id")
-      .select("user.id as userId")
-      .where("track.id", "=", contentId)
-      .first()
-      .then((data) => {
-        if (!data) {
-          return null;
-        }
-        return [{ userId: data.userId, splitPercentage: 1 }];
-      })
-      .catch((err) => {
-        log.error(`Error finding owner from contentId ${err}`);
-      });
-  } else {
-    return db
-      .knex("episode")
-      .join("podcast", "episode.podcast_id", "=", "podcast.id")
-      .join("user", "podcast.user_id", "=", "user.id")
-      .select("user.id as userId")
-      .where("episode.id", "=", contentId)
-      .first()
-      .then((data) => {
-        if (!data) {
-          return null;
-        }
-        return [{ userId: data.userId, splitPercentage: 1 }];
-      })
-      .catch((err) => {
-        log.error(`Error finding owner from contentId ${err}`);
-      });
+// Returns the content owner's userId
+export const getOwnerId = async (contentId, type) => {
+  const typesMap = {
+    track: { mainTable: "track", joinTable: "artist", joinColumn: "artist_id" },
+    episode: {
+      mainTable: "episode",
+      joinTable: "podcast",
+      joinColumn: "podcast_id",
+    },
+    podcast: { mainTable: "podcast" },
+    album: { mainTable: "album", joinTable: "artist", joinColumn: "artist_id" },
+    artist: { mainTable: "artist" },
+  };
+
+  const typeConfig = typesMap[type];
+  if (!typeConfig) {
+    log.error(`Invalid type: ${type}`);
+    return;
   }
+
+  try {
+    let query;
+
+    if (typeConfig.joinTable) {
+      query = db
+        .knex(typeConfig.mainTable)
+        .join(
+          typeConfig.joinTable,
+          `${typeConfig.mainTable}.${typeConfig.joinColumn}`,
+          "=",
+          `${typeConfig.joinTable}.id`
+        )
+        .join("user", `${typeConfig.joinTable}.user_id`, "=", "user.id");
+    } else {
+      query = db
+        .knex(typeConfig.mainTable)
+        .join("user", `${typeConfig.mainTable}.user_id`, "=", "user.id");
+    }
+
+    const data = await query
+      .select("user.id as userId")
+      .where(`${typeConfig.mainTable}.id`, "=", contentId)
+      .first();
+
+    log.debug(
+      `Found content owner userId: ${JSON.stringify(
+        data
+      )} for contentId: ${contentId}`
+    );
+    return data ? data.userId : null;
+  } catch (err) {
+    log.error(`Error finding owner from contentId ${contentId}: ${err}`);
+  }
+
+  log.error(`Inalid content type: ${type}`);
+  return [];
 };
 
-exports.getSplitRecipientsAndShares = async (contentId, type) => {
-  const splitId = await exports.getSplitId(contentId, type);
+// returns a list of split recipients
+export const getSplitRecipientsAndShares = async (contentId, contentType) => {
+  const splitId = await exports.getSplitId(contentId, contentType);
 
   if (splitId) {
     const splitRecipients = await exports.getSplitRecipients(splitId);
     if (splitRecipients) {
-      return exports.calculatePercentages(splitRecipients);
+      return exports.calculatePercentages(
+        splitRecipients,
+        contentId,
+        contentType
+      );
     } else {
       log.debug(`No recipient(s) found for content: ${contentId}`);
       return null;
     }
   } else {
-    return exports.getOwnerId(contentId, type);
+    // If no split is found, return the owner of the content with a 100% split
+    const userId = await exports.getOwnerId(contentId, contentType);
+    return [
+      {
+        contentType,
+        contentId,
+        userId,
+        splitPercentage: 1,
+      },
+    ];
   }
 };
 
-exports.getHigherLevelSplitId = async (contentId, type) => {
+export const getHigherLevelSplitId = async (contentId, type) => {
   if (type == "track") {
     return db
       .knex("track")
@@ -141,7 +181,7 @@ exports.getHigherLevelSplitId = async (contentId, type) => {
   }
 };
 
-exports.getSplitId = async (contentId, type) => {
+export const getSplitId = async (contentId, type) => {
   return db
     .knex("split")
     .where("content_id", "=", contentId)
@@ -166,7 +206,7 @@ exports.getSplitId = async (contentId, type) => {
     });
 };
 
-exports.getSplitRecipients = async (splitId) => {
+export const getSplitRecipients = async (splitId) => {
   log.debug(`Getting split recipients for splitId: ${splitId}`);
   return db
     .knex("split_recipient")
@@ -184,28 +224,39 @@ exports.getSplitRecipients = async (splitId) => {
     });
 };
 
-exports.getTimeSplit = async (contentId, timeSeconds) => {
+export const getTimeSplit = async (contentId, contentTime, contentType) => {
+  if (contentTime === -1) return null;
+
+  // only tracks and episodes can have time splits
+  if (contentType === "album" || contentType === "podcast") {
+    return null;
+  }
+
+  if (!contentTime) {
+    log.debug(`No timeSeconds provided, skipping time split check`);
+    return null;
+  }
   return db
     .knex("time_split")
     .select(
       "id",
       "content_id as contentId",
       "share_numerator as shareNumerator",
-      "share_denominator as shareDenominator"
+      "share_denominator as shareDenominator",
+      "recipient_content_id as recipientContentId"
     )
     .where("content_id", "=", contentId)
-    .andWhere("start_seconds", "<=", timeSeconds)
-    .andWhere("end_seconds", ">=", timeSeconds)
+    .andWhere("start_seconds", "<=", contentTime)
+    .andWhere("end_seconds", ">=", contentTime)
     .first()
     .then((data) => {
       if (!data) {
         return null;
       }
+      log.debug(`Found time split: ${JSON.stringify(data)}`);
       return data;
     })
     .catch((err) => {
       log.error(`Error finding time split from contentId ${err}`);
     });
 };
-
-export default exports;

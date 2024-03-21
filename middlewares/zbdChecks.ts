@@ -1,6 +1,6 @@
 import asyncHandler from "express-async-handler";
 import log from "loglevel";
-import { getProductionIps, isSupportedRegion } from "../library/zbdClient";
+import { getProductionIps, isSupportedRegion } from "../library/zbd";
 
 const environment = process.env.NODE_ENV;
 
@@ -14,7 +14,7 @@ export const isZbdIp = asyncHandler(async (req, res, next) => {
     next();
   }
   res
-    .status(500)
+    .status(401)
     .send({ error: "IP address of request does not match authorized list" });
 });
 
@@ -27,12 +27,13 @@ export const isZbdRegion = asyncHandler(async (req, res, next) => {
     return;
   }
   const ipAddress = req.ip;
+  log.debug(`Checking if ${ipAddress} is supported`);
   const isSupported = await isSupportedRegion(ipAddress);
   if (isSupported) {
     next();
     return;
   } else {
-    res.status(500).send({ error: "Not supported region" });
+    res.status(403).send({ error: "Not supported region" });
     return;
   }
 });

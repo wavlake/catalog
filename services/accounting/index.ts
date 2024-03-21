@@ -1,11 +1,8 @@
-import { errorHandler } from "./middlewares/errorHandler";
+import { errorHandler } from "@middlewares/errorHandler";
 import express from "express";
-import { logger } from "./middlewares/logger";
-
-const config = require("dotenv").config();
-const fs = require("fs");
-const app = express();
 const log = require("loglevel");
+const config = require("dotenv").config();
+const app = express();
 const cors = require("cors");
 const compression = require("compression");
 const helmet = require("helmet");
@@ -13,16 +10,13 @@ const bodyParser = require("body-parser");
 const Sentry = require("@sentry/node");
 
 const corsHost = process.env.CORS_HOST;
-log.setLevel(process.env.LOGLEVEL);
-const port = process.env.EXPRESS_PORT;
-const localConvertPath = `${process.env.LOCAL_CONVERT_PATH}`;
-const localUploadPath = `${process.env.LOCAL_UPLOAD_PATH}`;
+log.setLevel(process.env.LOGLEVEL || "info");
 const sentryDsn = process.env.SENTRY_DSN;
 const sentryTracesSampleRate = process.env.SENTRY_TRACES_SAMPLE_RATE;
 
 // To obtain the client's IP address from behind the nginx proxy
 // Info: https://expressjs.com/en/guide/behind-proxies.html
-app.set("trust proxy", true);
+app.set("trust proxy", 2);
 
 Sentry.init({
   dsn: sentryDsn,
@@ -36,21 +30,12 @@ Sentry.init({
   ],
   environment: process.env.NODE_ENV,
   // Performance Monitoring
-  tracesSampleRate: parseFloat(sentryTracesSampleRate), // Capture 100% of the transactions, reduce in production!,
+  tracesSampleRate: sentryTracesSampleRate, // Capture 100% of the transactions, reduce in production!,
 });
 
 // Trace incoming requests
 app.use(Sentry.Handlers.requestHandler());
 app.use(Sentry.Handlers.tracingHandler());
-
-// Creates temp folders if they don't exist
-fs.mkdirSync(localConvertPath, { recursive: true }, (err) => {
-  if (err) throw err;
-});
-
-fs.mkdirSync(localUploadPath, { recursive: true }, (err) => {
-  if (err) throw err;
-});
 
 const corsOptions = {
   origin: { corsHost },
@@ -71,49 +56,30 @@ app.use(compression());
 app.use(express.urlencoded({ extended: true }));
 app.use(bodyParser.json());
 app.use(express.json());
-app.use(logger);
 
 // Import routes
-import accounts from "./routes/accounts";
-import albums from "./routes/albums";
-import artists from "./routes/artists";
-import charts from "./routes/charts";
-import meta from "./routes/meta";
-import stats from "./routes/stats";
-import tracks from "./routes/tracks";
-import episodes from "./routes/episodes";
-import podcasts from "./routes/podcasts";
-import search from "./routes/search";
-import splits from "./routes/splits";
-import comments from "./routes/comments";
-import library from "./routes/library";
-import feeds from "./routes/feeds";
-import playlists from "./routes/playlists";
+// TODO: Invoice
+import deposit from "./routes/deposit";
+import invoice from "./routes/invoice";
+import send from "./routes/send";
+import withdraw from "./routes/withdraw";
+import callback from "./routes/callback";
 
 app.use(cors(corsOptions));
 
 // ROUTES
-app.use("/v1/accounts", accounts);
-app.use("/v1/albums", albums);
-app.use("/v1/artists", artists);
-app.use("/v1/charts", charts);
-app.use("/v1/meta", meta);
-app.use("/v1/stats", stats);
-app.use("/v1/tracks", tracks);
-app.use("/v1/episodes", episodes);
-app.use("/v1/podcasts", podcasts);
-app.use("/v1/search", search);
-app.use("/v1/splits", splits);
-app.use("/v1/comments", comments);
-app.use("/v1/library", library);
-app.use("/v1/feeds", feeds);
-app.use("/v1/playlists", playlists);
+app.use("/v1/deposit", deposit);
+app.use("/v1/invoice", invoice);
+app.use("/v1/send", send);
+app.use("/v1/withdraw", withdraw);
+app.use("/v1/callback", callback);
 
 // The error handler must be registered before any other error middleware and after all controllers
 app.use(Sentry.Handlers.errorHandler());
 
 // override default html error page with custom error handler
 app.use(errorHandler);
+const port = parseInt(process.env.PORT) || 8080;
 export const server = app.listen(port, () => {
-  log.debug(`Wavlake catalog is listening on port ${port}`);
+  log.debug(`Payments is listening on port ${port}`);
 });
