@@ -7,6 +7,7 @@ export async function checkContentOwnership(req, res, next) {
     : req.params;
   const userId = req["uid"];
   // if no contentType is provided, default to the one inferred using the contentId
+  // this is useful for routes that don't have a contentType in the request body
   if (!req.body.contentType) {
     req.body.contentType = contentType;
   }
