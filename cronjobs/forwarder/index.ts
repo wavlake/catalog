@@ -94,6 +94,17 @@ const handlePayments = async (groupedForwards: groupedForwards) => {
         internalId: internalId,
         comment: `Wavlake forwarding service: ${internalId}`,
       };
+
+      // Update forward records to be in flight
+      await prisma.forward.updateMany({
+        where: {
+          id: { in: ids },
+        },
+        data: {
+          inFlight: true,
+        },
+      });
+
       const response = await payToLightningAddress(request);
       // If successful, update the forward record with the external transaction id
       if (response.success) {
@@ -103,7 +114,6 @@ const handlePayments = async (groupedForwards: groupedForwards) => {
             id: { in: ids },
           },
           data: {
-            inFlight: true,
             externalPaymentId: response.data.id,
           },
         });
@@ -132,6 +142,7 @@ const handlePayments = async (groupedForwards: groupedForwards) => {
             attemptCount: {
               increment: 1,
             },
+            inFlight: false,
             error: response.message,
           },
         });
