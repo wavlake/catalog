@@ -19,8 +19,10 @@ const get_track = asyncHandler(async (req, res, next) => {
   const { trackId } = req.params;
 
   if (!trackId) {
-    const error = formatError(400, "trackId is required");
-    next(error);
+    res.status(400).json({
+      success: false,
+      error: "trackId is required",
+    });
     return;
   }
 
