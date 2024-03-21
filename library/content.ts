@@ -1,6 +1,9 @@
 import db from "./db";
+import { SplitContentTypes } from "./userHelper";
 
-export async function getType(contentId) {
+export async function getType(
+  contentId: string
+): Promise<SplitContentTypes | null> {
   const track = await db
     .knex("track")
     .select("id")
