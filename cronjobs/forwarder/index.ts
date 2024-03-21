@@ -75,14 +75,17 @@ const handlePayments = async (groupedForwards: groupedForwards) => {
     const remainderMsats = msatAmount % 1000;
     const amountToSend = msatAmount - remainderMsats;
     const internalId = `forward-${ids[0]}`;
-    const isDayOldAndEnough =
-      new Date(createdAt) < new Date(Date.now() - 24 * 60 * 60 * 1000) &&
-      msatAmount >= MIN_FORWARD_AMOUNT;
+
+    // For forwards that are less than the MIN_BATCH_FORWARD_AMOUNT but need to be sent because they're 24 hours old
+    const isOneDayOld =
+      new Date(createdAt) < new Date(Date.now() - 24 * 60 * 60 * 1000);
+    const isOldEnoughAndMeetsMinimum =
+      isOneDayOld && msatAmount >= MIN_FORWARD_AMOUNT;
     // Add sleep to avoid rate limiting
     await new Promise((resolve) => setTimeout(resolve, TIME_BETWEEN_REQUESTS));
     if (
       (msatAmount as number) >= MIN_BATCH_FORWARD_AMOUNT ||
-      isDayOldAndEnough
+      isOldEnoughAndMeetsMinimum
     ) {
       log.debug(
         `Processing payment for lightning address: ${lightningAddress} with msat amount: ${amountToSend}`
