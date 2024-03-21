@@ -55,8 +55,8 @@ const publish_content = asyncHandler(async (req, res, next) => {
     const newPublishedAt = calculatedPublishedAt(isDraft);
     // update the parent
     await dbTrx(contentType).where("id", contentId).update({
-      isDraft,
-      publishedAt: newPublishedAt,
+      is_draft: isDraft,
+      published_at: newPublishedAt,
     });
 
     // update all children
@@ -66,8 +66,8 @@ const publish_content = asyncHandler(async (req, res, next) => {
 
     await dbTrx(isAlbum ? "track" : "episode")
       .update({
-        isDraft,
-        publishedAt: newPublishedAt,
+        is_draft: isDraft,
+        published_at: newPublishedAt,
       })
       .whereIn("id", childrenIds);
 
@@ -98,24 +98,30 @@ const publish_content = asyncHandler(async (req, res, next) => {
     const newPublishedAt = calculatedPublishedAt(isDraft);
     // update the content
     await dbTrx(contentType).where("id", contentId).update({
-      isDraft,
-      publishedAt: newPublishedAt,
+      is_draft: isDraft,
+      published_at: newPublishedAt,
     });
 
+    // if we are publishing the content, we need to verify the parent is published as well
     if (!isDraft) {
-      // if we are publishing the content, we need to verify the parent is published as well
-      const parent = await dbTrx(isTrack ? "album" : "podcast")
-        .where("id", contentId)
+      const parentTable = isTrack ? "album" : "podcast";
+      const parent = await db
+        .knex(contentType)
+        .join(
+          parentTable,
+          `${contentType}.${parentTable}_id`,
+          "=",
+          `${parentTable}.id`
+        )
+        .select(`${parentTable}.is_draft`)
         .first();
 
-      // if the parent is a draft, we need flip it to published
+      // if the parent is in draft, we need flip it to published
       if (parent.isDraft) {
-        await dbTrx(isTrack ? "album" : "podcast")
-          .where("id", contentId)
-          .update({
-            isDraft: false,
-            publishedAt: newPublishedAt,
-          });
+        await dbTrx(parentTable).where("id", contentId).update({
+          is_draft: false,
+          published_at: newPublishedAt,
+        });
       }
     }
 
