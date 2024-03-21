@@ -260,6 +260,25 @@ export const update_episode = asyncHandler(async (req, res, next) => {
     where: { id: episodeId },
   });
 
+  // if we are updating the title, check if the show already has an episode with that title
+  if (title !== undefined) {
+    const duplicateEpisodeTrack = await db
+      .knex("episode")
+      .where("podcast_id", "=", unEditedEpisode.podcastId)
+      .andWhere("title", "=", title)
+      .andWhere("deleted", "=", false)
+      .first();
+
+    if (duplicateEpisodeTrack && duplicateEpisodeTrack.id !== episodeId) {
+      const error = formatError(
+        400,
+        "Please pick another title, this show already has an episode with that title."
+      );
+      next(error);
+      return;
+    }
+  }
+
   const calculatedPublishedAt = () => {
     // now in server UTC time
     const now = new Date();
