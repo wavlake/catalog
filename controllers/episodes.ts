@@ -256,6 +256,27 @@ export const update_episode = asyncHandler(async (req, res, next) => {
     return;
   }
 
+  const unEditedEpisode = await prisma.episode.findFirst({
+    where: { id: episodeId },
+  });
+
+  const calculatedPublishedAt = () => {
+    // now in server UTC time
+    const now = new Date();
+    // TODO - consume the date from the request when scheduling is implemented
+    const scheduledDate = new Date();
+
+    // if the track is being published (isDraft being changed from true to false) set the publishedAt field to the current time
+    if (unEditedEpisode.isDraft === true && isDraft === false) {
+      return now;
+    }
+
+    // if the track is being unpublished (isDraft being changed from false to true) set the publishedAt field to null
+    if (unEditedEpisode.isDraft === false && isDraft === true) {
+      return undefined;
+    }
+  };
+
   log.debug(`Editing episode ${episodeId}`);
   const updatedEpisode = await prisma.episode.update({
     where: {
@@ -268,6 +289,7 @@ export const update_episode = asyncHandler(async (req, res, next) => {
       isDraft,
       description,
       isExplicit,
+      publishedAt: calculatedPublishedAt(),
     },
   });
   console.log({ updatedEpisode, episodeId });
