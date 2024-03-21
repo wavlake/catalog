@@ -560,6 +560,7 @@ model Forward {
   externalPaymentId String?   @map("external_payment_id")
   createdAt         DateTime? @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt         DateTime? @default(now()) @map("updated_at") @db.Timestamptz(6)
+  attemptCount      Int       @default(0) @map("attempt_count")
 
   @@index([userId], map: "idx_forward_user_id")
   @@map("forward")

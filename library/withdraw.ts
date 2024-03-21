@@ -27,6 +27,7 @@ export const handleCompletedForward = async ({
         is_settled: status === PaymentStatus.Completed,
         updated_at: db.knex.fn.now(),
       })
+      .increment("attempt_count", 1)
       // updates all records with the same external_payment_id
       .where({ external_payment_id: externalPaymentId })
       .then(() => {

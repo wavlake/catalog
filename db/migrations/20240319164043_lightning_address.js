@@ -11,6 +11,7 @@ exports.up = function (knex) {
       table.text("external_payment_id").nullable();
       table.timestamp("created_at").defaultTo(knex.fn.now());
       table.timestamp("updated_at").defaultTo(knex.fn.now());
+      table.integer("attempt_count").notNullable().defaultTo(0);
     })
     .alterTable("user", function (table) {
       table.text("lightning_address");
