@@ -3,6 +3,76 @@ import { PaymentStatus } from "./zbd/constants";
 import log from "loglevel";
 import db from "./db";
 
+export const handleCompletedForward = async ({
+  externalPaymentId,
+  status,
+  msatAmount,
+  fee,
+  preimage,
+}: {
+  externalPaymentId: string;
+  status: PaymentStatus;
+  msatAmount: number;
+  fee: number;
+  preimage: string;
+}): Promise<boolean> => {
+  log.debug(
+    `Received forward callback for ${externalPaymentId}, status: ${status}`
+  );
+  const trx = await db.knex.transaction();
+  return (
+    // updates all records with the same external_payment_id that is not a remainder
+    trx("forward")
+      .update({
+        in_flight: false,
+        is_settled: status === PaymentStatus.Completed,
+        updated_at: db.knex.fn.now(),
+      })
+      .increment("attempt_count", 1)
+      .where({ external_payment_id: externalPaymentId })
+      .then(() => {
+        // Update remainder record
+        if (status === PaymentStatus.Completed) {
+          return trx("forward")
+            .update({
+              in_flight: false,
+              updated_at: db.knex.fn.now(),
+            })
+            .where({
+              remainder_id: externalPaymentId,
+            });
+        } else {
+          // Delete remainder record if not successful
+          return trx("forward").delete().where({
+            remainder_id: externalPaymentId,
+            is_remainder: true,
+          });
+        }
+      })
+      .then(() => {
+        // Store payment details
+        return trx("forward_detail").insert({
+          external_payment_id: externalPaymentId,
+          msat_amount: msatAmount,
+          fee_msat: fee,
+          success: status === PaymentStatus.Completed,
+          preimage: preimage,
+        });
+      })
+      .then(trx.commit)
+      .then(() => {
+        log.debug(`Successfully logged forward for ${externalPaymentId}`);
+        return true;
+      })
+      .catch((err) => {
+        log.error(
+          `Error updating forward table on handleCompletedForward: ${err}`
+        );
+        return false;
+      })
+  );
+};
+
 export const handleCompletedWithdrawal = async ({
   transactionId,
   msatAmount,

@@ -6,6 +6,7 @@ import { Event } from "nostr-tools";
 import db from "../library/db";
 import { isValidDateString } from "../library/validation";
 
+const MAX_PLAYLIST_LENGTH = 200;
 export const addTrackToPlaylist = asyncHandler(async (req, res, next) => {
   let userId: string;
   try {
@@ -65,10 +66,19 @@ export const addTrackToPlaylist = asyncHandler(async (req, res, next) => {
     return;
   }
 
-  const lastPlaylistTrack = await prisma.playlistTrack.findFirst({
+  const currentPlaylistTracks = await prisma.playlistTrack.findMany({
     where: { playlistId: playlistId },
     orderBy: { order: "desc" },
   });
+
+  if (currentPlaylistTracks.length >= MAX_PLAYLIST_LENGTH) {
+    res.status(400).json({
+      success: false,
+      error: `Playlist ${playlistId} is at max length of ${MAX_PLAYLIST_LENGTH}`,
+    });
+    return;
+  }
+  const lastPlaylistTrack = currentPlaylistTracks[0];
 
   // If there are no tracks in the playlist, set the order to 0
   const order = lastPlaylistTrack ? parseInt(lastPlaylistTrack.order) + 1 : 0;
@@ -117,6 +127,14 @@ export const getPlaylist = async (req, res, next) => {
     });
     return;
   }
+
+  const playlistMetadata = await prisma.playlist.findUnique({
+    where: { id: id },
+    select: {
+      title: true,
+      userId: true,
+    },
+  });
 
   const playlistTracks = await prisma.playlistTrack.findMany({
     where: { playlistId: id },
@@ -214,7 +232,11 @@ export const getPlaylist = async (req, res, next) => {
 
   res.json({
     success: true,
-    data: trackInfo,
+    data: {
+      title: playlistMetadata.title,
+      userId: playlistMetadata.userId,
+      tracks: trackInfo,
+    },
   });
 };
 
@@ -237,7 +259,31 @@ export const getUserPlaylists = asyncHandler(async (req, res, next) => {
     where: { userId: userId },
   });
 
-  res.json({ success: true, data: playlists });
+  const playlistsWithTracks = [];
+  for (const playlist of playlists) {
+    const tracks = await db
+      .knex("playlist_track")
+      .select(
+        "track_info.id",
+        "track_info.title",
+        "track_info.duration",
+        "track_info.artist",
+        "track_info.artwork_url as artworkUrl",
+        "playlist_track.order"
+      )
+      .join("track_info", "track_info.id", "=", "playlist_track.track_id")
+      .where("playlist_track.playlist_id", playlist.id)
+      .orderBy("playlist_track.order", "asc");
+
+    const playlistObject = {
+      id: playlist.id,
+      title: playlist.title,
+      tracks: tracks,
+    };
+
+    playlistsWithTracks.push(playlistObject);
+  }
+  res.json({ success: true, data: playlistsWithTracks });
   return;
 });
 
@@ -455,7 +501,9 @@ export const reorderPlaylist = asyncHandler(async (req, res, next) => {
     where: { id: { in: trackList } },
   });
 
-  if (validTracks.length != trackList.length) {
+  // validTracks is a deduped array of trackInfo objects
+  const deduplicatedTrackList = Array.from(new Set(trackList));
+  if (validTracks.length != deduplicatedTrackList.length) {
     res.status(400).json({
       success: false,
       error: `trackList contains one or more invalid track ids`,

@@ -11,7 +11,10 @@ import { KeysendMetadata } from "@library/keysend";
 import { processSplits } from "@library/amp";
 import { updateKeysend } from "@library/keysends";
 import { updateInvoiceIfNeeded } from "@library/invoice";
-import { handleCompletedWithdrawal } from "@library/withdraw";
+import {
+  handleCompletedForward,
+  handleCompletedWithdrawal,
+} from "@library/withdraw";
 
 const jsonParser = (jsonString?: string) => {
   if (!jsonString) return;
@@ -147,27 +150,54 @@ const processOutgoingInvoice = asyncHandler<
 >(async (req, res, next) => {
   log.debug(`Received outgoing invoice callback: ${JSON.stringify(req.body)}`);
 
-  const { status, internalId, fee, preimage, amount } = req.body;
+  const { id, status, internalId, fee, preimage, amount } = req.body;
+
+  const validInvoiceTypes = ["transaction", "forward"];
 
   const [invoiceType, internalIdString] = internalId.split("-");
-  if (invoiceType !== "transaction") {
+  if (!validInvoiceTypes.includes(invoiceType)) {
     log.error(`Invalid internalId type: ${invoiceType}`);
-    res.status(400).send("Expected internalId to be of type 'transaction'");
+    res
+      .status(400)
+      .send(`Expected internalId to be of type: ${validInvoiceTypes}`);
     return;
   }
 
-  const intId = parseInt(internalIdString);
-  const isSuccess = await handleCompletedWithdrawal({
-    transactionId: intId,
-    status,
-    fee: parseInt(fee),
-    preimage,
-    msatAmount: parseInt(amount),
-  });
+  if (invoiceType === "forward") {
+    const isSuccess = await handleCompletedForward({
+      externalPaymentId: id,
+      status,
+      msatAmount: parseInt(amount),
+      fee: parseInt(fee),
+      preimage,
+    });
 
-  if (!isSuccess) {
-    log.error(`Error updating invoice id ${intId} with status ${status}`);
-    res.status(500).send("Invoice update failed");
+    if (!isSuccess) {
+      log.error(`Error updating forward ${internalId} with status ${status}`);
+      res.status(500).send("Forward update failed");
+      return;
+    }
+
+    res.status(200);
+    return;
+  }
+
+  if (invoiceType === "transaction") {
+    const intId = parseInt(internalIdString);
+    const isSuccess = await handleCompletedWithdrawal({
+      transactionId: intId,
+      status,
+      fee: parseInt(fee),
+      preimage,
+      msatAmount: parseInt(amount),
+    });
+
+    if (!isSuccess) {
+      log.error(`Error updating invoice id ${intId} with status ${status}`);
+      res.status(500).send("Withdrawal update failed");
+      return;
+    }
+    res.status(200);
     return;
   }
 

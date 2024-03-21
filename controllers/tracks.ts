@@ -4,6 +4,7 @@ import log from "loglevel";
 import { randomUUID } from "crypto";
 import s3Client from "../library/s3Client";
 import { isAlbumOwner, isTrackOwner } from "../library/userHelper";
+import { validate } from "uuid";
 import asyncHandler from "express-async-handler";
 import { formatError } from "../library/errors";
 import { parseLimit } from "../library/helpers";
@@ -23,6 +24,14 @@ const get_track = asyncHandler(async (req, res, next) => {
     return;
   }
 
+  if (!validate(trackId)) {
+    res.status(400).json({
+      success: false,
+      error: "Invalid trackId",
+    });
+    return;
+  }
+
   prisma.trackInfo
     .findFirstOrThrow({
       where: { id: trackId },
@@ -32,8 +41,10 @@ const get_track = asyncHandler(async (req, res, next) => {
     })
     .catch((err) => {
       // Prisma will throw an error if the uuid is not found or not a valid uuid
-      const error = formatError(404, `Track not found for id: ${trackId}`);
-      next(error);
+      res.status(400).json({
+        success: false,
+        error: "No track found with that id",
+      });
       return;
     });
 });
@@ -65,6 +76,14 @@ const get_tracks_by_album_id = asyncHandler(async (req, res, next) => {
     albumId: req.params.albumId,
   };
   const { unpublished } = req.query;
+
+  if (!validate(request.albumId)) {
+    res.status(400).json({
+      success: false,
+      error: "Invalid albumId",
+    });
+    return;
+  }
 
   const tracks = await prisma.trackInfo.findMany({
     where: {
@@ -178,6 +197,14 @@ const get_tracks_by_artist_id = asyncHandler(async (req, res, next) => {
   const { artistId } = req.params;
   const { unpublished } = req.query;
 
+  if (!validate(artistId)) {
+    res.status(400).json({
+      success: false,
+      error: "Invalid artistId",
+    });
+    return;
+  }
+
   const limit = parseLimit(req.query.limit);
 
   const tracks = await prisma.trackInfo.findMany({
@@ -269,6 +296,14 @@ const delete_track = asyncHandler(async (req, res, next) => {
   if (!request.trackId) {
     const error = formatError(400, "trackId field is required");
     next(error);
+    return;
+  }
+
+  if (!validate(request.trackId)) {
+    res.status(400).json({
+      success: false,
+      error: "Invalid trackId",
+    });
     return;
   }
 
@@ -462,6 +497,14 @@ const update_track = asyncHandler(async (req, res, next) => {
   if (!trackId) {
     const error = formatError(400, "trackId field is required");
     next(error);
+    return;
+  }
+
+  if (!validate(trackId)) {
+    res.status(400).json({
+      success: false,
+      error: "Invalid trackId",
+    });
     return;
   }
 

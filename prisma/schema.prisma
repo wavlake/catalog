@@ -121,7 +121,7 @@ model ExternalReceive {
   trackId     String?   @map("track_id") @db.Uuid
   createdAt   DateTime? @default(now()) @map("created_at") @db.Timestamptz(6)
   paymentHash String?   @map("payment_hash") @db.VarChar(255)
-  externalId  String?   @map("external_id") @db.VarChar(255)
+  externalId  String?   @map("external_id")
   updatedAt   DateTime? @map("updated_at") @db.Timestamptz(6)
   isPending   Boolean?  @default(false) @map("is_pending")
 
@@ -252,6 +252,7 @@ model User {
   artworkUrl          String?            @map("artwork_url") @db.VarChar(255)
   lastActivityCheckAt DateTime?          @default(now()) @map("last_activity_check_at") @db.Timestamptz(6)
   profileUrl          String?            @unique(map: "user_profile_url_unique") @map("profile_url") @db.VarChar(255)
+  lightningAddress    String?            @map("lightning_address")
   artist              Artist[]
   external_payment    ExternalPayment[]
   podcast             Podcast[]
@@ -484,8 +485,8 @@ model ExternalPayment {
   txId         String?   @map("tx_id") @db.Uuid
   createdAt    DateTime? @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt    DateTime? @default(now()) @map("updated_at") @db.Timestamptz(6)
-  externalId   Boolean?  @map("external_id")
-  isPending    Boolean?  @default(true) @map("is_pending")
+  externalId   String?   @map("external_id")
+  isPending    Boolean?  @default(false) @map("is_pending")
   user         User      @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "external_payment_user_id_foreign")
 
   @@map("external_payment")
@@ -546,6 +547,37 @@ model npub {
   public_hex String    @id @unique(map: "npub_public_hex_unique") @db.VarChar(255)
   metadata   Json?
   updated_at DateTime? @default(now()) @db.Timestamptz(6)
+}
+
+model Forward {
+  id                Int       @id @default(autoincrement())
+  userId            String    @map("user_id")
+  lightningAddress  String    @map("lightning_address")
+  msatAmount        Int       @map("msat_amount")
+  inFlight          Boolean   @default(false) @map("in_flight")
+  isSettled         Boolean   @default(false) @map("is_settled")
+  externalPaymentId String?   @map("external_payment_id")
+  createdAt         DateTime? @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime? @default(now()) @map("updated_at") @db.Timestamptz(6)
+  attemptCount      Int       @default(0) @map("attempt_count")
+  remainderId       String?   @map("remainder_id")
+  error             String?
+
+  @@index([userId], map: "idx_forward_user_id")
+  @@map("forward")
+}
+
+model ForwardDetail {
+  id                Int       @id @default(autoincrement())
+  externalPaymentId String    @map("external_payment_id")
+  msatAmount        Int       @map("msat_amount")
+  feeMsat           Int       @map("fee_msat")
+  preimage          String
+  success           Boolean   @default(false)
+  error             String?
+  createdAt         DateTime? @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@map("forward_detail")
 }
 
 view TrackInfo {
