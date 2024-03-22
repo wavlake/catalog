@@ -1,7 +1,6 @@
 import db from "./db";
 const log = require("loglevel");
 const Sentry = require("@sentry/node");
-import { formatError } from "../library/errors";
 
 export type SplitContentTypes = "track" | "episode" | "podcast" | "album";
 
@@ -52,33 +51,6 @@ export async function getUserName(userId: string): Promise<string | undefined> {
     .catch((err) => {
       log.error(`Error finding user from userId ${err}`);
     });
-}
-
-export async function checkContentOwnership(req, res, next) {
-  const { contentId, contentType } = req.body.contentId ? req.body : req.params;
-  const userId = req["uid"];
-
-  if (
-    !contentId ||
-    !["track", "episode", "podcast", "album"].includes(contentType)
-  ) {
-    const error = formatError(
-      400,
-      "Must include both contentId and contentType"
-    );
-    next(error);
-    return;
-  }
-
-  // Does user own this content?
-  const isOwner = await isContentOwner(userId, contentId, contentType);
-  if (!isOwner) {
-    const error = formatError(403, "User does not own this content");
-    next(error);
-    return;
-  }
-
-  return true;
 }
 
 export async function isContentOwner(

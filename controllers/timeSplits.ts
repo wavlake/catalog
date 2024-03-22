@@ -5,20 +5,18 @@ import {
   contentHasTimeSplits,
   validateTimeSplitRequest,
 } from "../library/timeSplit";
-import { checkContentOwnership } from "../library/userHelper";
 import log from "loglevel";
 
 const create_time_splits = asyncHandler(async (req, res, next) => {
-  await checkContentOwnership(req, res, next);
   const { contentId } = req.body;
 
   const hasTimeSplits = await contentHasTimeSplits(contentId);
   if (hasTimeSplits) {
-    const error = formatError(
-      400,
-      "Time splits already exist for this content. Update instead of create."
-    );
-    next(error);
+    res
+      .status(400)
+      .send(
+        "Time splits already exist for this content. Update instead of create."
+      );
     return;
   }
 
@@ -43,15 +41,9 @@ const get_time_splits = asyncHandler(async (req, res, next) => {
   const { contentId, contentType } = req.params;
 
   if (!contentId || !contentType) {
-    const error = formatError(
-      400,
-      "Must include both contentId and contentType"
-    );
-    next(error);
+    res.status(400).send("Must include both contentId and contentType");
     return;
   }
-
-  await checkContentOwnership(req, res, next);
 
   try {
     const splits = await prisma.timeSplit.findMany({
@@ -69,7 +61,6 @@ const get_time_splits = asyncHandler(async (req, res, next) => {
 });
 
 const update_time_splits = asyncHandler(async (req, res, next) => {
-  await checkContentOwnership(req, res, next);
   const { contentId } = req.body;
 
   // Delete splits if time split list is empty

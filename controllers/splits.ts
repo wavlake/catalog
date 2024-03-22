@@ -2,8 +2,6 @@ import prisma from "../prisma/client";
 import asyncHandler from "express-async-handler";
 import { SplitRecipient } from "@prisma/client";
 import { formatError } from "../library/errors";
-import { SplitContentTypes, isContentOwner } from "../library/userHelper";
-import { checkContentOwnership } from "../library/userHelper";
 
 type ValidatedSplitReceipient = Partial<SplitRecipient> & {
   username?: string;
@@ -104,8 +102,6 @@ const parseSplitsAndValidateUsername = async (
 };
 
 const create_split = asyncHandler(async (req, res, next) => {
-  await checkContentOwnership(req, res, next);
-
   const { contentId, contentType, splitRecipients } = req.body;
 
   const newSplitsForDb = await parseSplitsAndValidateUsername(
@@ -144,15 +140,9 @@ const get_split = asyncHandler(async (req, res, next) => {
   const { contentId, contentType } = req.params;
 
   if (!contentId || !contentType) {
-    const error = formatError(
-      400,
-      "Must include both contentId and contentType"
-    );
-    next(error);
+    res.status(400).send("Must include both contentId and contentType");
     return;
   }
-
-  await checkContentOwnership(req, res, next);
 
   try {
     const split = await prisma.split.findFirst({
@@ -182,15 +172,10 @@ const get_split = asyncHandler(async (req, res, next) => {
 });
 
 const update_split = asyncHandler(async (req, res, next) => {
-  await checkContentOwnership(req, res, next);
   const { contentId, contentType, splitRecipients } = req.body;
 
   if (!contentId || !contentType) {
-    const error = formatError(
-      400,
-      "Must include both contentId and contentType"
-    );
-    next(error);
+    res.status(400).send("Must include both contentId and contentType");
     return;
   }
 
@@ -205,8 +190,7 @@ const update_split = asyncHandler(async (req, res, next) => {
   });
 
   if (!splitId) {
-    const error = formatError(404, "Split not found");
-    next(error);
+    res.status(404).send("Split not found");
     return;
   }
 
