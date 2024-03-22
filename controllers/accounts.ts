@@ -3,6 +3,7 @@ import asyncHandler from "express-async-handler";
 import prisma from "../prisma/client";
 import { formatError } from "../library/errors";
 const log = require("loglevel");
+const { auth } = require("../library/firebaseService");
 
 async function groupSplitPayments(combinedAmps) {
   // Group records by txId
@@ -273,6 +274,61 @@ const get_history = asyncHandler(async (req, res, next) => {
   }
 });
 
+const get_check_region = asyncHandler(async (req, res, next) => {
+  // Respond with 200 if request gets past middleware
+  res.send(200);
+});
+
+const post_log_identity = asyncHandler(async (req, res, next) => {
+  const userId = req["uid"];
+  const { firstName, lastName } = req.body;
+
+  if (!firstName || !lastName) {
+    res.status(400).json({
+      success: false,
+      error: "First name and last name are required",
+    });
+    return;
+  }
+
+  const userRecord = await auth().getUser(userId);
+
+  if (!userRecord.emailVerified) {
+    res.status(400).json({
+      success: false,
+      error: "Email is not verified",
+    });
+    return;
+  }
+
+  try {
+    await prisma.userVerification.upsert({
+      where: {
+        userId: userId,
+      },
+      update: {
+        firstName: firstName,
+        lastName: lastName,
+        ip: req.ip,
+      },
+      create: {
+        userId: userId,
+        firstName: firstName,
+        lastName: lastName,
+        ip: req.ip,
+      },
+    });
+
+    res.send({
+      success: true,
+      data: { userId: userId },
+    });
+  } catch (err) {
+    next(err);
+    return;
+  }
+});
+
 export default {
   get_account,
   get_activity,
@@ -280,4 +336,6 @@ export default {
   put_notification,
   get_features,
   get_history,
+  get_check_region,
+  post_log_identity,
 };
