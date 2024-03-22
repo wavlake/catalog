@@ -163,6 +163,8 @@ exports.up = function (knex) {
 
 exports.down = function (knex) {
   return knex.schema
+    .dropViewIfExists("track_info")
+    .dropViewIfExists("episode_info")
     .createViewOrReplace("track_info", function (view) {
       view.columns([
         "id",
