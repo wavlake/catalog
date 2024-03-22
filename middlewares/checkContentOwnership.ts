@@ -2,7 +2,8 @@ import { getType } from "../library/content";
 import { isContentOwner } from "../library/userHelper";
 
 export async function checkContentOwnership(req, res, next) {
-  const { contentId, contentType = getType(contentId) } = req.body.contentId
+  const { contentId, contentType = await getType(contentId) } = req.body
+    .contentId
     ? req.body
     : req.params;
   const userId = req["uid"];
@@ -16,14 +17,14 @@ export async function checkContentOwnership(req, res, next) {
     !contentId ||
     !["track", "episode", "podcast", "album"].includes(contentType)
   ) {
-    res.status(400).send("Must include both contentId and contentType");
+    res.status(400).json("Must include both contentId and contentType");
     return;
   }
 
   // Does user own this content?
   const isOwner = await isContentOwner(userId, contentId, contentType);
   if (!isOwner) {
-    res.status(403).send("User does not own this content");
+    res.status(403).json("User does not own this content");
     return;
   }
 

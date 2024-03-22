@@ -59,7 +59,8 @@ const publish_content = asyncHandler(async (req, res, next) => {
     });
 
     // update all children
-    const childrenIds = knex(isAlbum ? "track" : "episode")
+    const childrenIds = await db
+      .knex(isAlbum ? "track" : "episode")
       .select("id")
       .where(isAlbum ? "album_id" : "podcast_id", contentId);
 
@@ -68,7 +69,10 @@ const publish_content = asyncHandler(async (req, res, next) => {
         is_draft: isDraft,
         published_at: newPublishedAt,
       })
-      .whereIn("id", childrenIds);
+      .whereIn(
+        "id",
+        childrenIds.map((child) => child.id)
+      );
 
     return dbTrx
       .commit()
@@ -87,9 +91,13 @@ const publish_content = asyncHandler(async (req, res, next) => {
         });
       })
       .catch((e) => {
-        log.error(`Failed to publish ${contentType}_id: ${contentId}`);
-        log.error({ isDraft, newPublishedAt });
+        log.info(`Failed to publish ${contentType}_id: ${contentId}`);
+        log.info({ isDraft, newPublishedAt });
         log.error(e);
+        res.status(500).json({
+          success: false,
+          error: "Something went wrong",
+        });
       });
   }
 
@@ -140,9 +148,13 @@ const publish_content = asyncHandler(async (req, res, next) => {
         });
       })
       .catch((e) => {
-        log.error(`Failed to publish ${contentType}_id: ${contentId}`);
-        log.error({ isDraft, newPublishedAt });
+        log.info(`Failed to publish ${contentType}_id: ${contentId}`);
+        log.info({ isDraft, newPublishedAt });
         log.error(e);
+        res.status(500).json({
+          success: false,
+          error: "Something went wrong",
+        });
       });
   }
 });
