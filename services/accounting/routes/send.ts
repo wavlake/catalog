@@ -9,8 +9,8 @@ const router = express.Router();
 
 //////// ROUTES ////////
 
-router.post("/keysend", isAuthorized, sendController.sendKeysend);
-router.post("/", isAuthorized, sendController.createSend);
+// router.post("/keysend", isAuthorized, sendController.sendKeysend);
+// router.post("/", isAuthorized, sendController.createSend);
 
 // Export router
 export default router;

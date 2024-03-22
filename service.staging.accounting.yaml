@@ -24,7 +24,7 @@ steps:
       [
         "run",
         "deploy",
-        "accounting",
+        "accounting-staging",
         "--image",
         "us-central1-docker.pkg.dev/$PROJECT_ID/services/accounting:latest",
         "--region",

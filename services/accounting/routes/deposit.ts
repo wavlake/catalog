@@ -9,7 +9,7 @@ const router = express.Router();
 
 //////// ROUTES ////////
 
-router.post("/", isAuthorized, depositController.createDeposit);
+// router.post("/", isAuthorized, depositController.createDeposit);
 
 // Export router
 export default router;
