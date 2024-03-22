@@ -19,7 +19,7 @@ const parseSplitsAndValidateUsername = async (
       success: false,
       error: "Must include at least one split recipient",
     });
-    return;
+    return [];
   }
 
   if (incomingSplits.length > 10) {
@@ -27,8 +27,19 @@ const parseSplitsAndValidateUsername = async (
       success: false,
       error: "Number of split recipients must be 10 or fewer",
     });
-    return;
+    return [];
   }
+
+  const uniqueUserNames = new Set(incomingSplits.map((split) => split.name));
+  if (uniqueUserNames.size !== incomingSplits.length) {
+    res.status(400).json({
+      success: false,
+      error:
+        "Each split recipient must be unique, duplicate usernames are not allowed",
+    });
+    return [];
+  }
+
   const allSplitSharesAreValid = incomingSplits.every((split) => {
     return (
       !!split.share &&
@@ -43,24 +54,13 @@ const parseSplitsAndValidateUsername = async (
       success: false,
       error: "Each split share must be a positive integer",
     });
-    return;
+    return [];
   }
 
-  let userTracker = []; // used to check for duplicate usernames
   const validatedSplits = await Promise.all<ValidatedSplitReceipient>(
     incomingSplits.map(async (split) => {
       const { name: username, share } = split;
       const hasValidData = username && share && typeof share === "number";
-
-      // check for duplicate usernames
-      if (userTracker.includes(username)) {
-        res.status(400).json({
-          success: false,
-          error: "Splits must have unique users",
-        });
-        return;
-      }
-      userTracker.push(username);
 
       // guard against invalid data
       if (!hasValidData) {
@@ -118,9 +118,25 @@ const create_split = asyncHandler(async (req, res, next) => {
     splitRecipients,
     res
   );
+
   if (!newSplitsForDb.length) {
-    // parseSplitsAndValidateUsername will handle any invalid usernames
+    // parseSplitsAndValidateUsername will handle any invalid usernames and error responses
     // if an invalid username is found, an empty array is returned
+    return;
+  }
+
+  const existingSplit = await prisma.split.findFirst({
+    where: {
+      contentId: contentId,
+      contentType: contentType,
+    },
+  });
+
+  if (existingSplit) {
+    res.status(400).json({
+      success: false,
+      error: "Split already exists for this content, please update it instead.",
+    });
     return;
   }
 
