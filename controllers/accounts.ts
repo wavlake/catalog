@@ -3,6 +3,7 @@ import asyncHandler from "express-async-handler";
 import prisma from "../prisma/client";
 import { formatError } from "../library/errors";
 const log = require("loglevel");
+const { auth } = require("../library/firebaseService");
 
 async function groupSplitPayments(combinedAmps) {
   // Group records by txId
@@ -286,6 +287,16 @@ const post_log_identity = asyncHandler(async (req, res, next) => {
     res.status(400).json({
       success: false,
       error: "First name and last name are required",
+    });
+    return;
+  }
+
+  const userRecord = await auth().getUser(userId);
+
+  if (!userRecord.emailVerified) {
+    res.status(400).json({
+      success: false,
+      error: "Email is not verified",
     });
     return;
   }
