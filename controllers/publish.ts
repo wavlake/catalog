@@ -2,7 +2,6 @@ import asyncHandler from "express-async-handler";
 import log from "loglevel";
 import { validate } from "uuid";
 import { SplitContentTypes } from "../library/userHelper";
-import knex from "knex";
 import db from "../library/db";
 
 const calculatedPublishedAt = (isDraft: boolean) => {
@@ -120,12 +119,16 @@ const publish_content = asyncHandler(async (req, res, next) => {
           "=",
           `${parentTable}.id`
         )
-        .select(`${parentTable}.is_draft`)
+        .where(`${contentType}.id`, contentId)
+        .select(
+          `${parentTable}.is_draft`,
+          `${parentTable}.published_at`,
+          `${parentTable}.id`
+        )
         .first();
-
       // if the parent is in draft, we need flip it to published
-      if (parent.isDraft) {
-        await dbTrx(parentTable).where("id", contentId).update({
+      if (parent.is_draft) {
+        await dbTrx(parentTable).where("id", "=", parent.id).update({
           is_draft: false,
           published_at: newPublishedAt,
         });
