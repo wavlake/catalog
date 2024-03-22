@@ -19,8 +19,18 @@ const get_track = asyncHandler(async (req, res, next) => {
   const { trackId } = req.params;
 
   if (!trackId) {
-    const error = formatError(400, "trackId is required");
-    next(error);
+    res.status(400).json({
+      success: false,
+      error: "trackId is required",
+    });
+    return;
+  }
+
+  if (!validate(trackId)) {
+    res.status(400).json({
+      success: false,
+      error: "Invalid trackId",
+    });
     return;
   }
 
@@ -409,6 +419,8 @@ const create_track = asyncHandler(async (req, res, next) => {
         lyrics: request.lyrics,
         raw_url: s3RawUrl,
         is_processing: true,
+        // all newly created content starts a draft, user must publish after creation
+        is_draft: true,
         is_explicit: request.isExplicit,
       },
       ["*"]
@@ -479,17 +491,7 @@ const search_tracks = asyncHandler(async (req, res, next) => {
 });
 
 const update_track = asyncHandler(async (req, res, next) => {
-  const {
-    trackId,
-    title,
-    order,
-    lyrics,
-    isDraft,
-    // TODO - consume this when scheduling is implemented
-    // ensure time zones are properly handled
-    publishedAt: publishedAtString,
-    isExplicit,
-  } = req.body;
+  const { trackId, title, order, lyrics, isExplicit } = req.body;
   const uid = req["uid"];
 
   const updatedAt = new Date();
@@ -509,11 +511,9 @@ const update_track = asyncHandler(async (req, res, next) => {
   }
 
   const intOrder = parseInt(order);
-  if (!intOrder || isNaN(intOrder)) {
-    const error = formatError(
-      400,
-      "order field is required, and must be an integer"
-    );
+  // only validate the order if it's present
+  if (!!order && (!intOrder || isNaN(intOrder))) {
+    const error = formatError(400, "order field must be an integer");
     next(error);
     return;
   }
@@ -565,10 +565,9 @@ const update_track = asyncHandler(async (req, res, next) => {
       },
       data: {
         title,
-        order: intOrder,
+        ...(order ? { order: intOrder } : {}),
         lyrics,
         updatedAt,
-        isDraft,
         isExplicit,
       },
     });

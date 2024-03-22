@@ -1,9 +1,18 @@
 import db from "./db";
+<<<<<<< HEAD:library/content.js
 const { validate } = require("uuid");
 const log = require("loglevel");
 
 export const getParentContentTypeAndId = async (contentId) => {
   const album = await db
+=======
+import { SplitContentTypes } from "./userHelper";
+
+export async function getType(
+  contentId: string
+): Promise<SplitContentTypes | null> {
+  const track = await db
+>>>>>>> staging:library/content.ts
     .knex("track")
     .select("album_id")
     .where("track.id", "=", contentId)

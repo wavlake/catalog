@@ -124,7 +124,6 @@ export const create_episode = asyncHandler(async (req, res, next) => {
     userId: req["uid"],
     order: req.body.order == "" ? 0 : parseInt(req.body.order),
     extension: req.body.extension ?? "mp3",
-    isDraft: req.body.isDraft ?? false,
     description: req.body.description,
     isExplicit: req.body.isExplicit ?? false,
   };
@@ -175,7 +174,8 @@ export const create_episode = asyncHandler(async (req, res, next) => {
         description: request.description,
         raw_url: s3RawUrl,
         is_processing: true,
-        is_draft: req.body.isDraft,
+        // all newly created content starts a draft, user must publish after creation
+        is_draft: true,
         is_explicit: req.body.isExplicit,
       },
       ["*"]
@@ -219,22 +219,20 @@ export const create_episode = asyncHandler(async (req, res, next) => {
 });
 
 export const update_episode = asyncHandler(async (req, res, next) => {
-  const {
-    episodeId,
-    title,
-    order,
-    isDraft,
-    // TODO - consume this when scheduling is implemented
-    // ensure time zones are properly handled
-    publishedAt: publishedAtString,
-    description,
-    isExplicit,
-  } = req.body;
+  const { episodeId, title, order, description, isExplicit } = req.body;
   const uid = req["uid"];
   const updatedAt = new Date();
 
   if (!episodeId) {
     const error = formatError(403, "episodeId field is required");
+    next(error);
+    return;
+  }
+
+  const intOrder = parseInt(order);
+  // only validate the order if it's present
+  if (!!order && (!intOrder || isNaN(intOrder))) {
+    const error = formatError(400, "order field must be an integer");
     next(error);
     return;
   }
@@ -248,6 +246,29 @@ export const update_episode = asyncHandler(async (req, res, next) => {
     return;
   }
 
+  const unEditedEpisode = await prisma.episode.findFirst({
+    where: { id: episodeId },
+  });
+
+  // if we are updating the title, check if the show already has an episode with that title
+  if (title !== undefined) {
+    const duplicateEpisodeTrack = await db
+      .knex("episode")
+      .where("podcast_id", "=", unEditedEpisode.podcastId)
+      .andWhere("title", "=", title)
+      .andWhere("deleted", "=", false)
+      .first();
+
+    if (duplicateEpisodeTrack && duplicateEpisodeTrack.id !== episodeId) {
+      const error = formatError(
+        400,
+        "Please pick another title, this show already has an episode with that title."
+      );
+      next(error);
+      return;
+    }
+  }
+
   log.debug(`Editing episode ${episodeId}`);
   const updatedEpisode = await prisma.episode.update({
     where: {
@@ -255,9 +276,8 @@ export const update_episode = asyncHandler(async (req, res, next) => {
     },
     data: {
       title,
-      ...(order ? { order: parseInt(order) } : {}),
+      ...(order ? { order: intOrder } : {}),
       updatedAt,
-      isDraft,
       description,
       isExplicit,
     },

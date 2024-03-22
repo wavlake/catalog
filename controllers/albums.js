@@ -185,7 +185,6 @@ const create_album = asyncHandler(async (req, res, next) => {
     genreId: req.body.genreId,
     subgenreId: req.body.subgenreId,
     description: req.body.description,
-    isDraft: req.body.isDraft,
     isSingle: req.body.isSingle ?? false,
   };
 
@@ -237,8 +236,8 @@ const create_album = asyncHandler(async (req, res, next) => {
                 artwork_url: liveUrl,
                 genre_id: request.genreId,
                 subgenre_id: request.subgenreId,
-                is_draft: request.isDraft,
-                published_at: db.knex.fn.now(),
+                // all newly created content starts a draft, user must publish after creation
+                is_draft: true,
                 is_single: request.isSingle,
               },
               ["*"]
@@ -294,18 +293,8 @@ const create_album = asyncHandler(async (req, res, next) => {
 });
 
 const update_album = asyncHandler(async (req, res, next) => {
-  const {
-    albumId,
-    title,
-    description,
-    genreId,
-    subgenreId,
-    isDraft,
-    // TODO consume this when scheduling is implemented
-    // ensure time zones are properly handled
-    publishedAt: publishedAtString,
-    isSingle,
-  } = req.body;
+  const { albumId, title, description, genreId, subgenreId, isSingle } =
+    req.body;
   const uid = req["uid"];
   const updatedAt = new Date();
 
@@ -343,7 +332,6 @@ const update_album = asyncHandler(async (req, res, next) => {
       updatedAt,
       genreId,
       subgenreId,
-      isDraft,
       isSingle,
     },
   });

@@ -71,8 +71,6 @@ export const create_podcast = asyncHandler(async (req, res, next) => {
     secondaryCategoryId,
     primarySubcategoryId,
     secondarySubcategoryId,
-    // default to draft if not specified
-    isDraft = false,
   } = req.body;
 
   const userId = req["uid"];
@@ -124,8 +122,8 @@ export const create_podcast = asyncHandler(async (req, res, next) => {
                   website,
                   artwork_url: liveUrl,
                   podcast_url: format.urlFriendly(name),
-                  is_draft: isDraft,
-                  published_at: db.knex.fn.now(),
+                  // all newly created content starts a draft, user must publish after creation
+                  is_draft: true,
                   primary_category_id: primaryCategoryId,
                   secondary_category_id: secondaryCategoryId,
                   primary_subcategory_id: primarySubcategoryId,
@@ -211,10 +209,6 @@ export const update_podcast = asyncHandler(async (req, res, next) => {
     instagram,
     youtube,
     website,
-    isDraft,
-    // TODO - consume this when scheduling is implemented
-    // ensure time zones are properly handled
-    publishedAt: publishedAtString,
     primaryCategoryId,
     secondaryCategoryId,
     primarySubcategoryId,
@@ -252,7 +246,6 @@ export const update_podcast = asyncHandler(async (req, res, next) => {
       instagram,
       youtube,
       website,
-      isDraft,
       updatedAt,
       primaryCategoryId,
       secondaryCategoryId,
