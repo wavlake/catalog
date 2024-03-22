@@ -2,7 +2,12 @@ import db from "./db";
 const log = require("loglevel");
 const Sentry = require("@sentry/node");
 
-export type SplitContentTypes = "track" | "episode" | "podcast" | "album";
+export type SplitContentTypes =
+  | "track"
+  | "episode"
+  | "podcast"
+  | "album"
+  | "artist";
 
 export async function checkUserHasSufficientSats(
   userId: string,

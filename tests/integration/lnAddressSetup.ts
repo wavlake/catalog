@@ -45,10 +45,20 @@ export const teardown = async () => {
   await trx("album").del().whereIn("artist_id", [seeds.testerOneArtistId]);
   await trx("artist")
     .del()
-    .whereIn("user_id", [seeds.testerOneId, seeds.testerTwoId]);
+    .whereIn("user_id", [
+      seeds.testerOneId,
+      seeds.testerTwoId,
+      seeds.testerThreeId,
+    ]);
   await trx("user")
     .del()
     .whereIn("id", [seeds.testerOneId, seeds.testerTwoId, seeds.testerThreeId]);
-  await trx("forward").del().whereIn("user_id", [seeds.testerThreeId]);
+  await trx("forward")
+    .del()
+    .whereIn("user_id", [
+      seeds.testerOneId,
+      seeds.testerTwoId,
+      seeds.testerThreeId,
+    ]);
   return trx.commit();
 };

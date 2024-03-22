@@ -59,7 +59,7 @@ describe("getType", () => {
 
     const result = await getType(invalidUuid);
     expect(log.debug).toHaveBeenCalledWith("Invalid id: ", invalidUuid);
-    expect(result).toBeUndefined();
+    expect(result).toBeNull();
   });
 
   it("should handle database errors gracefully", async () => {
