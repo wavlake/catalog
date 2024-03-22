@@ -6,7 +6,7 @@ exports.up = function (knex) {
       table.boolean("is_pending").defaultTo(false); // Set default to false for existing records
     })
     .alterTable("external_payment", function (table) {
-      table.text("external_id").nullable();
+      table.string("external_id").nullable();
       table.boolean("is_pending").defaultTo(false);
     });
 };
