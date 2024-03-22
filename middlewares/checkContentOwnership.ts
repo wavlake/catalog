@@ -1,5 +1,6 @@
 import { getType } from "../library/content";
 import { isContentOwner } from "../library/userHelper";
+import { validate } from "uuid";
 
 export async function checkContentOwnership(req, res, next) {
   const { contentId, contentType = await getType(contentId) } = req.body
@@ -11,6 +12,12 @@ export async function checkContentOwnership(req, res, next) {
   // this is useful for routes that don't have a contentType in the request body
   if (!req.body.contentType) {
     req.body.contentType = contentType;
+  }
+
+  // Validate contentId
+  if (!validate(contentId)) {
+    res.status(400).json("Invalid contentId");
+    return;
   }
 
   if (
