@@ -42,6 +42,7 @@ const get_albums_by_account = asyncHandler(async (req, res, next) => {
       "music_subgenre.id as subgenreId",
       "album.is_draft as isDraft",
       "album.published_at as publishedAt",
+      "album.updated_at as updatedAt",
       "album.is_single as isSingle"
     )
     .where("user.id", "=", request.userId)

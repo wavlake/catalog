@@ -22,7 +22,8 @@ SELECT
   track.is_draft,
   track.is_explicit,
   album.genre_id,
-  album.subgenre_id
+  album.subgenre_id,
+  track.compressor_error
 FROM
   (
     (

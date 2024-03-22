@@ -17,7 +17,8 @@ SELECT
   episode.published_at AS "publishedAt",
   episode.is_draft AS "isDraft",
   podcast.user_id AS "userId",
-  episode.is_explicit AS "isExplicit"
+  episode.is_explicit AS "isExplicit",
+  episode.compressor_error AS "compressorError"
 FROM
   (
     (
