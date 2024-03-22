@@ -12,11 +12,21 @@ type ValidatedSplitReceipient = Partial<SplitRecipient> & {
 
 const parseSplitsAndValidateUsername = async (
   incomingSplits: Array<SplitRecipient & { name: string }>,
-  next: any
+  res: any
 ): Promise<{ userId: string; share: number }[]> => {
   if (incomingSplits.length === 0) {
-    const error = formatError(400, "Must include at least one split recipient");
-    next(error);
+    res.status(400).json({
+      success: false,
+      error: "Must include at least one split recipient",
+    });
+    return;
+  }
+
+  if (incomingSplits.length > 10) {
+    res.status(400).json({
+      success: false,
+      error: "Number of split recipients must be 10 or fewer",
+    });
     return;
   }
   const allSplitSharesAreValid = incomingSplits.every((split) => {
@@ -29,11 +39,10 @@ const parseSplitsAndValidateUsername = async (
     );
   });
   if (!allSplitSharesAreValid) {
-    const error = formatError(
-      400,
-      "Each split share must be a positive integer"
-    );
-    next(error);
+    res.status(400).json({
+      success: false,
+      error: "Each split share must be a positive integer",
+    });
     return;
   }
 
@@ -45,8 +54,10 @@ const parseSplitsAndValidateUsername = async (
 
       // check for duplicate usernames
       if (userTracker.includes(username)) {
-        const error = formatError(400, "Splits must have unique users");
-        next(error);
+        res.status(400).json({
+          success: false,
+          error: "Splits must have unique users",
+        });
         return;
       }
       userTracker.push(username);
@@ -82,13 +93,12 @@ const parseSplitsAndValidateUsername = async (
     .map((split) => split.username);
 
   if (!!invalidUserNames.length) {
-    const error = formatError(
-      404,
-      `Username${
+    res.status(404).json({
+      success: false,
+      error: `Username${
         invalidUserNames.length === 1 ? "" : "s"
-      } not found: "${invalidUserNames.join(`", "`)}"`
-    );
-    next(error);
+      } not found: "${invalidUserNames.join(`", "`)}"`,
+    });
     return [];
   }
 
@@ -106,11 +116,11 @@ const create_split = asyncHandler(async (req, res, next) => {
 
   const newSplitsForDb = await parseSplitsAndValidateUsername(
     splitRecipients,
-    next
+    res
   );
   if (!newSplitsForDb.length) {
     // parseSplitsAndValidateUsername will handle any invalid usernames
-    // if an invalid username is found, next() is called with an error and an empty array is returned
+    // if an invalid username is found, an empty array is returned
     return;
   }
 
@@ -140,7 +150,7 @@ const get_split = asyncHandler(async (req, res, next) => {
   const { contentId, contentType } = req.params;
 
   if (!contentId || !contentType) {
-    res.status(400).send("Must include both contentId and contentType");
+    res.status(400).json("Must include both contentId and contentType");
     return;
   }
 
@@ -175,7 +185,7 @@ const update_split = asyncHandler(async (req, res, next) => {
   const { contentId, contentType, splitRecipients } = req.body;
 
   if (!contentId || !contentType) {
-    res.status(400).send("Must include both contentId and contentType");
+    res.status(400).json("Must include both contentId and contentType");
     return;
   }
 
@@ -190,13 +200,13 @@ const update_split = asyncHandler(async (req, res, next) => {
   });
 
   if (!splitId) {
-    res.status(404).send("Split not found");
+    res.status(404).json("Split not found");
     return;
   }
 
   const newSplitsForDb = await parseSplitsAndValidateUsername(
     splitRecipients,
-    next
+    res
   );
   if (!newSplitsForDb.length) {
     return;
@@ -231,8 +241,10 @@ const check_usernames = asyncHandler(async (req, res, next) => {
   const { usernames } = req.body;
 
   if (!usernames || !usernames.length) {
-    const error = formatError(400, "Must include at least one username");
-    next(error);
+    res.status(400).json({
+      success: false,
+      error: "Must include at least one username",
+    });
     return;
   }
 
