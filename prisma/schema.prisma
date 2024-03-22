@@ -580,6 +580,17 @@ model ForwardDetail {
   @@map("forward_detail")
 }
 
+model UserVerification {
+  userId    String    @id @unique(map: "user_verification_user_id_unique") @map("user_id")
+  firstName String    @map("first_name")
+  lastName  String    @map("last_name")
+  ip        String
+  createdAt DateTime? @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime? @default(now()) @map("updated_at") @db.Timestamptz(6)
+
+  @@map("user_verification")
+}
+
 view TrackInfo {
   id              String    @unique @db.Uuid
   title           String?   @db.VarChar(255)
