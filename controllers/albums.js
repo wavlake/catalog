@@ -191,7 +191,7 @@ const create_album = asyncHandler(async (req, res, next) => {
     return;
   }
 
-  const cdnImageUrl = await upload_image(request.artwork, newAlbumId);
+  const cdnImageUrl = await upload_image(request.artwork, newAlbumId, "album");
 
   return db
     .knex("album")
@@ -280,7 +280,7 @@ const update_album = asyncHandler(async (req, res, next) => {
     return;
   }
   const cdnImageUrl = artwork
-    ? await upload_image(artwork, request.albumId)
+    ? await upload_image(artwork, request.albumId, "album")
     : undefined;
 
   log.debug(`Editing album ${request.albumId}`);
