@@ -19,7 +19,6 @@ import {
   get_podcast_by_id,
   get_podcast_by_url,
   update_podcast,
-  update_podcast_art,
   delete_podcast,
 } from "../controllers/podcasts";
 
@@ -33,13 +32,8 @@ router.get("/:podcastId", get_podcast_by_id);
 
 // mutations
 router.post("/create", upload.single("artwork"), isAuthorized, create_podcast);
-router.put("/update", isAuthorized, update_podcast);
-router.put(
-  "/update-art",
-  upload.single("artwork"),
-  isAuthorized,
-  update_podcast_art
-);
+router.post("/update", upload.single("artwork"), isAuthorized, update_podcast);
+
 router.delete("/:podcastId", isAuthorized, delete_podcast);
 
 export default router;
