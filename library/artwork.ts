@@ -12,17 +12,17 @@ type CONTENT_TYPE = "artist" | "album" | "podcast";
 
 const TYPE_SETTINGS = {
   artist: {
-    width: 3000,
+    width: 1875,
     height: Jimp.AUTO,
     quality: 60,
   },
   album: {
-    width: 7500,
+    width: 500,
     height: Jimp.AUTO,
     quality: 60,
   },
   podcast: {
-    width: 3000,
+    width: 1875,
     height: Jimp.AUTO,
     quality: 60,
   },
