@@ -7,7 +7,31 @@ import log from "loglevel";
 const localConvertPath = process.env.LOCAL_CONVERT_PATH;
 const cdnDomain = `${process.env.AWS_CDN_DOMAIN}`;
 
-const upload_image = async (artworkFile, contentId) => {
+type CONTENT_TYPE = "artist" | "album" | "podcast";
+
+const TYPE_SETTINGS = {
+  artist: {
+    width: 1875,
+    height: Jimp.AUTO,
+    quality: 60,
+  },
+  album: {
+    width: 500,
+    height: 500,
+    quality: 60,
+  },
+  podcast: {
+    width: 1875,
+    height: Jimp.AUTO,
+    quality: 60,
+  },
+};
+
+const upload_image = async (
+  artworkFile: Express.Multer.File,
+  contentId: string,
+  type: CONTENT_TYPE
+) => {
   try {
     let uploadPath = artworkFile
       ? artworkFile.path
@@ -17,10 +41,11 @@ const upload_image = async (artworkFile, contentId) => {
     const s3Key = `${AWS_S3_IMAGE_PREFIX}/${contentId}.jpg`;
 
     // Resize and save the image
+    const { width, height, quality } = TYPE_SETTINGS[type];
     await Jimp.read(uploadPath).then((img) => {
       return img
-        .resize(500, 500) // Resize
-        .quality(60) // Set JPEG quality
+        .resize(width, height) // Resize
+        .quality(quality) // Set JPEG quality
         .writeAsync(convertPath); // Save
     });
 
