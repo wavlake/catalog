@@ -1,18 +1,13 @@
 import log from "loglevel";
 import db from "../library/db";
 import { randomUUID } from "crypto";
-import fs from "fs";
 import multer from "multer";
-import Jimp from "jimp";
-import s3Client from "../library/s3Client";
 import format from "../library/format";
 import prisma from "../prisma/client";
 import asyncHandler from "express-async-handler";
 import { formatError } from "../library/errors";
 import { isPodcastOwner } from "../library/userHelper";
-import { invalidateCdn } from "../library/cloudfrontClient";
 import { getStatus } from "../library/helpers";
-import { AWS_S3_IMAGE_PREFIX } from "../library/constants";
 import { upload_image } from "../library/artwork";
 
 const localConvertPath = `${process.env.LOCAL_CONVERT_PATH}`;
