@@ -170,7 +170,6 @@ const get_albums_by_artist_id = asyncHandler(async (req, res, next) => {
 
 const create_album = asyncHandler(async (req, res, next) => {
   const newAlbumId = randomUUID();
-  console.log("req.body", req.body);
   const request = {
     userId: req["uid"],
     artwork: req.file,
