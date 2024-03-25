@@ -13,6 +13,7 @@ import { isPodcastOwner } from "../library/userHelper";
 import { invalidateCdn } from "../library/cloudfrontClient";
 import { getStatus } from "../library/helpers";
 import { AWS_S3_IMAGE_PREFIX } from "../library/constants";
+import { upload_image } from "../library/artwork";
 
 const localConvertPath = `${process.env.LOCAL_CONVERT_PATH}`;
 const cdnDomain = `${process.env.AWS_CDN_DOMAIN}`;
@@ -81,121 +82,77 @@ export const create_podcast = asyncHandler(async (req, res, next) => {
     next(error);
     return;
   }
-  let uploadPath;
-  let isKeeper = false;
-  if (!artwork) {
-    uploadPath = "./graphics/wavlake-icon-750.png";
-    isKeeper = true;
-  } else {
-    uploadPath = artwork.path;
-  }
 
-  const convertPath = `${localConvertPath}/${newPodcastId}.jpg`;
-  const s3Key = `${AWS_S3_IMAGE_PREFIX}/${newPodcastId}.jpg`;
+  const cdnImageUrl = artwork
+    ? await upload_image(artwork, newPodcastId, "podcast")
+    : undefined;
 
-  Jimp.read(uploadPath)
-    .then((img) => {
-      return img.resize(1875, Jimp.AUTO).quality(70).writeAsync(convertPath); // save
+  return db
+    .knex("podcast")
+    .insert(
+      {
+        id: newPodcastId,
+        user_id: userId,
+        name,
+        description,
+        twitter,
+        instagram,
+        npub,
+        youtube,
+        website,
+        artwork_url: cdnImageUrl,
+        podcast_url: format.urlFriendly(name),
+        // all newly created content starts a draft, user must publish after creation
+        is_draft: true,
+        primary_category_id: primaryCategoryId,
+        secondary_category_id: secondaryCategoryId,
+        primary_subcategory_id: primarySubcategoryId,
+        secondary_subcategory_id: secondarySubcategoryId,
+      },
+      ["*"]
+    )
+    .then((data) => {
+      log.debug(`Created new podcast ${name} with id: ${data[0]["id"]}`);
+
+      res.send({
+        success: true,
+        data: {
+          id: data[0]["id"],
+          userId: data[0]["user_id"],
+          name: data[0]["name"],
+          bio: data[0]["bio"],
+          twitter: data[0]["twitter"],
+          instagram: data[0]["instagram"],
+          npub: data[0]["npub"],
+          youtube: data[0]["youtube"],
+          website: data[0]["website"],
+          artworkUrl: data[0]["artwork_url"],
+          podcastUrl: data[0]["podcast_url"],
+          isDraft: data[0]["is_draft"],
+          publishedAt: data[0]["published_at"],
+          categoryId: data[0]["category_id"],
+        },
+      });
     })
-    // Upload to S3
-    .then((img) => {
-      return (
-        s3Client
-          .uploadS3(convertPath, s3Key, "avatar")
-          // Write metadata to db
-          .then((data) => {
-            log.debug(
-              `Avatar for ${newPodcastId} uploaded to S3 ${data.Location}`
-            );
-            const liveUrl = `${cdnDomain}/${s3Key}`;
-            db.knex("podcast")
-              .insert(
-                {
-                  id: newPodcastId,
-                  user_id: userId,
-                  name,
-                  description,
-                  twitter,
-                  instagram,
-                  npub,
-                  youtube,
-                  website,
-                  artwork_url: liveUrl,
-                  podcast_url: format.urlFriendly(name),
-                  // all newly created content starts a draft, user must publish after creation
-                  is_draft: true,
-                  primary_category_id: primaryCategoryId,
-                  secondary_category_id: secondaryCategoryId,
-                  primary_subcategory_id: primarySubcategoryId,
-                  secondary_subcategory_id: secondarySubcategoryId,
-                },
-                ["*"]
-              )
-              .then((data) => {
-                log.debug(
-                  `Created new podcast ${name} with id: ${data[0]["id"]}`
-                );
+    .catch((err) => {
+      if (err instanceof multer.MulterError) {
+        log.debug(`MulterError creating new podcast: ${err}`);
 
-                // Clean up with async calls to avoid blocking response
-                log.debug(
-                  `Deleting local files : ${convertPath} & ${uploadPath}`
-                );
-                fs.unlink(`${convertPath}`, (err) => {
-                  if (err) log.debug(`Error deleting local file : ${err}`);
-                });
-                isKeeper
-                  ? null
-                  : fs.unlink(`${uploadPath}`, (err) => {
-                      if (err) log.debug(`Error deleting local file : ${err}`);
-                    });
-                res.send({
-                  success: true,
-                  data: {
-                    id: data[0]["id"],
-                    userId: data[0]["user_id"],
-                    name: data[0]["name"],
-                    bio: data[0]["bio"],
-                    twitter: data[0]["twitter"],
-                    instagram: data[0]["instagram"],
-                    npub: data[0]["npub"],
-                    youtube: data[0]["youtube"],
-                    website: data[0]["website"],
-                    artworkUrl: data[0]["artwork_url"],
-                    podcastUrl: data[0]["podcast_url"],
-                    isDraft: data[0]["is_draft"],
-                    publishedAt: data[0]["published_at"],
-                    categoryId: data[0]["category_id"],
-                  },
-                });
-              })
-              .catch((err) => {
-                if (err instanceof multer.MulterError) {
-                  log.debug(`MulterError creating new podcast: ${err}`);
-
-                  res.status(409).send("Something went wrong");
-                } else if (err) {
-                  log.debug(`Error creating new podcast: ${err}`);
-                  if (err.message.includes("duplicate")) {
-                    const error = formatError(
-                      409,
-                      "Podcast with that name already exists"
-                    );
-                    next(error);
-                  } else {
-                    const error = formatError(
-                      500,
-                      "Something went wrong creating podcast"
-                    );
-                    next(error);
-                  }
-                }
-              });
-          })
-          .catch((err) => {
-            log.debug(`Error creating new podcast: ${err}`);
-            next(err);
-          })
-      );
+        res.status(500).send("Something went wrong");
+      } else if (err) {
+        log.debug(`Error creating new podcast: ${err}`);
+        if (err.message.includes("duplicate")) {
+          res.status(500).json({
+            success: false,
+            error: "Podcast with that name already exists",
+          });
+        } else {
+          res.status(500).json({
+            success: false,
+            error: "Something went wrong creating the podcast.",
+          });
+        }
+      }
     });
 });
 
@@ -216,6 +173,7 @@ export const update_podcast = asyncHandler(async (req, res, next) => {
   } = req.body;
   const uid = req["uid"];
 
+  const artwork = req.file;
   const updatedAt = new Date();
 
   if (!podcastId) {
@@ -232,6 +190,10 @@ export const update_podcast = asyncHandler(async (req, res, next) => {
     next(error);
     return;
   }
+
+  const cdnImageUrl = artwork
+    ? await upload_image(artwork, podcastId, "podcast")
+    : undefined;
 
   log.debug(`Editing podcast ${podcastId}`);
   const updatedPodcast = await prisma.podcast.update({
@@ -251,88 +213,11 @@ export const update_podcast = asyncHandler(async (req, res, next) => {
       secondaryCategoryId,
       primarySubcategoryId,
       secondarySubcategoryId,
+      ...(cdnImageUrl ? { artworkUrl: cdnImageUrl } : {}),
     },
   });
 
   res.json({ success: true, data: updatedPodcast });
-});
-
-export const update_podcast_art = asyncHandler(async (req, res, next) => {
-  const request = {
-    userId: req["uid"],
-    artwork: req.file,
-    podcastId: req.body.podcastId,
-  };
-
-  if (!request.podcastId) {
-    const error = formatError(403, "podcastId field is required");
-    next(error);
-    return;
-  }
-
-  // Check if user owns podcast
-  const isOwner = await isPodcastOwner(request.userId, request.podcastId);
-
-  if (!isOwner) {
-    const error = formatError(403, "User does not own this podcast");
-    next(error);
-    return;
-  }
-
-  const uploadPath = request.artwork.path;
-
-  const convertPath = `${localConvertPath}/${request.podcastId}.jpg`;
-  const s3Key = `${AWS_S3_IMAGE_PREFIX}/${request.podcastId}.jpg`;
-
-  // Upload new image
-  Jimp.read(uploadPath)
-    .then((img) => {
-      return img
-        .resize(1875, Jimp.AUTO) // resize
-        .quality(60) // set JPEG quality
-        .writeAsync(convertPath); // save
-    })
-    // Upload to S3
-    .then((img) => {
-      s3Client.uploadS3(convertPath, s3Key, "artwork").then((data) => {
-        log.trace(data);
-        log.debug(
-          `Artwork for podcast ${request.podcastId} uploaded to S3 ${data.Location}, refreshing cache...`
-        );
-        invalidateCdn(s3Key);
-      });
-    })
-    .then(() => {
-      const liveUrl = `${cdnDomain}/${s3Key}`;
-      db.knex("podcast")
-        .where("id", "=", request.podcastId)
-        .update({ artwork_url: liveUrl, updated_at: db.knex.fn.now() }, ["id"])
-        .then((data) => {
-          res.send({ success: true, data: data[0] });
-        });
-    })
-    .then(() => {
-      log.debug(`Updated podcast artwork ${request.podcastId}`);
-
-      // Clean up with async calls to avoid blocking response
-      log.info(`Running clean up...`);
-      log.debug(`Deleting local files : ${convertPath} & ${uploadPath}`);
-      fs.unlink(`${convertPath}`, (err) => {
-        if (err) log.debug(`Error deleting local file : ${err}`);
-      });
-      fs.unlink(`${uploadPath}`, (err) => {
-        if (err) log.debug(`Error deleting local file : ${err}`);
-      });
-    })
-    .catch((err) => {
-      if (err instanceof multer.MulterError) {
-        log.debug(`MulterError editing podcast artwork: ${err}`);
-        next(err);
-      } else if (err) {
-        log.debug(`Error editing podcast artwork: ${err}`);
-        next(err);
-      }
-    });
 });
 
 // TODO: Add clean up step for old artwork, see update_podcast_art
