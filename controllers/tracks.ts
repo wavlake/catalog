@@ -6,7 +6,6 @@ import s3Client from "../library/s3Client";
 import { isAlbumOwner, isTrackOwner } from "../library/userHelper";
 import { validate } from "uuid";
 import asyncHandler from "express-async-handler";
-import { formatError } from "../library/errors";
 import { parseLimit } from "../library/helpers";
 import { AWS_S3_RAW_PREFIX, AWS_S3_TRACK_PREFIX } from "../library/constants";
 
@@ -296,8 +295,10 @@ const delete_track = asyncHandler(async (req, res, next) => {
   };
 
   if (!request.trackId) {
-    const error = formatError(400, "trackId field is required");
-    next(error);
+    res.status(400).json({
+      success: false,
+      error: "trackId field is required",
+    });
     return;
   }
 
@@ -313,13 +314,16 @@ const delete_track = asyncHandler(async (req, res, next) => {
   const isOwner = await isTrackOwner(request.userId, request.trackId);
 
   if (!isOwner) {
-    const error = formatError(403, "User does not own this track");
-    next(error);
+    res.status(400).json({
+      success: false,
+      error: "User does not own this track",
+    });
     return;
   }
 
   log.debug(`Deleting track ${request.trackId}`);
-  db.knex("track")
+  return db
+    .knex("track")
     .where("id", "=", request.trackId)
     .update({ deleted: true }, ["id", "title", "album_id as albumId"])
     .then(async (data) => {
@@ -333,7 +337,10 @@ const delete_track = asyncHandler(async (req, res, next) => {
     })
     .catch((err) => {
       log.debug(`Error deleting track ${request.trackId}: ${err}`);
-      next(err);
+      res.status(500).json({
+        success: false,
+        error: "Something went wrong",
+      });
     });
 });
 
@@ -349,16 +356,20 @@ const create_track = asyncHandler(async (req, res, next) => {
   };
 
   if (!request.albumId) {
-    const error = formatError(400, "albumId field is required");
-    next(error);
+    res.status(400).json({
+      success: false,
+      error: "albumId field is required",
+    });
     return;
   }
 
   const albumAccount = await isAlbumOwner(request.userId, request.albumId);
 
   if (!albumAccount === request.userId) {
-    const error = formatError(403, "User does not own this album");
-    next(error);
+    res.status(403).json({
+      success: false,
+      error: "User does not own this album",
+    });
     return;
   }
 
@@ -378,8 +389,10 @@ const create_track = asyncHandler(async (req, res, next) => {
   const liveUrl = `${cdnDomain}/${s3Key}`;
 
   if (presignedUrl == null) {
-    const error = formatError(500, "Error generating presigned URL");
-    next(error);
+    res.status(500).json({
+      success: false,
+      error: "Error generating presigned URL",
+    });
     return;
   }
 
@@ -391,11 +404,11 @@ const create_track = asyncHandler(async (req, res, next) => {
     .first();
 
   if (duplicateTitledTrack) {
-    const error = formatError(
-      400,
-      "Please pick another title, this artist already has a track with that title."
-    );
-    next(error);
+    res.status(400).json({
+      success: false,
+      error:
+        "Please pick another title, this show already has an episode with that title.",
+    });
     return;
   }
 
@@ -445,8 +458,10 @@ const create_track = asyncHandler(async (req, res, next) => {
       });
     })
     .catch((err) => {
-      const error = formatError(500, `Error creating new: ${err}`);
-      next(error);
+      res.status(500).json({
+        success: false,
+        error: `Error creating new: ${err}`,
+      });
     });
 });
 
@@ -456,11 +471,11 @@ const search_tracks = asyncHandler(async (req, res, next) => {
   const artist = String(req.query.artist);
 
   if (!title && !artist) {
-    const error = formatError(
-      400,
-      "Must include at least one search query. Either title, artist, or album"
-    );
-    next(error);
+    res.status(400).json({
+      success: false,
+      error:
+        "Must include at least one search query. Either title, artist, or album",
+    });
     return;
   }
 
@@ -489,8 +504,10 @@ const update_track = asyncHandler(async (req, res, next) => {
   const updatedAt = new Date();
 
   if (!trackId) {
-    const error = formatError(400, "trackId field is required");
-    next(error);
+    res.status(400).json({
+      success: false,
+      error: "trackId field is required",
+    });
     return;
   }
 
@@ -505,8 +522,10 @@ const update_track = asyncHandler(async (req, res, next) => {
   const intOrder = parseInt(order);
   // only validate the order if it's present
   if (!!order && (!intOrder || isNaN(intOrder))) {
-    const error = formatError(400, "order field must be an integer");
-    next(error);
+    res.status(400).json({
+      success: false,
+      error: "order field must be an integer",
+    });
     return;
   }
 
@@ -514,8 +533,10 @@ const update_track = asyncHandler(async (req, res, next) => {
   const isOwner = await isTrackOwner(uid, trackId);
 
   if (!isOwner) {
-    const error = formatError(403, "User does not own this track");
-    next(error);
+    res.status(403).json({
+      success: false,
+      error: "User does not own this track",
+    });
     return;
   }
 
@@ -525,8 +546,10 @@ const update_track = asyncHandler(async (req, res, next) => {
 
   // if we dont have a track match, return a 404
   if (!unEditedTrack) {
-    const error = formatError(404, `Track not found for id: ${trackId}`);
-    next(error);
+    res.status(404).json({
+      success: false,
+      error: `Track not found for id: ${trackId}`,
+    });
     return;
   }
 
@@ -540,11 +563,11 @@ const update_track = asyncHandler(async (req, res, next) => {
       .first();
 
     if (duplicateTitledTrack && duplicateTitledTrack.id !== trackId) {
-      const error = formatError(
-        400,
-        "Please pick another title, this artist already has a track with that title."
-      );
-      next(error);
+      res.status(400).json({
+        success: false,
+        error:
+          "Please pick another title, this artist already has a track with that title.",
+      });
       return;
     }
   }
@@ -573,6 +596,10 @@ const update_track = asyncHandler(async (req, res, next) => {
     res.json({ success: true, data: updatedTrack });
   } catch (err) {
     log.debug(`Error editing track ${trackId}: ${err}`);
+    res.status(500).json({
+      success: false,
+      error: "Something went wrong",
+    });
     next(err);
   }
 });
