@@ -1,22 +1,15 @@
 const log = require("loglevel");
 import db from "../library/db";
 const { randomUUID } = require("crypto");
-const fs = require("fs");
 const multer = require("multer");
-const Jimp = require("jimp");
-const s3Client = require("../library/s3Client");
 import prisma from "../prisma/client";
 import { validate } from "uuid";
 import { isAlbumOwner, isArtistOwner } from "../library/userHelper";
 const asyncHandler = require("express-async-handler");
 import { formatError } from "../library/errors";
 import { getStatus } from "../library/helpers";
-import { AWS_S3_IMAGE_PREFIX } from "../library/constants";
 import { getAllComments } from "../library/comments";
-const { invalidateCdn } = require("../library/cloudfrontClient");
-
-const localConvertPath = `${process.env.LOCAL_CONVERT_PATH}`;
-const cdnDomain = `${process.env.AWS_CDN_DOMAIN}`;
+import { upload_image } from "../library/artwork";
 
 const get_albums_by_account = asyncHandler(async (req, res, next) => {
   const request = {
@@ -177,7 +170,7 @@ const get_albums_by_artist_id = asyncHandler(async (req, res, next) => {
 
 const create_album = asyncHandler(async (req, res, next) => {
   const newAlbumId = randomUUID();
-
+  console.log("req.body", req.body);
   const request = {
     userId: req["uid"],
     artwork: req.file,
@@ -198,159 +191,76 @@ const create_album = asyncHandler(async (req, res, next) => {
     return;
   }
 
-  let uploadPath;
-  let isKeeper = false;
-  if (!request.artwork) {
-    uploadPath = "./graphics/wavlake-icon-750.png";
-    isKeeper = true;
-  } else {
-    uploadPath = request.artwork.path;
-  }
+  const cdnImageUrl = await upload_image(request.artwork, newAlbumId);
 
-  const convertPath = `${localConvertPath}/${newAlbumId}.jpg`;
-  const s3Key = `${AWS_S3_IMAGE_PREFIX}/${newAlbumId}.jpg`;
+  return db
+    .knex("album")
+    .insert(
+      {
+        id: newAlbumId,
+        artist_id: request.artistId,
+        title: request.title,
+        description: request.description,
+        artwork_url: cdnImageUrl,
+        genre_id: request.genreId,
+        subgenre_id: request.subgenreId,
+        // all newly created content starts a draft, user must publish after creation
+        is_draft: true,
+        is_single: Boolean(request.isSingle),
+      },
+      ["*"]
+    )
+    .then((data) => {
+      log.debug(`Created new album ${request.title} with id: ${data[0]["id"]}`);
 
-  Jimp.read(uploadPath)
-    .then((img) => {
-      return img
-        .resize(500, 500) // resize
-        .quality(60) // set JPEG quality
-        .writeAsync(convertPath); // save
+      res.send({
+        success: true,
+        data: {
+          id: data[0]["id"],
+          title: data[0]["title"],
+          artworkUrl: data[0]["artwork_url"],
+          artistId: data[0]["artist_id"],
+          description: data[0]["description"],
+          genreId: data[0]["genre_id"],
+          subgenreId: data[0]["subgenre_id"],
+          isDraft: data[0]["is_draft"],
+          publishedAt: data[0]["published_at"],
+          isSingle: data[0]["is_single"],
+        },
+      });
     })
-    // Upload to S3
-    .then((img) => {
-      s3Client
-        .uploadS3(convertPath, s3Key, "artwork")
-        // Write metadata to db
-        .then((data) => {
-          log.debug(
-            `Artwork for ${newAlbumId} uploaded to S3 ${data.Location}`
-          );
-          const liveUrl = `${cdnDomain}/${s3Key}`;
-          db.knex("album")
-            .insert(
-              {
-                id: newAlbumId,
-                artist_id: request.artistId,
-                title: request.title,
-                description: request.description,
-                artwork_url: liveUrl,
-                genre_id: request.genreId,
-                subgenre_id: request.subgenreId,
-                // all newly created content starts a draft, user must publish after creation
-                is_draft: true,
-                is_single: request.isSingle,
-              },
-              ["*"]
-            )
-            .then((data) => {
-              log.debug(
-                `Created new album ${request.title} with id: ${data[0]["id"]}`
-              );
-
-              // Clean up with async calls to avoid blocking response
-              log.debug(
-                `Deleting local files : ${convertPath} & ${uploadPath}`
-              );
-              fs.unlink(`${convertPath}`, (err) => {
-                if (err) log.debug(`Error deleting local file : ${err}`);
-              });
-              isKeeper
-                ? null
-                : fs.unlink(`${uploadPath}`, (err) => {
-                    if (err) log.debug(`Error deleting local file : ${err}`);
-                  });
-              res.send({
-                success: true,
-                data: {
-                  id: data[0]["id"],
-                  title: data[0]["title"],
-                  artworkUrl: data[0]["artwork_url"],
-                  artistId: data[0]["artist_id"],
-                  description: data[0]["description"],
-                  genreId: data[0]["genre_id"],
-                  subgenreId: data[0]["subgenre_id"],
-                  isDraft: data[0]["is_draft"],
-                  publishedAt: data[0]["published_at"],
-                  isSingle: data[0]["is_single"],
-                },
-              });
-            })
-            .catch((err) => {
-              if (err instanceof multer.MulterError) {
-                log.debug(`MulterError creating new album: ${err}`);
-                next(err);
-              } else if (err) {
-                log.debug(`Error creating new album: ${err}`);
-                next(err);
-              }
-            });
-        })
-        .catch((err) => {
-          log.debug(`Error encoding new album: ${err}`);
-          next(err);
-        });
+    .catch((err) => {
+      if (err instanceof multer.MulterError) {
+        log.debug(`MulterError creating new album: ${err}`);
+      } else if (err) {
+        log.debug(`Error creating new album: ${err}`);
+      }
+      res.status(500).json({
+        success: false,
+        error: "Something went wrong creating the album.",
+      });
     });
 });
 
 const update_album = asyncHandler(async (req, res, next) => {
-  const { albumId, title, description, genreId, subgenreId, isSingle } =
-    req.body;
-  const uid = req["uid"];
-  const updatedAt = new Date();
-
-  if (!albumId) {
-    const error = formatError(400, "albumId field is required");
-    next(error);
-    return;
-  }
-
-  if (!validate(albumId)) {
-    res.status(400).json({
-      success: false,
-      error: "Invalid albumId",
-    });
-    return;
-  }
-
-  // Check if user owns album
-  const isOwner = await isAlbumOwner(uid, albumId);
-
-  if (!isOwner) {
-    const error = formatError(403, "User does not own this album");
-    next(error);
-    return;
-  }
-
-  log.debug(`Editing album ${albumId}`);
-  const updatedAlbum = await prisma.album.update({
-    where: {
-      id: albumId,
-    },
-    data: {
-      title,
-      description,
-      updatedAt,
-      genreId,
-      subgenreId,
-      isSingle,
-    },
-  });
-  res.json({
-    success: true,
-    data: updatedAlbum,
-  });
-});
-
-const update_album_art = asyncHandler(async (req, res, next) => {
   const request = {
     userId: req["uid"],
     artwork: req.file,
     albumId: req.body.albumId,
+    title: req.body.title,
+    genreId: req.body.genreId,
+    subgenreId: req.body.subgenreId,
+    description: req.body.description,
+    isSingle: req.body.isSingle ?? false,
   };
 
+  const artwork = req.file;
+  const updatedAt = new Date();
+
   if (!request.albumId) {
-    res.status(400).send("albumId is required");
+    const error = formatError(400, "albumId field is required");
+    next(error);
+    return;
   }
 
   if (!validate(request.albumId)) {
@@ -369,63 +279,29 @@ const update_album_art = asyncHandler(async (req, res, next) => {
     next(error);
     return;
   }
+  const cdnImageUrl = artwork
+    ? await upload_image(artwork, request.albumId)
+    : undefined;
 
-  const uploadPath = request.artwork.path;
-
-  const convertPath = `${localConvertPath}/${request.albumId}.jpg`;
-  const s3Key = `${AWS_S3_IMAGE_PREFIX}/${request.albumId}.jpg`;
-
-  log.debug(`Editing album artwork ${request.albumId}`);
-
-  // Upload new image
-  Jimp.read(uploadPath)
-    .then((img) => {
-      return img
-        .resize(500, 500) // resize
-        .quality(60) // set JPEG quality
-        .writeAsync(convertPath); // save
-    })
-    // Upload to S3
-    .then((img) => {
-      s3Client.uploadS3(convertPath, s3Key, "artwork").then((data) => {
-        log.trace(data);
-        log.debug(
-          `Artwork for ${request.albumId} uploaded to S3 ${data.Location}, refreshing cache...`
-        );
-        invalidateCdn(s3Key);
-      });
-    })
-    .then(() => {
-      const liveUrl = `${cdnDomain}/${s3Key}`;
-      db.knex("album")
-        .where("id", "=", request.albumId)
-        .update({ artwork_url: liveUrl, updated_at: db.knex.fn.now() }, ["id"])
-        .then((data) => {
-          res.send({ success: true, data: data[0] });
-        });
-    })
-    .then(() => {
-      log.debug(`Updated album artwork ${request.albumId}`);
-
-      // Clean up with async calls to avoid blocking response
-      log.info(`Running clean up...`);
-      log.debug(`Deleting local files : ${convertPath} & ${uploadPath}`);
-      fs.unlink(`${convertPath}`, (err) => {
-        if (err) log.debug(`Error deleting local file : ${err}`);
-      });
-      fs.unlink(`${uploadPath}`, (err) => {
-        if (err) log.debug(`Error deleting local file : ${err}`);
-      });
-    })
-    .catch((err) => {
-      if (err instanceof multer.MulterError) {
-        log.debug(`MulterError creating new album: ${err}`);
-        next(err);
-      } else if (err) {
-        log.debug(`Error creating new album: ${err}`);
-        next(err);
-      }
-    });
+  log.debug(`Editing album ${request.albumId}`);
+  const updatedAlbum = await prisma.album.update({
+    where: {
+      id: request.albumId,
+    },
+    data: {
+      title: request.title,
+      description: request.description,
+      updatedAt,
+      genreId: request.genreId,
+      subgenreId: request.subgenreId,
+      isSingle: Boolean(request.isSingle),
+      ...(cdnImageUrl ? { artworkUrl: cdnImageUrl } : {}),
+    },
+  });
+  res.json({
+    success: true,
+    data: updatedAlbum,
+  });
 });
 
 const delete_album = asyncHandler(async (req, res, next) => {
@@ -492,6 +368,5 @@ export default {
   delete_album,
   create_album,
   update_album,
-  update_album_art,
   get_albums_by_artist_id,
 };
