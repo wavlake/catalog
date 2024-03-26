@@ -4,14 +4,12 @@ import { randomUUID } from "crypto";
 import multer from "multer";
 import format from "../library/format";
 import prisma from "../prisma/client";
+import { validate } from "uuid";
 import asyncHandler from "express-async-handler";
 import { formatError } from "../library/errors";
 import { isPodcastOwner } from "../library/userHelper";
 import { getStatus } from "../library/helpers";
 import { upload_image } from "../library/artwork";
-
-const localConvertPath = `${process.env.LOCAL_CONVERT_PATH}`;
-const cdnDomain = `${process.env.AWS_CDN_DOMAIN}`;
 
 export const get_podcasts_by_account = asyncHandler(async (req, res, next) => {
   const { uid } = req.params;
@@ -35,6 +33,13 @@ export const get_podcasts_by_account = asyncHandler(async (req, res, next) => {
 
 export const get_podcast_by_id = asyncHandler(async (req, res, next) => {
   const { podcastId } = req.params;
+  if (!validate(podcastId)) {
+    res.status(400).json({
+      success: false,
+      error: "Invalid podcastId",
+    });
+    return;
+  }
 
   const podcast = await prisma.podcast.findFirstOrThrow({
     where: { id: podcastId },
@@ -177,6 +182,13 @@ export const update_podcast = asyncHandler(async (req, res, next) => {
     return;
   }
 
+  if (!validate(podcastId)) {
+    res.status(400).json({
+      success: false,
+      error: "Invalid podcastId",
+    });
+    return;
+  }
   // Check if user owns podcast
   const isOwner = await isPodcastOwner(uid, podcastId);
 
@@ -191,28 +203,44 @@ export const update_podcast = asyncHandler(async (req, res, next) => {
     : undefined;
 
   log.debug(`Editing podcast ${podcastId}`);
-  const updatedPodcast = await prisma.podcast.update({
-    where: {
-      id: podcastId,
-    },
-    data: {
-      name,
-      description,
-      twitter,
-      npub,
-      instagram,
-      youtube,
-      website,
-      updatedAt,
-      primaryCategoryId,
-      secondaryCategoryId,
-      primarySubcategoryId,
-      secondarySubcategoryId,
-      ...(cdnImageUrl ? { artworkUrl: cdnImageUrl } : {}),
-    },
-  });
+  const updatedPodcast = await prisma.podcast
+    .update({
+      where: {
+        id: podcastId,
+      },
+      data: {
+        name,
+        description,
+        twitter,
+        npub,
+        instagram,
+        youtube,
+        website,
+        updatedAt,
+        primaryCategoryId: primaryCategoryId
+          ? parseInt(primaryCategoryId)
+          : undefined,
+        secondaryCategoryId: secondaryCategoryId
+          ? parseInt(secondaryCategoryId)
+          : undefined,
+        primarySubcategoryId: primarySubcategoryId
+          ? parseInt(primarySubcategoryId)
+          : undefined,
+        secondarySubcategoryId: secondarySubcategoryId
+          ? parseInt(secondarySubcategoryId)
+          : undefined,
+        artworkUrl: cdnImageUrl,
+      },
+    })
+    .catch((err) => {
+      log.debug(`Error updating podcast ${podcastId}: ${err}`);
+      res.status(500).send("Something went wrong");
+      return;
+    });
 
-  res.json({ success: true, data: updatedPodcast });
+  if (updatedPodcast) {
+    res.json({ success: true, data: updatedPodcast });
+  }
 });
 
 // TODO: Add clean up step for old artwork, see update_podcast_art
@@ -228,6 +256,13 @@ export const delete_podcast = asyncHandler(async (req, res, next) => {
     return;
   }
 
+  if (!validate(request.podcastId)) {
+    res.status(400).json({
+      success: false,
+      error: "Invalid podcastId",
+    });
+    return;
+  }
   // Check if user owns artist
   const isOwner = await isPodcastOwner(request.userId, request.podcastId);
 
