@@ -148,6 +148,16 @@ const get_notification = asyncHandler(async (req, res, next) => {
       return;
     });
 
+  const latestAnnouncement = await db
+    .knex("announcement")
+    .max("created_at")
+    .first()
+    .then((data) => {
+      if (!data?.max) return null;
+
+      return data.max;
+    });
+
   const notifyUser = await db
     .knex("amp")
     .max("created_at")
@@ -157,7 +167,9 @@ const get_notification = asyncHandler(async (req, res, next) => {
     .then((data) => {
       if (!data?.max) return false;
 
-      return data.max > lastActivityCheckAt;
+      const latestDate =
+        latestAnnouncement > data.max ? latestAnnouncement : data.max;
+      return latestDate > lastActivityCheckAt;
     })
     .catch((err) => {
       log.error("Error checking user's latest amp:", err);
