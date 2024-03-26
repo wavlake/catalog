@@ -16,19 +16,26 @@ export const get_podcasts_by_account = asyncHandler(async (req, res, next) => {
 
   if (!uid) {
     res.status(400).send("userId is required");
-  } else {
-    const podcasts = await prisma.podcast.findMany({
+    return;
+  }
+
+  const podcasts = await prisma.podcast
+    .findMany({
       where: { userId: uid, deleted: false },
+    })
+    .catch((err) => {
+      log.debug(`Error fetching podcasts for user ${uid}: ${err}`);
+      res.status(500).send("Something went wrong");
+      return [];
     });
 
-    res.json({
-      success: true,
-      data: podcasts.map((podcast) => ({
-        ...podcast,
-        status: getStatus(podcast.isDraft, podcast.publishedAt),
-      })),
-    });
-  }
+  res.json({
+    success: true,
+    data: podcasts.map((podcast) => ({
+      ...podcast,
+      status: getStatus(podcast.isDraft, podcast.publishedAt),
+    })),
+  });
 });
 
 export const get_podcast_by_id = asyncHandler(async (req, res, next) => {
@@ -41,9 +48,20 @@ export const get_podcast_by_id = asyncHandler(async (req, res, next) => {
     return;
   }
 
-  const podcast = await prisma.podcast.findFirstOrThrow({
-    where: { id: podcastId },
-  });
+  const podcast = await prisma.podcast
+    .findFirstOrThrow({
+      where: { id: podcastId },
+    })
+    .catch((err) => {
+      log.debug(`No podcast found for id: ${podcastId}`);
+      log.debug(err);
+      return;
+    });
+
+  if (!podcast) {
+    res.status(404).json({ success: false, error: "Podcast not found" });
+    return;
+  }
 
   res.json({ success: true, data: podcast });
 });
@@ -51,10 +69,20 @@ export const get_podcast_by_id = asyncHandler(async (req, res, next) => {
 export const get_podcast_by_url = asyncHandler(async (req, res, next) => {
   const { podcastUrl } = req.params;
 
-  const podcast = await prisma.podcast.findFirstOrThrow({
-    where: { podcastUrl },
-  });
+  const podcast = await prisma.podcast
+    .findFirstOrThrow({
+      where: { podcastUrl },
+    })
+    .catch((err) => {
+      log.debug(`No podcast found for url: ${podcastUrl}`);
+      log.debug(err);
+      return;
+    });
 
+  if (!podcast) {
+    res.status(404).json({ success: false, error: "Podcast not found" });
+    return;
+  }
   res.json({ success: true, data: podcast });
 });
 
@@ -297,6 +325,7 @@ export const delete_podcast = asyncHandler(async (req, res, next) => {
     })
     .catch((err) => {
       log.debug(`Error deleting podcast ${request.podcastId}: ${err}`);
-      next(err);
+      res.status(500).send("Something went wrong");
+      return;
     });
 });
