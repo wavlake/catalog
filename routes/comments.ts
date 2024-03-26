@@ -8,11 +8,6 @@ const router = express.Router();
 //////// ROUTES ////////
 
 router.get(
-  "/:contentId/:page?/:pageSize?",
-  validatePaginationAndId("contentId"),
-  commentsController.get_comments
-);
-router.get(
   "/show/:podcastId/:page?/:pageSize?",
   validatePaginationAndId("podcastId"),
   commentsController.get_podcast_comments
@@ -28,5 +23,11 @@ router.get(
   commentsController.get_album_comments
 );
 
+// this must be last so that contentId doesn't match the other routes
+router.get(
+  "/:contentId/:page?/:pageSize?",
+  validatePaginationAndId("contentId"),
+  commentsController.get_comments
+);
 // Export router
 export default router;
