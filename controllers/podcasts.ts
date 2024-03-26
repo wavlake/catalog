@@ -4,41 +4,63 @@ import { randomUUID } from "crypto";
 import multer from "multer";
 import format from "../library/format";
 import prisma from "../prisma/client";
+import { validate } from "uuid";
 import asyncHandler from "express-async-handler";
-import { formatError } from "../library/errors";
 import { isPodcastOwner } from "../library/userHelper";
 import { getStatus } from "../library/helpers";
 import { upload_image } from "../library/artwork";
-
-const localConvertPath = `${process.env.LOCAL_CONVERT_PATH}`;
-const cdnDomain = `${process.env.AWS_CDN_DOMAIN}`;
 
 export const get_podcasts_by_account = asyncHandler(async (req, res, next) => {
   const { uid } = req.params;
 
   if (!uid) {
     res.status(400).send("userId is required");
-  } else {
-    const podcasts = await prisma.podcast.findMany({
+    return;
+  }
+
+  const podcasts = await prisma.podcast
+    .findMany({
       where: { userId: uid, deleted: false },
+    })
+    .catch((err) => {
+      log.debug(`Error fetching podcasts for user ${uid}: ${err}`);
+      res.status(500).send("Something went wrong");
+      return [];
     });
 
-    res.json({
-      success: true,
-      data: podcasts.map((podcast) => ({
-        ...podcast,
-        status: getStatus(podcast.isDraft, podcast.publishedAt),
-      })),
-    });
-  }
+  res.json({
+    success: true,
+    data: podcasts.map((podcast) => ({
+      ...podcast,
+      status: getStatus(podcast.isDraft, podcast.publishedAt),
+    })),
+  });
 });
 
 export const get_podcast_by_id = asyncHandler(async (req, res, next) => {
   const { podcastId } = req.params;
+  if (!validate(podcastId)) {
+    res.status(400).json({
+      success: false,
+      error: "Invalid podcastId",
+    });
+    return;
+  }
 
-  const podcast = await prisma.podcast.findFirstOrThrow({
-    where: { id: podcastId },
-  });
+  const podcast = await prisma.podcast
+    .findFirstOrThrow({
+      where: { id: podcastId },
+    })
+    .catch((err) => {
+      log.debug(`No podcast found for id: ${podcastId}`);
+      log.debug(err);
+      return;
+    });
+
+  if (!podcast) {
+    res.status(404).json({ success: false, error: "Podcast not found" });
+    return;
+  }
 
   res.json({ success: true, data: podcast });
 });
@@ -46,10 +68,20 @@ export const get_podcast_by_id = asyncHandler(async (req, res, next) => {
 export const get_podcast_by_url = asyncHandler(async (req, res, next) => {
   const { podcastUrl } = req.params;
 
-  const podcast = await prisma.podcast.findFirstOrThrow({
-    where: { podcastUrl },
-  });
+  const podcast = await prisma.podcast
+    .findFirstOrThrow({
+      where: { podcastUrl },
+    })
+    .catch((err) => {
+      log.debug(`No podcast found for url: ${podcastUrl}`);
+      log.debug(err);
+      return;
+    });
 
+  if (!podcast) {
+    res.status(404).json({ success: false, error: "Podcast not found" });
+    return;
+  }
   res.json({ success: true, data: podcast });
 });
 
@@ -73,8 +105,10 @@ export const create_podcast = asyncHandler(async (req, res, next) => {
   const artwork = req.file;
 
   if (!name) {
-    const error = formatError(403, "Podcast name is required");
-    next(error);
+    res.status(400).json({
+      success: false,
+      error: "name field is required",
+    });
     return;
   }
 
@@ -172,17 +206,28 @@ export const update_podcast = asyncHandler(async (req, res, next) => {
   const updatedAt = new Date();
 
   if (!podcastId) {
-    const error = formatError(403, "podcastId field is required");
-    next(error);
+    res.status(400).json({
+      success: false,
+      error: "podcastId field is required",
+    });
     return;
   }
 
+  if (!validate(podcastId)) {
+    res.status(400).json({
+      success: false,
+      error: "Invalid podcastId",
+    });
+    return;
+  }
   // Check if user owns podcast
   const isOwner = await isPodcastOwner(uid, podcastId);
 
   if (!isOwner) {
-    const error = formatError(403, "User does not own this podcast");
-    next(error);
+    res.status(403).json({
+      success: false,
+      error: "User does not own this podcast",
+    });
     return;
   }
 
@@ -191,28 +236,44 @@ export const update_podcast = asyncHandler(async (req, res, next) => {
     : undefined;
 
   log.debug(`Editing podcast ${podcastId}`);
-  const updatedPodcast = await prisma.podcast.update({
-    where: {
-      id: podcastId,
-    },
-    data: {
-      name,
-      description,
-      twitter,
-      npub,
-      instagram,
-      youtube,
-      website,
-      updatedAt,
-      primaryCategoryId,
-      secondaryCategoryId,
-      primarySubcategoryId,
-      secondarySubcategoryId,
-      ...(cdnImageUrl ? { artworkUrl: cdnImageUrl } : {}),
-    },
-  });
+  const updatedPodcast = await prisma.podcast
+    .update({
+      where: {
+        id: podcastId,
+      },
+      data: {
+        name,
+        description,
+        twitter,
+        npub,
+        instagram,
+        youtube,
+        website,
+        updatedAt,
+        primaryCategoryId: primaryCategoryId
+          ? parseInt(primaryCategoryId)
+          : undefined,
+        secondaryCategoryId: secondaryCategoryId
+          ? parseInt(secondaryCategoryId)
+          : undefined,
+        primarySubcategoryId: primarySubcategoryId
+          ? parseInt(primarySubcategoryId)
+          : undefined,
+        secondarySubcategoryId: secondarySubcategoryId
+          ? parseInt(secondarySubcategoryId)
+          : undefined,
+        artworkUrl: cdnImageUrl,
+      },
+    })
+    .catch((err) => {
+      log.debug(`Error updating podcast ${podcastId}: ${err}`);
+      res.status(500).send("Something went wrong");
+      return;
+    });
 
-  res.json({ success: true, data: updatedPodcast });
+  if (updatedPodcast) {
+    res.json({ success: true, data: updatedPodcast });
+  }
 });
 
 // TODO: Add clean up step for old artwork, see update_podcast_art
@@ -223,42 +284,58 @@ export const delete_podcast = asyncHandler(async (req, res, next) => {
   };
 
   if (!request.podcastId) {
-    const error = formatError(403, "podcastId field is required");
-    next(error);
+    res.status(400).json({
+      success: false,
+      error: "podcastId field is required",
+    });
     return;
   }
 
+  if (!validate(request.podcastId)) {
+    res.status(400).json({
+      success: false,
+      error: "Invalid podcastId",
+    });
+    return;
+  }
   // Check if user owns artist
   const isOwner = await isPodcastOwner(request.userId, request.podcastId);
 
   if (!isOwner) {
-    const error = formatError(403, "User does not own this podcast");
-    next(error);
+    res.status(403).json({
+      success: false,
+      error: "User does not own this podcast",
+    });
     return;
   }
 
   log.debug(`Checking episodes for podcast ${request.podcastId}`);
-  db.knex("episode")
+  const episodes = await db
+    .knex("episode")
     .select("episode.podcast_id as podcastId", "episode.deleted")
     .where("episode.podcast_id", "=", request.podcastId)
     .andWhere("episode.deleted", false)
+    .catch((err) => {
+      log.debug(`Error deleting podcast ${request.podcastId}: ${err}`);
+      res.status(500).send("Something went wrong");
+      return;
+    });
+
+  if (Array.isArray(episodes) && episodes.length > 0) {
+    res.status(403).json({
+      success: false,
+      error: "Podcast has undeleted episodes",
+    });
+    return;
+  }
+
+  log.debug(`Deleting podcast ${request.podcastId}`);
+  return db
+    .knex("podcast")
+    .where("id", "=", request.podcastId)
+    .update({ deleted: true }, ["id", "name"])
     .then((data) => {
-      if (data.length > 0) {
-        const error = formatError(403, "Podcast has undeleted episodes");
-        next(error);
-      } else {
-        log.debug(`Deleting podcast ${request.podcastId}`);
-        db.knex("podcast")
-          .where("id", "=", request.podcastId)
-          .update({ deleted: true }, ["id", "name"])
-          .then((data) => {
-            res.send({ success: true, data: data[0] });
-          })
-          .catch((err) => {
-            log.debug(`Error deleting podcast ${request.podcastId}: ${err}`);
-            next(err);
-          });
-      }
+      res.send({ success: true, data: data[0] });
     })
     .catch((err) => {
       log.debug(`Error deleting podcast ${request.podcastId}: ${err}`);
