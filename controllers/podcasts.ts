@@ -6,7 +6,6 @@ import format from "../library/format";
 import prisma from "../prisma/client";
 import { validate } from "uuid";
 import asyncHandler from "express-async-handler";
-import { formatError } from "../library/errors";
 import { isPodcastOwner } from "../library/userHelper";
 import { getStatus } from "../library/helpers";
 import { upload_image } from "../library/artwork";
@@ -106,8 +105,10 @@ export const create_podcast = asyncHandler(async (req, res, next) => {
   const artwork = req.file;
 
   if (!name) {
-    const error = formatError(403, "Podcast name is required");
-    next(error);
+    res.status(400).json({
+      success: false,
+      error: "name field is required",
+    });
     return;
   }
 
@@ -205,8 +206,10 @@ export const update_podcast = asyncHandler(async (req, res, next) => {
   const updatedAt = new Date();
 
   if (!podcastId) {
-    const error = formatError(403, "podcastId field is required");
-    next(error);
+    res.status(400).json({
+      success: false,
+      error: "podcastId field is required",
+    });
     return;
   }
 
@@ -221,8 +224,10 @@ export const update_podcast = asyncHandler(async (req, res, next) => {
   const isOwner = await isPodcastOwner(uid, podcastId);
 
   if (!isOwner) {
-    const error = formatError(403, "User does not own this podcast");
-    next(error);
+    res.status(403).json({
+      success: false,
+      error: "User does not own this podcast",
+    });
     return;
   }
 
@@ -279,8 +284,10 @@ export const delete_podcast = asyncHandler(async (req, res, next) => {
   };
 
   if (!request.podcastId) {
-    const error = formatError(403, "podcastId field is required");
-    next(error);
+    res.status(400).json({
+      success: false,
+      error: "podcastId field is required",
+    });
     return;
   }
 
@@ -295,37 +302,43 @@ export const delete_podcast = asyncHandler(async (req, res, next) => {
   const isOwner = await isPodcastOwner(request.userId, request.podcastId);
 
   if (!isOwner) {
-    const error = formatError(403, "User does not own this podcast");
-    next(error);
+    res.status(403).json({
+      success: false,
+      error: "User does not own this podcast",
+    });
     return;
   }
 
   log.debug(`Checking episodes for podcast ${request.podcastId}`);
-  db.knex("episode")
+  const episodes = await db
+    .knex("episode")
     .select("episode.podcast_id as podcastId", "episode.deleted")
     .where("episode.podcast_id", "=", request.podcastId)
     .andWhere("episode.deleted", false)
-    .then((data) => {
-      if (data.length > 0) {
-        const error = formatError(403, "Podcast has undeleted episodes");
-        next(error);
-      } else {
-        log.debug(`Deleting podcast ${request.podcastId}`);
-        db.knex("podcast")
-          .where("id", "=", request.podcastId)
-          .update({ deleted: true }, ["id", "name"])
-          .then((data) => {
-            res.send({ success: true, data: data[0] });
-          })
-          .catch((err) => {
-            log.debug(`Error deleting podcast ${request.podcastId}: ${err}`);
-            next(err);
-          });
-      }
-    })
     .catch((err) => {
       log.debug(`Error deleting podcast ${request.podcastId}: ${err}`);
       res.status(500).send("Something went wrong");
       return;
+    });
+
+  if (Array.isArray(episodes) && episodes.length > 0) {
+    res.status(403).json({
+      success: false,
+      error: "Podcast has undeleted episodes",
+    });
+    return;
+  }
+
+  log.debug(`Deleting podcast ${request.podcastId}`);
+  return db
+    .knex("podcast")
+    .where("id", "=", request.podcastId)
+    .update({ deleted: true }, ["id", "name"])
+    .then((data) => {
+      res.send({ success: true, data: data[0] });
+    })
+    .catch((err) => {
+      log.debug(`Error deleting podcast ${request.podcastId}: ${err}`);
+      next(err);
     });
 });
