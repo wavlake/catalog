@@ -128,12 +128,57 @@ const get_activity = asyncHandler(async (req, res, next) => {
     });
 });
 
+const get_announcements = asyncHandler(async (req, res, next) => {
+  const request = {
+    accountId: req["uid"],
+  };
+
+  const lastActivityCheckAt = await db
+    .knex("user")
+    .select("last_activity_check_at")
+    .where("id", "=", request.accountId)
+    .first()
+    .then((data) => {
+      return data.last_activity_check_at;
+    })
+    .catch((err) => {
+      log.error("Error checking user's last activity check:", err);
+      next(err);
+      return;
+    });
+
+  // Add a day to the last activity check to ensure we don't miss any announcements
+  const lastActivityCheckPlus24Hours = new Date(lastActivityCheckAt);
+  lastActivityCheckPlus24Hours.setHours(
+    lastActivityCheckPlus24Hours.getHours() + 24
+  );
+
+  db.knex("announcement")
+    .select(
+      "id as id",
+      "title as title",
+      "content as content",
+      "created_at as createdAt"
+    )
+    .where("announcement.created_at", "<", lastActivityCheckPlus24Hours)
+    .orderBy("announcement.created_at", "desc")
+    .then((data) => {
+      res.send({
+        success: true,
+        data: data,
+      });
+    })
+    .catch((err) => {
+      next(err);
+      return;
+    });
+});
+
 const get_notification = asyncHandler(async (req, res, next) => {
   const request = {
     accountId: req["uid"],
   };
 
-  // console.log(request)
   const lastActivityCheckAt = await db
     .knex("user")
     .select("last_activity_check_at")
@@ -288,6 +333,7 @@ const get_history = asyncHandler(async (req, res, next) => {
 export default {
   get_account,
   get_activity,
+  get_announcements,
   get_notification,
   put_notification,
   get_features,
