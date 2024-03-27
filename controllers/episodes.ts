@@ -4,7 +4,6 @@ import log from "loglevel";
 import { randomUUID } from "crypto";
 import s3Client from "../library/s3Client";
 import asyncHandler from "express-async-handler";
-import { formatError } from "../library/errors";
 import { isEpisodeOwner, isPodcastOwner } from "../library/userHelper";
 import { AWS_S3_EPISODE_PREFIX, AWS_S3_RAW_PREFIX } from "../library/constants";
 
@@ -79,8 +78,10 @@ export const delete_episode = asyncHandler(async (req, res, next) => {
   const uid = req["uid"];
 
   if (!episodeId) {
-    const error = formatError(400, "episodeId field is required");
-    next(error);
+    res.status(400).json({
+      success: false,
+      error: "episodeId field is required",
+    });
     return;
   }
 
@@ -88,8 +89,10 @@ export const delete_episode = asyncHandler(async (req, res, next) => {
   const isOwner = await isEpisodeOwner(uid, episodeId);
 
   if (!isOwner) {
-    const error = formatError(403, "User does not own this episode");
-    next(error);
+    res.status(403).json({
+      success: false,
+      error: "User does not own this episode",
+    });
     return;
   }
 
@@ -129,16 +132,20 @@ export const create_episode = asyncHandler(async (req, res, next) => {
   };
 
   if (!request.podcastId) {
-    const error = formatError(400, "podcastId field is required");
-    next(error);
+    res.status(400).json({
+      success: false,
+      error: "podcastId field is required",
+    });
     return;
   }
 
   const isOwner = await isPodcastOwner(request.userId, request.podcastId);
 
   if (!isOwner) {
-    const error = formatError(403, "User does not own this album");
-    next(error);
+    res.status(403).json({
+      success: false,
+      error: "User does not own this podcast",
+    });
     return;
   }
 
@@ -158,12 +165,15 @@ export const create_episode = asyncHandler(async (req, res, next) => {
   const liveUrl = `${cdnDomain}/${s3Key}`;
 
   if (presignedUrl == null) {
-    const error = formatError(500, "Error generating presigned URL");
-    next(error);
+    res.status(500).json({
+      success: false,
+      error: "Error generating presigned URL",
+    });
     return;
   }
 
-  db.knex("episode")
+  return db
+    .knex("episode")
     .insert(
       {
         id: newepisodeId,
@@ -213,8 +223,10 @@ export const create_episode = asyncHandler(async (req, res, next) => {
       });
     })
     .catch((err) => {
-      const error = formatError(500, `Error creating new: ${err}`);
-      next(error);
+      res.status(500).json({
+        success: false,
+        error: `Error creating new: ${err}`,
+      });
     });
 });
 
@@ -224,16 +236,20 @@ export const update_episode = asyncHandler(async (req, res, next) => {
   const updatedAt = new Date();
 
   if (!episodeId) {
-    const error = formatError(403, "episodeId field is required");
-    next(error);
+    res.status(400).json({
+      success: false,
+      error: "episodeId field is required",
+    });
     return;
   }
 
   const intOrder = parseInt(order);
   // only validate the order if it's present
   if (!!order && (!intOrder || isNaN(intOrder))) {
-    const error = formatError(400, "order field must be an integer");
-    next(error);
+    res.status(400).json({
+      success: false,
+      error: "order field must be an integer",
+    });
     return;
   }
 
@@ -241,8 +257,10 @@ export const update_episode = asyncHandler(async (req, res, next) => {
   const isOwner = await isEpisodeOwner(uid, episodeId);
 
   if (!isOwner) {
-    const error = formatError(403, "User does not own this episode");
-    next(error);
+    res.status(403).json({
+      success: false,
+      error: "User does not own this episode",
+    });
     return;
   }
 
@@ -260,11 +278,11 @@ export const update_episode = asyncHandler(async (req, res, next) => {
       .first();
 
     if (duplicateEpisodeTrack && duplicateEpisodeTrack.id !== episodeId) {
-      const error = formatError(
-        400,
-        "Please pick another title, this show already has an episode with that title."
-      );
-      next(error);
+      res.status(400).json({
+        success: false,
+        error:
+          "Please pick another title, this show already has an episode with that title.",
+      });
       return;
     }
   }

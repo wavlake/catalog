@@ -33,12 +33,11 @@ router.post(
   upload.single("artwork"),
   albumsController.create_album
 );
-router.put("/update", isAuthorized, albumsController.update_album);
-router.put(
-  "/update-art",
-  upload.single("artwork"),
+router.post(
+  "/update",
   isAuthorized,
-  albumsController.update_album_art
+  upload.single("artwork"),
+  albumsController.update_album
 );
 router.delete("/:albumId", isAuthorized, albumsController.delete_album);
 
