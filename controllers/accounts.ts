@@ -4,6 +4,7 @@ import prisma from "../prisma/client";
 import { formatError } from "../library/errors";
 const log = require("loglevel");
 const { auth } = require("../library/firebaseService");
+import { validateLightningAddress } from "../library/zbd/zbdClient";
 
 async function groupSplitPayments(combinedAmps) {
   // Group records by txId
@@ -368,7 +369,50 @@ const post_log_identity = asyncHandler(async (req, res, next) => {
   }
 });
 
+const create_update_lnaddress = asyncHandler(async (req, res, next) => {
+  const userId = req["uid"];
+  const { lightningAddress } = req.body;
+
+  if (!lightningAddress) {
+    res.status(400).json({
+      success: false,
+      error: "Address is required",
+    });
+    return;
+  }
+
+  const isValidAddress = await validateLightningAddress(lightningAddress);
+
+  if (!isValidAddress) {
+    res.status(400).json({
+      success: false,
+      error: "Invalid lightning address",
+    });
+    return;
+  }
+
+  try {
+    await prisma.user.update({
+      where: {
+        id: userId,
+      },
+      data: {
+        lightningAddress: lightningAddress,
+      },
+    });
+
+    res.send({
+      success: true,
+      data: { userId: userId, lightningAddress: lightningAddress },
+    });
+  } catch (err) {
+    next(err);
+    return;
+  }
+});
+
 export default {
+  create_update_lnaddress,
   get_account,
   get_activity,
   get_announcements,

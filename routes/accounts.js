@@ -60,6 +60,11 @@ router.post(
   isZbdRegion,
   accountsController.post_log_identity
 );
+router.post(
+  "/ln-address",
+  isAuthorized,
+  accountsController.create_update_lnaddress
+);
 
 // Export router
 export default router;
