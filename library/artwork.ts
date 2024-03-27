@@ -14,7 +14,7 @@ const TYPE_SETTINGS = {
   artist: {
     width: 1875,
     height: Jimp.AUTO,
-    quality: 70,
+    quality: 60,
   },
   album: {
     width: 500,
