@@ -126,3 +126,17 @@ export async function payToLightningAddress(
     });
   return data;
 }
+
+export async function validateLightningAddress(
+  lightningAddress: string
+): Promise<boolean> {
+  return client
+    .get(`https://api.zebedee.io/v0/ln-address/validate/${lightningAddress}`)
+    .then((res) => {
+      return res.data.data.valid;
+    })
+    .catch((err) => {
+      log.trace(err);
+      return false;
+    });
+}
