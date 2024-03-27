@@ -65,15 +65,11 @@ const upload_image = async (
 
     // Clean up with async calls to avoid blocking response
     log.debug(`Deleting local files: ${convertPath} & ${uploadPath}`);
-    fs.unlink(`${convertPath}`, (err) => {
-      if (err) log.debug(`Error deleting local file: ${err}`);
-    });
+    fs.unlinkSync(convertPath)
     if (artworkFile) {
       // only delete the new image if it was uploaded
       // skip if we used the default image
-      fs.unlink(`${uploadPath}`, (err) => {
-        if (err) log.debug(`Error deleting local file: ${err}`);
-      });
+      fs.unlinkSync(uploadPath);
     }
 
     const liveUrl = `${cdnDomain}/${s3Key}`;
