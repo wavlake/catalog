@@ -1,8 +1,4 @@
-const log = require("loglevel");
 const { auth } = require("../library/firebaseService");
-const Sentry = require("@sentry/node");
-
-import { formatError } from "../library/errors";
 import asyncHandler from "express-async-handler";
 
 export const isAuthorized = asyncHandler(async (req, res, next) => {
@@ -14,15 +10,15 @@ export const isAuthorized = asyncHandler(async (req, res, next) => {
     try {
       authToken = req.headers.authorization.split(" ")[1];
     } catch (err) {
-      const error = formatError(
-        500,
-        "Authentication failed, error parsing token"
-      );
-      throw error;
+      next({
+        status: 500,
+        message: "Authentication failed, error parsing token",
+      });
+      return;
     }
   } else {
-    const error = formatError(500, "Missing authorization token");
-    throw error;
+    next({ status: 500, message: "Missing authorization token" });
+    return;
   }
 
   await auth()
@@ -33,8 +29,6 @@ export const isAuthorized = asyncHandler(async (req, res, next) => {
       next();
     })
     .catch((err) => {
-      Sentry.captureException(err);
-      const error = formatError(500, "Authentication failed");
-      throw error;
+      next({ status: 403, message: "Authentication failed" });
     });
 });
