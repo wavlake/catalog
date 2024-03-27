@@ -314,7 +314,7 @@ const delete_track = asyncHandler(async (req, res, next) => {
   const isOwner = await isTrackOwner(request.userId, request.trackId);
 
   if (!isOwner) {
-    res.status(400).json({
+    res.status(403).json({
       success: false,
       error: "User does not own this track",
     });

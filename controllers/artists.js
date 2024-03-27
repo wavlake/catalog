@@ -22,7 +22,7 @@ const get_artist_by_url = asyncHandler(async (req, res, next) => {
       where: { artistUrl: request.artistUrl },
     })
     .catch((e) => {
-      res.status(400).json({
+      res.status(404).json({
         success: false,
         error: "No artist found with that url",
       });
