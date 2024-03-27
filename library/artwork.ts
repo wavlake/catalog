@@ -63,10 +63,6 @@ const upload_image = async (
       `Artwork for ${contentId} uploaded to S3 ${s3UploadResult.Location}`
     );
 
-    // Deleting local files
-    fs.unlinkSync(convertPath);
-    fs.unlinkSync(uploadPath);
-
     // Clean up with async calls to avoid blocking response
     log.debug(`Deleting local files: ${convertPath} & ${uploadPath}`);
     fs.unlink(`${convertPath}`, (err) => {
