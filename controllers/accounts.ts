@@ -139,12 +139,7 @@ const get_announcements = asyncHandler(async (req, res, next) => {
     .where("id", "=", request.accountId)
     .first()
     .then((data) => {
-      return data.last_activity_check_at;
-    })
-    .catch((err) => {
-      log.error("Error checking user's last activity check:", err);
-      next(err);
-      return;
+      return data.last_activity_check_at ?? new Date();
     });
 
   // Add a day to the last activity check to ensure we don't miss any announcements
@@ -153,7 +148,8 @@ const get_announcements = asyncHandler(async (req, res, next) => {
     lastActivityCheckPlus24Hours.getHours() + 24
   );
 
-  db.knex("announcement")
+  return db
+    .knex("announcement")
     .select(
       "id as id",
       "title as title",
@@ -167,10 +163,6 @@ const get_announcements = asyncHandler(async (req, res, next) => {
         success: true,
         data: data,
       });
-    })
-    .catch((err) => {
-      next(err);
-      return;
     });
 });
 
@@ -185,12 +177,7 @@ const get_notification = asyncHandler(async (req, res, next) => {
     .where("id", "=", request.accountId)
     .first()
     .then((data) => {
-      return data.last_activity_check_at;
-    })
-    .catch((err) => {
-      log.error("Error checking user's last activity check:", err);
-      next(err);
-      return;
+      return data.last_activity_check_at ?? new Date();
     });
 
   const latestAnnouncement = await db
@@ -215,11 +202,6 @@ const get_notification = asyncHandler(async (req, res, next) => {
       const latestDate =
         latestAnnouncement > data.max ? latestAnnouncement : data.max;
       return latestDate > lastActivityCheckAt;
-    })
-    .catch((err) => {
-      log.error("Error checking user's latest amp:", err);
-      next(err);
-      return;
     });
 
   res.send({
