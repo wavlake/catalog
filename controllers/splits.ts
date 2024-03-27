@@ -2,8 +2,6 @@ import prisma from "../prisma/client";
 import asyncHandler from "express-async-handler";
 import { SplitRecipient } from "@prisma/client";
 import { formatError } from "../library/errors";
-import { SplitContentTypes, isContentOwner } from "../library/userHelper";
-import { checkContentOwnership } from "../library/userHelper";
 
 type ValidatedSplitReceipient = Partial<SplitRecipient> & {
   username?: string;
@@ -14,13 +12,34 @@ type ValidatedSplitReceipient = Partial<SplitRecipient> & {
 
 const parseSplitsAndValidateUsername = async (
   incomingSplits: Array<SplitRecipient & { name: string }>,
-  next: any
+  res: any
 ): Promise<{ userId: string; share: number }[]> => {
   if (incomingSplits.length === 0) {
-    const error = formatError(400, "Must include at least one split recipient");
-    next(error);
-    return;
+    res.status(400).json({
+      success: false,
+      error: "Must include at least one split recipient",
+    });
+    return [];
   }
+
+  if (incomingSplits.length > 10) {
+    res.status(400).json({
+      success: false,
+      error: "Number of split recipients must be 10 or fewer",
+    });
+    return [];
+  }
+
+  const uniqueUserNames = new Set(incomingSplits.map((split) => split.name));
+  if (uniqueUserNames.size !== incomingSplits.length) {
+    res.status(400).json({
+      success: false,
+      error:
+        "Each split recipient must be unique, duplicate usernames are not allowed",
+    });
+    return [];
+  }
+
   const allSplitSharesAreValid = incomingSplits.every((split) => {
     return (
       !!split.share &&
@@ -31,27 +50,17 @@ const parseSplitsAndValidateUsername = async (
     );
   });
   if (!allSplitSharesAreValid) {
-    const error = formatError(
-      400,
-      "Each split share must be a positive integer"
-    );
-    next(error);
-    return;
+    res.status(400).json({
+      success: false,
+      error: "Each split share must be a positive integer",
+    });
+    return [];
   }
 
-  let userTracker = []; // used to check for duplicate usernames
   const validatedSplits = await Promise.all<ValidatedSplitReceipient>(
     incomingSplits.map(async (split) => {
       const { name: username, share } = split;
       const hasValidData = username && share && typeof share === "number";
-
-      // check for duplicate usernames
-      if (userTracker.includes(username)) {
-        const error = formatError(400, "Splits must have unique users");
-        next(error);
-        return;
-      }
-      userTracker.push(username);
 
       // guard against invalid data
       if (!hasValidData) {
@@ -84,13 +93,12 @@ const parseSplitsAndValidateUsername = async (
     .map((split) => split.username);
 
   if (!!invalidUserNames.length) {
-    const error = formatError(
-      404,
-      `Username${
+    res.status(404).json({
+      success: false,
+      error: `Username${
         invalidUserNames.length === 1 ? "" : "s"
-      } not found: "${invalidUserNames.join(`", "`)}"`
-    );
-    next(error);
+      } not found: "${invalidUserNames.join(`", "`)}"`,
+    });
     return [];
   }
 
@@ -104,17 +112,31 @@ const parseSplitsAndValidateUsername = async (
 };
 
 const create_split = asyncHandler(async (req, res, next) => {
-  await checkContentOwnership(req, res, next);
-
   const { contentId, contentType, splitRecipients } = req.body;
 
   const newSplitsForDb = await parseSplitsAndValidateUsername(
     splitRecipients,
-    next
+    res
   );
+
   if (!newSplitsForDb.length) {
-    // parseSplitsAndValidateUsername will handle any invalid usernames
-    // if an invalid username is found, next() is called with an error and an empty array is returned
+    // parseSplitsAndValidateUsername will handle any invalid usernames and error responses
+    // if an invalid username is found, an empty array is returned
+    return;
+  }
+
+  const existingSplit = await prisma.split.findFirst({
+    where: {
+      contentId: contentId,
+      contentType: contentType,
+    },
+  });
+
+  if (existingSplit) {
+    res.status(400).json({
+      success: false,
+      error: "Split already exists for this content, please update it instead.",
+    });
     return;
   }
 
@@ -144,15 +166,9 @@ const get_split = asyncHandler(async (req, res, next) => {
   const { contentId, contentType } = req.params;
 
   if (!contentId || !contentType) {
-    const error = formatError(
-      400,
-      "Must include both contentId and contentType"
-    );
-    next(error);
+    res.status(400).json("Must include both contentId and contentType");
     return;
   }
-
-  await checkContentOwnership(req, res, next);
 
   try {
     const split = await prisma.split.findFirst({
@@ -182,15 +198,10 @@ const get_split = asyncHandler(async (req, res, next) => {
 });
 
 const update_split = asyncHandler(async (req, res, next) => {
-  await checkContentOwnership(req, res, next);
   const { contentId, contentType, splitRecipients } = req.body;
 
   if (!contentId || !contentType) {
-    const error = formatError(
-      400,
-      "Must include both contentId and contentType"
-    );
-    next(error);
+    res.status(400).json("Must include both contentId and contentType");
     return;
   }
 
@@ -205,14 +216,13 @@ const update_split = asyncHandler(async (req, res, next) => {
   });
 
   if (!splitId) {
-    const error = formatError(404, "Split not found");
-    next(error);
+    res.status(404).json("Split not found");
     return;
   }
 
   const newSplitsForDb = await parseSplitsAndValidateUsername(
     splitRecipients,
-    next
+    res
   );
   if (!newSplitsForDb.length) {
     return;
@@ -247,8 +257,10 @@ const check_usernames = asyncHandler(async (req, res, next) => {
   const { usernames } = req.body;
 
   if (!usernames || !usernames.length) {
-    const error = formatError(400, "Must include at least one username");
-    next(error);
+    res.status(400).json({
+      success: false,
+      error: "Must include at least one username",
+    });
     return;
   }
 

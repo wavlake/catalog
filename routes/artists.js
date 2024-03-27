@@ -32,13 +32,11 @@ router.post(
   isAuthorized,
   artistsController.create_artist
 );
-router.put("/update", isAuthorized, artistsController.update_artist);
-// TODO: Update art should probably be part of update
-router.put(
-  "/update-art",
+router.post(
+  "/update",
   upload.single("artwork"),
   isAuthorized,
-  artistsController.update_artist_art
+  artistsController.update_artist
 );
 router.delete("/:artistId", isAuthorized, artistsController.delete_artist);
 

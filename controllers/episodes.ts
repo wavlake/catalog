@@ -4,7 +4,6 @@ import log from "loglevel";
 import { randomUUID } from "crypto";
 import s3Client from "../library/s3Client";
 import asyncHandler from "express-async-handler";
-import { formatError } from "../library/errors";
 import { isEpisodeOwner, isPodcastOwner } from "../library/userHelper";
 import { AWS_S3_EPISODE_PREFIX, AWS_S3_RAW_PREFIX } from "../library/constants";
 
@@ -79,8 +78,10 @@ export const delete_episode = asyncHandler(async (req, res, next) => {
   const uid = req["uid"];
 
   if (!episodeId) {
-    const error = formatError(400, "episodeId field is required");
-    next(error);
+    res.status(400).json({
+      success: false,
+      error: "episodeId field is required",
+    });
     return;
   }
 
@@ -88,8 +89,10 @@ export const delete_episode = asyncHandler(async (req, res, next) => {
   const isOwner = await isEpisodeOwner(uid, episodeId);
 
   if (!isOwner) {
-    const error = formatError(403, "User does not own this episode");
-    next(error);
+    res.status(403).json({
+      success: false,
+      error: "User does not own this episode",
+    });
     return;
   }
 
@@ -124,22 +127,25 @@ export const create_episode = asyncHandler(async (req, res, next) => {
     userId: req["uid"],
     order: req.body.order == "" ? 0 : parseInt(req.body.order),
     extension: req.body.extension ?? "mp3",
-    isDraft: req.body.isDraft ?? false,
     description: req.body.description,
     isExplicit: req.body.isExplicit ?? false,
   };
 
   if (!request.podcastId) {
-    const error = formatError(400, "podcastId field is required");
-    next(error);
+    res.status(400).json({
+      success: false,
+      error: "podcastId field is required",
+    });
     return;
   }
 
   const isOwner = await isPodcastOwner(request.userId, request.podcastId);
 
   if (!isOwner) {
-    const error = formatError(403, "User does not own this album");
-    next(error);
+    res.status(403).json({
+      success: false,
+      error: "User does not own this podcast",
+    });
     return;
   }
 
@@ -159,12 +165,15 @@ export const create_episode = asyncHandler(async (req, res, next) => {
   const liveUrl = `${cdnDomain}/${s3Key}`;
 
   if (presignedUrl == null) {
-    const error = formatError(500, "Error generating presigned URL");
-    next(error);
+    res.status(500).json({
+      success: false,
+      error: "Error generating presigned URL",
+    });
     return;
   }
 
-  db.knex("episode")
+  return db
+    .knex("episode")
     .insert(
       {
         id: newepisodeId,
@@ -175,7 +184,8 @@ export const create_episode = asyncHandler(async (req, res, next) => {
         description: request.description,
         raw_url: s3RawUrl,
         is_processing: true,
-        is_draft: req.body.isDraft,
+        // all newly created content starts a draft, user must publish after creation
+        is_draft: true,
         is_explicit: req.body.isExplicit,
       },
       ["*"]
@@ -213,29 +223,33 @@ export const create_episode = asyncHandler(async (req, res, next) => {
       });
     })
     .catch((err) => {
-      const error = formatError(500, `Error creating new: ${err}`);
-      next(error);
+      res.status(500).json({
+        success: false,
+        error: `Error creating new: ${err}`,
+      });
     });
 });
 
 export const update_episode = asyncHandler(async (req, res, next) => {
-  const {
-    episodeId,
-    title,
-    order,
-    isDraft,
-    // TODO - consume this when scheduling is implemented
-    // ensure time zones are properly handled
-    publishedAt: publishedAtString,
-    description,
-    isExplicit,
-  } = req.body;
+  const { episodeId, title, order, description, isExplicit } = req.body;
   const uid = req["uid"];
   const updatedAt = new Date();
 
   if (!episodeId) {
-    const error = formatError(403, "episodeId field is required");
-    next(error);
+    res.status(400).json({
+      success: false,
+      error: "episodeId field is required",
+    });
+    return;
+  }
+
+  const intOrder = parseInt(order);
+  // only validate the order if it's present
+  if (!!order && (!intOrder || isNaN(intOrder))) {
+    res.status(400).json({
+      success: false,
+      error: "order field must be an integer",
+    });
     return;
   }
 
@@ -243,9 +257,34 @@ export const update_episode = asyncHandler(async (req, res, next) => {
   const isOwner = await isEpisodeOwner(uid, episodeId);
 
   if (!isOwner) {
-    const error = formatError(403, "User does not own this episode");
-    next(error);
+    res.status(403).json({
+      success: false,
+      error: "User does not own this episode",
+    });
     return;
+  }
+
+  const unEditedEpisode = await prisma.episode.findFirst({
+    where: { id: episodeId },
+  });
+
+  // if we are updating the title, check if the show already has an episode with that title
+  if (title !== undefined) {
+    const duplicateEpisodeTrack = await db
+      .knex("episode")
+      .where("podcast_id", "=", unEditedEpisode.podcastId)
+      .andWhere("title", "=", title)
+      .andWhere("deleted", "=", false)
+      .first();
+
+    if (duplicateEpisodeTrack && duplicateEpisodeTrack.id !== episodeId) {
+      res.status(400).json({
+        success: false,
+        error:
+          "Please pick another title, this show already has an episode with that title.",
+      });
+      return;
+    }
   }
 
   log.debug(`Editing episode ${episodeId}`);
@@ -255,9 +294,8 @@ export const update_episode = asyncHandler(async (req, res, next) => {
     },
     data: {
       title,
-      ...(order ? { order: parseInt(order) } : {}),
+      ...(order ? { order: intOrder } : {}),
       updatedAt,
-      isDraft,
       description,
       isExplicit,
     },

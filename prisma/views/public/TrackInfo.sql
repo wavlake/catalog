@@ -19,10 +19,11 @@ SELECT
   track.is_processing,
   track.msat_total,
   track.published_at,
-  album.is_draft,
+  track.is_draft,
   track.is_explicit,
   album.genre_id,
-  album.subgenre_id
+  album.subgenre_id,
+  track.compressor_error
 FROM
   (
     (

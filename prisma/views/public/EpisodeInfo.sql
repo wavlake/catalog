@@ -15,9 +15,10 @@ SELECT
   episode."order",
   episode.is_processing AS "isProcessing",
   episode.published_at AS "publishedAt",
-  podcast.is_draft AS "isDraft",
+  episode.is_draft AS "isDraft",
   podcast.user_id AS "userId",
-  episode.is_explicit AS "isExplicit"
+  episode.is_explicit AS "isExplicit",
+  episode.compressor_error AS "compressorError"
 FROM
   (
     (

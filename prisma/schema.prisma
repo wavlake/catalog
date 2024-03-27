@@ -121,6 +121,9 @@ model external_receive {
   track_id     String?   @db.Uuid
   created_at   DateTime? @default(now()) @db.Timestamptz(6)
   payment_hash String?   @db.VarChar(255)
+  external_id  String?   @db.VarChar(255)
+  updated_at   DateTime? @db.Timestamptz(6)
+  is_pending   Boolean?  @default(false)
 }
 
 model knex_migrations {
@@ -293,26 +296,26 @@ model Subscriber {
 }
 
 model Episode {
-  id               String    @id @unique(map: "episode_id_unique") @db.Uuid
-  title            String    @db.VarChar(255)
-  description      String?   @db.VarChar(1000)
-  podcastId        String    @map("podcast_id") @db.Uuid
-  order            Int
-  playCount        Int?      @default(0) @map("play_count")
-  msatTotal        BigInt?   @default(0) @map("msat_total")
-  liveUrl          String    @map("live_url") @db.VarChar(255)
-  rawUrl           String?   @map("raw_url") @db.VarChar(128)
-  size             Int?
-  duration         Int?
-  deleted          Boolean?  @default(false)
-  isDraft          Boolean?  @default(true) @map("is_draft")
-  isProcessing     Boolean?  @default(false) @map("is_processing")
-  createdAt        DateTime? @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt        DateTime? @default(now()) @map("updated_at") @db.Timestamptz(6)
-  publishedAt      DateTime? @default(now()) @map("published_at") @db.Timestamptz(6)
-  compressor_error Boolean?  @default(false)
-  isExplicit       Boolean?  @default(false) @map("is_explicit")
-  podcast          Podcast   @relation(fields: [podcastId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "episode_podcast_id_foreign")
+  id              String    @id @unique(map: "episode_id_unique") @db.Uuid
+  title           String    @db.VarChar(255)
+  description     String?   @db.VarChar(1000)
+  podcastId       String    @map("podcast_id") @db.Uuid
+  order           Int
+  playCount       Int?      @default(0) @map("play_count")
+  msatTotal       BigInt?   @default(0) @map("msat_total")
+  liveUrl         String    @map("live_url") @db.VarChar(255)
+  rawUrl          String?   @map("raw_url") @db.VarChar(128)
+  size            Int?
+  duration        Int?
+  deleted         Boolean?  @default(false)
+  isDraft         Boolean?  @default(true) @map("is_draft")
+  isProcessing    Boolean?  @default(false) @map("is_processing")
+  createdAt       DateTime? @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime? @default(now()) @map("updated_at") @db.Timestamptz(6)
+  publishedAt     DateTime? @default(now()) @map("published_at") @db.Timestamptz(6)
+  compressorError Boolean?  @default(false) @map("compressor_error")
+  isExplicit      Boolean?  @default(false) @map("is_explicit")
+  podcast         Podcast   @relation(fields: [podcastId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "episode_podcast_id_foreign")
 
   @@index([podcastId], map: "idx_episode_podcast_id")
   @@map("episode")
@@ -478,6 +481,8 @@ model ExternalPayment {
   txId         String?   @map("tx_id") @db.Uuid
   createdAt    DateTime? @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt    DateTime? @default(now()) @map("updated_at") @db.Timestamptz(6)
+  external_id  Boolean?
+  is_pending   Boolean?  @default(true)
   user         User      @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "external_payment_user_id_foreign")
 
   @@map("external_payment")
@@ -565,6 +570,7 @@ view TrackInfo {
   is_explicit     Boolean?
   genreId         Int?      @map("genre_id")
   subgenreId      Int?      @map("subgenre_id")
+  compressorError Boolean?  @map("compressor_error")
 
   @@map("track_info")
 }
@@ -589,6 +595,7 @@ view EpisodeInfo {
   isDraft         Boolean?
   userId          String?   @db.VarChar(255)
   isExplicit      Boolean?
+  compressorError Boolean?
 
   @@map("episode_info")
 }
