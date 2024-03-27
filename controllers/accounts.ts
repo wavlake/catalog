@@ -128,24 +128,66 @@ const get_activity = asyncHandler(async (req, res, next) => {
     });
 });
 
-const get_notification = asyncHandler(async (req, res, next) => {
+const get_announcements = asyncHandler(async (req, res, next) => {
   const request = {
     accountId: req["uid"],
   };
 
-  // console.log(request)
   const lastActivityCheckAt = await db
     .knex("user")
     .select("last_activity_check_at")
     .where("id", "=", request.accountId)
     .first()
     .then((data) => {
-      return data.last_activity_check_at;
-    })
-    .catch((err) => {
-      log.error("Error checking user's last activity check:", err);
-      next(err);
-      return;
+      return data.last_activity_check_at ?? new Date();
+    });
+
+  // Add a day to the last activity check to ensure we don't miss any announcements
+  const lastActivityCheckPlus24Hours = new Date(lastActivityCheckAt);
+  lastActivityCheckPlus24Hours.setHours(
+    lastActivityCheckPlus24Hours.getHours() + 24
+  );
+
+  return db
+    .knex("announcement")
+    .select(
+      "id as id",
+      "title as title",
+      "content as content",
+      "created_at as createdAt"
+    )
+    .where("announcement.created_at", "<", lastActivityCheckPlus24Hours)
+    .orderBy("announcement.created_at", "desc")
+    .then((data) => {
+      res.send({
+        success: true,
+        data: data,
+      });
+    });
+});
+
+const get_notification = asyncHandler(async (req, res, next) => {
+  const request = {
+    accountId: req["uid"],
+  };
+
+  const lastActivityCheckAt = await db
+    .knex("user")
+    .select("last_activity_check_at")
+    .where("id", "=", request.accountId)
+    .first()
+    .then((data) => {
+      return data.last_activity_check_at ?? new Date();
+    });
+
+  const latestAnnouncement = await db
+    .knex("announcement")
+    .max("created_at")
+    .first()
+    .then((data) => {
+      if (!data?.max) return null;
+
+      return data.max;
     });
 
   const notifyUser = await db
@@ -157,12 +199,9 @@ const get_notification = asyncHandler(async (req, res, next) => {
     .then((data) => {
       if (!data?.max) return false;
 
-      return data.max > lastActivityCheckAt;
-    })
-    .catch((err) => {
-      log.error("Error checking user's latest amp:", err);
-      next(err);
-      return;
+      const latestDate =
+        latestAnnouncement > data.max ? latestAnnouncement : data.max;
+      return latestDate > lastActivityCheckAt;
     });
 
   res.send({
@@ -276,6 +315,7 @@ const get_history = asyncHandler(async (req, res, next) => {
 export default {
   get_account,
   get_activity,
+  get_announcements,
   get_notification,
   put_notification,
   get_features,
