@@ -238,7 +238,7 @@ const update_artist = asyncHandler(async (req, res, next) => {
   }
 
   const cdnImageUrl = artwork
-    ? await upload_image(artwork, request.albumId, "artist")
+    ? await upload_image(artwork, request.artistId, "artist")
     : undefined;
 
   log.debug(`Editing artist ${request.artistId}`);
