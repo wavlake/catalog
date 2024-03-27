@@ -1,8 +1,8 @@
 const log = require("loglevel");
 import db from "./db";
 import { checkUserHasSufficientSats, getUserBalance } from "./userHelper";
-import { sendPayment } from "./zbdClient";
-import { SendPaymentResponse } from "../types/zbd";
+import { sendPayment } from "./zbd";
+import { ZBDSendPaymentResponse } from "./zbd/responseInterfaces";
 
 async function checkUserHasPendingTx(userId: string): Promise<boolean> {
   return db
@@ -66,7 +66,7 @@ async function handleCompletedPayment(
   userId: string,
   msatAmount: number,
   paymentRecordId: number,
-  paymentData: SendPaymentResponse
+  paymentData: ZBDSendPaymentResponse
 ) {
   const trx = await db.knex.transaction();
   // Update transaction table and user balance in one tx
@@ -119,7 +119,7 @@ async function handleFailedPayment(
   res: any, // TODO: Use express response type
   userId: string,
   paymentRecordId: number,
-  paymentData: SendPaymentResponse
+  paymentData: ZBDSendPaymentResponse
 ) {
   const trx = await db.knex.transaction();
   // Update transaction table and user status
@@ -168,22 +168,22 @@ async function isDuplicatePayRequest(invoice: string): Promise<boolean> {
 }
 
 export const runPaymentChecks = async (
-  res: any, // TODO: Use express response type
   userId: string,
   invoice: string,
   msatAmount: number,
   msatMaxFee: number
-) => {
+): Promise<any> => {
   const userHasPending = await checkUserHasPendingTx(userId);
   if (userHasPending) {
     log.info(
       `Withdraw request canceled for user: ${userId} another tx is pending`
     );
-    return res
-      ? res
-          .status(400)
-          .send("Another transaction is pending, please try again later")
-      : { success: false, error: "Another transaction is pending" };
+    return {
+      success: false,
+      error: {
+        message: "Another transaction is pending, please try again later",
+      },
+    };
   }
 
   if (invoice) {
@@ -192,11 +192,12 @@ export const runPaymentChecks = async (
       log.info(
         `Withdraw request canceled for user: ${userId} duplicate payment request`
       );
-      return res
-        ? res
-            .status(400)
-            .send("Unable to process payment, duplicate payment request")
-        : { success: false, error: "Duplicate payment request" };
+      return {
+        success: false,
+        error: {
+          message: "Unable to process payment, duplicate payment request",
+        },
+      };
     }
   }
 
@@ -207,9 +208,12 @@ export const runPaymentChecks = async (
   );
 
   if (!userHasSufficientSats) {
-    return res
-      ? res.status(400).send("Insufficient funds")
-      : { success: false, error: "Insufficient funds" };
+    return {
+      success: false,
+      error: {
+        message: "Insufficient funds",
+      },
+    };
   }
 
   return { success: true };
@@ -241,7 +245,7 @@ export const initiatePayment = async (
     description: "Withdrawal",
     amount: msatAmount.toString(),
     invoice: invoice,
-    internalId: paymentRecordId.toString(),
+    internalId: `transaction-${paymentRecordId.toString()}`,
   });
 
   // log.debug(`Payment response: ${JSON.stringify(paymentResponse)}`);

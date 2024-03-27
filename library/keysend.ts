@@ -1,11 +1,8 @@
-const log = require("loglevel");
+import log from "loglevel";
 import db from "./db";
-import amp from "./amp";
-const { getUserName } = require("./userHelper");
-const crypto = require("crypto");
-const { randomUUID } = require("crypto");
-import { ExternalKeysend, ExternalKeysendRequest } from "../types/keysend";
-import { sendKeysend } from "./zbdClient";
+import { getUserName } from "./userHelper";
+import { randomUUID } from "crypto";
+import { sendKeysend } from "./zbd";
 
 const feeLimitMsat = 5000; // Hard-coding for external keysends for now (see also controllers/ampExternal.js)
 
@@ -22,18 +19,29 @@ async function checkIfKeysendIsInternal(keysend) {
   }
 }
 
-async function constructKeysendMetadata(
-  userId: string,
-  externalKeysendRequest: ExternalKeysendRequest
-) {
+export interface KeysendMetadata {
+  message?: string;
+  podcast?: string;
+  guid?: string;
+  feed_id?: string;
+  episode?: string;
+  episode_guid?: string;
+  ts?: string;
+  value_msat_total?: string;
+  action?: string;
+  app_name?: string;
+  sender_name?: string;
+}
+
+async function constructKeysendMetadata(userId, externalKeysendRequest) {
   const senderName = await getUserName(userId);
 
   // Per blip-10: https://github.com/Podcastindex-org/podcast-namespace/blob/main/value/blip-0010.md
-  let keysendRequest = {
+  let keysendRequest: KeysendMetadata = {
     message: externalKeysendRequest.message ?? null,
     podcast: externalKeysendRequest.podcast ?? null,
     guid: externalKeysendRequest.guid ?? null,
-    feed_id: externalKeysendRequest.feedId ?? null,
+    feed_id: externalKeysendRequest.feedID ?? null,
     episode: externalKeysendRequest.episode ?? null,
     episode_guid: externalKeysendRequest.episodeGuid ?? null,
     ts: externalKeysendRequest.ts ?? null,
@@ -51,14 +59,27 @@ async function constructKeysendMetadata(
   return keysendRequest;
 }
 
-async function constructCustomRecords(keysend, keysendMetadata) {
+async function constructCustomRecords(
+  keysend,
+  keysendMetadata: KeysendMetadata
+) {
   let customRecords = [];
-  // Add standard values
-  customRecords.push([7629169, JSON.stringify(keysendMetadata)]);
+  // Add standard value for blip-10
+  // https://github.com/lightning/blips/blob/master/blip-0010.md
+  const BLIP0010 = "7629169";
+  customRecords.push({
+    type: BLIP0010,
+    // covert to hex
+    value: Buffer.from(JSON.stringify(keysendMetadata)).toString("hex"),
+  });
   // Add custom key/value if exists
   if (keysend.customKey && keysend.customValue) {
-    const customKey = parseInt(keysend.customKey);
-    customRecords.push([customKey, keysend.customValue]);
+    const customKey = parseInt(keysend.customKey).toString();
+    customRecords.push({
+      type: customKey,
+      // convert to hex
+      value: Buffer.from(keysend.customValue).toString("hex"),
+    });
   }
 
   log.debug(customRecords);
@@ -126,68 +147,7 @@ function logExternalKeysend({
     });
 }
 
-async function sendExternalKeysend(keysend, keysendMetadata) {
-  log.debug(
-    `Sending external keysend: ${keysend.pubkey}, amount: ${keysend.msatAmount}`
-  );
-
-  if (keysend.msatAmount < 1) {
-    log.error(`Invalid msat amount: ${keysend.msatAmount}`);
-    return null;
-  }
-  // Keysend Protocol reference: https://github.com/alexbosworth/keysend_protocols
-
-  // Not needed:
-  // Construct preimage and preimage hash
-  // const preimage = crypto.randomBytes(32);
-  // const preimageHash = crypto.createHash("sha256").update(preimage).digest();
-
-  const customRecords = await constructCustomRecords(keysend, keysendMetadata);
-  // const request = {
-  //   dest: Buffer.from(keysend.pubkey, "hex"),
-  //   amt_msat: keysend.msatAmount,
-  //   payment_hash: preimageHash,
-  //   timeout_seconds: 60,
-  //   final_cltv_delta: 40,
-  //   dest_custom_records: customRecords,
-  //   no_inflight_updates: true, // only the final payment update is streamed back
-  //   fee_limit_msat: feeLimitMsat,
-  // };
-
-  // TODO: Replace with ZBD API
-  const sendKeysendResult = await sendKeysend({
-    amount: keysend.msatAmount.toString(),
-    pubkey: keysend.pubkey,
-    tlvRecords: customRecords,
-  });
-
-  log.debug(sendKeysendResult);
-  if (sendKeysendResult.success) {
-    if (sendKeysendResult.data.transaction.status === "completed") {
-      log.debug(
-        `External keysend success: ${sendKeysendResult.data.keysendId}`
-      );
-      return {
-        success: true,
-        // payment_index name is legacy from lnd
-        // external_payment table uses payment_index to store keysendId from ZBD
-        paymentIndex: sendKeysendResult.data.keysendId,
-        feeMsat: sendKeysendResult.data.transaction.fee,
-      };
-    } else {
-      log.debug(
-        `External keysend still in flight or unknown: ${sendKeysendResult.data.transaction.status}`
-      );
-      log.debug(sendKeysendResult);
-      return { success: false, paymentIndex: sendKeysendResult.data.keysendId };
-    }
-  } else {
-    log.debug(`External keysend failed: ${sendKeysendResult.data.keysendId}`);
-    return { success: false, paymentIndex: sendKeysendResult.data.keysendId };
-  }
-}
-
-exports.isValidExternalKeysendRequest = async (externalKeysendRequest) => {
+export const isValidExternalKeysendRequest = async (externalKeysendRequest) => {
   const hasKeysendArray = Array.isArray(externalKeysendRequest?.keysends);
   if (!hasKeysendArray) {
     return false;
@@ -211,134 +171,4 @@ exports.isValidExternalKeysendRequest = async (externalKeysendRequest) => {
     return false;
   }
   return hasValidKeysends;
-};
-
-exports.processKeysends = async (userId, externalKeysendRequest) => {
-  const { message } = externalKeysendRequest;
-  // NOTE: User's balance will be decremented per keysend
-  //   a. Check for keysends that are internal using pubkey
-  //     i. Get track id from custom key `16180339`
-  //     ii. Use amp library to make transaction
-  //   b. For external payments:
-  //     i. Attempt payment
-  //        A. Must create preimage and preimage hash
-  //        B. Hash must be submitted along with payment
-  //        C. Also must send TLV record `5482373484` with value of 32 Byte Preimage Corresponding to HTLC Preimage Hash
-  //     ii. Store payment id in db (for callback)
-  const keysendMetadata = await constructKeysendMetadata(
-    userId,
-    externalKeysendRequest
-  );
-
-  const txId = randomUUID(); // Generate unique txId for this batch of keysends
-
-  log.debug(
-    `Processing external keysends for user ${userId} for amount ${externalKeysendRequest.msatTotal} msats`
-  );
-  // List to store results of each keysend for response
-  let keysendResults = [];
-
-  await Promise.all(
-    externalKeysendRequest.keysends.map(async (keysend) => {
-      const keysendIsInternal = await checkIfKeysendIsInternal(keysend);
-      try {
-        if (keysendIsInternal) {
-          const trx = await db.knex.transaction();
-
-          const contentId = await findContentIdFromCustomKey(
-            keysend.customKey,
-            keysend.customValue
-          );
-
-          log.debug(
-            `Creating internal amp from external keysend for user: ${userId} to ${contentId}`
-          );
-
-          const ampResult = amp.buildAmpTx({
-            trx: trx,
-            res: null,
-            msatAmount: keysend.msatAmount,
-            contentId: contentId,
-            type: 9,
-            comment: message,
-            userId: userId,
-            externalTxId: txId,
-            boostData: {
-              podcast: keysendMetadata.podcast,
-              episode: keysendMetadata.episode,
-              app_name: keysendMetadata.app_name,
-              sender_name: keysendMetadata.sender_name,
-            },
-          });
-          if (ampResult) {
-            keysendResults.push({
-              success: true,
-              msatAmount: keysend.msatAmount,
-              pubkey: keysend.pubkey,
-              feeMsat: 0,
-            });
-          } else {
-            keysendResults.push({
-              success: false,
-              msatAmount: keysend.msatAmount,
-              pubkey: keysend.pubkey,
-              feeMsat: 0,
-            });
-          }
-        } else {
-          const externalKeysendResult = await sendExternalKeysend(
-            keysend,
-            keysendMetadata
-          );
-          const trx = await db.knex.transaction();
-
-          if (externalKeysendResult) {
-            logExternalKeysend({
-              userId: userId,
-              paymentIndex: externalKeysendResult.paymentIndex,
-              feeMsat: externalKeysendResult.feeMsat ?? 0,
-              keysend: keysend,
-              keysendMetadata: keysendMetadata,
-              isSettled: externalKeysendResult.success,
-              trx: trx,
-              txId: txId,
-            });
-
-            keysendResults.push({
-              name: keysend.name,
-              success: externalKeysendResult.success,
-              msatAmount: keysend.msatAmount,
-              pubkey: keysend.pubkey,
-              feeMsat: parseInt(externalKeysendResult.feeMsat) ?? 0,
-            });
-          } else {
-            log.error(
-              `Something went wrong with keysend from ${userId} to ${keysend.pubkey}`
-            );
-
-            keysendResults.push({
-              name: keysend.name,
-              success: false,
-              msatAmount: keysend.msatAmount,
-              pubkey: keysend.pubkey,
-              feeMsat: 0,
-            });
-          }
-        }
-      } catch (err) {
-        log.error(`Error processing external keysend: ${err}`);
-        keysendResults.push({
-          name: keysend.name,
-          success: false,
-          msatAmount: keysend.msatAmount,
-          pubkey: keysend.pubkey,
-          feeMsat: 0,
-        });
-      }
-    })
-  ).catch((err) => {
-    log.error(`Error processing external keysends: ${err}`);
-  });
-  // log.debug(keysendResults);
-  return keysendResults;
 };

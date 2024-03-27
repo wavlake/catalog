@@ -3,6 +3,8 @@ import asyncHandler from "express-async-handler";
 import prisma from "../prisma/client";
 import { formatError } from "../library/errors";
 const log = require("loglevel");
+const { auth } = require("../library/firebaseService");
+import { validateLightningAddress } from "../library/zbd/zbdClient";
 
 async function groupSplitPayments(combinedAmps) {
   // Group records by txId
@@ -312,7 +314,105 @@ const get_history = asyncHandler(async (req, res, next) => {
   }
 });
 
+const get_check_region = asyncHandler(async (req, res, next) => {
+  // Respond with 200 if request gets past middleware
+  res.send(200);
+});
+
+const post_log_identity = asyncHandler(async (req, res, next) => {
+  const userId = req["uid"];
+  const { firstName, lastName } = req.body;
+
+  if (!firstName || !lastName) {
+    res.status(400).json({
+      success: false,
+      error: "First name and last name are required",
+    });
+    return;
+  }
+
+  const userRecord = await auth().getUser(userId);
+
+  if (!userRecord.emailVerified) {
+    res.status(400).json({
+      success: false,
+      error: "Email is not verified",
+    });
+    return;
+  }
+
+  try {
+    await prisma.userVerification.upsert({
+      where: {
+        userId: userId,
+      },
+      update: {
+        firstName: firstName,
+        lastName: lastName,
+        ip: req.ip,
+      },
+      create: {
+        userId: userId,
+        firstName: firstName,
+        lastName: lastName,
+        ip: req.ip,
+      },
+    });
+
+    res.send({
+      success: true,
+      data: { userId: userId },
+    });
+  } catch (err) {
+    next(err);
+    return;
+  }
+});
+
+const create_update_lnaddress = asyncHandler(async (req, res, next) => {
+  const userId = req["uid"];
+  const { lightningAddress } = req.body;
+
+  if (!lightningAddress) {
+    res.status(400).json({
+      success: false,
+      error: "Address is required",
+    });
+    return;
+  }
+
+  const isValidAddress = await validateLightningAddress(lightningAddress);
+
+  if (!isValidAddress) {
+    res.status(400).json({
+      success: false,
+      error: "Invalid lightning address",
+    });
+    return;
+  }
+
+  try {
+    await prisma.user.update({
+      where: {
+        id: userId,
+      },
+      data: {
+        lightningAddress: lightningAddress,
+      },
+    });
+
+    res.send({
+      success: true,
+      data: { userId: userId, lightningAddress: lightningAddress },
+    });
+  } catch (err) {
+    next(err);
+    return;
+  }
+});
+
 export default {
+  create_update_lnaddress,
   get_account,
   get_activity,
   get_announcements,
@@ -320,4 +420,6 @@ export default {
   put_notification,
   get_features,
   get_history,
+  get_check_region,
+  post_log_identity,
 };
