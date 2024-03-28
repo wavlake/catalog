@@ -240,6 +240,7 @@ const update_artist = asyncHandler(async (req, res, next) => {
   const cdnImageUrl = artwork
     ? await upload_image(artwork, request.artistId, "artist")
     : undefined;
+  console.log({ cdnImageUrl });
 
   log.debug(`Editing artist ${request.artistId}`);
   return db
@@ -254,6 +255,7 @@ const update_artist = asyncHandler(async (req, res, next) => {
         npub: request.nostr,
         youtube: request.youtube,
         website: request.website,
+        updated_at: updatedAt,
         artist_url: format.urlFriendly(request.name),
         ...(cdnImageUrl ? { artwork_url: cdnImageUrl } : {}),
       },
