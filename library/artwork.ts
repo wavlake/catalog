@@ -65,7 +65,7 @@ const upload_image = async (
 
     // Clean up with async calls to avoid blocking response
     log.debug(`Deleting local files: ${convertPath} & ${uploadPath}`);
-    fs.unlinkSync(convertPath)
+    fs.unlinkSync(convertPath);
     if (artworkFile) {
       // only delete the new image if it was uploaded
       // skip if we used the default image
