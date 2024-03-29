@@ -59,6 +59,8 @@ availableSecrets:
       env: "PG_PASSWORD"
     - versionName: projects/$PROJECT_ID/secrets/AWS_S3_MEDIA_SECRET_PROD/versions/latest
       env: "AWS_SECRET_ACCESS_KEY"
+    - versionName: projects/$PROJECT_ID/secrets/ZBD_API_KEY_PROD/versions/latest
+      env: "ZBD_API_KEY"
 timeout: "900s"
 options:
   logging: CLOUD_LOGGING_ONLY
