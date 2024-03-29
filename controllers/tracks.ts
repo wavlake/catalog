@@ -407,7 +407,7 @@ const create_track = asyncHandler(async (req, res, next) => {
     res.status(400).json({
       success: false,
       error:
-        "Please pick another title, this show already has an episode with that title.",
+        "Please pick another title, this artist already has a track with that title.",
     });
     return;
   }
