@@ -126,15 +126,20 @@ export const create_episode = asyncHandler(async (req, res, next) => {
     title: req.body.title,
     userId: req["uid"],
     order: req.body.order == "" ? 0 : parseInt(req.body.order),
-    extension: req.body.extension ?? "mp3",
+    extension: req.body.extension,
     description: req.body.description,
     isExplicit: req.body.isExplicit ?? false,
   };
 
-  if (!request.podcastId) {
+  if (
+    !request.podcastId ||
+    !request.title ||
+    !request.order ||
+    !request.extension
+  ) {
     res.status(400).json({
       success: false,
-      error: "podcastId field is required",
+      error: "podcastId, title, order, and extension fields is required",
     });
     return;
   }

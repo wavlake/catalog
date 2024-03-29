@@ -351,14 +351,19 @@ const create_track = asyncHandler(async (req, res, next) => {
     userId: req["uid"],
     order: req.body.order == "" ? 0 : parseInt(req.body.order),
     lyrics: req.body.lyrics,
-    extension: req.body.extension ?? "mp3",
+    extension: req.body.extension,
     isExplicit: req.body.isExplicit ?? false,
   };
 
-  if (!request.albumId) {
+  if (
+    !request.extension ||
+    !request.title ||
+    !request.order ||
+    !request.albumId
+  ) {
     res.status(400).json({
       success: false,
-      error: "albumId field is required",
+      error: "albumId, title, order, and extension fields are required",
     });
     return;
   }
