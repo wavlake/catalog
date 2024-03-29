@@ -121,9 +121,6 @@ model external_receive {
   track_id     String?   @db.Uuid
   created_at   DateTime? @default(now()) @db.Timestamptz(6)
   payment_hash String?   @db.VarChar(255)
-  external_id  String?   @db.VarChar(255)
-  updated_at   DateTime? @db.Timestamptz(6)
-  is_pending   Boolean?  @default(false)
 }
 
 model knex_migrations {
@@ -481,8 +478,6 @@ model ExternalPayment {
   txId         String?   @map("tx_id") @db.Uuid
   createdAt    DateTime? @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt    DateTime? @default(now()) @map("updated_at") @db.Timestamptz(6)
-  external_id  Boolean?
-  is_pending   Boolean?  @default(true)
   user         User      @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "external_payment_user_id_foreign")
 
   @@map("external_payment")
@@ -543,6 +538,15 @@ model npub {
   public_hex String    @id @unique(map: "npub_public_hex_unique") @db.VarChar(255)
   metadata   Json?
   updated_at DateTime? @default(now()) @db.Timestamptz(6)
+}
+
+model Announcement {
+  id        Int       @id @default(autoincrement())
+  title     String
+  content   String
+  createdAt DateTime? @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@map("announcement")
 }
 
 view TrackInfo {
