@@ -1,5 +1,6 @@
 const express = require("express");
 const multer = require("multer");
+const { isZbdRegion } = require("../middlewares/zbdChecks");
 
 var storage = multer.diskStorage({
   destination: function (req, file, callback) {
@@ -47,34 +48,23 @@ router.post(
   isAuthorized,
   connectionsController.create_connection
 );
-// router.get(
-//   "/:userId/activity/:page",
-//   isAuthorized,
-//   usersController.get_user_activity
-// );
-// router.get(
-//   "/:userId/notification",
-//   isAuthorized,
-//   usersController.get_user_notification_status
-// );
-// router.get("/:userId/albums", usersController.get_user_albums);
-// router.get("/:userId/artists", usersController.get_user_artists);
-
-// router.get("/:userId/txs", isAuthorized, usersController.get_txs);
-
-// router.post("/", usersController.post_create_user);
-// router.post(
-//   "/check-activity",
-//   usersController.post_user_notification_status
-// );
-
-// router.put("/", isAuthorized, usersController.put_edit_user);
-// router.put(
-//   "/user-art",
-//   upload.single("artwork"),
-//   isAuthorized,
-//   usersController.put_edit_user_art
-// );
+router.get(
+  "/check-region",
+  isAuthorized,
+  isZbdRegion,
+  accountsController.get_check_region
+);
+router.post(
+  "/log-identity",
+  isAuthorized,
+  isZbdRegion,
+  accountsController.post_log_identity
+);
+router.post(
+  "/ln-address",
+  isAuthorized,
+  accountsController.create_update_lnaddress
+);
 
 // Export router
 export default router;
