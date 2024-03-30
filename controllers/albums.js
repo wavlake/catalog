@@ -106,6 +106,7 @@ const get_album_by_id = asyncHandler(async (req, res, next) => {
         artist: {
           select: {
             userId: true,
+            name: true,
           },
         },
       },
