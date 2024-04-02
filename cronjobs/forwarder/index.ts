@@ -10,7 +10,8 @@ const log = require("loglevel");
 log.setLevel(process.env.LOGLEVEL);
 
 const TIME_BETWEEN_REQUESTS = 2000; // 2 seconds
-const MIN_BATCH_FORWARD_AMOUNT = 10000; // min amount in msat to batch forward
+const MIN_BATCH_FORWARD_AMOUNT =
+  parseInt(process.env.MIN_BATCH_FORWARD_AMOUNT) ?? 100000; // min amount in msat to batch forward
 const MIN_FORWARD_AMOUNT = 1000; // min amount in msat to forward
 const MAX_ATTEMPT_COUNT = 3;
 const CURRENT_DATE = new Date();
@@ -192,12 +193,10 @@ const handleReconciliation = async (inFlightForwards: inFlightForward[]) => {
     const { id, externalPaymentId } = forward;
     // Add sleep to avoid rate limiting
     await new Promise((resolve) => setTimeout(resolve, TIME_BETWEEN_REQUESTS));
-    console.log(externalPaymentId);
     // Check the status of the payment with ZBD
     const response = await getPaymentStatus(externalPaymentId);
-    // If the payment is completed, update the forward record to be settled
+    // If the payment is completed, update the forward record to per status
     if (response.data.status === PaymentStatus.Completed) {
-      // Update the forward record to be settled
       await prisma.forward.update({
         where: {
           id: id,
@@ -206,10 +205,19 @@ const handleReconciliation = async (inFlightForwards: inFlightForward[]) => {
           isSettled: true,
         },
       });
+    } else if (response.data.status === PaymentStatus.Error) {
+      log.error(`Error with payment for forward ${id}: ${response.message}`);
+      await prisma.forward.update({
+        where: {
+          id: id,
+        },
+        data: {
+          isSettled: false,
+          error: response.message,
+        },
+      });
     } else {
-      log.info(
-        `Payment for forward ${id} still in flight: ${response.message}`
-      );
+      log.info(`Payment for forward ${id} still pending: ${response.message}`);
     }
   }
   // DONE
