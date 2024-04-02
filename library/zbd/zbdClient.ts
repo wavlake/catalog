@@ -23,6 +23,20 @@ const client = axios.create({
   headers: { apikey: zbdApiKey },
 });
 
+export async function getPaymentStatus(
+  paymentId: string
+): Promise<ZBDSendPaymentResponse> {
+  return client
+    .get(`https://api.zebedee.io/v0/payments/${paymentId}`)
+    .then((res) => {
+      return res.data;
+    })
+    .catch((err) => {
+      log.trace(err);
+      return err.response;
+    });
+}
+
 export async function getProductionIps(): Promise<Array<string>> {
   const { data } = await client
     .get("https://api.zebedee.io/v0/prod-ips")

@@ -1,6 +1,11 @@
 import prisma from "@prismalocal/client";
 import { LightningAddressPaymentRequest } from "@library/zbd/requestInterfaces";
-import { payToLightningAddress } from "@library/zbd/zbdClient";
+import { ZBDGetChargeResponse } from "@library/zbd/responseInterfaces";
+import {
+  payToLightningAddress,
+  getPaymentStatus,
+} from "@library/zbd/zbdClient";
+import { PaymentStatus } from "@library/zbd/constants";
 const log = require("loglevel");
 log.setLevel(process.env.LOGLEVEL);
 
@@ -19,7 +24,34 @@ interface groupedForwards {
   };
 }
 
+interface inFlightForward {
+  id: number;
+  userId: string;
+  msatAmount: number;
+  lightningAddress: string;
+  inFlight: boolean;
+  isSettled: boolean;
+  createdAt: Date;
+  attemptCount: number;
+  externalPaymentId: string;
+}
+
 const run = async () => {
+  // Reconcilation Step:
+  // Check the forward table for any records with a status of in_flight = true and is_settled = false
+  // If there are any, check the status of the payment with ZBD
+  // Update the forward record accordingly
+  const inFlightForwards = await prisma.forward.findMany({
+    where: {
+      inFlight: true,
+      isSettled: false,
+    },
+  });
+
+  log.debug("In flight forwards:", inFlightForwards);
+
+  await handleReconciliation(inFlightForwards);
+
   // Check the forward table for any records with a status of in_flight = false and is_settled = false
   // and where attempt_count is less than or equal to MAX_ATTEMPT_COUNT
   const forwardsOutstanding = await prisma.forward.findMany({
@@ -153,4 +185,32 @@ const handlePayments = async (groupedForwards: groupedForwards) => {
       // DONE
     }
   }
+};
+
+const handleReconciliation = async (inFlightForwards: inFlightForward[]) => {
+  for (const forward of inFlightForwards) {
+    const { id, externalPaymentId } = forward;
+    // Add sleep to avoid rate limiting
+    await new Promise((resolve) => setTimeout(resolve, TIME_BETWEEN_REQUESTS));
+    console.log(externalPaymentId);
+    // Check the status of the payment with ZBD
+    const response = await getPaymentStatus(externalPaymentId);
+    // If the payment is completed, update the forward record to be settled
+    if (response.data.status === PaymentStatus.Completed) {
+      // Update the forward record to be settled
+      await prisma.forward.update({
+        where: {
+          id: id,
+        },
+        data: {
+          isSettled: true,
+        },
+      });
+    } else {
+      log.info(
+        `Payment for forward ${id} still in flight: ${response.message}`
+      );
+    }
+  }
+  // DONE
 };
