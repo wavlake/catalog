@@ -270,6 +270,22 @@ const update_album = asyncHandler(async (req, res, next) => {
     return;
   }
 
+  const newGenreId = request.genreId ? parseInt(request.genreId) : undefined;
+  const newSubgenreId = request.subgenreId
+    ? parseInt(request.subgenreId)
+    : undefined;
+  if (
+    (request.genreId && !newGenreId) ||
+    (request.subgenreId && !newSubgenreId)
+  ) {
+    const error = formatError(
+      400,
+      "Invalid genre or subgenre id. If included, these fields must be integers."
+    );
+    next(error);
+    return;
+  }
+
   // Check if user owns album
   const isOwner = await isAlbumOwner(request.userId, request.albumId);
 
@@ -291,8 +307,8 @@ const update_album = asyncHandler(async (req, res, next) => {
       title: request.title,
       description: request.description,
       updatedAt,
-      genreId: request.genreId,
-      subgenreId: request.subgenreId,
+      genreId: newGenreId,
+      subgenreId: newSubgenreId,
       isSingle: Boolean(request.isSingle),
       ...(cdnImageUrl ? { artworkUrl: cdnImageUrl } : {}),
     },
