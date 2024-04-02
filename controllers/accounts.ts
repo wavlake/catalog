@@ -156,10 +156,10 @@ const get_announcements = asyncHandler(async (req, res, next) => {
       return data.last_activity_check_at ?? new Date();
     });
 
-  // Add a day to the last activity check to ensure we don't miss any announcements
-  const lastActivityCheckPlus24Hours = new Date(lastActivityCheckAt);
-  lastActivityCheckPlus24Hours.setHours(
-    lastActivityCheckPlus24Hours.getHours() + 24
+  // Subtract to the last activity check so annoucements last at least 24 hours
+  const lastActivityCheckMinus24Hours = new Date(lastActivityCheckAt);
+  lastActivityCheckMinus24Hours.setHours(
+    lastActivityCheckMinus24Hours.getHours() - 24
   );
 
   return db
@@ -170,7 +170,7 @@ const get_announcements = asyncHandler(async (req, res, next) => {
       "content as content",
       "created_at as createdAt"
     )
-    .where("announcement.created_at", "<", lastActivityCheckPlus24Hours)
+    .where("announcement.created_at", ">", lastActivityCheckMinus24Hours)
     .orderBy("announcement.created_at", "desc")
     .then((data) => {
       res.send({
