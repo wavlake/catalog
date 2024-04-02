@@ -48,11 +48,23 @@ const get_account = asyncHandler(async (req, res, next) => {
       .select("track.id", "playlist.id as playlistId")
       .where("playlist.user_id", "=", request.accountId)
       .where("playlist.is_favorites", "=", true);
+    const isRegionVerified = await db
+      .knex("user_verification")
+      .select("first_name")
+      .where("user_id", "=", request.accountId)
+      .first();
+
+    const { emailVerified, providerData } = await auth().getUser(
+      request.accountId
+    );
 
     res.send({
       success: true,
       data: {
         ...userData[0],
+        emailVerified,
+        isRegionVerified: !!isRegionVerified,
+        providerId: providerData[0]?.providerId,
         userFavoritesId: (trackData[0] || {}).playlistId,
         userFavorites: trackData.map((track) => track.id),
       },
