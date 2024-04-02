@@ -1,17 +1,17 @@
 import prisma from "@prismalocal/client";
 import { LightningAddressPaymentRequest } from "@library/zbd/requestInterfaces";
-import { ZBDGetChargeResponse } from "@library/zbd/responseInterfaces";
 import {
   payToLightningAddress,
   getPaymentStatus,
 } from "@library/zbd/zbdClient";
 import { PaymentStatus } from "@library/zbd/constants";
+import { handleCompletedForward } from "@library/withdraw";
 const log = require("loglevel");
 log.setLevel(process.env.LOGLEVEL);
 
 const TIME_BETWEEN_REQUESTS = 2000; // 2 seconds
 const MIN_BATCH_FORWARD_AMOUNT =
-  parseInt(process.env.MIN_BATCH_FORWARD_AMOUNT) ?? 100000; // min amount in msat to batch forward
+  parseInt(process.env.MIN_BATCH_FORWARD_AMOUNT) || 100000; // min amount in msat to batch forward
 const MIN_FORWARD_AMOUNT = 1000; // min amount in msat to forward
 const MAX_ATTEMPT_COUNT = 3;
 const CURRENT_DATE = new Date();
@@ -23,18 +23,6 @@ interface groupedForwards {
     createdAt: Date;
     ids: [number];
   };
-}
-
-interface inFlightForward {
-  id: number;
-  userId: string;
-  msatAmount: number;
-  lightningAddress: string;
-  inFlight: boolean;
-  isSettled: boolean;
-  createdAt: Date;
-  attemptCount: number;
-  externalPaymentId: string;
 }
 
 const run = async () => {
@@ -50,8 +38,12 @@ const run = async () => {
   });
 
   log.debug("In flight forwards:", inFlightForwards);
+  // Filter inFlightForwards to only include unique externalPaymentIds
+  const uniqueExternalPaymentIds = [
+    ...new Set(inFlightForwards.map((forward) => forward.externalPaymentId)),
+  ];
 
-  await handleReconciliation(inFlightForwards);
+  await handleReconciliation(uniqueExternalPaymentIds);
 
   // Check the forward table for any records with a status of in_flight = false and is_settled = false
   // and where attempt_count is less than or equal to MAX_ATTEMPT_COUNT
@@ -188,37 +180,20 @@ const handlePayments = async (groupedForwards: groupedForwards) => {
   }
 };
 
-const handleReconciliation = async (inFlightForwards: inFlightForward[]) => {
-  for (const forward of inFlightForwards) {
-    const { id, externalPaymentId } = forward;
+const handleReconciliation = async (uniqueExternalPaymentIds: string[]) => {
+  for (const externalPaymentId of uniqueExternalPaymentIds) {
     // Add sleep to avoid rate limiting
     await new Promise((resolve) => setTimeout(resolve, TIME_BETWEEN_REQUESTS));
     // Check the status of the payment with ZBD
     const response = await getPaymentStatus(externalPaymentId);
     // If the payment is completed, update the forward record to per status
-    if (response.data.status === PaymentStatus.Completed) {
-      await prisma.forward.update({
-        where: {
-          id: id,
-        },
-        data: {
-          isSettled: true,
-        },
-      });
-    } else if (response.data.status === PaymentStatus.Error) {
-      log.error(`Error with payment for forward ${id}: ${response.message}`);
-      await prisma.forward.update({
-        where: {
-          id: id,
-        },
-        data: {
-          isSettled: false,
-          error: response.message,
-        },
-      });
-    } else {
-      log.info(`Payment for forward ${id} still pending: ${response.message}`);
-    }
+    const { id, status, amount, fee, preimage } = response.data;
+    await handleCompletedForward({
+      externalPaymentId: id,
+      status: status as PaymentStatus,
+      preimage: preimage,
+      msatAmount: parseInt(amount),
+      fee: parseInt(fee),
+    });
   }
-  // DONE
 };
