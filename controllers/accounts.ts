@@ -37,7 +37,8 @@ const get_account = asyncHandler(async (req, res, next) => {
         "user.amp_msat as ampMsat",
         "user.artwork_url as artworkUrl",
         "user.profile_url as profileUrl",
-        "user.is_locked as isLocked"
+        "user.is_locked as isLocked",
+        "user.lightning_address as lightningAddress"
       )
       .where("user.id", "=", request.accountId);
 
