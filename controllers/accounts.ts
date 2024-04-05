@@ -84,11 +84,12 @@ const get_activity = asyncHandler(async (req, res, next) => {
   };
 
   const { page } = req.params;
-
   const pageInt = parseInt(page);
   if (!Number.isInteger(pageInt) || pageInt <= 0) {
-    const error = formatError(400, "Page must be a positive integer");
-    next(error);
+    res.status(400).json({
+      success: false,
+      error: "page must be a positive integer",
+    });
     return;
   }
 
@@ -329,6 +330,51 @@ const get_history = asyncHandler(async (req, res, next) => {
   }
 });
 
+const get_txs = asyncHandler(async (req, res, next) => {
+  const userId = req["uid"];
+
+  const { page } = req.params;
+  const pageInt = parseInt(page);
+  if (!Number.isInteger(pageInt) || pageInt <= 0) {
+    res.status(400).json({
+      success: false,
+      error: "page must be a positive integer",
+    });
+    return;
+  }
+
+  const txs = await db
+    .knex(transactions(userId))
+    .unionAll([forwards(userId)])
+    .orderBy("createDate", "desc")
+    .paginate({
+      perPage: 20,
+      currentPage: pageInt,
+      isLengthAware: true,
+    });
+
+  const txsModified = txs.data.map((tx) => {
+    return {
+      ...tx,
+      feeMsat: tx.feemsat,
+      isPending: tx.ispending,
+    };
+  });
+
+  res.json({
+    success: true,
+    data: {
+      transactions: txsModified,
+      pagination: {
+        currentPage: txs.pagination.currentPage,
+        perPage: txs.pagination.perPage,
+        total: txs.pagination.total,
+        totalPages: txs.pagination.lastPage,
+      },
+    },
+  });
+});
+
 const get_check_region = asyncHandler(async (req, res, next) => {
   // Respond with 200 if request gets past middleware
   res.send(200);
@@ -540,6 +586,52 @@ const edit_account = asyncHandler(async (req, res, next) => {
   }
 });
 
+// QUERY FUNCTIONS
+
+function transactions(userId) {
+  return db
+    .knex("transaction")
+    .select(
+      "transaction.payment_request as paymentid",
+      "transaction.fee_msat as feemsat",
+      "transaction.success as success",
+      db.knex.raw("'Transaction' as type"),
+      "transaction.is_pending as ispending",
+      "transaction.withdraw as withdraw",
+      "transaction.id as id",
+      "transaction.msat_amount as msatAmount",
+      "transaction.failure_reason as failureReason",
+      "transaction.created_at as createDate"
+    )
+    .where("transaction.user_id", "=", userId)
+    .as("transactions");
+}
+
+function forwards(userId) {
+  return db
+    .knex("forward_detail")
+    .join(
+      "forward",
+      "forward.external_payment_id",
+      "=",
+      "forward_detail.external_payment_id"
+    )
+    .select(
+      "forward_detail.external_payment_id as paymentid",
+      db.knex.raw("0 as feeMsat"),
+      db.knex.raw("bool_and(forward_detail.success) as success"),
+      db.knex.raw("'Forward' as type"),
+      db.knex.raw("false as ispending"),
+      db.knex.raw("false as withdraw")
+    )
+    .min("forward_detail.id as id")
+    .min("forward_detail.msat_amount as msatAmount")
+    .min("forward_detail.error as failureReason")
+    .min("forward_detail.created_at as createDate")
+    .groupBy("forward_detail.external_payment_id", "forward_detail.created_at")
+    .where("forward.user_id", "=", userId);
+}
+
 export default {
   create_update_lnaddress,
   get_account,
@@ -551,6 +643,7 @@ export default {
   put_notification,
   get_features,
   get_history,
+  get_txs,
   get_check_region,
   post_log_identity,
 };
