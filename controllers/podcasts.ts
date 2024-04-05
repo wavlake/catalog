@@ -2,7 +2,7 @@ import log from "loglevel";
 import db from "../library/db";
 import { randomUUID } from "crypto";
 import multer from "multer";
-import format from "../library/format";
+import { urlFriendly } from "../library/format";
 import prisma from "../prisma/client";
 import { validate } from "uuid";
 import asyncHandler from "express-async-handler";
@@ -130,7 +130,7 @@ export const create_podcast = asyncHandler(async (req, res, next) => {
         youtube,
         website,
         artwork_url: cdnImageUrl,
-        podcast_url: format.urlFriendly(name),
+        podcast_url: urlFriendly(name),
         // all newly created content starts a draft, user must publish after creation
         is_draft: true,
         primary_category_id: primaryCategoryId,
