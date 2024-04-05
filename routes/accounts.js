@@ -26,7 +26,9 @@ const router = express.Router();
 // USER
 // router.get("/:userProfileUrl", usersController.get_user_public);
 // router.get("/:userId/faves", usersController.get_user_public_faves);
+router.post("/", accountsController.create_account);
 router.get("/", isAuthorized, accountsController.get_account);
+router.put("/", isAuthorized, accountsController.edit_account);
 router.get(
   "/announcements",
   isAuthorized,
