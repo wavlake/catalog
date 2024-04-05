@@ -477,10 +477,6 @@ const edit_account = asyncHandler(async (req, res, next) => {
   const artwork = req.file;
 
   try {
-    let cdnImageUrl;
-    if (artwork) {
-      cdnImageUrl = await upload_image(artwork, userId, "artist");
-    }
     let ampMsatInt;
     if (ampMsat) {
       ampMsatInt = parseInt(ampMsat);
@@ -513,6 +509,11 @@ const edit_account = asyncHandler(async (req, res, next) => {
       if (profileUrl === "-") {
         profileUrl = "user-" + userId.slice(-5, -1);
       }
+    }
+
+    let cdnImageUrl;
+    if (artwork) {
+      cdnImageUrl = await upload_image(artwork, userId, "artist");
     }
 
     await prisma.user.update({
