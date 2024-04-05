@@ -83,6 +83,13 @@ const get_activity = asyncHandler(async (req, res, next) => {
 
   const { page } = req.params;
   const pageInt = parseInt(page);
+  if (!Number.isInteger(pageInt) || pageInt <= 0) {
+    res.status(400).json({
+      success: false,
+      error: "page must be a positive integer",
+    });
+    return;
+  }
 
   // TODO: Add support for legacy amps
   db.knex("amp")
@@ -326,6 +333,13 @@ const get_txs = asyncHandler(async (req, res, next) => {
 
   const { page } = req.params;
   const pageInt = parseInt(page);
+  if (!Number.isInteger(pageInt) || pageInt <= 0) {
+    res.status(400).json({
+      success: false,
+      error: "page must be a positive integer",
+    });
+    return;
+  }
 
   const txs = await db
     .knex(transactions(userId))
