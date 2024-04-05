@@ -1,6 +1,6 @@
-const express = require("express");
-const multer = require("multer");
-const { isZbdRegion } = require("../middlewares/zbdChecks");
+import express from "express";
+import multer from "multer";
+import { isZbdRegion } from "../middlewares/zbdChecks";
 
 var storage = multer.diskStorage({
   destination: function (req, file, callback) {
@@ -16,7 +16,7 @@ const upload = multer({ storage: storage });
 // Import controllers
 import accountsController from "../controllers/accounts";
 import connectionsController from "../controllers/connections";
-const { isAuthorized } = require("../middlewares/auth");
+import { isAuthorized } from "../middlewares/auth";
 
 // Create router
 const router = express.Router();
@@ -28,7 +28,12 @@ const router = express.Router();
 // router.get("/:userId/faves", usersController.get_user_public_faves);
 router.post("/", accountsController.create_account);
 router.get("/", isAuthorized, accountsController.get_account);
-router.put("/", isAuthorized, accountsController.edit_account);
+router.put(
+  "/",
+  upload.single("artwork"),
+  isAuthorized,
+  accountsController.edit_account
+);
 router.get(
   "/announcements",
   isAuthorized,

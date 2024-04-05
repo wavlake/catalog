@@ -6,6 +6,7 @@ import log from "loglevel";
 import { auth } from "../library/firebaseService";
 import { validateLightningAddress } from "../library/zbd/zbdClient";
 import { urlFriendly } from "../library/format";
+import { upload_image } from "../library/artwork";
 
 async function groupSplitPayments(combinedAmps) {
   // Group records by txId
@@ -472,8 +473,14 @@ const create_account = asyncHandler(async (req, res, next) => {
 
 const edit_account = asyncHandler(async (req, res, next) => {
   const userId = req["uid"];
-  const { name, artworkUrl, ampMsat } = req.body;
+  const { name, ampMsat } = req.body;
+  const artwork = req.file;
+
   try {
+    let cdnImageUrl;
+    if (artwork) {
+      cdnImageUrl = await upload_image(artwork, userId, "artist");
+    }
     let ampMsatInt;
     if (ampMsat) {
       ampMsatInt = parseInt(ampMsat);
@@ -516,7 +523,7 @@ const edit_account = asyncHandler(async (req, res, next) => {
         name,
         ...(ampMsatInt ? { ampMsat: ampMsatInt } : {}),
         profileUrl,
-        artworkUrl,
+        ...(cdnImageUrl ? { artworkUrl: cdnImageUrl } : {}),
       },
     });
 
