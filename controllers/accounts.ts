@@ -2,9 +2,11 @@ import db from "../library/db";
 import asyncHandler from "express-async-handler";
 import prisma from "../prisma/client";
 import { formatError } from "../library/errors";
-const log = require("loglevel");
-const { auth } = require("../library/firebaseService");
+import log from "loglevel";
+import { auth } from "../library/firebaseService";
 import { validateLightningAddress } from "../library/zbd/zbdClient";
+import { urlFriendly } from "../library/format";
+import { upload_image } from "../library/artwork";
 
 async function groupSplitPayments(combinedAmps) {
   // Group records by txId
@@ -424,9 +426,125 @@ const create_update_lnaddress = asyncHandler(async (req, res, next) => {
   }
 });
 
+const create_account = asyncHandler(async (req, res, next) => {
+  const { name, userId } = req.body;
+
+  if (!name || !userId) {
+    res.status(400).json({
+      success: false,
+      error: "Name and userId are required",
+    });
+    return;
+  }
+
+  try {
+    const profileUrl = urlFriendly(name);
+    const existingUser = await prisma.user.findUnique({
+      where: {
+        name: name,
+      },
+    });
+    if (existingUser) {
+      res.status(400).json({
+        success: false,
+        error: "Name is already taken",
+      });
+      return;
+    }
+    await prisma.user.create({
+      data: {
+        id: userId,
+        name: name,
+        profileUrl,
+      },
+    });
+
+    res.send({
+      success: true,
+      data: { userId: userId, name: name },
+    });
+  } catch (err) {
+    log.debug("error creating account", req.body);
+    log.debug(err);
+    next(err);
+    return;
+  }
+});
+
+const edit_account = asyncHandler(async (req, res, next) => {
+  const userId = req["uid"];
+  const { name, ampMsat } = req.body;
+  const artwork = req.file;
+
+  try {
+    let ampMsatInt;
+    if (ampMsat) {
+      ampMsatInt = parseInt(ampMsat);
+      if (!Number.isInteger(ampMsatInt) || ampMsatInt < 1000) {
+        res.status(400).json({
+          success: false,
+          error: "ampMsat must be an integer greater than 1000 (1 sat)",
+        });
+        return;
+      }
+    }
+
+    let profileUrl;
+    // if updating name,  check if it's available
+    if (name) {
+      const existingUser = await prisma.user.findUnique({
+        where: {
+          name: name,
+        },
+      });
+      if (existingUser && existingUser.id !== userId) {
+        res.status(400).json({
+          success: false,
+          error: "Name is already taken",
+        });
+        return;
+      }
+      // generate profile url
+      profileUrl = urlFriendly(name);
+      if (profileUrl === "-") {
+        profileUrl = "user-" + userId.slice(-5, -1);
+      }
+    }
+
+    let cdnImageUrl;
+    if (artwork) {
+      cdnImageUrl = await upload_image(artwork, userId, "artist");
+    }
+
+    await prisma.user.update({
+      where: {
+        id: userId,
+      },
+      data: {
+        name,
+        ...(ampMsatInt ? { ampMsat: ampMsatInt } : {}),
+        profileUrl,
+        ...(cdnImageUrl ? { artworkUrl: cdnImageUrl } : {}),
+      },
+    });
+
+    res.send({
+      success: true,
+      data: { userId: userId, name: name },
+    });
+  } catch (err) {
+    log.debug("error editing account", { ...req.body, userId });
+    log.debug(err);
+    next(err);
+    return;
+  }
+});
+
 export default {
   create_update_lnaddress,
   get_account,
+  create_account,
+  edit_account,
   get_activity,
   get_announcements,
   get_notification,

@@ -2,7 +2,7 @@ const log = require("loglevel");
 import db from "../library/db";
 const { randomUUID } = require("crypto");
 import multer from "multer";
-const format = require("../library/format");
+import { urlFriendly } from "../library/format";
 import { isArtistOwner } from "../library/userHelper";
 import { validate } from "uuid";
 import prisma from "../prisma/client";
@@ -141,7 +141,7 @@ const create_artist = asyncHandler(async (req, res, next) => {
         youtube: request.youtube,
         website: request.website,
         artwork_url: cdnImageUrl,
-        artist_url: format.urlFriendly(request.name),
+        artist_url: urlFriendly(request.name),
       },
       ["*"]
     )
@@ -255,7 +255,7 @@ const update_artist = asyncHandler(async (req, res, next) => {
         youtube: request.youtube,
         website: request.website,
         updated_at: updatedAt,
-        artist_url: format.urlFriendly(request.name),
+        artist_url: urlFriendly(request.name),
         ...(cdnImageUrl ? { artwork_url: cdnImageUrl } : {}),
       },
       ["*"]
