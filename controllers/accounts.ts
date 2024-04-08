@@ -172,6 +172,7 @@ const get_announcements = asyncHandler(async (req, res, next) => {
       "id as id",
       "title as title",
       "content as content",
+      "link as link",
       "created_at as createdAt"
     )
     .where("announcement.created_at", ">", lastActivityCheckMinus24Hours)
