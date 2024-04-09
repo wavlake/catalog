@@ -121,6 +121,9 @@ model external_receive {
   track_id     String?   @db.Uuid
   created_at   DateTime? @default(now()) @db.Timestamptz(6)
   payment_hash String?   @db.VarChar(255)
+  external_id  String?
+  updated_at   DateTime? @db.Timestamptz(6)
+  is_pending   Boolean?  @default(false)
 }
 
 model knex_migrations {
@@ -213,25 +216,26 @@ model Track {
 }
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
-model transaction {
-  id              Int       @id @default(autoincrement())
-  user_id         String    @db.VarChar(255)
-  pre_tx_balance  BigInt
-  payment_request String    @db.VarChar(700)
-  payment_hash    String?
-  fee_msat        Int?
-  msat_amount     BigInt
-  withdraw        Boolean
-  success         Boolean?
-  failure_reason  String?   @db.VarChar(255)
-  created_at      DateTime? @default(now()) @db.Timestamptz(6)
-  is_pending      Boolean   @default(false)
-  updated_at      DateTime? @default(now()) @db.Timestamptz(6)
-  external_id     String?   @db.VarChar(255)
-  preimage        String?   @db.VarChar(255)
-  user            User      @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "transaction_user_id_foreign")
+model Transaction {
+  id             Int       @id @default(autoincrement())
+  userId         String    @map("user_id") @db.VarChar(255)
+  preTxBalance   BigInt    @map("pre_tx_balance")
+  paymentRequest String    @map("payment_request") @db.VarChar(700)
+  paymentHash    String?   @map("payment_hash")
+  feeMsat        Int?      @map("fee_msat")
+  msatAmount     BigInt    @map("msat_amount")
+  withdraw       Boolean
+  success        Boolean?
+  failureReason  String?   @map("failure_reason") @db.VarChar(255)
+  createdAt      DateTime? @default(now()) @map("created_at") @db.Timestamptz(6)
+  isPending      Boolean   @default(false) @map("is_pending")
+  updatedAt      DateTime? @default(now()) @map("updated_at") @db.Timestamptz(6)
+  externalId     String?   @map("external_id") @db.VarChar(255)
+  preimage       String?   @db.VarChar(255)
+  user           User      @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "transaction_user_id_foreign")
 
-  @@index([user_id], map: "idx_transaction_user_id")
+  @@index([userId], map: "idx_transaction_user_id")
+  @@map("transaction")
 }
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
@@ -246,12 +250,13 @@ model User {
   artworkUrl          String?            @map("artwork_url") @db.VarChar(255)
   lastActivityCheckAt DateTime?          @default(now()) @map("last_activity_check_at") @db.Timestamptz(6)
   profileUrl          String?            @unique(map: "user_profile_url_unique") @map("profile_url") @db.VarChar(255)
+  lightningAddress    String?            @map("lightning_address")
   artist              Artist[]
   external_payment    ExternalPayment[]
   podcast             Podcast[]
   split_recipient     SplitRecipient[]
   subscriber          Subscriber?
-  transaction         transaction[]
+  transaction         Transaction[]
   user_flag           UserFlag[]
   wallet_connection   WalletConnection[]
 
@@ -478,6 +483,8 @@ model ExternalPayment {
   txId         String?   @map("tx_id") @db.Uuid
   createdAt    DateTime? @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt    DateTime? @default(now()) @map("updated_at") @db.Timestamptz(6)
+  externalId   String?   @map("external_id") @db.VarChar(255)
+  isPending    Boolean?  @default(false) @map("is_pending")
   user         User      @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "external_payment_user_id_foreign")
 
   @@map("external_payment")
@@ -540,11 +547,54 @@ model npub {
   updated_at DateTime? @default(now()) @db.Timestamptz(6)
 }
 
+model Forward {
+  id                Int       @id @default(autoincrement())
+  userId            String    @map("user_id")
+  lightningAddress  String    @map("lightning_address")
+  msatAmount        Int       @map("msat_amount")
+  inFlight          Boolean   @default(false) @map("in_flight")
+  isSettled         Boolean   @default(false) @map("is_settled")
+  externalPaymentId String?   @map("external_payment_id")
+  createdAt         DateTime? @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime? @default(now()) @map("updated_at") @db.Timestamptz(6)
+  attemptCount      Int       @default(0) @map("attempt_count")
+  remainderId       String?   @map("remainder_id")
+  error             String?
+
+  @@index([userId], map: "idx_forward_user_id")
+  @@map("forward")
+}
+
+model ForwardDetail {
+  id                Int       @id @default(autoincrement())
+  externalPaymentId String    @map("external_payment_id")
+  msatAmount        Int       @map("msat_amount")
+  feeMsat           Int       @map("fee_msat")
+  preimage          String
+  success           Boolean   @default(false)
+  error             String?
+  createdAt         DateTime? @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@map("forward_detail")
+}
+
+model UserVerification {
+  userId    String    @id @unique(map: "user_verification_user_id_unique") @map("user_id")
+  firstName String    @map("first_name")
+  lastName  String    @map("last_name")
+  ip        String
+  createdAt DateTime? @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime? @default(now()) @map("updated_at") @db.Timestamptz(6)
+
+  @@map("user_verification")
+}
+
 model Announcement {
   id        Int       @id @default(autoincrement())
   title     String
   content   String
   createdAt DateTime? @default(now()) @map("created_at") @db.Timestamptz(6)
+  link      String?
 
   @@map("announcement")
 }

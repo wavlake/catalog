@@ -1,0 +1,41 @@
+steps:
+  # Build the container image
+  - name: "gcr.io/cloud-builders/docker"
+    args:
+      [
+        "build",
+        "-t",
+        "us-central1-docker.pkg.dev/$PROJECT_ID/cronjobs/forwarder-prod:latest",
+        "-f",
+        "cronjobs/forwarder/Dockerfile",
+        ".",
+      ]
+  # Push the container image to Artifact Registry
+  - name: "gcr.io/cloud-builders/docker"
+    args:
+      [
+        "push",
+        "us-central1-docker.pkg.dev/$PROJECT_ID/cronjobs/forwarder-prod:latest",
+      ]
+  # Deploy container image to Cloud Run
+  - name: "gcr.io/google.com/cloudsdktool/cloud-sdk"
+    entrypoint: gcloud
+    args:
+      [
+        "run",
+        "jobs",
+        "deploy",
+        "forwarder-prod",
+        "--image",
+        "us-central1-docker.pkg.dev/$PROJECT_ID/cronjobs/forwarder-prod:latest",
+        "--region",
+        "us-central1",
+      ]
+images:
+  - "us-central1-docker.pkg.dev/$PROJECT_ID/cronjobs/forwarder-prod:latest"
+timeout: "900s"
+options:
+  logging: CLOUD_LOGGING_ONLY
+  pool:
+    name: projects/$PROJECT_ID/locations/us-central1/workerPools/build-pool
+  dynamic_substitutions: true

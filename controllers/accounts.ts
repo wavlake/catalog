@@ -2,7 +2,11 @@ import db from "../library/db";
 import asyncHandler from "express-async-handler";
 import prisma from "../prisma/client";
 import { formatError } from "../library/errors";
-const log = require("loglevel");
+import log from "loglevel";
+import { auth } from "../library/firebaseService";
+import { validateLightningAddress } from "../library/zbd/zbdClient";
+import { urlFriendly } from "../library/format";
+import { upload_image } from "../library/artwork";
 
 async function groupSplitPayments(combinedAmps) {
   // Group records by txId
@@ -35,7 +39,8 @@ const get_account = asyncHandler(async (req, res, next) => {
         "user.amp_msat as ampMsat",
         "user.artwork_url as artworkUrl",
         "user.profile_url as profileUrl",
-        "user.is_locked as isLocked"
+        "user.is_locked as isLocked",
+        "user.lightning_address as lightningAddress"
       )
       .where("user.id", "=", request.accountId);
 
@@ -46,11 +51,23 @@ const get_account = asyncHandler(async (req, res, next) => {
       .select("track.id", "playlist.id as playlistId")
       .where("playlist.user_id", "=", request.accountId)
       .where("playlist.is_favorites", "=", true);
+    const isRegionVerified = await db
+      .knex("user_verification")
+      .select("first_name")
+      .where("user_id", "=", request.accountId)
+      .first();
+
+    const { emailVerified, providerData } = await auth().getUser(
+      request.accountId
+    );
 
     res.send({
       success: true,
       data: {
         ...userData[0],
+        emailVerified,
+        isRegionVerified: !!isRegionVerified,
+        providerId: providerData[0]?.providerId,
         userFavoritesId: (trackData[0] || {}).playlistId,
         userFavorites: trackData.map((track) => track.id),
       },
@@ -67,11 +84,12 @@ const get_activity = asyncHandler(async (req, res, next) => {
   };
 
   const { page } = req.params;
-
   const pageInt = parseInt(page);
   if (!Number.isInteger(pageInt) || pageInt <= 0) {
-    const error = formatError(400, "Page must be a positive integer");
-    next(error);
+    res.status(400).json({
+      success: false,
+      error: "page must be a positive integer",
+    });
     return;
   }
 
@@ -142,10 +160,10 @@ const get_announcements = asyncHandler(async (req, res, next) => {
       return data.last_activity_check_at ?? new Date();
     });
 
-  // Add a day to the last activity check to ensure we don't miss any announcements
-  const lastActivityCheckPlus24Hours = new Date(lastActivityCheckAt);
-  lastActivityCheckPlus24Hours.setHours(
-    lastActivityCheckPlus24Hours.getHours() + 24
+  // Subtract to the last activity check so annoucements last at least 24 hours
+  const lastActivityCheckMinus24Hours = new Date(lastActivityCheckAt);
+  lastActivityCheckMinus24Hours.setHours(
+    lastActivityCheckMinus24Hours.getHours() - 24
   );
 
   return db
@@ -154,9 +172,10 @@ const get_announcements = asyncHandler(async (req, res, next) => {
       "id as id",
       "title as title",
       "content as content",
+      "link as link",
       "created_at as createdAt"
     )
-    .where("announcement.created_at", "<", lastActivityCheckPlus24Hours)
+    .where("announcement.created_at", ">", lastActivityCheckMinus24Hours)
     .orderBy("announcement.created_at", "desc")
     .then((data) => {
       res.send({
@@ -312,12 +331,320 @@ const get_history = asyncHandler(async (req, res, next) => {
   }
 });
 
+const get_txs = asyncHandler(async (req, res, next) => {
+  const userId = req["uid"];
+
+  const { page } = req.params;
+  const pageInt = parseInt(page);
+  if (!Number.isInteger(pageInt) || pageInt <= 0) {
+    res.status(400).json({
+      success: false,
+      error: "page must be a positive integer",
+    });
+    return;
+  }
+
+  const txs = await db
+    .knex(transactions(userId))
+    .unionAll([forwards(userId)])
+    .orderBy("createDate", "desc")
+    .paginate({
+      perPage: 20,
+      currentPage: pageInt,
+      isLengthAware: true,
+    });
+
+  const txsModified = txs.data.map((tx) => {
+    return {
+      ...tx,
+      feeMsat: tx.feemsat,
+      isPending: tx.ispending,
+    };
+  });
+
+  res.json({
+    success: true,
+    data: {
+      transactions: txsModified,
+      pagination: {
+        currentPage: txs.pagination.currentPage,
+        perPage: txs.pagination.perPage,
+        total: txs.pagination.total,
+        totalPages: txs.pagination.lastPage,
+      },
+    },
+  });
+});
+
+const get_check_region = asyncHandler(async (req, res, next) => {
+  // Respond with 200 if request gets past middleware
+  res.send(200);
+});
+
+const post_log_identity = asyncHandler(async (req, res, next) => {
+  const userId = req["uid"];
+  const { firstName, lastName } = req.body;
+
+  if (!firstName || !lastName) {
+    res.status(400).json({
+      success: false,
+      error: "First name and last name are required",
+    });
+    return;
+  }
+
+  const userRecord = await auth().getUser(userId);
+
+  if (!userRecord.emailVerified) {
+    res.status(400).json({
+      success: false,
+      error: "Email is not verified",
+    });
+    return;
+  }
+
+  try {
+    await prisma.userVerification.upsert({
+      where: {
+        userId: userId,
+      },
+      update: {
+        firstName: firstName,
+        lastName: lastName,
+        ip: req.ip,
+      },
+      create: {
+        userId: userId,
+        firstName: firstName,
+        lastName: lastName,
+        ip: req.ip,
+      },
+    });
+
+    res.send({
+      success: true,
+      data: { userId: userId },
+    });
+  } catch (err) {
+    next(err);
+    return;
+  }
+});
+
+const create_update_lnaddress = asyncHandler(async (req, res, next) => {
+  const userId = req["uid"];
+  const { lightningAddress } = req.body;
+
+  if (!lightningAddress) {
+    res.status(400).json({
+      success: false,
+      error: "Address is required",
+    });
+    return;
+  }
+
+  const isValidAddress = await validateLightningAddress(lightningAddress);
+
+  if (!isValidAddress) {
+    res.status(400).json({
+      success: false,
+      error: "Invalid lightning address",
+    });
+    return;
+  }
+
+  try {
+    await prisma.user.update({
+      where: {
+        id: userId,
+      },
+      data: {
+        lightningAddress: lightningAddress,
+      },
+    });
+
+    res.send({
+      success: true,
+      data: { userId: userId, lightningAddress: lightningAddress },
+    });
+  } catch (err) {
+    next(err);
+    return;
+  }
+});
+
+const create_account = asyncHandler(async (req, res, next) => {
+  const { name, userId } = req.body;
+
+  if (!name || !userId) {
+    res.status(400).json({
+      success: false,
+      error: "Name and userId are required",
+    });
+    return;
+  }
+
+  try {
+    const profileUrl = urlFriendly(name);
+    const existingUser = await prisma.user.findUnique({
+      where: {
+        name: name,
+      },
+    });
+    if (existingUser) {
+      res.status(400).json({
+        success: false,
+        error: "Name is already taken",
+      });
+      return;
+    }
+    await prisma.user.create({
+      data: {
+        id: userId,
+        name: name,
+        profileUrl,
+      },
+    });
+
+    res.send({
+      success: true,
+      data: { userId: userId, name: name },
+    });
+  } catch (err) {
+    log.debug("error creating account", req.body);
+    log.debug(err);
+    next(err);
+    return;
+  }
+});
+
+const edit_account = asyncHandler(async (req, res, next) => {
+  const userId = req["uid"];
+  const { name, ampMsat } = req.body;
+  const artwork = req.file;
+
+  try {
+    let ampMsatInt;
+    if (ampMsat) {
+      ampMsatInt = parseInt(ampMsat);
+      if (!Number.isInteger(ampMsatInt) || ampMsatInt < 1000) {
+        res.status(400).json({
+          success: false,
+          error: "ampMsat must be an integer greater than 1000 (1 sat)",
+        });
+        return;
+      }
+    }
+
+    let profileUrl;
+    // if updating name,  check if it's available
+    if (name) {
+      const existingUser = await prisma.user.findUnique({
+        where: {
+          name: name,
+        },
+      });
+      if (existingUser && existingUser.id !== userId) {
+        res.status(400).json({
+          success: false,
+          error: "Name is already taken",
+        });
+        return;
+      }
+      // generate profile url
+      profileUrl = urlFriendly(name);
+      if (profileUrl === "-") {
+        profileUrl = "user-" + userId.slice(-5, -1);
+      }
+    }
+
+    let cdnImageUrl;
+    if (artwork) {
+      cdnImageUrl = await upload_image(artwork, userId, "artist");
+    }
+
+    await prisma.user.update({
+      where: {
+        id: userId,
+      },
+      data: {
+        name,
+        ...(ampMsatInt ? { ampMsat: ampMsatInt } : {}),
+        profileUrl,
+        ...(cdnImageUrl ? { artworkUrl: cdnImageUrl } : {}),
+      },
+    });
+
+    res.send({
+      success: true,
+      data: { userId: userId, name: name },
+    });
+  } catch (err) {
+    log.debug("error editing account", { ...req.body, userId });
+    log.debug(err);
+    next(err);
+    return;
+  }
+});
+
+// QUERY FUNCTIONS
+
+function transactions(userId) {
+  return db
+    .knex("transaction")
+    .select(
+      "transaction.payment_request as paymentid",
+      "transaction.fee_msat as feemsat",
+      "transaction.success as success",
+      db.knex.raw(
+        "CASE WHEN withdraw=true THEN 'Withdraw' ELSE 'Deposit' END AS type"
+      ),
+      "transaction.is_pending as ispending",
+      "transaction.id as id",
+      "transaction.msat_amount as msatAmount",
+      "transaction.failure_reason as failureReason",
+      "transaction.created_at as createDate"
+    )
+    .where("transaction.user_id", "=", userId)
+    .as("transactions");
+}
+
+function forwards(userId) {
+  return db
+    .knex("forward_detail")
+    .join(
+      "forward",
+      "forward.external_payment_id",
+      "=",
+      "forward_detail.external_payment_id"
+    )
+    .select(
+      "forward_detail.external_payment_id as paymentid",
+      db.knex.raw("0 as feeMsat"),
+      db.knex.raw("bool_and(forward_detail.success) as success"),
+      db.knex.raw("'Autoforward' as type"),
+      db.knex.raw("false as ispending")
+    )
+    .min("forward_detail.id as id")
+    .min("forward_detail.msat_amount as msatAmount")
+    .min("forward_detail.error as failureReason")
+    .min("forward_detail.created_at as createDate")
+    .groupBy("forward_detail.external_payment_id", "forward_detail.created_at")
+    .where("forward.user_id", "=", userId);
+}
+
 export default {
+  create_update_lnaddress,
   get_account,
+  create_account,
+  edit_account,
   get_activity,
   get_announcements,
   get_notification,
   put_notification,
   get_features,
   get_history,
+  get_txs,
+  get_check_region,
+  post_log_identity,
 };

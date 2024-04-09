@@ -8,7 +8,7 @@ import { invalidateCdn } from "./cloudfrontClient";
 const localConvertPath = process.env.LOCAL_CONVERT_PATH;
 const cdnDomain = `${process.env.AWS_CDN_DOMAIN}`;
 
-type CONTENT_TYPE = "artist" | "album" | "podcast";
+type CONTENT_TYPE = "artist" | "album" | "podcast" | "user";
 
 const TYPE_SETTINGS = {
   artist: {
@@ -23,6 +23,11 @@ const TYPE_SETTINGS = {
   },
   podcast: {
     width: 1875,
+    height: Jimp.AUTO,
+    quality: 60,
+  },
+  user: {
+    width: 500,
     height: Jimp.AUTO,
     quality: 60,
   },
@@ -60,7 +65,7 @@ const upload_image = async (
     invalidateCdn(s3Key);
 
     log.debug(
-      `Artwork for ${contentId} uploaded to S3 ${s3UploadResult.Location}`
+      `Artwork for ${type}: ${contentId} uploaded to S3 ${s3UploadResult.Location}`
     );
 
     // Clean up with async calls to avoid blocking response
