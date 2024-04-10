@@ -7,6 +7,7 @@ import { auth } from "../library/firebaseService";
 import { validateLightningAddress } from "../library/zbd/zbdClient";
 import { urlFriendly } from "../library/format";
 import { upload_image } from "../library/artwork";
+import { getZBDLoginUrl, zbdLoginCallback } from "../library/zbd/login";
 
 async function groupSplitPayments(combinedAmps) {
   // Group records by txId
@@ -633,6 +634,24 @@ function forwards(userId) {
     .where("forward.user_id", "=", userId);
 }
 
+// called by wavlake client to get zbd login url
+const get_zbd_url = asyncHandler(async (req, res, next) => {
+  const url = await getZBDLoginUrl();
+  res.send({
+    success: true,
+    data: url,
+  });
+});
+
+// called by client to get zbd user data
+const get_zbd_user = asyncHandler(async (req, res, next) => {
+  const userData = await zbdLoginCallback(req.body);
+  res.send({
+    success: true,
+    data: userData,
+  });
+});
+
 export default {
   create_update_lnaddress,
   get_account,
@@ -647,4 +666,6 @@ export default {
   get_txs,
   get_check_region,
   post_log_identity,
+  get_zbd_url,
+  get_zbd_user,
 };

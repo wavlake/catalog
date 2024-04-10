@@ -74,5 +74,8 @@ router.post(
   accountsController.create_update_lnaddress
 );
 
+router.get("/zbd-login-url", accountsController.get_zbd_url);
+router.post("/zbd-user-info", accountsController.get_zbd_user);
+
 // Export router
 export default router;
