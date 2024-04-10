@@ -25,6 +25,7 @@ const wavlakePodcastsForUpdate = async () => {
         // greater than now - lookbackMinutes
         gt: new Date(lookbackDt),
       },
+      isDraft: false,
     },
     select: {
       id: true,
@@ -47,6 +48,7 @@ const wavlakeMusicFeedsForUpdate = async () => {
         // greater than now - lookbackMinutes
         gt: new Date(lookbackDt),
       },
+      isDraft: false,
       deleted: false,
       track: {
         some: {
