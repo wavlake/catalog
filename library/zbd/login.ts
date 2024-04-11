@@ -43,20 +43,13 @@ const createZBDOauth = () => {
   return oauth2;
 };
 
-const { verifier, challenge } = GeneratePKCE();
-// this is needed to store the verifier for the user so we can validate it in the callback
-// but we dont have a user object yet
-const userId = "some-unique-id";
-
 // Called by the app to get a url it will open in a webview/or browser
-export const getZBDLoginUrl = async () => {
+export const getZBDRedirectInfo = async () => {
   // generate the PKCE key
-
-  // save the verifier/key to the user object so we can access it when validating in the callback
-  // await User.findOneAndUpdate({ userId }, { oauthVerifier: verifier });
+  const { verifier, challenge } = GeneratePKCE();
 
   const scope = "user";
-  const state = userId;
+  const state = "wavlake-login";
   const suffix = `&response_type=code&code_challenge=${challenge}&code_challenge_method=S256&state=${state}`;
 
   const oauth2 = createZBDOauth();
@@ -69,10 +62,10 @@ export const getZBDLoginUrl = async () => {
 
   // npm module doesnt support PKCE so append the url with the code_challenge info
   const url = res + suffix;
-  return url;
+  return { url, verifier };
 };
 
-const getAccessToken = async (payload: Object) => {
+const getZBDAccessToken = async (payload: Object) => {
   const response = await axios({
     method: "POST",
     data: payload,
@@ -87,7 +80,7 @@ const getAccessToken = async (payload: Object) => {
   return response;
 };
 
-export const getUserData = async (accessToken: string) => {
+export const getZBDUserData = async (accessToken: string) => {
   const response = await axios({
     method: "GET",
     url: `https://api.zebedee.io/v0/oauth2/user`,
@@ -102,10 +95,10 @@ export const getUserData = async (accessToken: string) => {
 };
 
 // called by ZBD oauth on login
-export const zbdLoginCallback = async (payload: any) => {
-  const { code, state } = payload;
+export const getLoginTokenForZBDUser = async (payload: any) => {
+  const { code, verifier } = payload;
   try {
-    const res = await getAccessToken({
+    const res = await getZBDAccessToken({
       code,
       client_secret: ZBD_CLIENT_SECRET,
       client_id: ZBD_CLIENT_ID,
@@ -116,12 +109,13 @@ export const zbdLoginCallback = async (payload: any) => {
     const { access_token } = res.data;
 
     // get user data now we have the access token
-    const response = await getUserData(access_token);
+    const response = await getZBDUserData(access_token);
     const userData = response?.data?.data;
-
+    // generate new user on firebase or merge with existing user
+    // return login token for user
     return {
       success: true,
-      data: userData,
+      data: "replace-me-with-token",
     };
   } catch (e) {
     console.error(e);

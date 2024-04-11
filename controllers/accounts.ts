@@ -7,7 +7,10 @@ import { auth } from "../library/firebaseService";
 import { validateLightningAddress } from "../library/zbd/zbdClient";
 import { urlFriendly } from "../library/format";
 import { upload_image } from "../library/artwork";
-import { getZBDLoginUrl, zbdLoginCallback } from "../library/zbd/login";
+import {
+  getZBDRedirectInfo,
+  getLoginTokenForZBDUser,
+} from "../library/zbd/login";
 
 async function groupSplitPayments(combinedAmps) {
   // Group records by txId
@@ -635,21 +638,18 @@ function forwards(userId) {
 }
 
 // called by wavlake client to get zbd login url
-const get_zbd_url = asyncHandler(async (req, res, next) => {
-  const url = await getZBDLoginUrl();
+const get_zbd_redirect_info = asyncHandler(async (req, res, next) => {
+  const data = await getZBDRedirectInfo();
   res.send({
     success: true,
-    data: url,
+    data,
   });
 });
 
 // called by client to get zbd user data
-const get_zbd_user = asyncHandler(async (req, res, next) => {
-  const userData = await zbdLoginCallback(req.body);
-  res.send({
-    success: true,
-    data: userData,
-  });
+const get_login_token_for_zbd_user = asyncHandler(async (req, res, next) => {
+  const loginToken = await getLoginTokenForZBDUser(req.body);
+  res.send(loginToken);
 });
 
 export default {
@@ -666,6 +666,6 @@ export default {
   get_txs,
   get_check_region,
   post_log_identity,
-  get_zbd_url,
-  get_zbd_user,
+  get_zbd_redirect_info,
+  get_login_token_for_zbd_user,
 };
