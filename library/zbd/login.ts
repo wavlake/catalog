@@ -93,9 +93,20 @@ export const getZBDUserData = async (accessToken: string) => {
   });
   return response;
 };
+interface ZBDUserInfo {
+  token: string;
+  id: string;
+  email: string;
+  gamerTag: string;
+  image: string;
+  isVerified: boolean;
+  lightningAddress: string;
+  publicBio: string;
+  publicStaticCharge: string;
+  social: any;
+}
 
-// called by ZBD oauth on login
-export const getLoginTokenForZBDUser = async (payload: any) => {
+export const getZBDUserInfo = async (payload: any) => {
   const { code, verifier } = payload;
   try {
     const res = await getZBDAccessToken({
@@ -110,15 +121,11 @@ export const getLoginTokenForZBDUser = async (payload: any) => {
 
     // get user data now we have the access token
     const response = await getZBDUserData(access_token);
-    const userData = response?.data?.data;
-    // generate new user on firebase or merge with existing user
-    // return login token for user
-    return {
-      success: true,
-      data: "replace-me-with-token",
-    };
+    const userData: ZBDUserInfo = response?.data?.data;
+
+    return userData;
   } catch (e) {
     console.error(e);
-    return { success: false, data: e.message };
+    return;
   }
 };

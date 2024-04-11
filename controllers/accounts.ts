@@ -7,10 +7,7 @@ import { auth } from "../library/firebaseService";
 import { validateLightningAddress } from "../library/zbd/zbdClient";
 import { urlFriendly } from "../library/format";
 import { upload_image } from "../library/artwork";
-import {
-  getZBDRedirectInfo,
-  getLoginTokenForZBDUser,
-} from "../library/zbd/login";
+import { getZBDRedirectInfo, getZBDUserInfo } from "../library/zbd/login";
 
 async function groupSplitPayments(combinedAmps) {
   // Group records by txId
@@ -648,8 +645,54 @@ const get_zbd_redirect_info = asyncHandler(async (req, res, next) => {
 
 // called by client to get zbd user data
 const get_login_token_for_zbd_user = asyncHandler(async (req, res, next) => {
-  const loginToken = await getLoginTokenForZBDUser(req.body);
-  res.send(loginToken);
+  const userData = await getZBDUserInfo(req.body);
+  if (!userData || !userData.email) {
+    res.status(500).send({
+      success: false,
+      error: "Failed to get ZBD user data",
+    });
+    return;
+  }
+
+  const existingUser = await auth().getUserByEmail(userData.email);
+  let firebaseLoginToken;
+
+  if (existingUser) {
+    // we are trusting ZBD at this point with the provided email
+    // and giving access to the matching firebase user
+    // get a token for the existing user
+    firebaseLoginToken = await auth().createCustomToken(existingUser.uid);
+  } else {
+    // create a new user
+    const user = await auth().createUser({
+      email: userData.email,
+      emailVerified: false,
+      photoURL: userData.image,
+      // do we want to use the zbd id as the firebase uid?
+      // if we dont, then a user can create a new account on login #1
+      // then change their ZBD account email
+      // login a second time to wavlake, and it will create a new firebase user
+      uid: userData.id,
+    });
+    // get a token for the user
+    firebaseLoginToken = await auth().createCustomToken(user.uid);
+  }
+
+  if (!firebaseLoginToken) {
+    res.status(500).send({
+      success: false,
+      error: "Failed to create login token",
+    });
+    return;
+  }
+
+  res.send({
+    success: true,
+    data: {
+      ...userData,
+      token: firebaseLoginToken,
+    },
+  });
 });
 
 export default {
