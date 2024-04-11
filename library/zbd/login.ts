@@ -5,7 +5,6 @@ import OAuth from "oauth";
 const ZBD_CLIENT_ID = process.env.ZBD_CLIENT_ID;
 const ZBD_CLIENT_SECRET = process.env.ZBD_CLIENT_SECRET;
 const ZBD_API_URL = process.env.ZBD_API_URL;
-const ZBD_REDIRECT_URL = process.env.ZBD_REDIRECT_URL;
 
 function sha256(buffer) {
   return crypto.createHash("sha256").update(buffer).digest();
@@ -44,7 +43,7 @@ const createZBDOauth = () => {
 };
 
 // Called by the app to get a url it will open in a webview/or browser
-export const getZBDRedirectInfo = async () => {
+export const getZBDRedirectInfo = async (redirectUri: string) => {
   // generate the PKCE key
   const { verifier, challenge } = GeneratePKCE();
 
@@ -56,7 +55,7 @@ export const getZBDRedirectInfo = async () => {
 
   // use NPM module to create the url
   const res = await oauth2.getAuthorizeUrl({
-    redirect_uri: ZBD_REDIRECT_URL,
+    redirect_uri: redirectUri,
     scope,
   });
 
@@ -107,7 +106,7 @@ interface ZBDUserInfo {
 }
 
 export const getZBDUserInfo = async (payload: any) => {
-  const { code, verifier } = payload;
+  const { code, verifier, redirectUri } = payload;
   try {
     const res = await getZBDAccessToken({
       code,
@@ -115,7 +114,7 @@ export const getZBDUserInfo = async (payload: any) => {
       client_id: ZBD_CLIENT_ID,
       code_verifier: verifier,
       grant_type: "authorization_code",
-      redirect_uri: ZBD_REDIRECT_URL,
+      redirect_uri: redirectUri,
     });
     const { access_token } = res.data;
 

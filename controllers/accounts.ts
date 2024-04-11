@@ -636,7 +636,10 @@ function forwards(userId) {
 
 // called by wavlake client to get zbd login url
 const get_zbd_redirect_info = asyncHandler(async (req, res, next) => {
-  const data = await getZBDRedirectInfo();
+  const encodedRedirectUri = req.query.redirectUri as string;
+  const redirectUri = decodeURIComponent(encodedRedirectUri);
+
+  const data = await getZBDRedirectInfo(redirectUri);
   res.send({
     success: true,
     data,
