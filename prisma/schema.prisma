@@ -599,6 +599,12 @@ model Announcement {
   @@map("announcement")
 }
 
+model external_user {
+  firebase_uid String  @id @unique(map: "external_user_firebase_uid_unique") @db.Uuid
+  external_id  String  @db.Uuid
+  provider     String? @db.VarChar(128)
+}
+
 view TrackInfo {
   id              String    @unique @db.Uuid
   title           String?   @db.VarChar(255)
