@@ -43,7 +43,7 @@ const get_track = asyncHandler(async (req, res, next) => {
 
   prisma.trackInfo
     .findFirstOrThrow({
-      where: { id: trackId },
+      where: { id: trackId, isDraft: false, publishedAt: { lte: new Date() } },
     })
     .then((track) => {
       res.json({ success: true, data: track });
