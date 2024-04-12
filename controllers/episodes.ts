@@ -14,7 +14,7 @@ export const get_episode = asyncHandler(async (req, res, next) => {
   const { episodeId } = req.params;
 
   const episode = await prisma.episode.findFirstOrThrow({
-    where: { id: episodeId },
+    where: { id: episodeId, isDraft: false, publishedAt: { lte: new Date() } },
     include: {
       podcast: {
         select: {
