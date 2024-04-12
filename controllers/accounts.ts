@@ -45,6 +45,15 @@ const get_account = asyncHandler(async (req, res, next) => {
       )
       .where("user.id", "=", request.accountId);
 
+    if (!userData || !userData.length) {
+      log.debug("error querying user table for uid:", request.accountId);
+      res.status(404).json({
+        success: false,
+        error: "User not found",
+      });
+      return;
+    }
+
     const trackData = await db
       .knex("playlist")
       .join("playlist_track", "playlist.id", "=", "playlist_track.playlist_id")
