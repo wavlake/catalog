@@ -600,8 +600,8 @@ model Announcement {
 }
 
 model external_user {
-  firebase_uid String  @id @unique(map: "external_user_firebase_uid_unique") @db.Uuid
-  external_id  String  @db.Uuid
+  external_id  String  @id @unique(map: "external_user_external_id_unique") @db.VarChar(255)
+  firebase_uid String? @db.VarChar(64)
   provider     String? @db.VarChar(128)
 }
 
