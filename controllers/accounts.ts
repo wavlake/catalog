@@ -648,54 +648,92 @@ const get_zbd_redirect_info = asyncHandler(async (req, res, next) => {
 
 // called by client to get zbd user data
 const get_login_token_for_zbd_user = asyncHandler(async (req, res, next) => {
-  const userData = await getZBDUserInfo(req.body);
-  if (!userData || !userData.email) {
+  try {
+    const userData = await getZBDUserInfo(req.body);
+    if (!userData || !userData.email) {
+      res.status(500).send({
+        success: false,
+        error: "Failed to get ZBD user data",
+      });
+      return;
+    }
+
+    const existingUserId = await prisma.external_user.findFirst({
+      where: {
+        external_id: userData.id,
+        provider: "zbd",
+      },
+    });
+
+    const existingUserEmail = await auth().getUserByEmail(userData.email);
+
+    let firebaseLoginToken;
+
+    if (existingUserId) {
+      // we matched a firebase user uid with the incoming ZBD id
+      firebaseLoginToken = await auth().createCustomToken(
+        existingUserId.firebase_uid
+      );
+    } else if (existingUserEmail) {
+      // we matched a firebase user email with the incoming ZBD email
+      firebaseLoginToken = await auth().createCustomToken(
+        existingUserEmail.uid
+      );
+    } else {
+      // no match, so create a new user in firebase + db tables
+      const user = await auth().createUser({
+        email: userData.email,
+        emailVerified: false,
+        photoURL: userData.image,
+      });
+
+      const username = `${userData.gamerTag}_user${user.uid
+        .split("")
+        .slice(0, 7)
+        .join("")}`;
+
+      // create the new user record in the user table
+      await prisma.user.create({
+        data: {
+          id: user.uid,
+          name: urlFriendly(username),
+          profileUrl: userData.image,
+        },
+      });
+
+      // save the user id to the external user table
+      await prisma.external_user.create({
+        data: {
+          firebase_uid: user.uid,
+          external_id: userData.id,
+          provider: "zbd",
+        },
+      });
+      // get a token for the user
+      firebaseLoginToken = await auth().createCustomToken(user.uid);
+    }
+
+    if (!firebaseLoginToken) {
+      res.status(500).send({
+        success: false,
+        error: "Failed to create login token",
+      });
+      return;
+    }
+
+    res.send({
+      success: true,
+      data: {
+        ...userData,
+        token: firebaseLoginToken,
+      },
+    });
+  } catch (err) {
     res.status(500).send({
       success: false,
-      error: "Failed to get ZBD user data",
+      error: "Failed to get login token for ZBD user",
     });
-    return;
   }
-
-  const existingUser = await auth().getUserByEmail(userData.email);
-  let firebaseLoginToken;
-
-  if (existingUser) {
-    // we are trusting ZBD at this point with the provided email
-    // and giving access to the matching firebase user
-    // get a token for the existing user
-    firebaseLoginToken = await auth().createCustomToken(existingUser.uid);
-  } else {
-    // create a new user
-    const user = await auth().createUser({
-      email: userData.email,
-      emailVerified: false,
-      photoURL: userData.image,
-      // do we want to use the zbd id as the firebase uid?
-      // if we dont, then a user can create a new account on login #1
-      // then change their ZBD account email
-      // login a second time to wavlake, and it will create a new firebase user
-      uid: userData.id,
-    });
-    // get a token for the user
-    firebaseLoginToken = await auth().createCustomToken(user.uid);
-  }
-
-  if (!firebaseLoginToken) {
-    res.status(500).send({
-      success: false,
-      error: "Failed to create login token",
-    });
-    return;
-  }
-
-  res.send({
-    success: true,
-    data: {
-      ...userData,
-      token: firebaseLoginToken,
-    },
-  });
 });
 
 export default {
