@@ -45,15 +45,6 @@ const get_account = asyncHandler(async (req, res, next) => {
       )
       .where("user.id", "=", request.accountId);
 
-    if (!userData || !userData.length) {
-      log.debug("error querying user table for uid:", request.accountId);
-      res.status(404).json({
-        success: false,
-        error: "User not found",
-      });
-      return;
-    }
-
     const trackData = await db
       .knex("playlist")
       .join("playlist_track", "playlist.id", "=", "playlist_track.playlist_id")
@@ -720,14 +711,22 @@ const get_login_token_for_zbd_user = asyncHandler(async (req, res, next) => {
         },
       });
 
-      // save the user id to the external user table
-      await prisma.external_user.create({
-        data: {
-          firebase_uid: user.uid,
+      // save the user id to the external user table, or update if it already exists
+      await prisma.external_user.upsert({
+        where: {
           external_id: userData.id,
+        },
+        update: {
+          firebase_uid: user.uid,
+          provider: "zbd",
+        },
+        create: {
+          external_id: userData.id,
+          firebase_uid: user.uid,
           provider: "zbd",
         },
       });
+
       // get a token for the user
       firebaseLoginToken = await auth().createCustomToken(user.uid);
     }
