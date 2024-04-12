@@ -658,24 +658,36 @@ const get_login_token_for_zbd_user = asyncHandler(async (req, res, next) => {
       return;
     }
 
-    const existingUserId = await prisma.external_user.findFirst({
+    const existingUserIdMapping = await prisma.external_user.findFirst({
       where: {
         external_id: userData.id,
         provider: "zbd",
       },
     });
-
-    const existingUserEmail = await auth().getUserByEmail(userData.email);
+    // confirm this user exists in firebase (it may have been deleted/out of sync with the external user table)
+    const existingUserId = existingUserIdMapping?.firebase_uid
+      ? await auth()
+          .getUser(existingUserIdMapping.firebase_uid)
+          .catch((e) => {
+            // not found or no mapping
+            return null;
+          })
+      : false;
+    const existingUserEmail = await auth()
+      .getUserByEmail(userData.email)
+      .catch((e) => {
+        // not found
+        return null;
+      });
 
     let firebaseLoginToken;
 
     if (existingUserId) {
       // we matched a firebase user uid with the incoming ZBD id
-      firebaseLoginToken = await auth().createCustomToken(
-        existingUserId.firebase_uid
-      );
+      firebaseLoginToken = await auth().createCustomToken(existingUserId.uid);
     } else if (existingUserEmail) {
       // we matched a firebase user email with the incoming ZBD email
+      // this won't modify the firebase user, it will just let the user access the account
       firebaseLoginToken = await auth().createCustomToken(
         existingUserEmail.uid
       );
@@ -687,17 +699,14 @@ const get_login_token_for_zbd_user = asyncHandler(async (req, res, next) => {
         photoURL: userData.image,
       });
 
-      const username = `${userData.gamerTag}_user${user.uid
-        .split("")
-        .slice(0, 7)
-        .join("")}`;
+      const username = `zbduser_${user.uid.split("").slice(0, 7).join("")}`;
 
       // create the new user record in the user table
       await prisma.user.create({
         data: {
           id: user.uid,
           name: urlFriendly(username),
-          profileUrl: userData.image,
+          artworkUrl: userData.image,
           lightningAddress: userData.lightningAddress,
         },
       });
@@ -715,6 +724,7 @@ const get_login_token_for_zbd_user = asyncHandler(async (req, res, next) => {
     }
 
     if (!firebaseLoginToken) {
+      log.debug("error getting firebase token for zbd user");
       res.status(500).send({
         success: false,
         error: "Failed to create login token",
@@ -730,6 +740,7 @@ const get_login_token_for_zbd_user = asyncHandler(async (req, res, next) => {
       },
     });
   } catch (err) {
+    log.debug("error getting zbd user data", err);
     res.status(500).send({
       success: false,
       error: "Failed to get login token for ZBD user",
