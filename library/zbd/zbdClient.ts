@@ -135,8 +135,8 @@ export async function payToLightningAddress(
       ...request,
     })
     .catch((err) => {
-      log.trace(err);
-      return err.response;
+      log.debug(err);
+      return err;
     });
   return data;
 }
