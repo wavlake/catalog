@@ -35,7 +35,14 @@ steps:
       - "PODCAST_INDEX_UA=${_PODCAST_INDEX_UA}"
       - "ZBD_CALLBACK_URL=${_ZBD_CALLBACK_URL}"
       - "NPUB_UPDATE_SERVICE_URL=${_NPUB_UPDATE_SERVICE_URL}"
-    secretEnv: ["PG_PASSWORD", "AWS_SECRET_ACCESS_KEY", "ZBD_API_KEY"]
+      - "ZBD_CLIENT_ID=${_ZBD_CLIENT_ID}"
+    secretEnv:
+      [
+        "PG_PASSWORD",
+        "AWS_SECRET_ACCESS_KEY",
+        "ZBD_API_KEY",
+        "ZBD_CLIENT_SECRET",
+      ]
   - name: blastshielddown/wavlake-catalog:latest
     id: migrate db
     entrypoint: npm
