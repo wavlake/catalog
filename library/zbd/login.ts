@@ -2,8 +2,8 @@ const crypto = require("crypto");
 import axios from "axios";
 import OAuth from "oauth";
 
-const ZBD_CLIENT_ID = process.env.ZBD_CLIENT_ID;
-const ZBD_CLIENT_SECRET = process.env.ZBD_CLIENT_SECRET;
+const ZBD_OAUTH_CLIENT_ID = process.env.ZBD_OAUTH_CLIENT_ID;
+const ZBD_OAUTH_CLIENT_SECRET = process.env.ZBD_OAUTH_CLIENT_SECRET;
 const ZBD_API_URL = "https://api.zebedee.io/v0/";
 
 function sha256(buffer) {
@@ -32,8 +32,8 @@ const createZBDOauth = () => {
   const authorizeUrl = "oauth2/authorize";
   const tokenPath = "oauth2/token";
   const oauth2 = new OAuth2(
-    ZBD_CLIENT_ID, // CLient ID
-    ZBD_CLIENT_SECRET, // Client Secret
+    ZBD_OAUTH_CLIENT_ID, // CLient ID
+    ZBD_OAUTH_CLIENT_SECRET, // Client Secret
     ZBD_API_URL, // ZBD API URL: https://api.zebedee.io/v0/
     authorizeUrl, // Authorization URL: oauth2/authorize/
     tokenPath, // Token Path: oauth2/token
@@ -110,8 +110,8 @@ export const getZBDUserInfo = async (payload: any) => {
   try {
     const res = await getZBDAccessToken({
       code,
-      client_secret: ZBD_CLIENT_SECRET,
-      client_id: ZBD_CLIENT_ID,
+      client_secret: ZBD_OAUTH_CLIENT_SECRET,
+      client_id: ZBD_OAUTH_CLIENT_ID,
       code_verifier: verifier,
       grant_type: "authorization_code",
       redirect_uri: redirectUri,

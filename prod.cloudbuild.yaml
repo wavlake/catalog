@@ -35,13 +35,13 @@ steps:
       - "PODCAST_INDEX_UA=${_PODCAST_INDEX_UA}"
       - "ZBD_CALLBACK_URL=${_ZBD_CALLBACK_URL}"
       - "NPUB_UPDATE_SERVICE_URL=${_NPUB_UPDATE_SERVICE_URL}"
-      - "ZBD_CLIENT_ID=${_ZBD_CLIENT_ID}"
+      - "ZBD_OAUTH_CLIENT_ID=${_ZBD_OAUTH_CLIENT_ID}"
     secretEnv:
       [
         "PG_PASSWORD",
         "AWS_SECRET_ACCESS_KEY",
         "ZBD_API_KEY",
-        "ZBD_CLIENT_SECRET",
+        "ZBD_OAUTH_CLIENT_SECRET",
       ]
   - name: node:16.20.0
     id: migrate db
@@ -68,6 +68,8 @@ availableSecrets:
       env: "AWS_SECRET_ACCESS_KEY"
     - versionName: projects/$PROJECT_ID/secrets/ZBD_API_KEY_PROD/versions/latest
       env: "ZBD_API_KEY"
+    - versionName: projects/$PROJECT_ID/secrets/ZBD_OAUTH_CLIENT_SECRET_PROD/versions/latest
+      env: "ZBD_OAUTH_CLIENT_SECRET"
 timeout: "900s"
 options:
   logging: CLOUD_LOGGING_ONLY
