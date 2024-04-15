@@ -4,7 +4,7 @@ import OAuth from "oauth";
 
 const ZBD_CLIENT_ID = process.env.ZBD_CLIENT_ID;
 const ZBD_CLIENT_SECRET = process.env.ZBD_CLIENT_SECRET;
-const ZBD_API_URL = process.env.ZBD_API_URL;
+const ZBD_API_URL = "https://api.zebedee.io/v0/";
 
 function sha256(buffer) {
   return crypto.createHash("sha256").update(buffer).digest();
