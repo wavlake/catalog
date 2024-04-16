@@ -75,7 +75,7 @@ const processIncomingKeysend = asyncHandler<
 
   if (success) {
     log.debug("Amp tx built successfully");
-    res.status(200);
+    res.status(200).send();
   } else {
     log.error("Error building amp tx");
     res.status(500).send("Error processing keysend");
@@ -110,7 +110,7 @@ const processOutgoingKeysend = asyncHandler<
   })
     .then(() => {
       log.debug(`Updated keysend ${externalId} with status ${status}`);
-      res.status(200);
+      res.status(200).send();
     })
     .catch((e) => {
       log.error(`Error updating keysend: ${e}`);
@@ -139,7 +139,7 @@ const processIncomingInvoice = asyncHandler<
     return;
   }
 
-  res.status(200).send("OK");
+  res.status(200).send();
   return;
 });
 
@@ -178,7 +178,7 @@ const processOutgoingInvoice = asyncHandler<
       return;
     }
 
-    res.status(200);
+    res.status(200).send();
     return;
   }
 
@@ -197,11 +197,11 @@ const processOutgoingInvoice = asyncHandler<
       res.status(500).send("Withdrawal update failed");
       return;
     }
-    res.status(200);
+    res.status(200).send();
     return;
   }
 
-  res.status(200);
+  res.status(200).send();
 });
 
 export default {

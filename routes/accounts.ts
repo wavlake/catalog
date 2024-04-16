@@ -74,5 +74,11 @@ router.post(
   accountsController.create_update_lnaddress
 );
 
+router.get("/zbd/redirect-info", accountsController.get_zbd_redirect_info);
+router.post(
+  "/zbd/login-token",
+  accountsController.get_login_token_for_zbd_user
+);
+
 // Export router
 export default router;
