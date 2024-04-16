@@ -704,8 +704,9 @@ const get_login_token_for_zbd_user = asyncHandler(async (req, res, next) => {
       await prisma.user.create({
         data: {
           id: user.uid,
-          name: urlFriendly(username),
+          name: username,
           lightningAddress: userData.lightningAddress,
+          profileUrl: urlFriendly(username),
         },
       });
 
