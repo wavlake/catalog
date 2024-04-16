@@ -696,7 +696,6 @@ const get_login_token_for_zbd_user = asyncHandler(async (req, res, next) => {
       const user = await auth().createUser({
         email: userData.email,
         emailVerified: false,
-        photoURL: userData.image,
       });
 
       const username = `zbduser_${user.uid.split("").slice(0, 7).join("")}`;
