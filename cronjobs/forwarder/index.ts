@@ -6,6 +6,7 @@ import {
 } from "@library/zbd/zbdClient";
 import { PaymentStatus } from "@library/zbd/constants";
 import { handleCompletedForward } from "@library/withdraw";
+import axios from "axios";
 const log = require("loglevel");
 log.setLevel(process.env.LOGLEVEL);
 
@@ -135,7 +136,7 @@ const handlePayments = async (groupedForwards: groupedForwards) => {
 
       const response = await payToLightningAddress(request);
       // If successful, update the forward record with the external transaction id
-      if (response.success) {
+      if (!axios.isAxiosError(response) && response.success) {
         // Update the forward record with the external transaction id
         await prisma.forward.updateMany({
           where: {
