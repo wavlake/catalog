@@ -706,7 +706,6 @@ const get_login_token_for_zbd_user = asyncHandler(async (req, res, next) => {
         data: {
           id: user.uid,
           name: urlFriendly(username),
-          artworkUrl: userData.image,
           lightningAddress: userData.lightningAddress,
         },
       });
