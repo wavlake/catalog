@@ -58,6 +58,15 @@ const get_account = asyncHandler(async (req, res, next) => {
       .where("user_id", "=", request.accountId)
       .first();
 
+    const userPubkeys = await prisma.user_pubkey.findMany({
+      where: {
+        user_id: request.accountId,
+      },
+      select: {
+        pubkey: true,
+      },
+    });
+
     const { emailVerified, providerData } = await auth().getUser(
       request.accountId
     );
@@ -66,6 +75,7 @@ const get_account = asyncHandler(async (req, res, next) => {
       success: true,
       data: {
         ...userData[0],
+        pubkeys: userPubkeys.map((row) => row.pubkey),
         emailVerified,
         isRegionVerified: !!isRegionVerified,
         providerId: providerData[0]?.providerId,
@@ -755,6 +765,61 @@ const get_login_token_for_zbd_user = asyncHandler(async (req, res, next) => {
   }
 });
 
+const add_pubkey_to_account = asyncHandler(async (req, res, next) => {
+  const userId = req["uid"];
+  const { pubkey } = req.body;
+
+  if (!pubkey) {
+    res.status(400).json({
+      success: false,
+      error: "pubkey is required",
+    });
+    return;
+  }
+
+  try {
+    const existingPubkey = await prisma.user_pubkey.findFirst({
+      where: {
+        pubkey: pubkey,
+      },
+    });
+
+    if (existingPubkey) {
+      res.status(400).json({
+        success: false,
+        error: "Pubkey is registered to another account",
+      });
+      return;
+    }
+
+    await prisma.user_pubkey.create({
+      data: {
+        user_id: userId,
+        pubkey: pubkey,
+        created_at: new Date(),
+      },
+    });
+    const pubkeys = await prisma.user_pubkey.findMany({
+      where: {
+        user_id: userId,
+      },
+      select: {
+        pubkey: true,
+      },
+    });
+
+    res.send({
+      success: true,
+      data: { userId: userId, pubkeys: pubkeys.map((row) => row.pubkey) },
+    });
+  } catch (err) {
+    log.debug("error adding pubkey to account", { ...req.body, userId });
+    log.debug(err);
+    next(err);
+    return;
+  }
+});
+
 export default {
   create_update_lnaddress,
   get_account,
@@ -771,4 +836,5 @@ export default {
   post_log_identity,
   get_zbd_redirect_info,
   get_login_token_for_zbd_user,
+  add_pubkey_to_account,
 };
