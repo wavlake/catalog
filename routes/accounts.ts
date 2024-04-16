@@ -74,6 +74,11 @@ router.post(
   accountsController.create_update_lnaddress
 );
 router.post("/pubkey", isAuthorized, accountsController.add_pubkey_to_account);
+router.delete(
+  "/pubkey/:pubkey",
+  isAuthorized,
+  accountsController.delete_pubkey_from_account
+);
 router.get("/zbd/redirect-info", accountsController.get_zbd_redirect_info);
 router.post(
   "/zbd/login-token",

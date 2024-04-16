@@ -819,6 +819,44 @@ const add_pubkey_to_account = asyncHandler(async (req, res, next) => {
     return;
   }
 });
+const delete_pubkey_from_account = asyncHandler(async (req, res, next) => {
+  const userId = req["uid"];
+  const pubkey = req.params.pubkey;
+
+  if (!pubkey) {
+    res.status(400).json({
+      success: false,
+      error: "pubkey is required",
+    });
+    return;
+  }
+
+  try {
+    await prisma.user_pubkey.delete({
+      where: {
+        pubkey: pubkey,
+      },
+    });
+    const pubkeys = await prisma.user_pubkey.findMany({
+      where: {
+        user_id: userId,
+      },
+      select: {
+        pubkey: true,
+      },
+    });
+
+    res.send({
+      success: true,
+      data: { userId: userId, pubkeys: pubkeys.map((row) => row.pubkey) },
+    });
+  } catch (err) {
+    log.debug("error deleting pubkey from account", { ...req.body, userId });
+    log.debug(err);
+    next(err);
+    return;
+  }
+});
 
 export default {
   create_update_lnaddress,
@@ -837,4 +875,5 @@ export default {
   get_zbd_redirect_info,
   get_login_token_for_zbd_user,
   add_pubkey_to_account,
+  delete_pubkey_from_account,
 };
