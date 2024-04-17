@@ -183,7 +183,6 @@ exports.getPodcastFeed = handleErrorAsync(async (req, res, next) => {
     .andWhere("episode.is_draft", false)
     .catch((err) => {
       log.debug(`Error querying podcast table to generate feed: ${err}`);
-      res.status(404).send({ error: "No such feed" });
       return [];
     });
 
