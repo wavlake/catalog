@@ -53,7 +53,6 @@ exports.getArtistFeed = handleErrorAsync(async (req, res, next) => {
     .andWhere("album.is_draft", false)
     .catch((err) => {
       log.debug(`Error querying albums table to generate artist feed: ${err}`);
-      res.status(404).send("No such feed");
       return [];
     });
 
