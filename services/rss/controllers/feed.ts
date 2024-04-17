@@ -218,6 +218,30 @@ exports.getPodcastFeed = handleErrorAsync(async (req, res, next) => {
   const episodes = await db
     .knex("podcast")
     .join("episode", "podcast.id", "=", "episode.podcast_id")
+    .leftOuterJoin(
+      "podcast_category",
+      "podcast.primary_category_id",
+      "=",
+      "podcast_category.id"
+    )
+    .leftOuterJoin(
+      "podcast_subcategory",
+      "podcast.primary_subcategory_id",
+      "=",
+      "podcast_subcategory.id"
+    )
+    .leftOuterJoin(
+      "podcast_category as secondary_category",
+      "podcast.secondary_category_id",
+      "=",
+      "secondary_category.id"
+    )
+    .leftOuterJoin(
+      "podcast_subcategory as secondary_subcategory",
+      "podcast.secondary_subcategory_id",
+      "=",
+      "secondary_subcategory.id"
+    )
     .select(
       "podcast.id as podcastId",
       "podcast.name as author",
@@ -234,7 +258,11 @@ exports.getPodcastFeed = handleErrorAsync(async (req, res, next) => {
       "episode.duration as duration",
       "episode.created_at as createDate",
       "episode.deleted as deleted",
-      "episode.is_draft as isDraft"
+      "episode.is_draft as isDraft",
+      "podcast_category.name as primaryCategory",
+      "podcast_subcategory.name as primarySubcategory",
+      "secondary_category.name as secondaryCategory",
+      "secondary_subcategory.name as secondarySubcategory"
     )
     .where("episode.deleted", false)
     .andWhere("podcast.id", "=", feedId)
@@ -256,7 +284,20 @@ exports.getPodcastFeed = handleErrorAsync(async (req, res, next) => {
 
 async function buildPodcastFeed(data) {
   // grab the first episode to get the podcast metadata
-  const [{ podcastId, author, title, artwork, artistUrl, description }] = data;
+  const [
+    {
+      podcastId,
+      author,
+      title,
+      artwork,
+      artistUrl,
+      description,
+      primaryCategory,
+      primarySubcategory,
+      secondaryCategory,
+      secondarySubcategory,
+    },
+  ] = data;
   const feed = new Podcast({
     generator: "Wavlake",
     title,
@@ -278,12 +319,24 @@ async function buildPodcastFeed(data) {
     // itunesSummary: '',
     itunesOwner: { name: "Wavlake", email: "contact@wavlake.com" },
     // itunesExplicit: false,
-    // itunesCategory: [{
-    //     text: 'Entertainment',
-    //     subcats: [{
-    //       text: 'Music'
-    //     }]
-    // }],
+    itunesCategory: [
+      {
+        text: `${primaryCategory ?? ""}`,
+        subcats: [
+          {
+            text: `${primarySubcategory ?? ""}`,
+          },
+        ],
+      },
+      {
+        text: `${secondaryCategory ?? ""}`,
+        subcats: [
+          {
+            text: `${secondarySubcategory ?? ""}`,
+          },
+        ],
+      },
+    ],
     itunesImage: artwork,
     customElements: [
       { "podcast:medium": "podcast" },
