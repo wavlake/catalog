@@ -1,4 +1,4 @@
-const { getParentContentTypeAndId } = require("./content");
+const { getParentContentTypeAndId } = require("@library/content");
 const log = require("loglevel");
 const { v5 } = require("uuid");
 
