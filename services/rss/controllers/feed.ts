@@ -34,6 +34,13 @@ exports.getMusicFeed = handleErrorAsync(async (req, res, next) => {
     .knex("track")
     .join("artist", "track.artist_id", "=", "artist.id")
     .join("album", "track.album_id", "=", "album.id")
+    .leftOuterJoin("music_genre", "album.genre_id", "=", "music_genre.id")
+    .leftOuterJoin(
+      "music_subgenre",
+      "album.subgenre_id",
+      "=",
+      "music_subgenre.id"
+    )
     .select(
       "album.id as albumId",
       "album.title as albumTitle",
@@ -47,10 +54,15 @@ exports.getMusicFeed = handleErrorAsync(async (req, res, next) => {
       "track.size as size",
       "track.duration as duration",
       "track.created_at as createDate",
-      "track.deleted"
+      "track.deleted as deleted",
+      "track.is_draft as isDraft",
+      "track.is_explicit as isExplicit",
+      "music_genre.name as genre",
+      "music_subgenre.name as subgenre"
     )
     .where("track.deleted", false)
     .andWhere("track.album_id", "=", feedId)
+    .andWhere("track.is_draft", false)
     .catch((err) => {
       log.debug(`Error querying tracks table to generate music feed: ${err}`);
       res.status(404).send("No such feed");
@@ -66,7 +78,18 @@ exports.getMusicFeed = handleErrorAsync(async (req, res, next) => {
 });
 
 async function buildAlbumFeed(data) {
-  const [{ albumId, artist, artwork, albumTitle, artistUrl }] = data;
+  const [
+    {
+      albumId,
+      artist,
+      artwork,
+      albumTitle,
+      artistUrl,
+      genre,
+      subgenre,
+      isExplicit,
+    },
+  ] = data;
 
   if (!albumId || !artist || !artwork || !albumTitle || !artistUrl) {
     throw new Error("Missing required data to build music feed");
@@ -91,13 +114,17 @@ async function buildAlbumFeed(data) {
     // itunesSubtitle: '',
     // itunesSummary: '',
     // itunesOwner: { name: '', email: '' },
-    // itunesExplicit: false,
-    // itunesCategory: [{
-    //     text: 'Entertainment',
-    //     subcats: [{
-    //       text: 'Music'
-    //     }]
-    // }],
+    itunesExplicit: `${isExplicit ?? false}`,
+    itunesCategory: [
+      {
+        text: `${genre ?? ""}`,
+        subcats: [
+          {
+            text: `${subgenre ?? ""}`,
+          },
+        ],
+      },
+    ],
     itunesImage: `${artwork}`,
     customElements: [
       { "podcast:medium": "music" },
@@ -206,10 +233,12 @@ exports.getPodcastFeed = handleErrorAsync(async (req, res, next) => {
       "episode.description as episodeDescription",
       "episode.duration as duration",
       "episode.created_at as createDate",
-      "episode.deleted"
+      "episode.deleted as deleted",
+      "episode.is_draft as isDraft"
     )
     .where("episode.deleted", false)
     .andWhere("podcast.id", "=", feedId)
+    .andWhere("episode.is_draft", false)
     .catch((err) => {
       log.debug(`Error querying podcast table to generate feed: ${err}`);
       res.status(404).send({ error: "No such feed" });
