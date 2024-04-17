@@ -20,6 +20,46 @@ const handleErrorAsync = (fn) => async (req, res, next) => {
   }
 };
 
+exports.getArtistFeed = handleErrorAsync(async (req, res, next) => {
+  const { feedId } = req.params;
+
+  const validUuid = validate(feedId);
+
+  if (!validUuid) {
+    res.status(400).send("Invalid id");
+    return;
+  }
+
+  const albums = await db
+    .knex("artist")
+    .join("album", "artist.id", "=", "album.artist_id")
+    .select(
+      "artist.id as artistId",
+      "artist.name as artist",
+      "artist.bio as bio",
+      "artist.artwork_url as artworkUrl",
+      "album.id as albumId",
+      "album.title as albumTitle",
+      "album.is_draft as isDraft",
+      "album.deleted as deleted"
+    )
+    .where("artist.id", "=", feedId)
+    .andWhere("album.deleted", false)
+    .andWhere("album.is_draft", false)
+    .catch((err) => {
+      log.debug(`Error querying albums table to generate artist feed: ${err}`);
+      res.status(404).send("No such feed");
+      return [];
+    });
+
+  if (albums.length > 0) {
+    const feed = await buildArtistFeed(albums);
+    res.send(feed);
+  } else {
+    res.status(404).send("No such feed");
+  }
+});
+
 exports.getMusicFeed = handleErrorAsync(async (req, res, next) => {
   const { feedId } = req.params;
 
@@ -94,6 +134,7 @@ async function buildAlbumFeed(data) {
   if (!albumId || !artist || !artwork || !albumTitle || !artistUrl) {
     throw new Error("Missing required data to build music feed");
   }
+
   const feed = new Podcast({
     generator: "Wavlake",
     title: albumTitle,
@@ -202,6 +243,70 @@ async function buildAlbumFeed(data) {
       ],
     });
   });
+
+  return feed.buildXml("\t");
+}
+
+async function buildArtistFeed(data) {
+  const [{ artistId, artist, bio, albumId, albumTitle, artworkUrl }] = data;
+
+  if (!artistId || !albumId || !artist || !albumTitle || !artworkUrl) {
+    throw new Error("Missing required data to build artist feed");
+  }
+
+  const albums = data.map((album) => {
+    return {
+      "podcast:remoteItem": {
+        _attr: {
+          medium: "music",
+          feedGuid: album.albumId,
+          feedUrl: `https://${feedPath("album", album.albumId)}`,
+        },
+      },
+    };
+  });
+
+  const feed = new Podcast({
+    generator: "Wavlake",
+    title: artist,
+    description: bio,
+    imageUrl: artworkUrl,
+    // docs: 'http://example.com/rss/docs.html',
+    // managingEditor: '',
+    // webMaster: '',
+    // copyright: '',
+    // language: '',
+    // categories: ['Category 1','Category 2','Category 3'],
+    // pubDate: 'May 20, 2012 04:00:00 GMT',
+    // ttl: 1440, // 24 hours
+    // itunesAuthor: '',
+    // itunesSubtitle: '',
+    // itunesSummary: '',
+    // itunesOwner: { name: '', email: '' },
+    customElements: [
+      { "podcast:medium": "publisher" },
+      {
+        "podcast:guid": `${artistId}`,
+      },
+      ...albums,
+    ],
+  });
+
+  // data.forEach((album) => {
+  //   feed.addItem({
+  //     customElements: [
+  //       {
+  //         "podcast:remoteItem": {
+  //           _attr: {
+  //             medium: "music",
+  //             feedGuid: album.albumId,
+  //             feedUrl: `https://${feedPath("album", album.albumId)}`,
+  //           },
+  //         },
+  //       },
+  //     ],
+  //   });
+  // });
 
   return feed.buildXml("\t");
 }
