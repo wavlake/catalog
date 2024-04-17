@@ -6,9 +6,33 @@ const cors = require("cors");
 const compression = require("compression");
 const helmet = require("helmet");
 const bodyParser = require("body-parser");
+const Sentry = require("@sentry/node");
 
 const corsHost = process.env.CORS_HOST;
 log.setLevel(process.env.LOGLEVEL || "info");
+const sentryDsn = process.env.SENTRY_DSN;
+const sentryTracesSampleRate = parseFloat(
+  process.env.SENTRY_TRACES_SAMPLE_RATE ?? "0.0"
+);
+
+Sentry.init({
+  dsn: sentryDsn,
+  integrations: [
+    // enable HTTP calls tracing
+    new Sentry.Integrations.Http({ tracing: true }),
+    // enable Express.js middleware tracing
+    new Sentry.Integrations.Express({ app }),
+    // Automatically instrument Node.js libraries and frameworks
+    ...Sentry.autoDiscoverNodePerformanceMonitoringIntegrations(),
+  ],
+  environment: process.env.NODE_ENV,
+  // Performance Monitoring
+  tracesSampleRate: sentryTracesSampleRate, // Capture 100% of the transactions, reduce in production!,
+});
+
+// Trace incoming requests
+app.use(Sentry.Handlers.requestHandler());
+app.use(Sentry.Handlers.tracingHandler());
 
 const corsOptions = {
   origin: { corsHost },
@@ -36,7 +60,10 @@ import feed from "./routes/feed";
 app.use(cors(corsOptions));
 
 // ROUTES
-app.use("/v1/feed", feed);
+app.use("/v1", feed);
+
+// The error handler must be registered before any other error middleware and after all controllers
+app.use(Sentry.Handlers.errorHandler());
 
 // override default html error page with custom error handler
 const port = 8080;
