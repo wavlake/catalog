@@ -109,8 +109,7 @@ exports.getMusicFeed = handleErrorAsync(async (req, res, next) => {
     .andWhere("track.is_draft", false)
     .catch((err) => {
       log.debug(`Error querying tracks table to generate music feed: ${err}`);
-      res.status(404).send("No such feed");
-      return [];
+       return [];
     });
 
   if (tracks.length > 0) {
