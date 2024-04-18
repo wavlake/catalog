@@ -3,7 +3,7 @@ const log = require("loglevel");
 const config = require("dotenv").config();
 const app = express();
 const cors = require("cors");
-const compression = require("compression");
+// const compression = require("compression");
 const helmet = require("helmet");
 const bodyParser = require("body-parser");
 const Sentry = require("@sentry/node");
@@ -49,7 +49,7 @@ BigInt.prototype.toJSON = function (): string {
 // Apply middleware
 // Note: Keep this at the top, above routes
 app.use(helmet());
-app.use(compression());
+// app.use(compression());
 app.use(express.urlencoded({ extended: true }));
 app.use(bodyParser.json());
 app.use(express.json());
