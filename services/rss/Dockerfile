@@ -11,5 +11,4 @@ WORKDIR /app/services/rss
 RUN npm install --unsafe-perm ||  ((if [ -f npm-debug.log ]; then cat npm-debug.log; fi) && false)
 
 # Return to services/feed directory
-WORKDIR /app/services/rss
 ENTRYPOINT ["npm", "start"]
