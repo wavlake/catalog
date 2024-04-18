@@ -9,6 +9,7 @@ RUN apt-get update -y && apt-get install -y
 COPY ./ /app/
 WORKDIR /app/services/rss
 RUN npm install --unsafe-perm ||  ((if [ -f npm-debug.log ]; then cat npm-debug.log; fi) && false)
+RUN npx tsc
 
 # Return to services/feed directory
 ENTRYPOINT ["npm", "start"]
