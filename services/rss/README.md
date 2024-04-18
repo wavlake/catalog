@@ -1,0 +1,21 @@
+### rss
+
+This is a service that serves the RSS feeds for all our content (music, podcasts, etc.)
+
+It runs in Google Cloud Run as a service. The build config is in the monorepo root `./service.rss.yaml`.
+
+#### Development
+
+Run (from service root):
+
+`npm install`
+
+`npm run dev`
+
+#### Docker
+
+Build container locally (run from monorepo root):
+`docker build -t rss -f services/rss/Dockerfile .`
+
+Run container locally:
+`docker run rss`
