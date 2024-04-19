@@ -7,6 +7,7 @@ import { auth } from "../library/firebaseService";
 import { validateLightningAddress } from "../library/zbd/zbdClient";
 import { urlFriendly } from "../library/format";
 import { upload_image } from "../library/artwork";
+import { getZBDRedirectInfo, getZBDUserInfo } from "../library/zbd/login";
 
 async function groupSplitPayments(combinedAmps) {
   // Group records by txId
@@ -633,6 +634,127 @@ function forwards(userId) {
     .where("forward.user_id", "=", userId);
 }
 
+// called by wavlake client to get zbd login url
+const get_zbd_redirect_info = asyncHandler(async (req, res, next) => {
+  const encodedRedirectUri = req.query.redirectUri as string;
+  const redirectUri = decodeURIComponent(encodedRedirectUri);
+
+  const data = await getZBDRedirectInfo(redirectUri);
+  res.send({
+    success: true,
+    data,
+  });
+});
+
+// called by client to get zbd user data
+const get_login_token_for_zbd_user = asyncHandler(async (req, res, next) => {
+  try {
+    const userData = await getZBDUserInfo(req.body);
+    if (!userData || !userData.email) {
+      res.status(500).send({
+        success: false,
+        error: "Failed to get ZBD user data",
+      });
+      return;
+    }
+
+    const existingUserIdMapping = await prisma.external_user.findFirst({
+      where: {
+        external_id: userData.id,
+        provider: "zbd",
+      },
+    });
+    // confirm this user exists in firebase (it may have been deleted/out of sync with the external user table)
+    const existingUserId = existingUserIdMapping?.firebase_uid
+      ? await auth()
+          .getUser(existingUserIdMapping.firebase_uid)
+          .catch((e) => {
+            // not found or no mapping
+            return null;
+          })
+      : false;
+    const existingUserEmail = await auth()
+      .getUserByEmail(userData.email)
+      .catch((e) => {
+        // not found
+        return null;
+      });
+
+    let firebaseLoginToken;
+
+    if (existingUserId) {
+      // we matched a firebase user uid with the incoming ZBD id
+      firebaseLoginToken = await auth().createCustomToken(existingUserId.uid);
+    } else if (existingUserEmail) {
+      // we matched a firebase user email with the incoming ZBD email
+      // this won't modify the firebase user, it will just let the user access the account
+      firebaseLoginToken = await auth().createCustomToken(
+        existingUserEmail.uid
+      );
+    } else {
+      // no match, so create a new user in firebase + db tables
+      const user = await auth().createUser({
+        email: userData.email,
+        emailVerified: false,
+      });
+
+      const username = `zbduser_${user.uid.split("").slice(0, 7).join("")}`;
+
+      // create the new user record in the user table
+      await prisma.user.create({
+        data: {
+          id: user.uid,
+          name: username,
+          lightningAddress: userData.lightningAddress,
+          profileUrl: urlFriendly(username),
+        },
+      });
+
+      // save the user id to the external user table, or update if it already exists
+      await prisma.external_user.upsert({
+        where: {
+          external_id: userData.id,
+        },
+        update: {
+          firebase_uid: user.uid,
+          provider: "zbd",
+        },
+        create: {
+          external_id: userData.id,
+          firebase_uid: user.uid,
+          provider: "zbd",
+        },
+      });
+
+      // get a token for the user
+      firebaseLoginToken = await auth().createCustomToken(user.uid);
+    }
+
+    if (!firebaseLoginToken) {
+      log.debug("error getting firebase token for zbd user");
+      res.status(500).send({
+        success: false,
+        error: "Failed to create login token",
+      });
+      return;
+    }
+
+    res.send({
+      success: true,
+      data: {
+        ...userData,
+        token: firebaseLoginToken,
+      },
+    });
+  } catch (err) {
+    log.debug("error getting zbd user data", err);
+    res.status(500).send({
+      success: false,
+      error: "Failed to get login token for ZBD user",
+    });
+  }
+});
+
 export default {
   create_update_lnaddress,
   get_account,
@@ -647,4 +769,6 @@ export default {
   get_txs,
   get_check_region,
   post_log_identity,
+  get_zbd_redirect_info,
+  get_login_token_for_zbd_user,
 };

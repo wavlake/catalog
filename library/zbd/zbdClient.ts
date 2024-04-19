@@ -12,7 +12,7 @@ import {
   ZBDSendKeysendPaymentResponse,
   ZBDSendPaymentResponse,
 } from "./responseInterfaces";
-import axios from "axios";
+import axios, { AxiosError } from "axios";
 
 // Create ZBD instance
 const zbdApiKey = process.env.ZBD_API_KEY;
@@ -128,17 +128,25 @@ export async function sendPayment(
 
 export async function payToLightningAddress(
   request: LightningAddressPaymentRequest
-): Promise<ZBDSendPaymentResponse> {
-  const { data } = await client
-    .post(`https://api.zebedee.io/v0/ln-address/send-payment`, {
-      callbackUrl: `${accountingCallbackUrl}/send/invoice`,
-      ...request,
-    })
-    .catch((err) => {
-      log.debug(err);
+): Promise<ZBDSendPaymentResponse | AxiosError<unknown, any>> {
+  try {
+    const { data } = await client.post(
+      `https://api.zebedee.io/v0/ln-address/send-payment`,
+      {
+        callbackUrl: `${accountingCallbackUrl}/send/invoice`,
+        ...request,
+      }
+    );
+    return data;
+  } catch (err) {
+    log.debug(err);
+    if (axios.isAxiosError(err)) {
+      return err as AxiosError;
+    } else {
+      // Just a stock error
       return err;
-    });
-  return data;
+    }
+  }
 }
 
 export async function validateLightningAddress(
