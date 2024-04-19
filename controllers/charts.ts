@@ -35,11 +35,43 @@ const get_top_forty = asyncHandler(async (req, res, next) => {
     });
     res.json({ success: true, data: tracks });
   } else if (phase === "week") {
-    const tracks = await prisma.trackInfo.findMany({
-      where: { msatTotal7Days: { gt: 0 } },
-      orderBy: { msatTotal7Days: "desc" },
-      take: limit,
-    });
+    // const tracks = await prisma.trackInfo.findMany({
+    //   where: { msatTotal7Days: { gt: 0 } },
+    //   orderBy: { msatTotal7Days: "desc" },
+    //   take: limit,
+    // });
+    const tracks = await db
+      .knex("track_info")
+      .select(
+        "id",
+        "title",
+        "artist",
+        "artist_url as artistUrl",
+        "avatar_url as avatarUrl",
+        "user_id as userId",
+        "artwork_url as artworkUrl",
+        "album_title as albumTitle",
+        "live_url as liveUrl",
+        "duration",
+        "created_at as createdAt",
+        "album_id as albumId",
+        "artist_id as artistId",
+        // "order",
+        // "is_processing as isProcessing",
+        "msat_total as msatTotal",
+        // "published_at as publishedAt",
+        // "is_draft as isDraft",
+        // "is_explicit as isExplicit",
+        // "genre_id as genreId",
+        // "subgenre_id as subgenreId",
+        // "compressor_error as compressorError",
+        // "msat_total_1_days as msatTotal1Days",
+        "msat_total_7_days as msatTotal7Days"
+        // "msat_total_30_days as msatTotal30Days"
+      )
+      .where("msat_total_7_days", ">", 0)
+      .orderBy("msatTotal7Days", "desc")
+      .limit(limit);
     res.json({ success: true, data: tracks });
   }
 });
