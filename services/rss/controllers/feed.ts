@@ -1,14 +1,6 @@
 import db from "@library/db";
 const log = require("loglevel");
-const { Podcast } = require("podcast");
-const { v5, validate } = require("uuid");
-const {
-  feedPath,
-  receivingPublicKey,
-  podcastNamespace,
-  valueRecipient,
-  valueTimeSplit,
-} = require("../library/rssUtils");
+const { validate } = require("uuid");
 const {
   buildAlbumFeed,
   buildArtistFeed,
@@ -109,7 +101,7 @@ exports.getMusicFeed = handleErrorAsync(async (req, res, next) => {
     .andWhere("track.is_draft", false)
     .catch((err) => {
       log.debug(`Error querying tracks table to generate music feed: ${err}`);
-       return [];
+      return [];
     });
 
   if (tracks.length > 0) {
