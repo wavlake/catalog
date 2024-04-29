@@ -49,19 +49,15 @@ const buildAlbumFeed = async (data) => {
     // itunesSummary: '',
     // itunesOwner: { name: '', email: '' },
     itunesExplicit: `${isExplicit ?? false}`,
-    itunesCategory: [
-      {
-        text: `${genre ?? ""}`,
-        subcats: [
-          {
-            text: `${subgenre ?? ""}`,
-          },
-        ],
-      },
-    ],
     itunesImage: `${artwork}`,
     customElements: [
       { "podcast:medium": "music" },
+      {
+        "podcast:category": [
+          { _attr: { text: genre } },
+          { "podcast:category": { _attr: { text: subgenre } } },
+        ],
+      },
       {
         "podcast:guid": v5(feedPath("album", albumId), podcastNamespace),
       },
