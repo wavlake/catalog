@@ -189,21 +189,25 @@ const create_artist = asyncHandler(async (req, res, next) => {
 });
 
 const search_artists_by_name = asyncHandler(async (req, res, next) => {
-  const name = String(req.query.name);
+  const name = req.query.name;
 
-  if (!name) {
-    const error = formatError(400, "name field is required");
-    next(error);
-    return;
+  if (name && typeof name === "string") {
+    // TODO: Sort results by sats?
+    const artists = await prisma.artist.findMany({
+      where: { name: { contains: name, mode: "insensitive" }, deleted: false },
+      take: 10,
+    });
+
+    res.json({ success: true, data: artists });
+  } else {
+    // return all artists
+    const artists = await prisma.artist.findMany({
+      where: { deleted: false },
+      orderBy: { name: "asc" },
+    });
+
+    res.json({ success: true, data: artists });
   }
-
-  // TODO: Sort results by sats?
-  const artists = await prisma.artist.findMany({
-    where: { name: { contains: name, mode: "insensitive" }, deleted: false },
-    take: 10,
-  });
-
-  res.json({ success: true, data: artists });
 });
 
 const update_artist = asyncHandler(async (req, res, next) => {
