@@ -158,10 +158,16 @@ const get_tracks_by_new = asyncHandler(async (req, res, next) => {
 });
 
 const get_tracks_by_random = asyncHandler(async (req, res, next) => {
-  const request = {
-    limit: req.query.limit ? req.query.limit : 100,
-  };
+  const trackLimit =
+    typeof req.query.limit === "string" ? parseInt(req.query.limit) : 100;
 
+  if (isNaN(trackLimit)) {
+    res.status(400).json({
+      success: false,
+      error: "Limit must be an integer",
+    });
+    return;
+  }
   // NOTES: https://www.redpill-linpro.com/techblog/2021/05/07/getting-random-rows-faster.html
 
   const randomTracks = db.knex
@@ -192,12 +198,13 @@ const get_tracks_by_random = asyncHandler(async (req, res, next) => {
     .andWhere("album.published_at", "<", new Date())
     .andWhere("album.is_draft", "=", false)
     .andWhere("track.duration", "is not", null)
-    // .limit(request.limit)
+    .limit(trackLimit)
     .then((data) => {
-      res.send(shuffle(data));
+      const shuffledData = shuffle(data);
+      res.status(200).json({ success: true, data: shuffledData });
     })
     .catch((err) => {
-      log.debug(`Error querying track table for Boosted: ${err}`);
+      log.debug(`Error querying track table for random: ${err}`);
       next(err);
     });
 });
