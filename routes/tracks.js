@@ -21,6 +21,7 @@ router.get("/", tracksController.search_tracks);
 router.get("/:albumId/album", tracksController.get_tracks_by_album_id);
 router.get("/:artistId/artist", tracksController.get_tracks_by_artist_id);
 router.get("/:trackId", tracksController.get_track);
+router.get("/ranking/:trackId", tracksController.get_track_ranking_count);
 
 // mutations
 router.post("/", isAuthorized, tracksController.create_track);
