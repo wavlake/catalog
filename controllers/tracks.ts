@@ -631,6 +631,32 @@ async function getAlbumDetails(albumId) {
       log.error(`Error finding artistId from albumId ${err}`);
     });
 }
+const get_track_ranking_count = asyncHandler(async (req, res, next) => {
+  const request = {
+    trackId: req.params.trackId,
+  };
+
+  const ranking = await db
+    .knex("ranking_forty")
+    .sum("rank as count")
+    .groupBy("track_id")
+    .where("track_id", "=", request.trackId)
+    .andWhere("rank", "=", 1)
+    .catch((err) => {
+      log.debug(`Error querying ranking_forty table: ${err}`);
+    });
+
+  if (!ranking) {
+    res.status(500).json({
+      success: false,
+      error: "Something went wrong",
+    });
+    return;
+  }
+
+  const count = parseInt(ranking?.[0]?.count ?? 0);
+  res.json({ success: true, data: count });
+});
 
 // Durstenfeld Shuffle, via: https://stackoverflow.com/a/12646864
 function shuffle(array) {
@@ -653,4 +679,5 @@ export default {
   delete_track,
   create_track,
   update_track,
+  get_track_ranking_count,
 };
