@@ -636,7 +636,6 @@ const get_track_ranking_count = asyncHandler(async (req, res, next) => {
     trackId: req.params.trackId,
   };
 
-  // what is this supposed to look like? missing data locally
   const ranking = await db
     .knex("ranking_forty")
     .sum("rank as count")
@@ -645,10 +644,18 @@ const get_track_ranking_count = asyncHandler(async (req, res, next) => {
     .andWhere("rank", "=", 1)
     .catch((err) => {
       log.debug(`Error querying ranking_forty table: ${err}`);
-      next(err);
     });
 
-  res.json({ success: true, data: ranking });
+  if (!ranking) {
+    res.status(500).json({
+      success: false,
+      error: "Something went wrong",
+    });
+    return;
+  }
+
+  const count = parseInt(ranking?.[0]?.count ?? 0);
+  res.json({ success: true, data: count });
 });
 
 // Durstenfeld Shuffle, via: https://stackoverflow.com/a/12646864
