@@ -71,7 +71,7 @@ export const addTrackToPlaylist = asyncHandler(async (req, res, next) => {
 
   const currentPlaylistTracks = await prisma.playlistTrack.findMany({
     where: { playlistId: playlistId },
-    orderBy: { order: "desc" },
+    orderBy: { orderInt: "desc" },
   });
 
   if (currentPlaylistTracks.length >= MAX_PLAYLIST_LENGTH) {
@@ -84,11 +84,13 @@ export const addTrackToPlaylist = asyncHandler(async (req, res, next) => {
   const lastPlaylistTrack = currentPlaylistTracks[0];
 
   // If there are no tracks in the playlist, set the order to 0
-  const order = lastPlaylistTrack ? parseInt(lastPlaylistTrack.order) + 1 : 0;
+  const order = lastPlaylistTrack ? lastPlaylistTrack.orderInt + 1 : 0;
   const playlistTrack = await prisma.playlistTrack.create({
     data: {
       playlistId: playlistId,
       trackId: trackId,
+      orderInt: order,
+      // order column is deprecated but required
       order: order.toString(),
     },
   });
@@ -143,9 +145,9 @@ export const getPlaylist = async (req, res, next) => {
     where: { playlistId: id },
     select: {
       trackId: true,
-      order: true,
+      orderInt: true,
     },
-    orderBy: { order: "asc" },
+    orderBy: { orderInt: "asc" },
   });
 
   if (!playlistTracks) {
@@ -170,7 +172,7 @@ export const getPlaylist = async (req, res, next) => {
       "album_title as albumTitle",
       "album_id as albumId",
       "artist_id as artistId",
-      "playlist_track.order as order"
+      "playlist_track.order_int as order"
     )
     .where("playlist_track.playlist_id", id)
     .orderBy("order", "asc");
@@ -272,11 +274,11 @@ export const getUserPlaylists = asyncHandler(async (req, res, next) => {
         "track_info.duration",
         "track_info.artist",
         "track_info.artwork_url as artworkUrl",
-        "playlist_track.order"
+        "playlist_track.order_int as order"
       )
       .join("track_info", "track_info.id", "=", "playlist_track.track_id")
       .where("playlist_track.playlist_id", playlist.id)
-      .orderBy("playlist_track.order", "asc");
+      .orderBy("playlist_track.order_int", "asc");
 
     const playlistObject = {
       id: playlist.id,
@@ -511,6 +513,7 @@ export const reorderPlaylist = asyncHandler(async (req, res, next) => {
 
   // validTracks is a deduped array of trackInfo objects
   const deduplicatedTrackList = Array.from(new Set(trackList));
+
   if (validTracks.length != deduplicatedTrackList.length) {
     res.status(400).json({
       success: false,
@@ -520,7 +523,12 @@ export const reorderPlaylist = asyncHandler(async (req, res, next) => {
   }
 
   const newPlaylistOrder = trackList.map((trackId, index) => {
-    return { playlist_id: playlistId, track_id: trackId, order: index };
+    return {
+      playlist_id: playlistId,
+      track_id: trackId,
+      order_int: index,
+      order: index.toString().padStart(4, "0"),
+    };
   });
 
   // Delete all tracks from the playlist and reinsert them in the new order
@@ -530,7 +538,7 @@ export const reorderPlaylist = asyncHandler(async (req, res, next) => {
 
   const newPlaylist = await db
     .knex("playlist_track")
-    .insert(newPlaylistOrder, ["track_id as trackId", "order"]);
+    .insert(newPlaylistOrder, ["track_id as trackId"]);
 
   res.json({ success: true, data: newPlaylist });
   return;
