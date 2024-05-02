@@ -580,7 +580,6 @@ model ForwardDetail {
   @@map("forward_detail")
 }
 
-/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
 model UserVerification {
   userId    String    @id @unique(map: "user_verification_user_id_unique") @map("user_id")
   firstName String    @map("first_name")
@@ -590,7 +589,6 @@ model UserVerification {
   updatedAt DateTime? @default(now()) @map("updated_at") @db.Timestamptz(6)
 
   @@map("user_verification")
-  @@ignore
 }
 
 model Announcement {
