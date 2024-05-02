@@ -5,7 +5,7 @@ const Sentry = require("@sentry/node");
 import { formatError } from "../library/errors";
 import asyncHandler from "express-async-handler";
 
-export const isAuthorized = asyncHandler(async (req, res, next) => {
+export const isFirebaseAuthorized = async (req) => {
   let authToken;
   if (
     req.headers.authorization &&
@@ -25,16 +25,20 @@ export const isAuthorized = asyncHandler(async (req, res, next) => {
     throw error;
   }
 
-  await auth()
+  return await auth()
     .verifyIdToken(authToken)
     .then((user) => {
       req["uid"] = user.uid;
       req.params.uid = user.uid;
-      next();
-    })
-    .catch((err) => {
-      Sentry.captureException(err);
-      const error = formatError(500, "Authentication failed");
-      throw error;
     });
+};
+
+export const isAuthorized = asyncHandler(async (req, res, next) => {
+  await isFirebaseAuthorized(req).catch((err) => {
+    Sentry.captureException(err);
+    const error = formatError(500, "Authentication failed");
+    throw error;
+  });
+
+  next();
 });

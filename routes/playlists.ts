@@ -8,7 +8,7 @@ import {
   reorderPlaylist,
   getUserPlaylists,
 } from "../controllers/playlists";
-import { isNostrAuthorized } from "../middlewares/nostrAuth";
+import { isFirebaseOrNostrAuthorized } from "../middlewares/firebaseOrNostrAuth";
 
 // Create router
 const router = express.Router();
@@ -17,14 +17,18 @@ const router = express.Router();
 
 // queries
 router.get("/:id", getPlaylist);
-router.get("/", isNostrAuthorized, getUserPlaylists);
+router.get("/", isFirebaseOrNostrAuthorized, getUserPlaylists);
 
 // mutations
-router.post("/add-track", isNostrAuthorized, addTrackToPlaylist);
-router.post("/remove-track", isNostrAuthorized, removeTrackFromPlaylist);
-router.post("/", isNostrAuthorized, createPlaylist);
-router.delete("/:id", isNostrAuthorized, deletePlaylist);
-router.post("/reorder", isNostrAuthorized, reorderPlaylist);
+router.post("/add-track", isFirebaseOrNostrAuthorized, addTrackToPlaylist);
+router.post(
+  "/remove-track",
+  isFirebaseOrNostrAuthorized,
+  removeTrackFromPlaylist
+);
+router.post("/", isFirebaseOrNostrAuthorized, createPlaylist);
+router.delete("/:id", isFirebaseOrNostrAuthorized, deletePlaylist);
+router.post("/reorder", isFirebaseOrNostrAuthorized, reorderPlaylist);
 
 // Export router
 export default router;
