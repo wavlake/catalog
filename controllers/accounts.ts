@@ -1,7 +1,6 @@
 import db from "../library/db";
 import asyncHandler from "express-async-handler";
 import prisma from "../prisma/client";
-import { formatError } from "../library/errors";
 import log from "loglevel";
 import { auth } from "../library/firebaseService";
 import { validateLightningAddress } from "../library/zbd/zbdClient";
@@ -52,6 +51,7 @@ const get_account = asyncHandler(async (req, res, next) => {
       .select("track.id", "playlist.id as playlistId")
       .where("playlist.user_id", "=", request.accountId)
       .where("playlist.is_favorites", "=", true);
+
     const isRegionVerified = await db
       .knex("user_verification")
       .select("first_name")

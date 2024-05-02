@@ -8,18 +8,21 @@ import { isValidDateString } from "../library/validation";
 
 const MAX_PLAYLIST_LENGTH = 200;
 export const addTrackToPlaylist = asyncHandler(async (req, res, next) => {
-  let userId: string;
-  try {
-    const { pubkey } = res.locals.authEvent as Event;
+  let userId: string = req["uid"];
 
-    if (!pubkey) {
-      res.status(400).json({ success: false, error: "No pubkey found" });
+  if (!userId) {
+    try {
+      const { pubkey } = res.locals.authEvent as Event;
+
+      if (!pubkey) {
+        res.status(400).json({ success: false, error: "No pubkey found" });
+        return;
+      }
+      userId = pubkey;
+    } catch (error) {
+      res.status(400).json({ success: false, error: "Error parsing event" });
       return;
     }
-    userId = pubkey;
-  } catch (error) {
-    res.status(400).json({ success: false, error: "Error parsing event" });
-    return;
   }
 
   const { playlistId, trackId } = req.body;
@@ -288,21 +291,23 @@ export const getUserPlaylists = asyncHandler(async (req, res, next) => {
 });
 
 export const createPlaylist = asyncHandler(async (req, res, next) => {
-  let userId: string;
-  try {
-    const { pubkey } = res.locals.authEvent as Event;
+  let userId: string = req["uid"];
+  if (!userId) {
+    try {
+      const { pubkey } = res.locals.authEvent as Event;
 
-    if (!pubkey) {
-      res.status(400).json({ success: false, error: "No pubkey found" });
+      if (!pubkey) {
+        res.status(400).json({ success: false, error: "No pubkey found" });
+        return;
+      }
+      userId = pubkey;
+    } catch (error) {
+      res.status(400).json({ success: false, error: "Error parsing event" });
       return;
     }
-    userId = pubkey;
-  } catch (error) {
-    res.status(400).json({ success: false, error: "Error parsing event" });
-    return;
   }
 
-  const { title } = req.body;
+  const { title, isFavorites = false } = req.body;
   if (!title) {
     res.status(400).json({ success: false, error: "Title is required" });
     return;
@@ -314,7 +319,7 @@ export const createPlaylist = asyncHandler(async (req, res, next) => {
       id: newPlaylistId,
       title: title,
       userId: userId,
-      isFavorites: false,
+      isFavorites,
     },
   });
 
@@ -323,18 +328,20 @@ export const createPlaylist = asyncHandler(async (req, res, next) => {
 });
 
 export const deletePlaylist = asyncHandler(async (req, res, next) => {
-  let userId: string;
-  try {
-    const { pubkey } = res.locals.authEvent as Event;
+  let userId: string = req["uid"];
+  if (!userId) {
+    try {
+      const { pubkey } = res.locals.authEvent as Event;
 
-    if (!pubkey) {
-      res.status(400).json({ success: false, error: "No pubkey found" });
+      if (!pubkey) {
+        res.status(400).json({ success: false, error: "No pubkey found" });
+        return;
+      }
+      userId = pubkey;
+    } catch (error) {
+      res.status(400).json({ success: false, error: "Error parsing event" });
       return;
     }
-    userId = pubkey;
-  } catch (error) {
-    res.status(400).json({ success: false, error: "Error parsing event" });
-    return;
   }
 
   const { id } = req.params;
@@ -351,7 +358,6 @@ export const deletePlaylist = asyncHandler(async (req, res, next) => {
   const playlist = await prisma.playlist.findUnique({
     where: { id: id },
   });
-
   if (!playlist) {
     res.status(404).json({ success: false, error: `Playlist ${id} not found` });
     return;
@@ -375,18 +381,20 @@ export const deletePlaylist = asyncHandler(async (req, res, next) => {
 });
 
 export const removeTrackFromPlaylist = asyncHandler(async (req, res, next) => {
-  let userId: string;
-  try {
-    const { pubkey } = res.locals.authEvent as Event;
+  let userId: string = req["uid"];
+  if (!userId) {
+    try {
+      const { pubkey } = res.locals.authEvent as Event;
 
-    if (!pubkey) {
-      res.status(400).json({ success: false, error: "No pubkey found" });
+      if (!pubkey) {
+        res.status(400).json({ success: false, error: "No pubkey found" });
+        return;
+      }
+      userId = pubkey;
+    } catch (error) {
+      res.status(400).json({ success: false, error: "Error parsing event" });
       return;
     }
-    userId = pubkey;
-  } catch (error) {
-    res.status(400).json({ success: false, error: "Error parsing event" });
-    return;
   }
 
   const { playlistId, trackId } = req.body;
