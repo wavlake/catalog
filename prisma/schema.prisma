@@ -170,7 +170,7 @@ model PlaylistTrack {
   order      String    @db.VarChar(16)
   createdAt  DateTime? @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt  DateTime? @default(now()) @map("updated_at") @db.Timestamptz(6)
-  orderInt  Int?       @map("order_int") @default(0)
+  orderInt   Int?      @default(0) @map("order_int")
 
   @@index([playlistId], map: "idx_playlist_track_playlist_id")
   @@map("playlist_track")
@@ -260,7 +260,6 @@ model User {
   transaction         Transaction[]
   user_flag           UserFlag[]
   user_pubkey         user_pubkey[]
-  user_verification   UserVerification[] @ignore
   wallet_connection   WalletConnection[]
 
   @@index([profileUrl], map: "idx_profile_url")
@@ -583,15 +582,13 @@ model ForwardDetail {
 
 /// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
 model UserVerification {
-  userId    String    @map("user_id")
+  userId    String    @id @unique(map: "user_verification_user_id_unique") @map("user_id")
   firstName String    @map("first_name")
   lastName  String    @map("last_name")
   ip        String
   createdAt DateTime? @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt DateTime? @default(now()) @map("updated_at") @db.Timestamptz(6)
-  user      User      @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "user_verification_user_id_foreign")
 
-  @@index([userId], map: "idx_user_verification_user_id")
   @@map("user_verification")
   @@ignore
 }
