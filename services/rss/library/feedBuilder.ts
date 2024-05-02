@@ -15,6 +15,7 @@ const buildAlbumFeed = async (data) => {
     {
       albumId,
       artist,
+      artistId,
       artwork,
       albumTitle,
       artistUrl,
@@ -24,7 +25,14 @@ const buildAlbumFeed = async (data) => {
     },
   ] = data;
 
-  if (!albumId || !artist || !artwork || !albumTitle || !artistUrl) {
+  if (
+    !albumId ||
+    !artist ||
+    !artistId ||
+    !artwork ||
+    !albumTitle ||
+    !artistUrl
+  ) {
     throw new Error("Missing required data to build music feed");
   }
 
@@ -52,6 +60,13 @@ const buildAlbumFeed = async (data) => {
     itunesImage: `${artwork}`,
     customElements: [
       { "podcast:medium": "music" },
+      {
+        "podcast:remoteItem": [
+          { _attr: { medium: "publisher" } },
+          { _attr: { feedGuid: artistId } },
+          { _attr: { feedUrl: `https://${feedPath("artist", artistId)}` } },
+        ],
+      },
       {
         "podcast:category": [
           { _attr: { text: genre } },
@@ -137,9 +152,18 @@ const buildAlbumFeed = async (data) => {
 };
 
 const buildArtistFeed = async (data) => {
-  const [{ artistId, artist, bio, albumId, albumTitle, artworkUrl }] = data;
+  const [
+    { artistId, artistUrl, artist, bio, albumId, albumTitle, artworkUrl },
+  ] = data;
 
-  if (!artistId || !albumId || !artist || !albumTitle || !artworkUrl) {
+  if (
+    !artistId ||
+    !albumId ||
+    !artistUrl ||
+    !artist ||
+    !albumTitle ||
+    !artworkUrl
+  ) {
     throw new Error("Missing required data to build artist feed");
   }
 
@@ -160,6 +184,7 @@ const buildArtistFeed = async (data) => {
     title: artist,
     description: bio,
     imageUrl: artworkUrl,
+    siteUrl: `https://wavlake.com/${artistUrl}`,
     // docs: 'http://example.com/rss/docs.html',
     // managingEditor: '',
     // webMaster: '',

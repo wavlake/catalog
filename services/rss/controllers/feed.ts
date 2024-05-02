@@ -33,6 +33,7 @@ exports.getArtistFeed = handleErrorAsync(async (req, res, next) => {
     .select(
       "artist.id as artistId",
       "artist.name as artist",
+      "artist.artist_url as artistUrl",
       "artist.bio as bio",
       "artist.artwork_url as artworkUrl",
       "album.id as albumId",
@@ -84,6 +85,7 @@ exports.getMusicFeed = handleErrorAsync(async (req, res, next) => {
       "track.id as trackId",
       "track.title as trackTitle",
       "artist.name as artist",
+      "artist.id as artistId",
       "artist.artist_url as artistUrl",
       "track.live_url as liveUrl",
       "track.order as order",
