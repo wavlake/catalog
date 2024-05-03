@@ -453,18 +453,20 @@ export const removeTrackFromPlaylist = asyncHandler(async (req, res, next) => {
 });
 
 export const reorderPlaylist = asyncHandler(async (req, res, next) => {
-  let userId: string;
-  try {
-    const { pubkey } = res.locals.authEvent as Event;
+  let userId: string = req["uid"];
+  if (!userId) {
+    try {
+      const { pubkey } = res.locals.authEvent as Event;
 
-    if (!pubkey) {
-      res.status(400).json({ success: false, error: "No pubkey found" });
+      if (!pubkey) {
+        res.status(400).json({ success: false, error: "No pubkey found" });
+        return;
+      }
+      userId = pubkey;
+    } catch (error) {
+      res.status(400).json({ success: false, error: "Error parsing event" });
       return;
     }
-    userId = pubkey;
-  } catch (error) {
-    res.status(400).json({ success: false, error: "Error parsing event" });
-    return;
   }
 
   const { playlistId, trackList } = req.body;
