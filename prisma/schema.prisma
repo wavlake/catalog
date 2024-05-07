@@ -114,16 +114,18 @@ model event_track {
   @@index([event_id], map: "idx_event_id")
 }
 
-model external_receive {
-  id           Int       @id @default(autoincrement())
-  settle_index Int?
-  preimage     String?   @db.VarChar(64)
-  track_id     String?   @db.Uuid
-  created_at   DateTime? @default(now()) @db.Timestamptz(6)
-  payment_hash String?   @db.VarChar(255)
-  external_id  String?
-  updated_at   DateTime? @db.Timestamptz(6)
-  is_pending   Boolean?  @default(false)
+model externalReceive {
+  id          Int       @id @default(autoincrement())
+  settleIndex Int?      @map("settle_index")
+  preimage    String?   @db.VarChar(64)
+  trackId     String?   @map("track_id") @db.Uuid
+  createdAt   DateTime? @default(now()) @map("created_at") @db.Timestamptz(6)
+  paymentHash String?   @map("payment_hash") @db.VarChar(255)
+  externalId  String?   @map("external_id")
+  updatedAt   DateTime? @map("updated_at") @db.Timestamptz(6)
+  isPending   Boolean?  @default(false) @map("is_pending")
+
+  @@map("external_receive")
 }
 
 model knex_migrations {
@@ -600,7 +602,7 @@ model Announcement {
 }
 
 model external_user {
-  external_id  String  @id @unique(map: "external_user_external_id_unique") @db.VarChar(255)
+  external_id  String  @id @unique(map: "external_user_external_id_unique") @db.VarChar(64)
   firebase_uid String? @db.VarChar(64)
   provider     String? @db.VarChar(128)
 }
