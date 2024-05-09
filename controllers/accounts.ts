@@ -797,6 +797,21 @@ const add_pubkey_to_account = asyncHandler(async (req, res, next) => {
       return;
     }
 
+    // find any existing pubkey for this user
+    const existingPubkeyForUserId = await prisma.userPubkey.findFirst({
+      where: {
+        userId: user.uid,
+      },
+    });
+    if (existingPubkeyForUserId.pubkey) {
+      // delete it if it exists
+      await prisma.userPubkey.delete({
+        where: {
+          pubkey: existingPubkeyForUserId.pubkey,
+        },
+      });
+    }
+
     await prisma.userPubkey.create({
       data: {
         userId: user.uid,
@@ -804,18 +819,10 @@ const add_pubkey_to_account = asyncHandler(async (req, res, next) => {
         createdAt: new Date(),
       },
     });
-    const pubkeys = await prisma.userPubkey.findMany({
-      where: {
-        userId: user.uid,
-      },
-      select: {
-        pubkey: true,
-      },
-    });
 
     res.send({
       success: true,
-      data: { userId: user.uid, pubkeys: pubkeys.map((row) => row.pubkey) },
+      data: { userId: user.uid, pubkey },
     });
   } catch (err) {
     log.debug("error adding pubkey to account", { pubkey });
