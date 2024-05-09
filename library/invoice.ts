@@ -74,18 +74,11 @@ async function getContentIdFromInvoiceId(invoiceId: number) {
 }
 
 async function handleCompletedAmpInvoice(invoiceId: number, amount: number) {
-  // TODO: Look up zap or party mode
-  const isZap = await checkIfAmpIsZap(invoiceId);
-  const isPartyMode = false;
-
-  const paymentType = isZap
-    ? PaymentType.Zap
-    : isPartyMode
-    ? PaymentType.PartyMode
-    : PaymentType.Invoice;
+  // Look up invoice type
+  const paymentTypeCode = await getInvoicePaymentTypeCode(invoiceId);
 
   let pubkey, content, timestamp;
-  if (isZap) {
+  if (paymentTypeCode === PaymentType.Zap) {
     log.debug(`Processing zap details for invoice id ${invoiceId}`);
     const zapInfo = await getZapPubkeyAndContent(invoiceId);
     pubkey = zapInfo.pubkey;
@@ -100,11 +93,10 @@ async function handleCompletedAmpInvoice(invoiceId: number, amount: number) {
     return;
   }
 
-  log.debug(`paymentType: ${paymentType}`);
   const amp = await processSplits({
     contentId: contentId,
     msatAmount: amount,
-    paymentType: paymentType,
+    paymentType: paymentTypeCode,
     contentTime: timestamp ?? null,
     userId: pubkey ? pubkey : null,
     comment: content ? content : null,
@@ -116,7 +108,7 @@ async function handleCompletedAmpInvoice(invoiceId: number, amount: number) {
   }
 
   // Publish zap receipt if isZap
-  if (isZap) {
+  if (paymentTypeCode === PaymentType.Zap) {
     log.debug(`Publishing zap receipt for invoice id ${invoiceId}`);
     await publishZapReceipt(
       content,
@@ -140,19 +132,18 @@ async function handleCompletedAmpInvoice(invoiceId: number, amount: number) {
   return true;
 }
 
-// We use the `payment_hash` field for our internalId, which is unique in our system
-async function checkIfAmpIsZap(invoiceId: number) {
-  const zap = await db
-    .knex("zap_request")
-    .where("payment_hash", `external_receive-${invoiceId}`)
+async function getInvoicePaymentTypeCode(invoiceId: number) {
+  const pendingInvoice = await db
+    .knex("external_receive")
+    .select("payment_type_code")
+    .where("id", "=", invoiceId)
     .first()
-    .then((data) => {
-      return data ? true : false;
-    })
     .catch((err) => {
-      log.error(`Error checking if invoice is a zap: ${err}`);
+      log.error(
+        `Error getting payment type for invoice id ${invoiceId}: ${err}`
+      );
     });
-  return zap;
+  return pendingInvoice.payment_type_code;
 }
 
 async function handleFailedOrExpiredInvoice(
