@@ -115,15 +115,16 @@ model event_track {
 }
 
 model externalReceive {
-  id          Int       @id @default(autoincrement())
-  settleIndex Int?      @map("settle_index")
-  preimage    String?   @db.VarChar(64)
-  trackId     String?   @map("track_id") @db.Uuid
-  createdAt   DateTime? @default(now()) @map("created_at") @db.Timestamptz(6)
-  paymentHash String?   @map("payment_hash") @db.VarChar(255)
-  externalId  String?   @map("external_id")
-  updatedAt   DateTime? @map("updated_at") @db.Timestamptz(6)
-  isPending   Boolean?  @default(false) @map("is_pending")
+  id              Int       @id @default(autoincrement())
+  settleIndex     Int?      @map("settle_index")
+  preimage        String?   @db.VarChar(64)
+  trackId         String?   @map("track_id") @db.Uuid
+  createdAt       DateTime? @default(now()) @map("created_at") @db.Timestamptz(6)
+  paymentHash     String?   @map("payment_hash") @db.VarChar(255)
+  externalId      String?   @map("external_id")
+  updatedAt       DateTime? @map("updated_at") @db.Timestamptz(6)
+  isPending       Boolean?  @default(false) @map("is_pending")
+  paymentTypeCode Int?      @map("payment_type_code") @db.SmallInt
 
   @@map("external_receive")
 }
