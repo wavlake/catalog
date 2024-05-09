@@ -170,6 +170,7 @@ model PlaylistTrack {
   order      String    @db.VarChar(16)
   createdAt  DateTime? @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt  DateTime? @default(now()) @map("updated_at") @db.Timestamptz(6)
+  order_int  Int?      @default(0)
 
   @@index([playlistId], map: "idx_playlist_track_playlist_id")
   @@map("playlist_track")
@@ -258,6 +259,8 @@ model User {
   subscriber          Subscriber?
   transaction         Transaction[]
   user_flag           UserFlag[]
+  user_pubkey         userPubkey[]
+  user_verification   UserVerification?
   wallet_connection   WalletConnection[]
 
   @@index([profileUrl], map: "idx_profile_url")
@@ -585,6 +588,7 @@ model UserVerification {
   ip        String
   createdAt DateTime? @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt DateTime? @default(now()) @map("updated_at") @db.Timestamptz(6)
+  user      User      @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "user_verification_user_id_foreign")
 
   @@map("user_verification")
 }
@@ -600,9 +604,19 @@ model Announcement {
 }
 
 model external_user {
-  external_id  String  @id @unique(map: "external_user_external_id_unique") @db.VarChar(255)
+  external_id  String  @id @unique(map: "external_user_external_id_unique") @db.VarChar(64)
   firebase_uid String? @db.VarChar(64)
   provider     String? @db.VarChar(128)
+}
+
+model userPubkey {
+  pubkey    String   @id @unique(map: "user_pubkey_pubkey_unique")
+  userId    String   @map("user_id")
+  createdAt DateTime @map("created_at") @db.Timestamptz(6)
+  user      User     @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "user_pubkey_user_id_foreign")
+
+  @@index([userId], map: "idx_user_pubkey_user_id")
+  @@map("user_pubkey")
 }
 
 view TrackInfo {
