@@ -53,7 +53,7 @@ const getInvoice = asyncHandler(async (req, res, next) => {
     }
   }
 
-  res.json({ success: true, data: invoice });
+  res.send({ success: true, data: invoice });
 });
 
 const createInvoice = asyncHandler(async (req, res: any, next) => {
@@ -61,6 +61,8 @@ const createInvoice = asyncHandler(async (req, res: any, next) => {
     contentId: req.body.contentId,
     msatAmount: req.body.msatAmount,
     metadata: req.body.metadata,
+    type: req.body.type,
+    timestamp: req.body.timestamp ?? null,
   };
 
   if (
@@ -81,11 +83,15 @@ const createInvoice = asyncHandler(async (req, res: any, next) => {
     return res.status(400).send("Invalid content id");
   }
 
+  // Only two types possible right now: party or plain invoice
+  const paymentTypeCode = request.type === "party" ? 8 : 6;
+
   // Create a blank invoice in the database with a reference to the targeted content
   const invoice = await prisma.externalReceive.create({
     data: {
       trackId: request.contentId,
       isPending: true,
+      paymentTypeCode: paymentTypeCode,
     },
   });
 
@@ -107,7 +113,22 @@ const createInvoice = asyncHandler(async (req, res: any, next) => {
 
   if (!invoiceResponse.success) {
     log.error(`Error creating invoice: ${invoiceResponse.message}`);
-    res.status(500).send("There has been an error generating an invoice");
+    await prisma.externalReceive
+      .update({
+        where: { id: invoice.id },
+        data: {
+          isPending: false,
+          errorMessage: invoiceResponse.message,
+          updatedAt: new Date(),
+        },
+      })
+      .catch((e) => {
+        log.error(`Error updating invoice: ${e}`);
+        return null;
+      });
+    res
+      .status(400)
+      .send({ success: false, error: `${invoiceResponse.message}` });
     return;
   }
 
@@ -162,13 +183,15 @@ const createZapInvoice = asyncHandler<
   try {
     zapRequestEvent = JSON.parse(nostr);
   } catch (e) {
-    res.status(400).json({ error: "Invalid nostr object" });
+    res.status(400).send({ success: false, error: "Invalid nostr object" });
     return;
   }
   let ok = validateEvent(zapRequestEvent);
   let veryOk = verifySignature(zapRequestEvent);
   if (!ok || !veryOk) {
-    res.status(400).json({ error: "Invalid zap request event" });
+    res
+      .status(400)
+      .send({ success: false, error: "Invalid zap request event" });
     return;
   }
 
@@ -178,9 +201,10 @@ const createZapInvoice = asyncHandler<
 
   // one of these is needed to determine the track ID
   if (!aTag && !eTag) {
-    res
-      .status(400)
-      .json({ error: "Event must include either an a tag or an e tag." });
+    res.status(400).send({
+      success: false,
+      error: "Event must include either an a tag or an e tag.",
+    });
     return;
   }
 
@@ -199,7 +223,9 @@ const createZapInvoice = asyncHandler<
 
   log.debug(`Zapped content: ${JSON.stringify(zappedContent)}`);
   if (!zappedContent) {
-    res.status(404).json({ error: `Content id for zap could not be found` });
+    res
+      .status(404)
+      .send({ success: false, error: `Content id for zap could not be found` });
     return;
   }
 
@@ -207,6 +233,7 @@ const createZapInvoice = asyncHandler<
   const invoice = await prisma.externalReceive.create({
     data: {
       trackId: zappedContent.id,
+      paymentTypeCode: 7, // Zap code
       isPending: true,
     },
   });
@@ -235,7 +262,22 @@ const createZapInvoice = asyncHandler<
 
   if (!invoiceResponse.success) {
     log.error(`Error creating invoice: ${invoiceResponse.message}`);
-    res.status(500).send("There has been an error generating an invoice");
+    await prisma.externalReceive
+      .update({
+        where: { id: invoice.id },
+        data: {
+          isPending: false,
+          errorMessage: invoiceResponse.message,
+          updatedAt: new Date(),
+        },
+      })
+      .catch((e) => {
+        log.error(`Error updating invoice: ${e}`);
+        return null;
+      });
+    res
+      .status(400)
+      .send({ success: false, error: `${invoiceResponse.message}` });
     return;
   }
 
@@ -265,7 +307,7 @@ const createZapInvoice = asyncHandler<
 
   log.debug(`Updated invoice: ${JSON.stringify(updatedInvoice)}`);
 
-  res.json({
+  res.send({
     success: true,
     data: { ...invoiceResponse.data.invoice, invoiceId: updatedInvoice.id },
   });
