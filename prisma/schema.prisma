@@ -170,6 +170,7 @@ model PlaylistTrack {
   order      String    @db.VarChar(16)
   createdAt  DateTime? @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt  DateTime? @default(now()) @map("updated_at") @db.Timestamptz(6)
+  order_int  Int?      @default(0)
 
   @@index([playlistId], map: "idx_playlist_track_playlist_id")
   @@map("playlist_track")
@@ -600,9 +601,17 @@ model Announcement {
 }
 
 model external_user {
-  external_id  String  @id @unique(map: "external_user_external_id_unique") @db.VarChar(255)
+  external_id  String  @id @unique(map: "external_user_external_id_unique") @db.VarChar(64)
   firebase_uid String? @db.VarChar(64)
   provider     String? @db.VarChar(128)
+}
+
+model userPubkey {
+  pubkey    String    @id @unique(map: "user_pubkey_pubkey_unique") @db.VarChar(255) 
+  userId    String?   @db.VarChar(64) @map("user_id")
+  createdAt DateTime? @default(now()) @db.Timestamptz(6) @map("created_at")
+
+  @@map("user_pubkey")
 }
 
 view TrackInfo {

@@ -771,11 +771,10 @@ const add_pubkey_to_account = asyncHandler(async (req, res, next) => {
     // this will throw an error if the pubkey is invalid
     nip19.npubEncode(pubkey);
 
-    await prisma.user_pubkey.create({
+    await prisma.userPubkey.create({
       data: {
-        user_id: userId,
-        pubkey: pubkey,
-        created_at: new Date(),
+        userId,
+        pubkey,
       },
     });
 
