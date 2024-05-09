@@ -10,6 +10,10 @@ COPY ./ /app/
 WORKDIR /app/services/rss
 RUN npm install --unsafe-perm ||  ((if [ -f npm-debug.log ]; then cat npm-debug.log; fi) && false)
 
+# Copy node_modules to root
+RUN cp -R node_modules /app/node_modules
+
+RUN npx tsc
+
 # Return to services/feed directory
-WORKDIR /app/services/rss
 ENTRYPOINT ["npm", "start"]
