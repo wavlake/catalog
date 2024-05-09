@@ -8,6 +8,7 @@ import { validateLightningAddress } from "../library/zbd/zbdClient";
 import { urlFriendly } from "../library/format";
 import { upload_image } from "../library/artwork";
 import { getZBDRedirectInfo, getZBDUserInfo } from "../library/zbd/login";
+import { nip19 } from "nostr-tools";
 
 async function groupSplitPayments(combinedAmps) {
   // Group records by txId
@@ -58,7 +59,7 @@ const get_account = asyncHandler(async (req, res, next) => {
       .where("user_id", "=", request.accountId)
       .first();
 
-    const userPubkeys = await prisma.user_pubkey.findMany({
+    const userPubkeys = await prisma.userPubkey.findMany({
       where: {
         user_id: request.accountId,
       },
@@ -778,7 +779,10 @@ const add_pubkey_to_account = asyncHandler(async (req, res, next) => {
   }
 
   try {
-    const existingPubkey = await prisma.user_pubkey.findFirst({
+    // this will throw an error if the pubkey is invalid
+    nip19.npubEncode(pubkey);
+
+    const existingPubkey = await prisma.userPubkey.findFirst({
       where: {
         pubkey: pubkey,
       },
@@ -792,16 +796,16 @@ const add_pubkey_to_account = asyncHandler(async (req, res, next) => {
       return;
     }
 
-    await prisma.user_pubkey.create({
+    await prisma.userPubkey.create({
       data: {
-        user_id: userId,
+        userId,
         pubkey: pubkey,
-        created_at: new Date(),
+        createdAt: new Date(),
       },
     });
-    const pubkeys = await prisma.user_pubkey.findMany({
+    const pubkeys = await prisma.userPubkey.findMany({
       where: {
-        user_id: userId,
+        userId,
       },
       select: {
         pubkey: true,
@@ -832,14 +836,14 @@ const delete_pubkey_from_account = asyncHandler(async (req, res, next) => {
   }
 
   try {
-    await prisma.user_pubkey.delete({
+    await prisma.userPubkey.delete({
       where: {
         pubkey: pubkey,
       },
     });
-    const pubkeys = await prisma.user_pubkey.findMany({
+    const pubkeys = await prisma.userPubkey.findMany({
       where: {
-        user_id: userId,
+        userId,
       },
       select: {
         pubkey: true,
