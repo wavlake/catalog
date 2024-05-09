@@ -1,14 +1,13 @@
+import db from "../library/db";
 import asyncHandler from "express-async-handler";
 import prisma from "../prisma/client";
-import { formatError } from "../library/errors";
 import log from "loglevel";
 import { auth } from "../library/firebaseService";
 import { validateLightningAddress } from "../library/zbd/zbdClient";
 import { urlFriendly } from "../library/format";
 import { upload_image } from "../library/artwork";
 import { getZBDRedirectInfo, getZBDUserInfo } from "../library/zbd/login";
-import db from "../library/db";
-import { generatePrivateKey, getPublicKey, nip04, nip19 } from "nostr-tools";
+import { nip19 } from "nostr-tools";
 
 async function groupSplitPayments(combinedAmps) {
   // Group records by txId
@@ -25,35 +24,6 @@ async function groupSplitPayments(combinedAmps) {
   // convert grouped to array
   return Object.keys(grouped).map((key) => grouped[key]);
 }
-async function getOrCreateUser(uid: string) {
-  const existingUser = await prisma.user.findUnique({
-    where: {
-      id: uid,
-    },
-    select: {
-      id: true,
-      name: true,
-      msatBalance: true,
-      ampMsat: true,
-      artworkUrl: true,
-      profileUrl: true,
-      isLocked: true,
-      lightningAddress: true,
-    },
-  });
-
-  if (!existingUser) {
-    return prisma.user.create({
-      data: {
-        id: uid,
-        name: `user-${uid.slice(-5, -1)}`,
-        profileUrl: `user-${uid.slice(-5, -1)}`,
-      },
-    });
-  } else {
-    return existingUser;
-  }
-}
 
 const get_account = asyncHandler(async (req, res, next) => {
   const request = {
@@ -61,7 +31,6 @@ const get_account = asyncHandler(async (req, res, next) => {
   };
 
   try {
-    // const userData = await getOrCreateUser(request.accountId);
     const userData = await db
       .knex("user")
       .select(
@@ -96,7 +65,7 @@ const get_account = asyncHandler(async (req, res, next) => {
     res.send({
       success: true,
       data: {
-        ...userData,
+        ...userData[0],
         emailVerified,
         isRegionVerified: !!isRegionVerified,
         providerId: providerData[0]?.providerId,
@@ -505,7 +474,6 @@ const create_update_lnaddress = asyncHandler(async (req, res, next) => {
   }
 });
 
-// todo - deprecate this endpoint and replace all prisma.user calls with a user check and creation if needed
 const create_account = asyncHandler(async (req, res, next) => {
   const { name, userId } = req.body;
 
