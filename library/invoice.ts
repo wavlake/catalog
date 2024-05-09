@@ -6,12 +6,7 @@ import { processSplits } from "./amp";
 import { getZapPubkeyAndContent, publishZapReceipt } from "./zap";
 import { ZBDChargeCallbackRequest } from "./zbd/requestInterfaces";
 import { ChargeStatus } from "./zbd/constants";
-
-enum PaymentType {
-  Zap = 7,
-  PartyMode = 8,
-  Invoice = 6,
-}
+import { PaymentType } from "./common";
 
 export const updateInvoiceIfNeeded = async (
   invoiceType: string,
