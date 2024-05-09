@@ -1,4 +1,3 @@
-import db from "../library/db";
 import asyncHandler from "express-async-handler";
 import prisma from "../prisma/client";
 import { formatError } from "../library/errors";
@@ -8,6 +7,8 @@ import { validateLightningAddress } from "../library/zbd/zbdClient";
 import { urlFriendly } from "../library/format";
 import { upload_image } from "../library/artwork";
 import { getZBDRedirectInfo, getZBDUserInfo } from "../library/zbd/login";
+import db from "../library/db";
+import { generatePrivateKey, getPublicKey, nip04, nip19 } from "nostr-tools";
 
 async function groupSplitPayments(combinedAmps) {
   // Group records by txId
@@ -24,6 +25,35 @@ async function groupSplitPayments(combinedAmps) {
   // convert grouped to array
   return Object.keys(grouped).map((key) => grouped[key]);
 }
+async function getOrCreateUser(uid: string) {
+  const existingUser = await prisma.user.findUnique({
+    where: {
+      id: uid,
+    },
+    select: {
+      id: true,
+      name: true,
+      msatBalance: true,
+      ampMsat: true,
+      artworkUrl: true,
+      profileUrl: true,
+      isLocked: true,
+      lightningAddress: true,
+    },
+  });
+
+  if (!existingUser) {
+    return prisma.user.create({
+      data: {
+        id: uid,
+        name: `user-${uid.slice(-5, -1)}`,
+        profileUrl: `user-${uid.slice(-5, -1)}`,
+      },
+    });
+  } else {
+    return existingUser;
+  }
+}
 
 const get_account = asyncHandler(async (req, res, next) => {
   const request = {
@@ -31,6 +61,7 @@ const get_account = asyncHandler(async (req, res, next) => {
   };
 
   try {
+    // const userData = await getOrCreateUser(request.accountId);
     const userData = await db
       .knex("user")
       .select(
@@ -65,7 +96,7 @@ const get_account = asyncHandler(async (req, res, next) => {
     res.send({
       success: true,
       data: {
-        ...userData[0],
+        ...userData,
         emailVerified,
         isRegionVerified: !!isRegionVerified,
         providerId: providerData[0]?.providerId,
@@ -474,6 +505,7 @@ const create_update_lnaddress = asyncHandler(async (req, res, next) => {
   }
 });
 
+// todo - deprecate this endpoint and replace all prisma.user calls with a user check and creation if needed
 const create_account = asyncHandler(async (req, res, next) => {
   const { name, userId } = req.body;
 
@@ -755,6 +787,42 @@ const get_login_token_for_zbd_user = asyncHandler(async (req, res, next) => {
   }
 });
 
+const add_pubkey_to_account = asyncHandler(async (req, res, next) => {
+  const userId = req["uid"] as string;
+  const pubkey = req.body.pubkey as string;
+
+  if (!pubkey) {
+    res.status(400).json({
+      success: false,
+      error: "Pubkey is required",
+    });
+    return;
+  }
+
+  try {
+    // this will throw an error if the pubkey is invalid
+    nip19.npubEncode(pubkey);
+
+    await prisma.user_pubkey.create({
+      data: {
+        user_id: userId,
+        pubkey: pubkey,
+        created_at: new Date(),
+      },
+    });
+
+    res.send({
+      success: true,
+      data: { userId: userId, pubkey: pubkey },
+    });
+  } catch (err) {
+    log.debug("error adding pubkey to user", { pubkey, userId });
+    log.debug(err);
+    next(err ?? "Error adding pubkey to user");
+    return;
+  }
+});
+
 export default {
   create_update_lnaddress,
   get_account,
@@ -771,4 +839,5 @@ export default {
   post_log_identity,
   get_zbd_redirect_info,
   get_login_token_for_zbd_user,
+  add_pubkey_to_account,
 };

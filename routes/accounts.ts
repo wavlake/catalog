@@ -80,5 +80,7 @@ router.post(
   accountsController.get_login_token_for_zbd_user
 );
 
+router.post("/pubkey", isAuthorized, accountsController.add_pubkey_to_account);
+
 // Export router
 export default router;
