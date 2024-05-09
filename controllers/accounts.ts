@@ -61,7 +61,7 @@ const get_account = asyncHandler(async (req, res, next) => {
 
     const userPubkeys = await prisma.userPubkey.findMany({
       where: {
-        user_id: request.accountId,
+        userId: request.accountId,
       },
       select: {
         pubkey: true,
