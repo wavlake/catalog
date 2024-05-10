@@ -8,10 +8,10 @@ import {
 } from "nostr-tools";
 import { hexToBytes } from "@noble/hashes/utils";
 useWebSocketImplementation(require("ws"));
+const { DEFAULT_WRITE_RELAY_URIS } = require("./nostr/common");
 
 const WAVLAKE_RELAY = process.env.WAVLAKE_RELAY;
 const WAVLAKE_SECRET = hexToBytes(process.env.NOSTR_SECRET);
-const RELAY_LIST = process.env.RELAY_LIST.split(",");
 
 export const logZapRequest = async (
   paymentHash: string,
@@ -83,7 +83,7 @@ export const publishZapReceipt = async (
   preimage: string
 ) => {
   const pool = new SimplePool();
-  let relays = RELAY_LIST;
+  let relays = DEFAULT_WRITE_RELAY_URIS;
 
   // const aTag = zapRequestEventObj.tags.find((x) => x[0] === "a");
 
