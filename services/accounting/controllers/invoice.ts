@@ -9,7 +9,7 @@ import {
   DEFAULT_EXPIRATION_SECONDS,
 } from "@library/constants";
 import core from "express-serve-static-core";
-const { validateEvent, verifySignature } = require("nostr-tools");
+const { verifyEvent } = require("nostr-tools");
 import { getContentFromEventId } from "@library/content";
 import { ZBDChargeCallbackRequest } from "@library/zbd";
 const crypto = require("crypto");
@@ -186,9 +186,8 @@ const createZapInvoice = asyncHandler<
     res.status(400).send({ success: false, error: "Invalid nostr object" });
     return;
   }
-  let ok = validateEvent(zapRequestEvent);
-  let veryOk = verifySignature(zapRequestEvent);
-  if (!ok || !veryOk) {
+  let eventIsOK = verifyEvent(zapRequestEvent);
+  if (!eventIsOK) {
     res
       .status(400)
       .send({ success: false, error: "Invalid zap request event" });

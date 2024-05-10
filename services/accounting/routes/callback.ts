@@ -18,11 +18,11 @@ const router = express.Router();
 //   isZbdIp,
 //   callbackController.processOutgoingKeysend
 // );
-// router.post(
-//   "/receive/invoice",
-//   isZbdIp,
-//   callbackController.processIncomingInvoice
-// );
+router.post(
+  "/receive/invoice",
+  // isZbdIp,
+  callbackController.processIncomingInvoice
+);
 router.post(
   "/send/invoice",
   isZbdIp,

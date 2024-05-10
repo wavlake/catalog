@@ -38,7 +38,7 @@ export const updateInvoiceIfNeeded = async (
 
     if (status === ChargeStatus.Error || status === ChargeStatus.Expired) {
       log.debug("Invoice failed or expired");
-      await handleFailedOrExpiredInvoice(invoiceType, invoiceId);
+      await handleFailedOrExpiredInvoice(invoiceType, invoiceId, status);
       return {
         success: true,
         data: { status: status },
@@ -77,10 +77,11 @@ async function handleCompletedAmpInvoice(invoiceId: number, amount: number) {
   // Look up invoice type
   const paymentTypeCode = await getInvoicePaymentTypeCode(invoiceId);
 
-  let pubkey, content, timestamp;
+  let zapRequest, pubkey, content, timestamp;
   if (paymentTypeCode === PaymentType.Zap) {
     log.debug(`Processing zap details for invoice id ${invoiceId}`);
     const zapInfo = await getZapPubkeyAndContent(invoiceId);
+    zapRequest = zapInfo.zapRequest;
     pubkey = zapInfo.pubkey;
     content = zapInfo.content;
     timestamp = zapInfo.timestamp;
@@ -107,17 +108,6 @@ async function handleCompletedAmpInvoice(invoiceId: number, amount: number) {
     return;
   }
 
-  // Publish zap receipt if isZap
-  if (paymentTypeCode === PaymentType.Zap) {
-    log.debug(`Publishing zap receipt for invoice id ${invoiceId}`);
-    await publishZapReceipt(
-      content,
-      "paymentrequest", // TODO: get payment request
-      "preimage", // TODO: use preimage
-      Date.now().toString()
-    );
-  }
-
   await db
     .knex("external_receive")
     .update({
@@ -128,6 +118,21 @@ async function handleCompletedAmpInvoice(invoiceId: number, amount: number) {
     .catch((err) => {
       log.error(`Error updating external_receive invoice ${invoiceId}: ${err}`);
     });
+
+  // Publish zap receipt if isZap
+  if (paymentTypeCode === PaymentType.Zap) {
+    log.debug(`Publishing zap receipt for invoice id ${invoiceId}`);
+    await publishZapReceipt(
+      zapRequest,
+      "paymentrequest", // TODO: get payment request
+      "preimage" // TODO: use preimage
+    ).catch((e) => {
+      log.error(
+        `Error publishing zap receipt for invoice id ${invoiceId}: ${e}`
+      );
+      return;
+    });
+  }
 
   return true;
 }
@@ -148,13 +153,14 @@ async function getInvoicePaymentTypeCode(invoiceId: number) {
 
 async function handleFailedOrExpiredInvoice(
   invoiceType: string,
-  internalId: number
+  internalId: number,
+  status: string
 ) {
   await db
     .knex(invoiceType)
     .update({
       is_pending: false,
-      success: false,
+      error_message: status,
       updated_at: db.knex.fn.now(),
     })
     .catch((err) => {

@@ -8,7 +8,7 @@ const router = express.Router();
 
 //////// ROUTES ////////
 
-// router.get("/zap", isZbdRegion, invoiceController.createZapInvoice);
+router.get("/zap", isZbdRegion, invoiceController.createZapInvoice);
 router.post("/", isZbdRegion, invoiceController.createInvoice);
 
 // Export router
