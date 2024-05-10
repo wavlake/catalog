@@ -9,7 +9,7 @@ import {
 import { hexToBytes } from "@noble/hashes/utils";
 useWebSocketImplementation(require("ws"));
 
-const WAVLAKE_RELAY = "wss://relay.wavlake.com";
+const WAVLAKE_RELAY = process.env.WAVLAKE_RELAY;
 const WAVLAKE_SECRET = hexToBytes(process.env.NOSTR_SECRET);
 const RELAY_LIST = process.env.RELAY_LIST.split(",");
 
