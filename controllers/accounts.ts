@@ -8,7 +8,7 @@ import { validateLightningAddress } from "../library/zbd/zbdClient";
 import { urlFriendly } from "../library/format";
 import { upload_image } from "../library/artwork";
 import { getZBDRedirectInfo, getZBDUserInfo } from "../library/zbd/login";
-import { nip19 } from "nostr-tools";
+import { nip19, verifySignature } from "nostr-tools";
 
 async function groupSplitPayments(combinedAmps) {
   // Group records by txId
@@ -510,7 +510,7 @@ const create_account = asyncHandler(async (req, res, next) => {
       });
       return;
     }
-    await prisma.user.create({
+    const newUser = await prisma.user.create({
       data: {
         id: userId,
         name: name,
@@ -520,7 +520,7 @@ const create_account = asyncHandler(async (req, res, next) => {
 
     res.send({
       success: true,
-      data: { userId: userId, name: name },
+      data: newUser,
     });
   } catch (err) {
     log.debug("error creating account", req.body);
@@ -767,24 +767,25 @@ const get_login_token_for_zbd_user = asyncHandler(async (req, res, next) => {
 });
 
 const add_pubkey_to_account = asyncHandler(async (req, res, next) => {
-  const userId = req["uid"];
-  const { pubkey } = req.body;
+  const { authToken } = req.body;
+  const pubkey = res.locals.authEvent.pubkey;
 
-  if (!pubkey) {
+  if (!authToken) {
     res.status(400).json({
       success: false,
-      error: "pubkey is required",
+      error: "authToken is required",
     });
     return;
   }
 
   try {
-    // this will throw an error if the pubkey is invalid
-    nip19.npubEncode(pubkey);
+    log.debug("validating authToken");
+    const user = await auth().verifyIdToken(authToken);
+    log.debug("valid authToken for uid: ", user.uid);
 
     const existingPubkey = await prisma.userPubkey.findFirst({
       where: {
-        pubkey: pubkey,
+        pubkey,
       },
     });
 
@@ -796,28 +797,35 @@ const add_pubkey_to_account = asyncHandler(async (req, res, next) => {
       return;
     }
 
-    await prisma.userPubkey.create({
-      data: {
-        userId,
-        pubkey: pubkey,
-        createdAt: new Date(),
+    // find any existing pubkey for this user
+    const existingPubkeyForUserId = await prisma.userPubkey.findFirst({
+      where: {
+        userId: user.uid,
       },
     });
-    const pubkeys = await prisma.userPubkey.findMany({
-      where: {
-        userId,
-      },
-      select: {
-        pubkey: true,
+    if (existingPubkeyForUserId.pubkey) {
+      // delete it if it exists
+      await prisma.userPubkey.delete({
+        where: {
+          pubkey: existingPubkeyForUserId.pubkey,
+        },
+      });
+    }
+
+    await prisma.userPubkey.create({
+      data: {
+        userId: user.uid,
+        pubkey: pubkey,
+        createdAt: new Date(),
       },
     });
 
     res.send({
       success: true,
-      data: { userId: userId, pubkeys: pubkeys.map((row) => row.pubkey) },
+      data: { userId: user.uid, pubkey },
     });
   } catch (err) {
-    log.debug("error adding pubkey to account", { ...req.body, userId });
+    log.debug("error adding pubkey to account", { pubkey });
     log.debug(err);
     next(err);
     return;

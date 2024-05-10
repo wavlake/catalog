@@ -17,6 +17,7 @@ const upload = multer({ storage: storage });
 import accountsController from "../controllers/accounts";
 import connectionsController from "../controllers/connections";
 import { isAuthorized } from "../middlewares/auth";
+import { isNostrAuthorized } from "../middlewares/nostrAuth";
 
 // Create router
 const router = express.Router();
@@ -73,7 +74,14 @@ router.post(
   isAuthorized,
   accountsController.create_update_lnaddress
 );
-router.post("/pubkey", isAuthorized, accountsController.add_pubkey_to_account);
+
+router.post(
+  "/pubkey",
+  // this route checks has additional auth and checks the firebase token wihin the controller
+  isNostrAuthorized,
+  accountsController.add_pubkey_to_account
+);
+
 router.delete(
   "/pubkey/:pubkey",
   isAuthorized,
