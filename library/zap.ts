@@ -77,8 +77,7 @@ export const publishZapReceipt = async (
 
   let zapReceipt = {
     kind: 9735,
-    // created_at: Math.round(Date.now() / 1000),
-    created_at: parseInt("fdsa"),
+    created_at: Math.round(Date.now() / 1000),
     tags: [
       ["bolt11", paymentRequest],
       ["description", JSON.stringify(zapRequestEvent)],
