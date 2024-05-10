@@ -790,6 +790,14 @@ const add_pubkey_to_account = asyncHandler(async (req, res, next) => {
     });
 
     if (existingPubkey) {
+      if (existingPubkey.userId === user.uid) {
+        // pubkey is already associated with this user
+        // no need to do anything
+        res.status(200).json({
+          success: true,
+        });
+        return;
+      }
       res.status(400).json({
         success: false,
         error: "Pubkey is registered to another account",
