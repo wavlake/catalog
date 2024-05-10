@@ -4,10 +4,12 @@ import {
   SimplePool,
   finalizeEvent,
   useWebSocketImplementation,
+  Relay,
 } from "nostr-tools";
 import { hexToBytes } from "@noble/hashes/utils";
 useWebSocketImplementation(require("ws"));
 
+const WAVLAKE_RELAY = "wss://relay.wavlake.com";
 const WAVLAKE_SECRET = hexToBytes(process.env.NOSTR_SECRET);
 const RELAY_LIST = process.env.RELAY_LIST.split(",");
 
@@ -56,6 +58,24 @@ export const getZapPubkeyAndContent = async (invoiceId: number) => {
 interface ZapRequestEvent {
   tags: [string, string][];
 }
+
+export const publishPartyReceipt = async (trackId: string) => {
+  const relay = await Relay.connect(WAVLAKE_RELAY);
+  let event = {
+    kind: 21012,
+    created_at: Math.floor(Date.now() / 1000),
+    tags: [["wavlakePartyTrackId", trackId]],
+    content: `${trackId}`,
+  };
+
+  const signedEvent = finalizeEvent(event, WAVLAKE_SECRET);
+
+  // Publish to Wavlake relay
+  relay.publish(signedEvent).catch((e) => {
+    log.error(`Error issuing party receipt: ${e}`);
+  });
+  return;
+};
 
 export const publishZapReceipt = async (
   zapRequestEvent: ZapRequestEvent,

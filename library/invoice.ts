@@ -3,7 +3,11 @@ log.setLevel("debug");
 import db from "./db";
 import { handleCompletedDeposit, wasTransactionAlreadyLogged } from "./deposit";
 import { processSplits } from "./amp";
-import { getZapPubkeyAndContent, publishZapReceipt } from "./zap";
+import {
+  getZapPubkeyAndContent,
+  publishPartyReceipt,
+  publishZapReceipt,
+} from "./zap";
 import { ZBDChargeCallbackRequest } from "./zbd/requestInterfaces";
 import { ChargeStatus } from "./zbd/constants";
 import { PaymentType } from "./common";
@@ -129,6 +133,16 @@ async function handleCompletedAmpInvoice(invoiceId: number, amount: number) {
     ).catch((e) => {
       log.error(
         `Error publishing zap receipt for invoice id ${invoiceId}: ${e}`
+      );
+      return;
+    });
+  }
+
+  if (paymentTypeCode === PaymentType.PartyMode) {
+    log.debug(`Publishing party receipt for invoice id ${invoiceId}`);
+    await publishPartyReceipt(contentId).catch((e) => {
+      log.error(
+        `Error publishing party receipt for invoice id ${invoiceId}: ${e}`
       );
       return;
     });
