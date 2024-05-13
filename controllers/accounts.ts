@@ -30,7 +30,7 @@ const get_account = asyncHandler(async (req, res, next) => {
   const request = {
     accountId: req["uid"],
   };
-
+  log.debug("get_account uid:", request.accountId);
   try {
     const userData = await db
       .knex("user")
@@ -45,6 +45,8 @@ const get_account = asyncHandler(async (req, res, next) => {
         "user.lightning_address as lightningAddress"
       )
       .where("user.id", "=", request.accountId);
+
+    if (userData.length > 0) log.debug("found user in db:", userData[0]);
 
     const trackData = await db
       .knex("playlist")
