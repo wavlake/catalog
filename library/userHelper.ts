@@ -271,7 +271,7 @@ export const userOwnsContent = async (
   const userNpubsByPubkey = await prisma.userPubkey.findMany({
     where: { pubkey: userId },
   });
-  console.log({ userNpubsByPubkey, userNpubsByUserId });
+
   return (
     contentUserId === userId ||
     [...userNpubsByUserId, ...userNpubsByPubkey].some(
