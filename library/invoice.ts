@@ -29,6 +29,8 @@ export const updateInvoiceIfNeeded = async (
 
   const status = charge.status;
   const msatAmount = parseInt(charge.amount);
+  const paymentRequest = charge.invoice.request;
+  const preimage = charge.invoice.preimage;
   if (!Object.values(ChargeStatus).includes(status as ChargeStatus)) {
     log.error(`Invalid status: ${status}`);
     return { success: false, message: "Invalid invoice status" };
@@ -56,7 +58,12 @@ export const updateInvoiceIfNeeded = async (
       if (invoiceType === "external_receive") {
         log.debug(`Processing external_receive invoice for id ${invoiceId}`);
         // Process should account for plain invoices and zaps
-        await handleCompletedAmpInvoice(invoiceId, msatAmount);
+        await handleCompletedAmpInvoice(
+          invoiceId,
+          msatAmount,
+          paymentRequest,
+          preimage
+        );
       }
       return { success: true, data: { status: status } };
     }
@@ -77,7 +84,12 @@ async function getContentIdFromInvoiceId(invoiceId: number) {
   return invoice.track_id;
 }
 
-async function handleCompletedAmpInvoice(invoiceId: number, amount: number) {
+async function handleCompletedAmpInvoice(
+  invoiceId: number,
+  amount: number,
+  paymentRequest: string,
+  preimage: string
+) {
   // Look up invoice type
   const paymentTypeCode = await getInvoicePaymentTypeCode(invoiceId);
 
@@ -126,11 +138,7 @@ async function handleCompletedAmpInvoice(invoiceId: number, amount: number) {
   // Publish zap receipt if isZap
   if (paymentTypeCode === PaymentType.Zap) {
     log.debug(`Publishing zap receipt for invoice id ${invoiceId}`);
-    await publishZapReceipt(
-      zapRequest,
-      "paymentrequest", // TODO: get payment request
-      "preimage" // TODO: use preimage
-    ).catch((e) => {
+    await publishZapReceipt(zapRequest, paymentRequest, preimage).catch((e) => {
       log.error(
         `Error publishing zap receipt for invoice id ${invoiceId}: ${e}`
       );

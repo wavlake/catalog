@@ -12,5 +12,6 @@ export const DEFAULT_WRITE_RELAY_URIS = [
   "wss://relay.nostr.band",
   "wss://relay.damus.io",
   "wss://relay.wavlake.com",
+  "wss://relay.snort.social",
   "wss://nostr.mutinywallet.com",
 ];

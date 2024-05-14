@@ -82,6 +82,7 @@ export interface ZBDChargeCallbackRequest {
   invoice: {
     request: string;
     uri: string;
+    preimage?: string;
   };
 }
 

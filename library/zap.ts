@@ -82,9 +82,6 @@ export const publishZapReceipt = async (
   paymentRequest: string,
   preimage: string
 ) => {
-  const pool = new SimplePool();
-  let relays = DEFAULT_WRITE_RELAY_URIS;
-
   // const aTag = zapRequestEventObj.tags.find((x) => x[0] === "a");
 
   const eTag = zapRequestEvent.tags.find((x) => x[0] === "e");
@@ -112,6 +109,8 @@ export const publishZapReceipt = async (
   const signedEvent = finalizeEvent(zapReceipt, WAVLAKE_SECRET);
 
   // Publish to all relays
+  const pool = new SimplePool();
+  let relays = DEFAULT_WRITE_RELAY_URIS;
   Promise.any(pool.publish(relays, signedEvent))
     .then((result) => {
       log.debug(`Published zap receipt: ${result}`);
