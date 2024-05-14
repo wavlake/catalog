@@ -1,3 +1,4 @@
+import log from "loglevel";
 import { isFirebaseAuthorized } from "./auth";
 import { validateNostrEvent } from "./nostrAuth";
 
@@ -23,6 +24,7 @@ export const isFirebaseOrNostrAuthorized = (req, res, next) => {
       }
     })
     .catch((err) => {
-      res.status(401).json({ error: err.message });
+      log.error("Error in authorization middleware:", err);
+      res.status(500).json({ error: "Internal Server Error" });
     });
 };
