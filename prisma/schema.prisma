@@ -174,7 +174,7 @@ model PlaylistTrack {
   order      String    @db.VarChar(16)
   createdAt  DateTime? @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt  DateTime? @default(now()) @map("updated_at") @db.Timestamptz(6)
-  order_int  Int?      @default(0)
+  orderInt   Int?      @default(0) @map("order_int")
 
   @@index([playlistId], map: "idx_playlist_track_playlist_id")
   @@map("playlist_track")
