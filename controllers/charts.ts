@@ -5,9 +5,10 @@ const asyncHandler = require("express-async-handler");
 import { isValidDateString } from "../library/validation";
 
 // Top 40
+const TOP_40_LIMIT = 40;
 const get_top_forty = asyncHandler(async (req, res, next) => {
   const { limit, phase }: { limit: number; phase: string } = {
-    limit: req.query.limit ? parseInt(req.query.limit) : 50,
+    limit: req.query.limit ? parseInt(req.query.limit) : TOP_40_LIMIT,
     phase: req.query.phase ? req.query.phase : "week", // week by default
   };
 

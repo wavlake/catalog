@@ -158,10 +158,16 @@ const get_tracks_by_new = asyncHandler(async (req, res, next) => {
 });
 
 const get_tracks_by_random = asyncHandler(async (req, res, next) => {
-  const request = {
-    limit: req.query.limit ? req.query.limit : 100,
-  };
+  const trackLimit =
+    typeof req.query.limit === "string" ? parseInt(req.query.limit) : 100;
 
+  if (isNaN(trackLimit)) {
+    res.status(400).json({
+      success: false,
+      error: "Limit must be an integer",
+    });
+    return;
+  }
   // NOTES: https://www.redpill-linpro.com/techblog/2021/05/07/getting-random-rows-faster.html
 
   const randomTracks = db.knex
@@ -192,12 +198,13 @@ const get_tracks_by_random = asyncHandler(async (req, res, next) => {
     .andWhere("album.published_at", "<", new Date())
     .andWhere("album.is_draft", "=", false)
     .andWhere("track.duration", "is not", null)
-    // .limit(request.limit)
+    .limit(trackLimit)
     .then((data) => {
-      res.send(shuffle(data));
+      const shuffledData = shuffle(data);
+      res.status(200).json({ success: true, data: shuffledData });
     })
     .catch((err) => {
-      log.debug(`Error querying track table for Boosted: ${err}`);
+      log.debug(`Error querying track table for random: ${err}`);
       next(err);
     });
 });
@@ -631,6 +638,32 @@ async function getAlbumDetails(albumId) {
       log.error(`Error finding artistId from albumId ${err}`);
     });
 }
+const get_track_ranking_count = asyncHandler(async (req, res, next) => {
+  const request = {
+    trackId: req.params.trackId,
+  };
+
+  const ranking = await db
+    .knex("ranking_forty")
+    .sum("rank as count")
+    .groupBy("track_id")
+    .where("track_id", "=", request.trackId)
+    .andWhere("rank", "=", 1)
+    .catch((err) => {
+      log.debug(`Error querying ranking_forty table: ${err}`);
+    });
+
+  if (!ranking) {
+    res.status(500).json({
+      success: false,
+      error: "Something went wrong",
+    });
+    return;
+  }
+
+  const count = parseInt(ranking?.[0]?.count ?? 0);
+  res.json({ success: true, data: count });
+});
 
 // Durstenfeld Shuffle, via: https://stackoverflow.com/a/12646864
 function shuffle(array) {
@@ -653,4 +686,5 @@ export default {
   delete_track,
   create_track,
   update_track,
+  get_track_ranking_count,
 };
