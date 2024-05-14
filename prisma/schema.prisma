@@ -259,7 +259,7 @@ model User {
   subscriber          Subscriber?
   transaction         Transaction[]
   user_flag           UserFlag[]
-  user_pubkey         user_pubkey[]
+  user_pubkey         userPubkey[]
   user_verification   UserVerification?
   wallet_connection   WalletConnection[]
 
@@ -609,13 +609,14 @@ model external_user {
   provider     String? @db.VarChar(128)
 }
 
-model user_pubkey {
-  pubkey     String   @id @unique(map: "user_pubkey_pubkey_unique")
-  user_id    String
-  created_at DateTime @db.Timestamptz(6)
-  user       User     @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "user_pubkey_user_id_foreign")
+model userPubkey {
+  pubkey    String   @id @unique(map: "user_pubkey_pubkey_unique")
+  userId    String   @map("user_id")
+  createdAt DateTime @map("created_at") @db.Timestamptz(6)
+  user      User     @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "user_pubkey_user_id_foreign")
 
-  @@index([user_id], map: "idx_user_pubkey_user_id")
+  @@index([userId], map: "idx_user_pubkey_user_id")
+  @@map("user_pubkey")
 }
 
 view TrackInfo {
