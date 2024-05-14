@@ -5,6 +5,7 @@ import prisma from "../prisma/client";
 import { Event } from "nostr-tools";
 import db from "../library/db";
 import { isValidDateString } from "../library/validation";
+import { userOwnsContent } from "../library/userHelper";
 
 const MAX_PLAYLIST_LENGTH = 200;
 export const addTrackToPlaylist = asyncHandler(async (req, res, next) => {
@@ -53,7 +54,7 @@ export const addTrackToPlaylist = asyncHandler(async (req, res, next) => {
     return;
   }
 
-  if (playlist.userId !== userId) {
+  if (!userOwnsContent(playlist.userId, userId)) {
     res.status(403).json({ success: false, error: "Forbidden" });
     return;
   }
@@ -365,7 +366,7 @@ export const deletePlaylist = asyncHandler(async (req, res, next) => {
     return;
   }
 
-  if (playlist.userId !== userId) {
+  if (!userOwnsContent(playlist.userId, userId)) {
     res.status(403).json({ success: false, error: "Forbidden" });
     return;
   }
@@ -427,7 +428,7 @@ export const removeTrackFromPlaylist = asyncHandler(async (req, res, next) => {
     return;
   }
 
-  if (playlist.userId !== userId) {
+  if (!userOwnsContent(playlist.userId, userId)) {
     res.status(403).json({ success: false, error: "Forbidden" });
     return;
   }
@@ -503,7 +504,7 @@ export const reorderPlaylist = asyncHandler(async (req, res, next) => {
     return;
   }
 
-  if (playlist.userId !== userId) {
+  if (!userOwnsContent(playlist.userId, userId)) {
     res.status(403).json({ success: false, error: "Forbidden" });
     return;
   }

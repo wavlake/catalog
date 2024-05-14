@@ -1,6 +1,7 @@
+import prisma from "../prisma/client";
 import db from "./db";
-const log = require("loglevel");
-const Sentry = require("@sentry/node");
+import log from "loglevel";
+import Sentry from "@sentry/node";
 
 export type SplitContentTypes =
   | "track"
@@ -258,3 +259,23 @@ export async function isPlaylistOwner(
       return false;
     });
 }
+
+export const userOwnsContent = async (
+  contentUserId: string,
+  userId: string
+) => {
+  const userNpubsByUserId = await prisma.userPubkey.findMany({
+    where: { userId: userId },
+  });
+
+  const userNpubsByPubkey = await prisma.userPubkey.findMany({
+    where: { pubkey: userId },
+  });
+  console.log({ userNpubsByPubkey, userNpubsByUserId });
+  return (
+    contentUserId === userId ||
+    [...userNpubsByUserId, ...userNpubsByPubkey].some(
+      (n) => n.pubkey === contentUserId || n.userId === contentUserId
+    )
+  );
+};
