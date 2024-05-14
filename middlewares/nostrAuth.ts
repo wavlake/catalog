@@ -2,7 +2,6 @@ import log from "loglevel";
 import asyncHandler from "express-async-handler";
 import { nip98 } from "nostr-tools";
 import { formatError } from "../library/errors";
-import { updateNpubMetadata } from "../library/nostr/nostr";
 
 // This middleware is used to authenticate requests from Nostr
 // It follows the NIP-98 spec - https://github.com/nostr-protocol/nips/blob/master/98.md
@@ -31,20 +30,6 @@ export const isNostrAuthorized = asyncHandler(async (req, res, next) => {
     if (!eventIsValid) {
       throw "Invalid event";
     }
-
-    // TODO - move this to be triggered elsewhere (e.g. when a zap invoice is paid), once server migration to catalog is complete
-    // async update the npub metadata in the db
-    updateNpubMetadata(nostrEvent.pubkey)
-      .then(({ isSuccess }) => {
-        log.debug(
-          `${isSuccess ? "Updated" : "Failed to update"} nostr metadata for: ${
-            nostrEvent.pubkey
-          }`
-        );
-      })
-      .catch((err) => {
-        log.debug("error updating npub metadata: ", err);
-      });
 
     // successfull auth'd, add the event to res.locals so other middleware can use it
     // https://expressjs.com/en/api.html#res.locals

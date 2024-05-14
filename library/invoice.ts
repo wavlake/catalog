@@ -11,6 +11,7 @@ import {
 import { ZBDChargeCallbackRequest } from "./zbd/requestInterfaces";
 import { ChargeStatus } from "./zbd/constants";
 import { PaymentType } from "./common";
+import { updateNpubMetadata } from "./nostr/nostr";
 
 export const updateInvoiceIfNeeded = async (
   invoiceType: string,
@@ -144,6 +145,19 @@ async function handleCompletedAmpInvoice(
       );
       return;
     });
+
+    // async update the npub metadata in the db
+    updateNpubMetadata(pubkey)
+      .then(({ isSuccess }) => {
+        log.debug(
+          `${
+            isSuccess ? "Updated" : "Failed to update"
+          } nostr metadata for: ${pubkey}`
+        );
+      })
+      .catch((err) => {
+        log.debug("error updating npub metadata: ", err);
+      });
   }
 
   if (paymentTypeCode === PaymentType.PartyMode) {
