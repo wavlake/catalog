@@ -7,20 +7,19 @@ const router = express.Router();
 
 //////// ROUTES ////////
 
-// TODO: Add ZBD IP check to all these routes
-// router.post(
-//   "/receive/keysend",
-//   isZbdIp,
-//   callbackController.processIncomingKeysend
-// );
-// router.post(
-//   "/send/keysend",
-//   isZbdIp,
-//   callbackController.processOutgoingKeysend
-// );
+router.post(
+  "/receive/keysend",
+  isZbdIp,
+  callbackController.processIncomingKeysend
+);
+router.post(
+  "/send/keysend",
+  isZbdIp,
+  callbackController.processOutgoingKeysend
+);
 router.post(
   "/receive/invoice",
-  // isZbdIp,
+  isZbdIp,
   callbackController.processIncomingInvoice
 );
 router.post(

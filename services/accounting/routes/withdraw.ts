@@ -1,6 +1,6 @@
 import express from "express";
 const { isAuthorized } = require("@middlewares/auth");
-const { isZbdIp, isZbdRegion } = require("@middlewares/zbdChecks");
+const { isZbdRegion } = require("@middlewares/zbdChecks");
 import sendController from "../controllers/withdraw";
 const { rateLimit } = require("express-rate-limit");
 
@@ -21,13 +21,13 @@ const limiter = rateLimit({
 
 //////// ROUTES ////////
 
-// router.post(
-//   "/",
-//   isAuthorized,
-//   limiter,
-//   isZbdRegion,
-//   sendController.createWithdraw
-// );
+router.post(
+  "/",
+  isAuthorized,
+  limiter,
+  isZbdRegion,
+  sendController.createWithdraw
+);
 
 // Export router
 export default router;
