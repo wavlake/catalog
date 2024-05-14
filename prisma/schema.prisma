@@ -260,7 +260,6 @@ model User {
   transaction         Transaction[]
   user_flag           UserFlag[]
   user_pubkey         user_pubkey[]
-  user_pubkey         userPubkey[]
   user_verification   UserVerification?
   wallet_connection   WalletConnection[]
 
