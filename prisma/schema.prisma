@@ -174,7 +174,7 @@ model PlaylistTrack {
   order      String    @db.VarChar(16)
   createdAt  DateTime? @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt  DateTime? @default(now()) @map("updated_at") @db.Timestamptz(6)
-  orderInt   Int?      @default(0) @map("order_int")
+  order_int  Int?      @default(0)
 
   @@index([playlistId], map: "idx_playlist_track_playlist_id")
   @@map("playlist_track")
@@ -263,7 +263,7 @@ model User {
   subscriber          Subscriber?
   transaction         Transaction[]
   user_flag           UserFlag[]
-  user_pubkey         userPubkey[]
+  user_pubkey         UserPubkey[]
   user_verification   UserVerification?
   wallet_connection   WalletConnection[]
 
@@ -613,7 +613,7 @@ model external_user {
   provider     String? @db.VarChar(128)
 }
 
-model userPubkey {
+model UserPubkey {
   pubkey    String   @id @unique(map: "user_pubkey_pubkey_unique")
   userId    String   @map("user_id")
   createdAt DateTime @map("created_at") @db.Timestamptz(6)
