@@ -7,6 +7,7 @@ import { validateLightningAddress } from "../library/zbd/zbdClient";
 import { urlFriendly } from "../library/format";
 import { upload_image } from "../library/artwork";
 import { getZBDRedirectInfo, getZBDUserInfo } from "../library/zbd/login";
+import { nip19, verifySignature } from "nostr-tools";
 
 async function groupSplitPayments(combinedAmps) {
   // Group records by txId
@@ -28,7 +29,7 @@ const get_account = asyncHandler(async (req, res, next) => {
   const request = {
     accountId: req["uid"],
   };
-
+  log.debug("get_account uid:", request.accountId);
   try {
     const userData = await db
       .knex("user")
@@ -44,6 +45,8 @@ const get_account = asyncHandler(async (req, res, next) => {
       )
       .where("user.id", "=", request.accountId);
 
+    if (userData.length > 0) log.debug("found user in db:", userData[0]);
+
     const trackData = await db
       .knex("playlist")
       .join("playlist_track", "playlist.id", "=", "playlist_track.playlist_id")
@@ -58,6 +61,15 @@ const get_account = asyncHandler(async (req, res, next) => {
       .where("user_id", "=", request.accountId)
       .first();
 
+    const userPubkeys = await prisma.userPubkey.findMany({
+      where: {
+        userId: request.accountId,
+      },
+      select: {
+        pubkey: true,
+      },
+    });
+
     const { emailVerified, providerData } = await auth().getUser(
       request.accountId
     );
@@ -66,6 +78,7 @@ const get_account = asyncHandler(async (req, res, next) => {
       success: true,
       data: {
         ...userData[0],
+        pubkeys: userPubkeys.map((row) => row.pubkey),
         emailVerified,
         isRegionVerified: !!isRegionVerified,
         providerId: providerData[0]?.providerId,
@@ -499,7 +512,7 @@ const create_account = asyncHandler(async (req, res, next) => {
       });
       return;
     }
-    await prisma.user.create({
+    const newUser = await prisma.user.create({
       data: {
         id: userId,
         name: name,
@@ -509,7 +522,7 @@ const create_account = asyncHandler(async (req, res, next) => {
 
     res.send({
       success: true,
-      data: { userId: userId, name: name },
+      data: newUser,
     });
   } catch (err) {
     log.debug("error creating account", req.body);
@@ -755,6 +768,118 @@ const get_login_token_for_zbd_user = asyncHandler(async (req, res, next) => {
   }
 });
 
+const add_pubkey_to_account = asyncHandler(async (req, res, next) => {
+  const { authToken } = req.body;
+  const pubkey = res.locals.authEvent.pubkey;
+
+  if (!authToken) {
+    res.status(400).json({
+      success: false,
+      error: "authToken is required",
+    });
+    return;
+  }
+
+  try {
+    log.debug("validating authToken");
+    const user = await auth().verifyIdToken(authToken);
+    log.debug("valid authToken for uid: ", user.uid);
+
+    const existingPubkey = await prisma.userPubkey.findFirst({
+      where: {
+        pubkey,
+      },
+    });
+
+    if (existingPubkey) {
+      if (existingPubkey.userId === user.uid) {
+        // pubkey is already associated with this user
+        // no need to do anything
+        res.status(200).json({
+          success: true,
+        });
+        return;
+      }
+      res.status(400).json({
+        success: false,
+        error: "Pubkey is registered to another account",
+      });
+      return;
+    }
+
+    // find any existing pubkey for this user
+    const existingPubkeyForUserId = await prisma.userPubkey.findFirst({
+      where: {
+        userId: user.uid,
+      },
+    });
+    if (existingPubkeyForUserId?.pubkey) {
+      // delete it if it exists
+      await prisma.userPubkey.delete({
+        where: {
+          pubkey: existingPubkeyForUserId.pubkey,
+        },
+      });
+    }
+
+    await prisma.userPubkey.create({
+      data: {
+        userId: user.uid,
+        pubkey: pubkey,
+        createdAt: new Date(),
+      },
+    });
+
+    res.send({
+      success: true,
+      data: { userId: user.uid, pubkey },
+    });
+  } catch (err) {
+    log.debug("error adding pubkey to account", { pubkey });
+    log.debug(err);
+    next(err);
+    return;
+  }
+});
+const delete_pubkey_from_account = asyncHandler(async (req, res, next) => {
+  const userId = req["uid"];
+  const pubkey = req.params.pubkey;
+
+  if (!pubkey) {
+    res.status(400).json({
+      success: false,
+      error: "pubkey is required",
+    });
+    return;
+  }
+
+  try {
+    await prisma.userPubkey.delete({
+      where: {
+        pubkey: pubkey,
+      },
+    });
+    const pubkeys = await prisma.userPubkey.findMany({
+      where: {
+        userId,
+      },
+      select: {
+        pubkey: true,
+      },
+    });
+
+    res.send({
+      success: true,
+      data: { userId: userId, pubkeys: pubkeys.map((row) => row.pubkey) },
+    });
+  } catch (err) {
+    log.debug("error deleting pubkey from account", { ...req.body, userId });
+    log.debug(err);
+    next(err);
+    return;
+  }
+});
+
 export default {
   create_update_lnaddress,
   get_account,
@@ -771,4 +896,6 @@ export default {
   post_log_identity,
   get_zbd_redirect_info,
   get_login_token_for_zbd_user,
+  add_pubkey_to_account,
+  delete_pubkey_from_account,
 };

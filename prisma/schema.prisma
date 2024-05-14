@@ -260,6 +260,8 @@ model User {
   transaction         Transaction[]
   user_flag           UserFlag[]
   user_pubkey         user_pubkey[]
+  user_pubkey         userPubkey[]
+  user_verification   UserVerification?
   wallet_connection   WalletConnection[]
 
   @@index([profileUrl], map: "idx_profile_url")
@@ -587,6 +589,7 @@ model UserVerification {
   ip        String
   createdAt DateTime? @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt DateTime? @default(now()) @map("updated_at") @db.Timestamptz(6)
+  user      User      @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "user_verification_user_id_foreign")
 
   @@map("user_verification")
 }
