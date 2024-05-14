@@ -10,9 +10,7 @@ export const isNostrAuthorized = asyncHandler(async (req, res, next) => {
   try {
     const { authorization } = req.headers;
     if (!authorization) {
-      const error = formatError(401, "Missing authorization header");
-      next(error);
-      return;
+      throw "Missing authorization header";
     }
 
     const nostrEvent = await nip98.unpackEventFromToken(authorization);
@@ -31,9 +29,7 @@ export const isNostrAuthorized = asyncHandler(async (req, res, next) => {
       req.body
     );
     if (!eventIsValid) {
-      const error = formatError(401, "Invalid event");
-      next(error);
-      return;
+      throw "Invalid event";
     }
 
     // TODO - move this to be triggered elsewhere (e.g. when a zap invoice is paid), once server migration to catalog is complete
@@ -56,6 +52,6 @@ export const isNostrAuthorized = asyncHandler(async (req, res, next) => {
     next();
   } catch (err) {
     const error = formatError(401, err);
-    next(error);
+    throw error;
   }
 });

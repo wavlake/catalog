@@ -3,11 +3,16 @@ const { v5 } = require("uuid");
 
 const podcastNamespace = "ead4c236-bf58-58c6-a2c6-a6b28d128cb6";
 const receivingPublicKey = `${process.env.RECEIVING_PUBLIC_KEY}`;
+const BASE_URL = "wavlake.com/feed";
 
 const feedPath = (contentType, id) => {
-  return contentType === "podcast"
-    ? `wavlake.com/feed/show/${id}`
-    : `wavlake.com/feed/music/${id}`;
+  if (contentType === "podcast") {
+    return `${BASE_URL}/show/${id}`;
+  } else if (contentType === "album") {
+    return `${BASE_URL}/music/${id}`;
+  } else if (contentType === "artist") {
+    return `${BASE_URL}/artist/${id}`;
+  }
 };
 
 const remoteRecipient = async (recipient_content_id) => {
