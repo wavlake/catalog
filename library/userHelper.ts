@@ -262,6 +262,7 @@ export async function isPlaylistOwner(
 
 export const userOwnsContent = async (
   contentUserId: string,
+  // this can be a firebase user id or a pubkey
   userId: string
 ) => {
   const userNpubsByUserId = await prisma.userPubkey.findMany({
