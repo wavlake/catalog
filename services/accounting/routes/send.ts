@@ -1,6 +1,6 @@
 import express from "express";
 import { isAuthorized } from "@middlewares/auth";
-import sendController from "controllers/send";
+import sendController from "../controllers/send";
 
 // Create router
 const router = express.Router();
