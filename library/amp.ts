@@ -45,7 +45,7 @@ export const processSplits = async ({
   settleIndex = 0,
 }: {
   contentId: string;
-  contentTime: number;
+  contentTime?: number;
   msatAmount: number;
   paymentType: number;
   // userId or npub, else this will be hardcoded to keysend or invoice
