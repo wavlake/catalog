@@ -18,6 +18,8 @@ const router = express.Router();
 // queries
 router.get("/:id", getPlaylist);
 router.get("/", isFirebaseOrNostrAuthorized, getUserPlaylists);
+// public route?
+router.get("/user/:id", getUserPlaylists);
 
 // mutations
 router.post("/add-track", isFirebaseOrNostrAuthorized, addTrackToPlaylist);
