@@ -246,18 +246,15 @@ export const getPlaylist = async (req, res, next) => {
   });
 };
 
+// playlists are publically accessible via the user id (npub or firebase uid)
 export const getUserPlaylists = asyncHandler(async (req, res, next) => {
-  let userId: string;
-  try {
-    const { pubkey } = res.locals.authEvent as Event;
+  const pubkey = (res.locals?.authEvent as Event)?.pubkey;
+  const id = req.params.id;
 
-    if (!pubkey) {
-      res.status(400).json({ success: false, error: "No pubkey found" });
-      return;
-    }
-    userId = pubkey;
-  } catch (error) {
-    res.status(400).json({ success: false, error: "Error parsing event" });
+  // use auth token uid, nip-98 pubkey, or id from request params
+  const userId = req["uid"] ?? pubkey ?? id;
+  if (!userId) {
+    res.status(400).json({ success: false, error: "Must provde a user id" });
     return;
   }
 
