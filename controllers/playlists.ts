@@ -5,7 +5,7 @@ import prisma from "../prisma/client";
 import { Event } from "nostr-tools";
 import db from "../library/db";
 import { isValidDateString } from "../library/validation";
-import { userOwnsContent } from "../library/userHelper";
+import { getUserIds, userOwnsContent } from "../library/userHelper";
 
 const MAX_PLAYLIST_LENGTH = 200;
 export const addTrackToPlaylist = asyncHandler(async (req, res, next) => {
@@ -258,8 +258,10 @@ export const getUserPlaylists = asyncHandler(async (req, res, next) => {
     return;
   }
 
+  // need to get all user ids for the user (npub(s) + firebase uid)
+  const userIds = await getUserIds(userId);
   const playlists = await prisma.playlist.findMany({
-    where: { userId: userId },
+    where: { userId: { in: userIds } },
   });
 
   const playlistsWithTracks = [];

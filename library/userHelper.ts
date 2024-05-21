@@ -280,3 +280,19 @@ export const userOwnsContent = async (
     )
   );
 };
+
+export const getUserIds = async (userId: string) => {
+  const userNpubsByUserId = await prisma.userPubkey.findMany({
+    where: { userId: userId },
+  });
+
+  const userNpubsByPubkey = await prisma.userPubkey.findMany({
+    where: { pubkey: userId },
+  });
+
+  return [
+    userId,
+    ...userNpubsByUserId.map((n) => n.pubkey),
+    ...userNpubsByPubkey.map((n) => n.userId),
+  ];
+};
