@@ -18,7 +18,7 @@ const router = express.Router();
 // queries
 router.get("/:id", getPlaylist);
 router.get("/", isFirebaseOrNostrAuthorized, getUserPlaylists);
-// public route?
+// public route to get a user's playlists
 router.get("/user/:id", getUserPlaylists);
 
 // mutations
