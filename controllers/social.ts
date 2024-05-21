@@ -156,7 +156,8 @@ const get_activity_feed = asyncHandler(async (req, res, next) => {
   // TODO - get a list of the user's follows
   // either query the relay(s) here with the user's npub, or have the client pass in the list
   const userIds = [];
-  const activityItems = await getActivity(userIds);
+  const pubkeysAndFirebaseIds = await Promise.all(userIds.map(getUserIds));
+  const activityItems = await getActivity(pubkeysAndFirebaseIds.flat());
   res.send({
     success: true,
     data: activityItems,
