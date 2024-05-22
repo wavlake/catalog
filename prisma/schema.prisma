@@ -613,6 +613,8 @@ model userPubkey {
   pubkey    String   @id @unique(map: "user_pubkey_pubkey_unique")
   userId    String   @map("user_id")
   createdAt DateTime @map("created_at") @db.Timestamptz(6)
+  followers Json?
+  follows   Json?
   user      User     @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "user_pubkey_user_id_foreign")
 
   @@index([userId], map: "idx_user_pubkey_user_id")
