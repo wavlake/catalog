@@ -545,9 +545,11 @@ model podcastSubcategory {
 }
 
 model npub {
-  public_hex String    @id @unique(map: "npub_public_hex_unique") @db.VarChar(255)
-  metadata   Json?
-  updated_at DateTime? @default(now()) @db.Timestamptz(6)
+  publicHex     String    @id @unique(map: "npub_public_hex_unique") @map("public_hex") @db.VarChar(255)
+  metadata      Json?
+  updatedAt     DateTime? @default(now()) @map("updated_at") @db.Timestamptz(6)
+  followerCount Int?      @default(0) @map("follower_count")
+  follows       Json?
 }
 
 model Forward {
@@ -610,12 +612,10 @@ model external_user {
 }
 
 model userPubkey {
-  pubkey         String   @id @unique(map: "user_pubkey_pubkey_unique")
-  userId         String   @map("user_id")
-  createdAt      DateTime @map("created_at") @db.Timestamptz(6)
-  followerCount  Int?     @map("follower_count") @default(0)
-  follows        Json?
-  user           User     @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "user_pubkey_user_id_foreign")
+  pubkey    String   @id @unique(map: "user_pubkey_pubkey_unique")
+  userId    String   @map("user_id")
+  createdAt DateTime @map("created_at") @db.Timestamptz(6)
+  user      User     @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "user_pubkey_user_id_foreign")
 
   @@index([userId], map: "idx_user_pubkey_user_id")
   @@map("user_pubkey")

@@ -77,7 +77,7 @@ function commentsV2(contentIds) {
   LEFT JOIN
     "user" ON "user"."id" = "preamp"."user_id"
   LEFT JOIN
-    "npub" ON "npub"."public_hex" = "preamp"."user_id"
+    "npub" ON "npub"."publicHex" = "preamp"."user_id"
   WHERE
     "preamp"."content_id" IN (${contentIds.map((id) => `'${id}'`).join(", ")})
 `);
