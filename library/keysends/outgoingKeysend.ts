@@ -68,6 +68,11 @@ export const updateKeysend = async ({
     .select("is_settled", "user_id", "msat_amount")
     .first();
 
+  if (!staleKeysend) {
+    log.error(`Keysend not found for ${internalTxId}`);
+    return;
+  }
+
   if (staleKeysend.is_settled) {
     log.debug("Keysend already settled, skipping update");
     return;

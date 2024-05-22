@@ -102,10 +102,12 @@ const processOutgoingKeysend = asyncHandler<
     return;
   }
 
+  // Sleep for 500 ms to allow the db to update before callback is logged
+  await new Promise((resolve) => setTimeout(resolve, 500));
   await updateKeysend({
     internalTxId,
     status,
-    fee: fee,
+    fee,
   })
     .then(() => {
       log.debug(`Updated keysend ${internalTxId} with status ${status}`);
