@@ -1,4 +1,9 @@
-import { ChargeStatus, PaymentStatus, TransactionStatus } from "./constants";
+import {
+  ChargeStatus,
+  PaymentStatus,
+  TransactionStatus,
+  SendKeysendStatus,
+} from "./constants";
 
 interface TLV {
   type: string;
@@ -66,6 +71,12 @@ export interface ZBDKeysendCallbackRequest {
     confirmedAt?: string;
     expiresAt: string;
   };
+}
+
+export interface ZBDSendKeysendCallbackRequest {
+  metadata: { internalTxId: string };
+  status: SendKeysendStatus;
+  fee: string;
 }
 
 export interface ZBDChargeCallbackRequest {

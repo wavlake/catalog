@@ -15,6 +15,7 @@ import { validate } from "uuid";
 import { processSplits } from "@library/amp";
 import { checkUserHasSufficientSats } from "@library/userHelper";
 import { TransactionStatus } from "@library/zbd/constants";
+import { randomUUID } from "crypto";
 
 const sendKeysend = asyncHandler<
   core.ParamsDictionary,
@@ -40,6 +41,8 @@ const sendKeysend = asyncHandler<
     ts,
   } = body;
   const userId = req["uid"];
+  // We generate a unique interal tx id to send to ZBD, which they return in the callback
+  const internalTxId = randomUUID();
   log.debug(`Processing external keysend request for user ${userId}`);
   try {
     const isValidRequest = isValidExternalKeysendRequest(body);
@@ -73,7 +76,7 @@ const sendKeysend = asyncHandler<
           amount: keysend.msatAmount.toString(),
           pubkey: keysend.pubkey,
           // not used for anything
-          // metadata: {}
+          metadata: { internalTxId: internalTxId },
           tlvRecords: customRecords,
         });
         return {
@@ -103,6 +106,7 @@ const sendKeysend = asyncHandler<
           recordInProgressKeysend({
             keysendData: data,
             pubkey,
+            internalTxId,
             metadata: {
               message,
               podcast,

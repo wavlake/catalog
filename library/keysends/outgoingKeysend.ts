@@ -1,5 +1,4 @@
-import { TransactionStatus } from "./../zbd/constants";
-import { randomUUID } from "crypto";
+import { TransactionStatus, SendKeysendStatus } from "./../zbd/constants";
 import db from "../db";
 import { getUserName } from "../userHelper";
 import log from "loglevel";
@@ -9,6 +8,7 @@ const BLIP0010 = "7629169";
 export const recordInProgressKeysend = async ({
   keysendData,
   pubkey,
+  internalTxId,
   metadata,
 }) => {
   // unsure what to use for payment index
@@ -46,25 +46,25 @@ export const recordInProgressKeysend = async ({
       // we rely on the callback to update the payment as settled and is_pending = false
       is_settled: false,
       is_pending: true,
-      tx_id: randomUUID(),
+      tx_id: internalTxId,
     },
     ["id"]
   );
 };
 
 export const updateKeysend = async ({
-  externalId,
+  internalTxId,
   status,
   fee,
 }: {
-  externalId: string;
-  status: TransactionStatus;
-  fee: any;
+  internalTxId: string;
+  status: SendKeysendStatus;
+  fee: string;
 }) => {
   const feeMsat = parseInt(fee);
   const staleKeysend = await db
     .knex("external_payment")
-    .where({ external_id: externalId })
+    .where({ tx_id: internalTxId })
     .select("is_settled", "user_id", "msat_amount")
     .first();
 
@@ -73,7 +73,7 @@ export const updateKeysend = async ({
     return;
   }
 
-  const isSettled = status === TransactionStatus.Completed;
+  const isSettled = status === SendKeysendStatus.Paid;
   const trx = await db.knex.transaction();
 
   if (isSettled) {
@@ -86,22 +86,21 @@ export const updateKeysend = async ({
       .where({ id: staleKeysend.user_id });
   }
 
-  await trx("external_payment")
-    .where({ external_id: externalId, status })
-    .update({
-      is_settled: isSettled,
-      is_pending: false,
-      fee_msat: feeMsat,
-    });
+  await trx("external_payment").where({ tx_id: internalTxId }).update({
+    is_settled: isSettled,
+    is_pending: false,
+    fee_msat: feeMsat,
+  });
+
   return trx
     .commit()
-    .then((data) => {
+    .then(() => {
       log.debug(
-        `Updated external payment record for ${externalId} with status ${status}`
+        `Updated external_payment record for ${internalTxId} with status ${status}`
       );
     })
     .catch((err) => {
-      log.error(`Error updating external payment record: ${err}`);
+      log.error(`Error updating external_payment record: ${err}`);
       trx.rollback;
     });
 };

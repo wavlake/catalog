@@ -4,6 +4,7 @@ import { validate } from "uuid";
 import core from "express-serve-static-core";
 import {
   ZBDKeysendCallbackRequest,
+  ZBDSendKeysendCallbackRequest,
   ZBDChargeCallbackRequest,
   ZBDPaymentCallbackRequest,
 } from "@library/zbd/requestInterfaces";
@@ -85,17 +86,15 @@ const processIncomingKeysend = asyncHandler<
 const processOutgoingKeysend = asyncHandler<
   core.ParamsDictionary,
   any,
-  ZBDKeysendCallbackRequest
+  ZBDSendKeysendCallbackRequest
 >(async (req, res, next) => {
-  const { transaction } = req.body;
+  const { metadata, status, fee } = req.body;
+  const internalTxId = metadata.internalTxId;
   log.debug(
-    `Processing outgoing keysend callback transactionId: ${transaction.id}`
+    `Processing outgoing keysend callback internalTxId: ${internalTxId}`
   );
 
-  const externalId = transaction.id;
-  const status = transaction.status;
-
-  if (!externalId || !status) {
+  if (!internalTxId || !status) {
     log.error("Missing externalId or status");
     res
       .status(400)
@@ -104,12 +103,12 @@ const processOutgoingKeysend = asyncHandler<
   }
 
   await updateKeysend({
-    externalId,
+    internalTxId,
     status,
-    fee: transaction.fee,
+    fee: fee,
   })
     .then(() => {
-      log.debug(`Updated keysend ${externalId} with status ${status}`);
+      log.debug(`Updated keysend ${internalTxId} with status ${status}`);
       res.status(200).send();
     })
     .catch((e) => {
