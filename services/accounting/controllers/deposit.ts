@@ -96,4 +96,25 @@ const createDeposit = asyncHandler(async (req, res: any, next) => {
   });
 });
 
-export default { createDeposit };
+const getDeposit = asyncHandler(async (req, res: any, next) => {
+  const userId = req["uid"];
+  const { id } = req.params;
+
+  const invoiceId = parseInt(id);
+  if (!id || isNaN(invoiceId)) {
+    return res.status(400).send("Invoice ID is required");
+  }
+
+  const invoice = await prisma.transaction.findUnique({
+    where: { id: invoiceId },
+  });
+
+  if (!invoice || invoice.userId !== userId) {
+    return res.status(404).send("Invoice not found");
+  }
+
+  res.json({ success: true, data: { invoice } });
+  return;
+});
+
+export default { createDeposit, getDeposit };

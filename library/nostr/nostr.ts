@@ -1,22 +1,8 @@
-import { Filter, relayInit, Event } from "nostr-tools";
+import { SimplePool } from "nostr-tools";
 import fetch from "node-fetch";
+import { DEFAULT_READ_RELAY_URIS } from "./common";
 
-const DEFAULT_READ_RELAY_URIS = [
-  "wss://purplepag.es",
-  "wss://relay.nostr.band",
-  "wss://relay.damus.io",
-  "wss://nostr.wine",
-  "wss://relay.snort.social",
-  "wss://relay.wavlake.com",
-];
-
-const DEFAULT_WRITE_RELAY_URIS = [
-  "wss://purplepag.es",
-  "wss://relay.nostr.band",
-  "wss://relay.damus.io",
-  "wss://relay.wavlake.com",
-  "wss://nostr.mutinywallet.com",
-];
+const pool = new SimplePool();
 
 export const getProfileMetadata = async (
   pubkey: string,
@@ -26,61 +12,8 @@ export const getProfileMetadata = async (
     kinds: [0],
     authors: [pubkey],
   };
-  return getEventFromPool(filter, relayUris);
-};
-
-const getEventFromPool = async (
-  filter: Filter,
-  relayUris: string[] = DEFAULT_READ_RELAY_URIS
-) => {
-  const promises = relayUris.map((relayUri) =>
-    getEventFromRelay(relayUri, filter)
-  );
-  const events = (await Promise.allSettled(promises))
-    .map((result) => {
-      if (result.status === "fulfilled") {
-        return result.value;
-      }
-    })
-    .filter((result) => {
-      return result !== undefined && result !== null;
-    }) as Event[];
-
-  if (events.length === 0) {
-    return null;
-  }
-
-  return getMostRecentEvent(events);
-};
-
-const getMostRecentEvent = (events: Event[]) => {
-  return events.sort((a, b) => b.created_at - a.created_at)[0];
-};
-
-const getEventFromRelay = (
-  relayUri: string,
-  filter: Filter
-): Promise<Event | null> => {
-  return new Promise((resolve, reject) => {
-    const relay = relayInit(relayUri);
-
-    relay.on("connect", async () => {
-      const event = await relay.get(filter);
-
-      relay.close();
-      resolve(event);
-    });
-    relay.on("error", () => {
-      relay.close();
-      reject(new Error(`failed to connect to ${relay.url}`));
-    });
-
-    relay.connect().catch((e) => {
-      console.log(`error connecting to relay ${relay.url}`);
-      relay.close();
-      reject(e);
-    });
-  });
+  const events = await pool.get(relayUris, filter);
+  return events;
 };
 
 // put request to npub-metadata with /:npub as a route param

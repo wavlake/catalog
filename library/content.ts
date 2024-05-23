@@ -129,6 +129,7 @@ export const getContentFromId = async (contentId) => {
     .knex(contentType)
     .select("*")
     .where("id", "=", contentId)
+    .andWhere("deleted", "=", false)
     .first();
 
   return content;
