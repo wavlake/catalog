@@ -4,12 +4,11 @@ import log, { LogLevelDesc } from "loglevel";
 
 import prisma from "@prismalocal/client";
 import {
-  DEFAULT_READ_RELAY_URIS,
+  getFollowersList,
+  getFollowsList,
   getProfileMetadata,
 } from "@library/nostr/nostr";
 import express from "express";
-import { Filter, SimplePool, nip05 } from "nostr-tools";
-import { Prisma } from "@prisma/client";
 
 log.setLevel((process.env.LOGLEVEL as LogLevelDesc) ?? "info");
 const app = express();
@@ -37,7 +36,7 @@ const checkPublicKey = async (publicHex: string): Promise<boolean> => {
     const latestMetadataEvent = await getProfileMetadata(publicHex);
     const latestMetadata = JSON.parse(latestMetadataEvent.content);
 
-    const followerCount = await checkFollowerCount(publicHex);
+    const followers = await getFollowersList(publicHex);
     const follows = await getFollowsList(publicHex);
     log.debug(`Updating DB: ${latestMetadata.name} ${publicHex}`);
     await prisma.npub.upsert({
@@ -45,14 +44,14 @@ const checkPublicKey = async (publicHex: string): Promise<boolean> => {
       update: {
         metadata: latestMetadata,
         updatedAt: new Date(),
-        followerCount: followerCount,
+        followerCount: followers.length,
         follows: follows,
       },
       create: {
         publicHex: publicHex,
         metadata: latestMetadata,
         updatedAt: new Date(),
-        followerCount: followerCount,
+        followerCount: followers.length,
         follows: follows,
       },
     });
@@ -61,50 +60,6 @@ const checkPublicKey = async (publicHex: string): Promise<boolean> => {
     console.log("error: ", e);
     return false;
   }
-};
-
-const checkFollowerCount = async (publicHex: string): Promise<number> => {
-  const pool = new SimplePool();
-  const filter: Filter = {
-    kinds: [3],
-    ["#p"]: [publicHex],
-  };
-  const events = await pool.querySync(DEFAULT_READ_RELAY_URIS, filter);
-  const count = events.length;
-
-  return count;
-};
-
-interface Follow extends Prisma.JsonArray {
-  pubkey: string;
-  relay?: string;
-  petname?: string;
-}
-
-const getFollowsList = async (publicHex: string): Promise<Follow[]> => {
-  const pool = new SimplePool();
-  const filter: Filter = {
-    kinds: [3],
-    authors: [publicHex],
-    limit: 1,
-  };
-
-  const event = await pool.get(DEFAULT_READ_RELAY_URIS, filter);
-  if (!event?.tags.length) {
-    return [];
-  }
-
-  const followsList = event.tags.reduce(
-    (acc, [tag, pubkey, relay, petname]) => {
-      if (tag === "p") {
-        return acc.concat([{ pubkey, relay, petname } as Follow]);
-      }
-      return acc;
-    },
-    [] as Follow[]
-  );
-
-  return followsList;
 };
 
 app.put("/:publicHex", async (req, res) => {
