@@ -12,8 +12,8 @@ export const getProfileMetadata = async (
     kinds: [0],
     authors: [pubkey],
   };
-  const events = await pool.querySync(relayUris, filter);
-  return events.sort((a, b) => b.created_at - a.created_at)[0];
+  const events = await pool.get(relayUris, filter);
+  return events;
 };
 
 // put request to npub-metadata with /:npub as a route param
