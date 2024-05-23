@@ -1,4 +1,3 @@
-import { getFollowerCount } from "./../../library/nostr/nostr";
 require("dotenv").config();
 require("websocket-polyfill");
 import log, { LogLevelDesc } from "loglevel";
@@ -40,7 +39,6 @@ const checkPublicKey = async (publicHex: string): Promise<boolean> => {
 
     const followerCount = await checkFollowerCount(publicHex);
     const follows = await getFollowsList(publicHex);
-
     log.debug(`Updating DB: ${latestMetadata.name} ${publicHex}`);
     await prisma.npub.upsert({
       where: { publicHex: publicHex },
@@ -92,7 +90,7 @@ const getFollowsList = async (publicHex: string): Promise<Follow[]> => {
   };
 
   const event = await pool.get(DEFAULT_READ_RELAY_URIS, filter);
-  if (!event) {
+  if (!event?.tags.length) {
     return [];
   }
 
