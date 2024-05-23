@@ -91,7 +91,7 @@ const get_account = asyncHandler(async (req, res, next) => {
       success: true,
       data: {
         ...userData[0],
-        pubkeys: pubkeyMetadata,
+        nostrProfileData: pubkeyMetadata,
         emailVerified,
         isRegionVerified: !!isRegionVerified,
         providerId: providerData[0]?.providerId,
