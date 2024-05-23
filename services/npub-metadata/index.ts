@@ -1,25 +1,29 @@
 require("dotenv").config();
 require("websocket-polyfill");
-const log = require("loglevel");
-log.setLevel(process.env.LOGLEVEL);
+import log, { LogLevelDesc } from "loglevel";
 
 import prisma from "@prismalocal/client";
-import { getProfileMetadata } from "@library/nostr/nostr";
+import {
+  getFollowersList,
+  getFollowsList,
+  getProfileMetadata,
+} from "@library/nostr/nostr";
 import express from "express";
 
+log.setLevel((process.env.LOGLEVEL as LogLevelDesc) ?? "info");
 const app = express();
 
 const checkPublicKey = async (publicHex: string): Promise<boolean> => {
   try {
     const npub = await prisma.npub.findUnique({
-      where: { public_hex: publicHex },
+      where: { publicHex },
     });
 
     // 24 hours
     const STALE_TIME = 86400000;
     const npubUpdatedRecently =
-      npub?.updated_at &&
-      new Date().getTime() - npub.updated_at.getTime() < STALE_TIME;
+      npub?.updatedAt &&
+      new Date().getTime() - npub.updatedAt.getTime() < STALE_TIME;
 
     if (npubUpdatedRecently) {
       log.debug("Skipping check, metadata was recently updated");
@@ -32,17 +36,23 @@ const checkPublicKey = async (publicHex: string): Promise<boolean> => {
     const latestMetadataEvent = await getProfileMetadata(publicHex);
     const latestMetadata = JSON.parse(latestMetadataEvent.content);
 
+    const followers = await getFollowersList(publicHex);
+    const follows = await getFollowsList(publicHex);
     log.debug(`Updating DB: ${latestMetadata.name} ${publicHex}`);
     await prisma.npub.upsert({
-      where: { public_hex: publicHex },
+      where: { publicHex: publicHex },
       update: {
         metadata: latestMetadata,
-        updated_at: new Date(),
+        updatedAt: new Date(),
+        followerCount: followers.length,
+        follows: follows,
       },
       create: {
-        public_hex: publicHex,
+        publicHex: publicHex,
         metadata: latestMetadata,
-        updated_at: new Date(),
+        updatedAt: new Date(),
+        followerCount: followers.length,
+        follows: follows,
       },
     });
     return true;

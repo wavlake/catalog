@@ -69,6 +69,20 @@ const get_account = asyncHandler(async (req, res, next) => {
       },
     });
 
+    const pubkeyMetadata = await prisma.npub.findMany({
+      where: {
+        publicHex: {
+          in: userPubkeys.map((row) => row.pubkey),
+        },
+      },
+      select: {
+        publicHex: true,
+        metadata: true,
+        followerCount: true,
+        follows: true,
+      },
+    });
+
     const { emailVerified, providerData } = await auth().getUser(
       request.accountId
     );
@@ -77,7 +91,7 @@ const get_account = asyncHandler(async (req, res, next) => {
       success: true,
       data: {
         ...userData[0],
-        pubkeys: userPubkeys.map((row) => row.pubkey),
+        nostrProfileData: pubkeyMetadata,
         emailVerified,
         isRegionVerified: !!isRegionVerified,
         providerId: providerData[0]?.providerId,
