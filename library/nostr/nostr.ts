@@ -1,7 +1,7 @@
 import { Filter, relayInit, Event } from "nostr-tools";
 import fetch from "node-fetch";
 
-export const DEFAULT_READ_RELAY_URIS = [
+const DEFAULT_READ_RELAY_URIS = [
   "wss://purplepag.es",
   "wss://relay.nostr.band",
   "wss://relay.damus.io",

@@ -24,3 +24,7 @@ export enum ChargeStatus {
   Processing = "processing",
   Expired = "expired",
 }
+
+export enum SendKeysendStatus {
+  Paid = "paid",
+}
