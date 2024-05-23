@@ -1,4 +1,4 @@
-import { Filter, relayInit, Event, SimplePool } from "nostr-tools";
+import { Filter, relayInit, Event } from "nostr-tools";
 import fetch from "node-fetch";
 
 export const DEFAULT_READ_RELAY_URIS = [
