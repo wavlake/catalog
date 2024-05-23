@@ -7,7 +7,6 @@ import { validateLightningAddress } from "../library/zbd/zbdClient";
 import { urlFriendly } from "../library/format";
 import { upload_image } from "../library/artwork";
 import { getZBDRedirectInfo, getZBDUserInfo } from "../library/zbd/login";
-import { nip19, verifySignature } from "nostr-tools";
 
 async function groupSplitPayments(combinedAmps) {
   // Group records by txId
