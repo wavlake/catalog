@@ -5,9 +5,6 @@ import { formatError } from "../library/errors";
 import asyncHandler from "express-async-handler";
 
 export const isFirebaseAuthorized = async (req) => {
-  req.uid = "UNX5FG40qnNzrkklarUeaoWpp883"; //user.uid;
-  req.params.uid = "UNX5FG40qnNzrkklarUeaoWpp883"; //user.uid;
-  return true;
   let authToken;
   if (
     req.headers.authorization &&
