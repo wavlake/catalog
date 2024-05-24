@@ -112,8 +112,8 @@ export const publishZapReceipt = async (
   const pool = new SimplePool();
   let relays = DEFAULT_WRITE_RELAY_URIS;
   Promise.any(pool.publish(relays, signedEvent))
-    .then((result) => {
-      log.debug(`Published zap receipt: ${result}`);
+    .then(() => {
+      log.debug(`Published zap receipt for ${paymentRequest}`);
       return;
     })
     .catch((e) => {
