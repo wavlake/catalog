@@ -17,6 +17,7 @@ const crypto = require("crypto");
 interface ZapRequest {
   amount: string;
   nostr: string;
+  metadata: string;
   lnurl: string;
 }
 
@@ -26,7 +27,7 @@ const createZapInvoice = asyncHandler<
   any,
   ZapRequest
 >(async (req, res, next) => {
-  const { amount, nostr, lnurl } = req.query;
+  const { amount, nostr, metadata, lnurl } = req.query;
 
   const amountInt = parseInt(amount);
   if (isNaN(amountInt) || amountInt < 1000 || amountInt > MAX_INVOICE_AMOUNT) {
@@ -106,13 +107,22 @@ const createZapInvoice = asyncHandler<
   log.debug(`Created placeholder invoice: ${invoice.id}`);
 
   const hash = crypto.createHash("sha256");
-  const hashedEvent = hash.update(nostr).digest("hex");
+
+  let descriptionHash;
+  if (!metadata || metadata !== "undefined") {
+    // metadata for lnurl verification
+    descriptionHash = metadata;
+  } else {
+    // hash the zap request for nostr
+    descriptionHash = hash.update(nostr).digest("hex");
+  }
+
   const invoiceRequest = {
     // description: `Wavlake Zap: ${zappedContent.title}`, // Removed for now
     amount: amount,
     expiresIn: DEFAULT_EXPIRATION_SECONDS,
     internalId: `external_receive-${invoice.id.toString()}`,
-    invoiceDescriptionHash: hashedEvent,
+    invoiceDescriptionHash: descriptionHash,
   };
 
   log.debug(
