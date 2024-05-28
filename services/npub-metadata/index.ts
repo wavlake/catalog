@@ -9,14 +9,31 @@ import {
   getProfileMetadata,
 } from "@library/nostr/nostr";
 import express from "express";
+import { Prisma } from "@prisma/client";
+
+interface NpubMetadata {
+  publicHex: string;
+  metadata: Prisma.JsonValue;
+  followerCount: number;
+  follows: Prisma.JsonValue;
+}
 
 log.setLevel((process.env.LOGLEVEL as LogLevelDesc) ?? "info");
 const app = express();
 
-const checkPublicKey = async (publicHex: string): Promise<boolean> => {
+const checkPublicKey = async (
+  publicHex: string
+): Promise<NpubMetadata | undefined> => {
   try {
     const npub = await prisma.npub.findUnique({
       where: { publicHex },
+      select: {
+        updatedAt: true,
+        publicHex: true,
+        metadata: true,
+        followerCount: true,
+        follows: true,
+      },
     });
 
     // 24 hours
@@ -27,7 +44,7 @@ const checkPublicKey = async (publicHex: string): Promise<boolean> => {
 
     if (npubUpdatedRecently) {
       log.debug("Skipping check, metadata was recently updated");
-      return true;
+      return npub;
     }
 
     log.debug(`Retrieving metadata for: ${publicHex}`);
@@ -39,7 +56,7 @@ const checkPublicKey = async (publicHex: string): Promise<boolean> => {
     const followers = await getFollowersList(publicHex);
     const follows = await getFollowsList(publicHex);
     log.debug(`Updating DB: ${latestMetadata.name} ${publicHex}`);
-    await prisma.npub.upsert({
+    const updatedData = await prisma.npub.upsert({
       where: { publicHex: publicHex },
       update: {
         metadata: latestMetadata,
@@ -55,19 +72,20 @@ const checkPublicKey = async (publicHex: string): Promise<boolean> => {
         follows: follows,
       },
     });
-    return true;
+    return updatedData;
   } catch (e) {
     console.log("error: ", e);
-    return false;
+    return undefined;
   }
 };
 
 app.put("/:publicHex", async (req, res) => {
   const publicHex = req.params.publicHex;
-  const isSuccess = await checkPublicKey(publicHex);
+  const metadata = await checkPublicKey(publicHex);
 
   res.send({
-    isSuccess,
+    success: !!metadata,
+    data: metadata,
   });
 });
 
