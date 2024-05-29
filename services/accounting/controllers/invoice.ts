@@ -15,8 +15,6 @@ const { verifyEvent } = require("nostr-tools");
 import { getContentFromEventId } from "@library/content";
 const crypto = require("crypto");
 
-<<<<<<< HEAD
-=======
 const getPaymentHash = (invoice: string) => {
   let decodedInvoice;
   try {
@@ -141,7 +139,6 @@ const createInvoice = asyncHandler(async (req, res: any, next) => {
   });
 });
 
->>>>>>> staging
 interface ZapRequest {
   amount: string;
   nostr: string;
@@ -314,8 +311,4 @@ const createZapInvoice = asyncHandler<
   });
 });
 
-<<<<<<< HEAD
-export default { createZapInvoice };
-=======
 export default { createInvoice, createZapInvoice };
->>>>>>> staging
