@@ -7,7 +7,7 @@ import { validateLightningAddress } from "../library/zbd/zbdClient";
 import { urlFriendly } from "../library/format";
 import { upload_image } from "../library/artwork";
 import { getZBDRedirectInfo, getZBDUserInfo } from "../library/zbd/login";
-import { nip19, verifySignature } from "nostr-tools";
+import { updateNpubMetadata } from "../library/nostr/nostr";
 
 async function groupSplitPayments(combinedAmps) {
   // Group records by txId
@@ -70,6 +70,20 @@ const get_account = asyncHandler(async (req, res, next) => {
       },
     });
 
+    const pubkeyMetadata = await prisma.npub.findMany({
+      where: {
+        publicHex: {
+          in: userPubkeys.map((row) => row.pubkey),
+        },
+      },
+      select: {
+        publicHex: true,
+        metadata: true,
+        followerCount: true,
+        follows: true,
+      },
+    });
+
     const { emailVerified, providerData } = await auth().getUser(
       request.accountId
     );
@@ -78,7 +92,7 @@ const get_account = asyncHandler(async (req, res, next) => {
       success: true,
       data: {
         ...userData[0],
-        pubkeys: userPubkeys.map((row) => row.pubkey),
+        nostrProfileData: pubkeyMetadata,
         emailVerified,
         isRegionVerified: !!isRegionVerified,
         providerId: providerData[0]?.providerId,
@@ -880,6 +894,43 @@ const delete_pubkey_from_account = asyncHandler(async (req, res, next) => {
   }
 });
 
+const get_pubkey_metadata = asyncHandler(async (req, res, next) => {
+  const pubkey = req.params.pubkey;
+
+  if (!pubkey) {
+    res.status(400).json({
+      success: false,
+      error: "pubkey is required",
+    });
+    return;
+  }
+
+  try {
+    const pubkeyMetadata = await prisma.npub.findUnique({
+      where: {
+        publicHex: pubkey,
+      },
+    });
+
+    if (!pubkeyMetadata) {
+      const response = await updateNpubMetadata(pubkey);
+
+      res.status(response.success ? 200 : 404).send(response);
+      return;
+    }
+
+    res.send({
+      success: true,
+      data: pubkeyMetadata,
+    });
+  } catch (err) {
+    log.debug("error getting pubkey metadata", { pubkey });
+    log.debug(err);
+    next(err);
+    return;
+  }
+});
+
 export default {
   create_update_lnaddress,
   get_account,
@@ -898,4 +949,5 @@ export default {
   get_login_token_for_zbd_user,
   add_pubkey_to_account,
   delete_pubkey_from_account,
+  get_pubkey_metadata,
 };

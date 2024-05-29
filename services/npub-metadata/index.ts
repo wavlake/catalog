@@ -1,30 +1,63 @@
 require("dotenv").config();
 require("websocket-polyfill");
-const log = require("loglevel");
-log.setLevel(process.env.LOGLEVEL);
+import log, { LogLevelDesc } from "loglevel";
 
 import prisma from "@prismalocal/client";
-import { getProfileMetadata } from "@library/nostr/nostr";
+import {
+  getFollowersList,
+  getFollowsList,
+  getProfileMetadata,
+} from "@library/nostr/nostr";
 import express from "express";
+import { Prisma } from "@prisma/client";
 
+interface NpubMetadata {
+  publicHex: string;
+  metadata: Prisma.JsonValue;
+  followerCount: number;
+  follows: Prisma.JsonValue;
+}
+
+log.setLevel((process.env.LOGLEVEL as LogLevelDesc) ?? "info");
 const app = express();
 
-const checkPublicKey = async (publicHex: string): Promise<boolean> => {
+const checkPublicKey = async (
+  publicHex: string
+): Promise<NpubMetadata | undefined> => {
   try {
     const npub = await prisma.npub.findUnique({
-      where: { public_hex: publicHex },
+      where: { publicHex },
+      select: {
+        updatedAt: true,
+        publicHex: true,
+        metadata: true,
+        followerCount: true,
+        follows: true,
+      },
     });
 
     // 24 hours
     const STALE_TIME = 86400000;
     const npubUpdatedRecently =
-      npub?.updated_at &&
-      new Date().getTime() - npub.updated_at.getTime() < STALE_TIME;
+      npub?.updatedAt &&
+      new Date().getTime() - npub.updatedAt.getTime() < STALE_TIME;
 
     if (npubUpdatedRecently) {
       log.debug("Skipping check, metadata was recently updated");
-      return true;
+      return npub;
     }
+
+    // update the timestamp first so we don't have back to back requests updating the same npub
+    await prisma.npub.upsert({
+      where: { publicHex: publicHex },
+      update: {
+        updatedAt: new Date(),
+      },
+      create: {
+        publicHex: publicHex,
+        updatedAt: new Date(),
+      },
+    });
 
     log.debug(`Retrieving metadata for: ${publicHex}`);
 
@@ -32,32 +65,38 @@ const checkPublicKey = async (publicHex: string): Promise<boolean> => {
     const latestMetadataEvent = await getProfileMetadata(publicHex);
     const latestMetadata = JSON.parse(latestMetadataEvent.content);
 
+    const followers = await getFollowersList(publicHex);
+    const follows = await getFollowsList(publicHex);
     log.debug(`Updating DB: ${latestMetadata.name} ${publicHex}`);
-    await prisma.npub.upsert({
-      where: { public_hex: publicHex },
+    const updatedData = await prisma.npub.upsert({
+      where: { publicHex: publicHex },
       update: {
         metadata: latestMetadata,
-        updated_at: new Date(),
+        updatedAt: new Date(),
+        followerCount: followers.length,
+        follows: follows,
       },
       create: {
-        public_hex: publicHex,
+        publicHex: publicHex,
         metadata: latestMetadata,
-        updated_at: new Date(),
+        updatedAt: new Date(),
+        followerCount: followers.length,
+        follows: follows,
       },
     });
-    return true;
+    return updatedData;
   } catch (e) {
     console.log("error: ", e);
-    return false;
+    return undefined;
   }
 };
 
 app.put("/:publicHex", async (req, res) => {
   const publicHex = req.params.publicHex;
-  const isSuccess = await checkPublicKey(publicHex);
-
+  const metadata = await checkPublicKey(publicHex);
   res.send({
-    isSuccess,
+    success: !!metadata,
+    data: metadata,
   });
 });
 

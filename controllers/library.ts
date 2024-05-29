@@ -8,10 +8,12 @@ const get_user_library = ({
   artists = false,
   albums = false,
   tracks = false,
+  playlists = false,
 }: {
   artists?: boolean;
   albums?: boolean;
   tracks?: boolean;
+  playlists?: boolean;
 }) =>
   asyncHandler(async (req, res, next) => {
     try {
@@ -97,12 +99,40 @@ const get_user_library = ({
             })
         : [];
 
+      const libraryPlaylists = playlists
+        ? await db
+            .knex("library")
+            .join("playlist", "library.content_id", "playlist.id")
+            .select(
+              "playlist.id as id",
+              "playlist.created_at as createdAt",
+              "playlist.title as title",
+              "playlist.updated_at as updatedAt"
+            )
+            .orderBy("library.created_at", "desc")
+            .where("library.user_id", "=", pubkey)
+        : [];
+
+      // TODO - migrate user owned playlists auto-added to the library onCreate?
+      const userOwnedPlaylists = playlists
+        ? await prisma.playlist.findMany({
+            where: {
+              userId: pubkey,
+            },
+          })
+        : [];
+
+      const sortedPlaylists = [...libraryPlaylists, ...userOwnedPlaylists].sort(
+        (a, b) => b.createdAt - a.createdAt
+      );
+
       res.json({
         success: true,
         data: {
           ...(artists ? { artists: libraryArtists } : {}),
           ...(albums ? { albums: libraryAlbums } : {}),
           ...(tracks ? { tracks: libraryTracks } : {}),
+          ...(playlists ? { playlists: sortedPlaylists } : {}),
         },
       });
     } catch (err) {
