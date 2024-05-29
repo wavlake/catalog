@@ -28,7 +28,7 @@ async function getWalletUser(pubkey) {
     });
 }
 
-async function updateWallet(pubkey, msatAmount) {
+async function updateWallet(pubkey, msatAmount: number) {
   const trx = await db.knex.transaction();
   return trx("wallet_connection")
     .where("pubkey", "=", pubkey)
@@ -54,28 +54,22 @@ const walletHasRemainingBudget = async (
   log.debug(`Getting budget remaining for NWC wallet: ${walletPubkey}`);
 
   // Get total amp spend by user in last week to add to withdrawl spend
-  return (
-    db
-      .knex("nwc_wallet_transaction")
-      .sum("msat_amount as msatAmpTotal")
-      .where("pubkey", "=", walletPubkey)
-      .andWhere("created_at", ">", db.knex.raw("now() - interval '8 days'"))
-      .groupBy(db.knex.raw("EXTRACT(WEEK FROM created_at)"))
-      .orderBy(await db.knex.raw("EXTRACT(WEEK FROM created_at)"), "desc")
-      // .first()
-      .then((data) => {
-        // If there are no tx records then simply check if the budget is greater than the value
-        if (data?.length === 0) {
-          return parseInt(msatBudget) > parseInt(valueMsat);
-        }
-        return (
-          parseInt(msatBudget) - data[0].msatAmpTotal > parseInt(valueMsat)
-        );
-      })
-      .catch((err) => {
-        log.error(`Error getting NWC wallet remaining budget ${err}`);
-      })
-  );
+  return db
+    .knex("nwc_wallet_transaction")
+    .sum("msat_amount as msatAmpTotal")
+    .where("pubkey", "=", walletPubkey)
+    .andWhere("created_at", ">", db.knex.raw("now() - interval '7 days'"))
+    .first()
+    .then((data) => {
+      // If there are no tx records then simply check if the budget is greater than the value
+      if (data?.length === 0) {
+        return parseInt(msatBudget) > parseInt(valueMsat);
+      }
+      return parseInt(msatBudget) - data.msatAmpTotal > parseInt(valueMsat);
+    })
+    .catch((err) => {
+      log.error(`Error getting NWC wallet remaining budget ${err}`);
+    });
 };
 
 module.exports = {

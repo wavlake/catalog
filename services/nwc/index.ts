@@ -19,8 +19,9 @@ const { webcrypto } = require("node:crypto");
 globalThis.crypto = webcrypto;
 
 const relayUrl = process.env.WAVLAKE_RELAY;
-const walletSk = hexToBytes(process.env.WALLET_SERVICE_SECRET);
-const walletServicePubkey = getPublicKey(walletSk);
+const walletSk = process.env.WALLET_SERVICE_SECRET;
+const walletSkHex = hexToBytes(process.env.WALLET_SERVICE_SECRET);
+const walletServicePubkey = getPublicKey(walletSkHex);
 
 // Define rate limiter
 const limiter = rateLimit({
@@ -61,7 +62,6 @@ const monitorForNWCRequests = async () => {
 
   const relay = await Relay.connect(relayUrl);
   log.debug(`Listening for NWC requests for ${walletServicePubkey}`);
-  await relay.connect();
   const sub = relay.subscribe(
     [
       {
@@ -74,9 +74,6 @@ const monitorForNWCRequests = async () => {
       onevent(event) {
         log.debug(`Received event: ${event.id}`);
         handleRequest(event);
-      },
-      oneose() {
-        sub.close();
       },
     }
   );

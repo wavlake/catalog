@@ -3,7 +3,7 @@ const log = require("loglevel");
 log.setLevel(process.env.LOGLEVEL);
 const nlInvoice = require("@node-lightning/invoice");
 const amp = require("@library/amp");
-const db = require("@library/db");
+import db from "@library/db";
 const { getZapPubkeyAndContent, publishZapReceipt } = require("@library/zap");
 const { updateWallet, walletHasRemainingBudget } = require("./wallet");
 const { initiatePayment, runPaymentChecks } = require("@library/payments");
@@ -14,7 +14,7 @@ globalThis.crypto = webcrypto;
 // TODO: Remove hard coding fee buffer
 const FEE_BUFFER = 10000;
 
-const payInvoice = async (event, relay, content, walletUser) => {
+const payInvoice = async (event, content, walletUser) => {
   log.debug(`Processing pay_invoice event ${event.id}`);
   const { params } = JSON.parse(content);
   const { invoice } = params;
@@ -49,7 +49,6 @@ const payInvoice = async (event, relay, content, walletUser) => {
 
   // Check if user has sufficient balance and passes other checks
   const passedChecks = await runPaymentChecks(
-    null,
     userId,
     invoice,
     parseInt(valueMsat),
@@ -102,11 +101,12 @@ const payInvoice = async (event, relay, content, walletUser) => {
   const paymentHashStr = Buffer.from(paymentHash).toString("hex");
   const wavlakeInvoiceInfo = await getWavlakeInvoice(paymentHashStr);
 
+  log.debug(`Wavlake invoice info: ${JSON.stringify(wavlakeInvoiceInfo)}`);
   // If Wavlake invoice, treat as an internal amp payment
   if (wavlakeInvoiceInfo?.isWavlake) {
     if (!wavlakeInvoiceInfo.isSettled) {
       const zapRequestData = await getZapPubkeyAndContent(
-        `external_receive-${wavlakeInvoiceInfo.id}`
+        wavlakeInvoiceInfo.id
       );
 
       if (!zapRequestData) {
@@ -123,7 +123,6 @@ const payInvoice = async (event, relay, content, walletUser) => {
         wavlakeInvoiceInfo.contentId,
         pubkey,
         content,
-        wavlakeInvoiceInfo.preimage,
         userId,
         valueMsat,
         msatBalance,
@@ -138,18 +137,11 @@ const payInvoice = async (event, relay, content, walletUser) => {
 
   // If not Wavlake invoice, treat as an external payment
   log.debug(`Processing external invoice...`);
-  await createExternalPayment(
-    event,
-    relay,
-    invoice,
-    userId,
-    valueMsat,
-    msatBalance
-  );
+  await createExternalPayment(event, invoice, userId, valueMsat, msatBalance);
   return;
 };
 
-const getBalance = async (event, relay, walletUser) => {
+const getBalance = async (event, walletUser) => {
   log.debug(`Processing get_balance event ${event.id}`);
   const { msatBalance } = walletUser;
   broadcastEventResponse(
@@ -167,7 +159,6 @@ const getBalance = async (event, relay, walletUser) => {
 // External payment
 const createExternalPayment = async (
   event,
-  relay,
   invoice,
   userId,
   valueMsat,
@@ -186,7 +177,7 @@ const createExternalPayment = async (
 
     const preimageString = externalPaymentResult.data.preimage; // Returned as string already
     const msatSpentIncludingFee =
-      parseInt(valueMsat) + parseInt(externalPaymentResult.data.feeMsat);
+      parseInt(valueMsat) + parseInt(externalPaymentResult.data.fee);
 
     await updateWallet(event.pubkey, msatSpentIncludingFee);
 
@@ -221,41 +212,25 @@ const createExternalPayment = async (
   return;
 };
 
+interface ZapRequestEvent {
+  tags: [string, string][];
+}
+
 // Internal payment
 const createInternalPayment = async (
-  zapRequest: string,
+  zapRequest: ZapRequestEvent,
   invoiceId: number,
   paymentRequest: string,
   contentId: string,
   pubkey: string,
   content: string,
-  preimage: string,
   userId: string,
   valueMsat,
   msatBalance,
   event
 ) => {
-  // const rHashStr = Buffer.from(paymentHash).toString("hex");
-  // const zapEvent = await getZapRequestEvent(rHashStr);
-  // const preimageString = Buffer.from(preimage).toString("hex");
-
-  // if (!zapEvent) {
-  //   log.debug(`No zap request event found for ${rHashStr}`);
-  //   return;
-  // }
-  // // log.debug(zapEvent);
-
-  // let parsedZapEvent;
-  // try {
-  //   parsedZapEvent = JSON.parse(zapEvent);
-  // } catch (err) {
-  //   log.error(`Error parsing zap request event ${err}`);
-  //   return;
-  // }
-
-  // const comment = parsedZapEvent?.content;
   const trx = await db.knex.transaction();
-  const payment = await amp.buildAmpTx({
+  const payment = await amp.processSplits({
     res: null,
     trx: trx,
     type: 10,
@@ -270,15 +245,15 @@ const createInternalPayment = async (
   if (payment) {
     log.debug(`Paid internal invoice with id ${invoiceId}, cancelling...`);
 
-    // DEPRECATED: Unable to cancel invoices in ZBD
-    // Cancel invoice
-    // invoices.cancelInvoice({ payment_hash: paymentHash }, function (err, res) {
-    //   if (err) {
-    //     log.error(err);
-    //   }
-    // });
+    await prisma.externalReceive.update({
+      where: { id: invoiceId },
+      data: {
+        isPending: false,
+        preimage: "nwc",
+      },
+    });
 
-    await publishZapReceipt(zapRequest, paymentRequest, preimage);
+    await publishZapReceipt(zapRequest, paymentRequest, "nwc");
     // Broadcast response
 
     const newBalance = parseInt(msatBalance) - parseInt(valueMsat);
@@ -288,7 +263,7 @@ const createInternalPayment = async (
       JSON.stringify({
         result_type: "pay_invoice",
         result: {
-          preimage: preimage,
+          preimage: "nwc",
           balance: newBalance,
         },
       })
@@ -322,33 +297,6 @@ const getWavlakeInvoice = async (paymentHash: string) => {
     isSettled: isSettled,
     preimage: receiveRecord[0].preimage,
   };
-  // return new Promise((resolve, reject) => {
-  //   try {
-  //     lightning.lookupInvoice(lnRequest, function (err, response) {
-  //       log.trace(response);
-  //       if (err) {
-  //         resolve(null);
-  //         return;
-  //       }
-  //       const { memo, state, r_preimage } = response;
-  //       if (memo.includes("Wavlake")) {
-  //         log.debug(`Invoice is a Wavlake invoice`);
-  //         resolve({
-  //           isWavlake: true,
-  //           memo: memo,
-  //           state: state,
-  //           preimage: r_preimage,
-  //         });
-  //       } else {
-  //         log.debug(`Invoice is not Wavlake invoice`);
-  //         resolve({ isWavlake: false });
-  //       }
-  //     });
-  //   } catch (err) {
-  //     log.error(err);
-  //     resolve({ isWavlake: false });
-  //     return;
-  //   }
 };
 
 module.exports = {
