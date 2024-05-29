@@ -1,5 +1,5 @@
 const log = require("loglevel");
-log.setLevel("debug");
+log.setLevel(process.env.LOG_LEVEL || "info");
 import asyncHandler from "express-async-handler";
 import prisma from "@prismalocal/client";
 import { logZapRequest } from "@library/invoice";
