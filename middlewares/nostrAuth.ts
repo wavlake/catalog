@@ -32,9 +32,9 @@ export const validateNostrEvent = async (req, res) => {
   }
 
   updateNpubMetadata(nostrEvent.pubkey)
-    .then(({ isSuccess }) => {
+    .then(({ success }) => {
       log.debug(
-        `${isSuccess ? "Updated" : "Failed to update"} nostr metadata for: ${
+        `${success ? "Updated" : "Failed to update"} nostr metadata for: ${
           nostrEvent.pubkey
         }`
       );
