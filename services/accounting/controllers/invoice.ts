@@ -164,7 +164,7 @@ const createZapInvoice = asyncHandler<
     return;
   }
 
-  console.log(`Zap request: ${JSON.stringify(nostr)}`);
+  log.debug(`Zap request: ${JSON.stringify(nostr)}`);
   // Validate nostr object
   let zapRequestEvent;
   try {
