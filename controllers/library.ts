@@ -113,6 +113,7 @@ const get_user_library = ({
             .where("library.user_id", "=", pubkey)
         : [];
 
+      // TODO - migrate user owned playlists auto-added to the library onCreate?
       const userOwnedPlaylists = playlists
         ? await prisma.playlist.findMany({
             where: {
