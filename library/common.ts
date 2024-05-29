@@ -1,3 +1,5 @@
+import { Prisma } from "@prisma/client";
+
 export enum PaymentType {
   Boost = 1,
   BoostWithComment = 2, // Deprecated, could be used for something else
@@ -20,3 +22,16 @@ export enum PaymentType {
 // 7: Zap
 // 8: Party mode boost
 // 9: Internal boost via external time split
+
+export interface NpubMetadata {
+  publicHex: string;
+  metadata: Prisma.JsonValue;
+  followerCount: number;
+  follows: Prisma.JsonValue;
+}
+
+export interface Follow extends Prisma.JsonArray {
+  pubkey: string;
+  relay?: string;
+  petname?: string;
+}

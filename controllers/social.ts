@@ -1,163 +1,107 @@
 import prisma from "../prisma/client";
 import asyncHandler from "express-async-handler";
-import { getUserIds } from "../library/userHelper";
+import { Prisma } from "@prisma/client";
+import db from "../library/db";
 
 interface ActivityItem {
-  artwork?: string;
-  shareUrl?: string;
-  contentTitle?: string;
-  contentId: string;
-  parentContentTitle?: string;
-  parentContentId?: string;
-  contentType: string;
+  //npub metadata
+  picture: string;
+  name: string;
+  userId: string;
+  pubkey: string;
+  // playlistCreate
+  // playlistUpdate
+  // zap
+  type: string;
+
+  // amp table
+  message?: string;
+  zapAmount?: number;
+
+  // amp table or playlist table
   timestamp: string;
+
+  // playlist table/amp table
+  contentId: string;
+  contentTitle: string;
+  contentType: string;
+  contentArtwork: string[];
+  parentContentId?: string;
+  parentContentTitle?: string;
+  parentContentType?: string;
 }
-const getActivity = async (userIds: string[]) => {
-  const userPlaylists = await prisma.playlist.findMany({
-    where: {
-      userId: {
-        in: userIds,
-      },
-    },
-    select: {
-      id: true,
-    },
-  });
-  // Fetch recent playlist track activities
-  const playlistTrackActivity = await prisma.playlistTrack.findMany({
-    where: {
-      playlistId: {
-        in: userPlaylists.map((playlist) => playlist.id),
-      },
-    },
-    orderBy: {
-      updatedAt: "desc",
-    },
-    take: 10,
-  });
 
-  const trackActivity = await prisma.track.findMany({
-    where: {
-      album: {
-        artist: {
-          userId: {
-            in: userIds,
-          },
-        },
-      },
-    },
-    orderBy: {
-      updatedAt: "desc",
-    },
-    take: 10,
-  });
+const getActivity = async (pubkeys: string[]) => {
+  const createdPlaylists = await db
+    .knex("playlist")
+    .whereIn("user_id", pubkeys)
+    .join("npub", "playlist.user_id", "npub.public_hex")
+    .select(
+      "playlist.id as id",
+      "playlist.user_id as user_id",
+      "playlist.title as title",
+      "playlist.updated_at as updated_at",
+      "npub.metadata as metadata"
+    )
+    .orderBy("playlist.created_at", "desc");
 
-  const albumActivity = await prisma.album.findMany({
-    where: {
-      artist: {
-        userId: {
-          in: userIds,
-        },
-      },
-    },
-    orderBy: {
-      updatedAt: "desc",
-    },
-    take: 10,
-  });
+  const createdPlaylistActivity = await Promise.all(
+    createdPlaylists.map(async (playlist) => {
+      const tracks = await db
+        .knex("playlist_track")
+        .select(
+          "track_info.artwork_url as artworkUrl",
+          "playlist_track.order_int as order"
+        )
+        .join("track_info", "track_info.id", "=", "playlist_track.track_id")
+        .where("playlist_track.playlist_id", playlist.id)
+        .orderBy("playlist_track.order_int", "asc");
+      return {
+        picture: playlist.metadata?.picture,
+        name: playlist.metadata?.name,
+        userId: playlist.user_id,
+        pubkey: playlist.user_id,
+        type: "playlistCreate",
+        timestamp: playlist.created_at,
+        contentId: playlist.id,
+        contentTitle: playlist.title,
+        contentType: "playlist",
+        contentArtwork: tracks.map((track) => track.artworkUrl),
+      };
+    })
+  );
 
-  const commentActivity = await prisma.comment.findMany({
-    where: {
-      userId: {
-        in: userIds,
-      },
-    },
-    orderBy: {
-      createdAt: "desc",
-    },
-    take: 20,
+  return createdPlaylistActivity.sort((a, b) => {
+    return new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime();
   });
-
-  const episodeActivity = await prisma.episode.findMany({
-    where: {
-      podcast: {
-        userId: {
-          in: userIds,
-        },
-      },
-    },
-    orderBy: {
-      updatedAt: "desc",
-    },
-    take: 10,
-  });
-
-  const libraryActivity = await prisma.library.findMany({
-    where: {
-      user_id: {
-        in: userIds,
-      },
-    },
-    orderBy: {
-      created_at: "desc",
-    },
-    take: 20,
-  });
-
-  const sortedAndNormalizedActivity: ActivityItem[] = [
-    ...playlistTrackActivity.map((activity) => ({
-      contentId: activity.trackId,
-      parentContentId: activity.playlistId,
-      contentType: "track",
-      timestamp: activity.updatedAt.toISOString(),
-    })),
-    ...trackActivity.map((activity) => ({
-      contentId: activity.id,
-      contentTitle: activity.title,
-      parentContentId: activity.albumId,
-      contentType: "track",
-      timestamp: activity.updatedAt.toISOString(),
-    })),
-    ...albumActivity.map((activity) => ({
-      contentId: activity.id,
-      contentTitle: activity.title,
-      parentContentId: activity.artistId,
-      contentType: "album",
-      timestamp: activity.updatedAt.toISOString(),
-    })),
-    ...commentActivity.map((activity) => ({
-      contentId: activity.parentId.toString(),
-      parentContentId: activity.userId,
-      contentType: "comment",
-      timestamp: activity.createdAt.toISOString(),
-    })),
-    ...episodeActivity.map((activity) => ({
-      contentId: activity.id,
-      contentTitle: activity.title,
-      parentContentId: activity.podcastId,
-      contentType: "episode",
-      timestamp: activity.updatedAt.toISOString(),
-    })),
-    ...libraryActivity.map((activity) => ({
-      contentId: activity.content_id,
-      contentType: "library",
-      timestamp: activity.created_at.toISOString(),
-    })),
-  ].sort((a, b) => (a.timestamp > b.timestamp ? -1 : 1));
 };
 
-const get_activity_feed = asyncHandler(async (req, res, next) => {
-  const userId = req.params.id;
+interface Follow extends Prisma.JsonArray {
+  pubkey: string;
+  relay?: string;
+  petname?: string;
+}
 
-  if (!userId) {
-    res.status(400).json({ success: false, error: "Must provde a user id" });
+const get_activity_feed = asyncHandler(async (req, res, next) => {
+  const pubkey = req.params.pubkey;
+
+  if (!pubkey) {
+    res.status(400).json({ success: false, error: "Must provde a pubkey" });
     return;
   }
-  // TODO - get a list of the user's follows
-  // either query the relay(s) here with the user's npub, or have the client pass in the list
-  const userIds = [];
-  const pubkeysAndFirebaseIds = await Promise.all(userIds.map(getUserIds));
-  const activityItems = await getActivity(pubkeysAndFirebaseIds.flat());
+
+  const pubkeyFollows = await prisma.npub.findFirstOrThrow({
+    where: {
+      publicHex: pubkey,
+    },
+  });
+
+  const pubkeyList = (pubkeyFollows.follows as Follow[]).map(
+    (follow) => follow.pubkey
+  );
+
+  const activityItems = await getActivity(pubkeyList);
+
   res.send({
     success: true,
     data: activityItems,
@@ -165,14 +109,13 @@ const get_activity_feed = asyncHandler(async (req, res, next) => {
 });
 
 const get_account_activity = asyncHandler(async (req, res, next) => {
-  const userId = req.params.id;
-  if (!userId) {
-    res.status(400).json({ success: false, error: "Must provde a user id" });
+  const pubkey = req.params.pubkey;
+  if (!pubkey) {
+    res.status(400).json({ success: false, error: "Must provde a pubkey" });
     return;
   }
 
-  const userIds = await getUserIds(userId);
-  const activityItems = await getActivity(userIds);
+  const activityItems = await getActivity([pubkey]);
   res.send({
     success: true,
     data: activityItems,
