@@ -104,12 +104,10 @@ const createZapInvoice = asyncHandler<
   // Create zap request record
   await logZapRequest(invoice.id, zapRequestEvent.id, zapRequestEvent);
 
-  log.debug(`Created placeholder invoice: ${invoice.id}`);
-
   const hash = crypto.createHash("sha256");
 
   let descriptionHash;
-  if (!metadata || metadata !== "undefined") {
+  if (metadata) {
     // metadata for lnurl verification
     descriptionHash = metadata;
   } else {
