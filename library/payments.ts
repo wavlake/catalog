@@ -222,7 +222,6 @@ export const runPaymentChecks = async (
 
 export const initiatePayment = async (
   res: any, // TODO: Use express response types
-  next: any,
   userId: string,
   invoice: string,
   msatAmount: number,
@@ -249,7 +248,7 @@ export const initiatePayment = async (
     internalId: `transaction-${paymentRecordId.toString()}`,
   });
 
-  // log.debug(`Payment response: ${JSON.stringify(paymentResponse)}`);
+  // console.log(`Payment response: ${JSON.stringify(paymentResponse)}`);
 
   // Wrap in a try/catch to handle timeouts
   try {
@@ -261,7 +260,7 @@ export const initiatePayment = async (
       await handleFailedPayment(res, userId, paymentRecordId, paymentResponse);
       return;
     } else {
-      if (paymentResponse.data.status === "completed") {
+      if (paymentResponse.data.status === PaymentStatus.Completed) {
         // Handle completed payment
         await handleCompletedPayment(
           res,
@@ -270,16 +269,8 @@ export const initiatePayment = async (
           paymentRecordId,
           paymentResponse
         );
-        return;
-      } else {
-        // Payment is pending
-        return res
-          ? res.status(200).send({
-              success: true,
-              data: { status: paymentResponse.data.status },
-            })
-          : { success: true, status: paymentResponse.data.status };
       }
+      return { success: true, data: { ...paymentResponse.data } };
     }
   } catch (e) {
     log.error(`Error processing payment: ${e}`);

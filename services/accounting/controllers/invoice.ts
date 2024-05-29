@@ -1,60 +1,31 @@
 const log = require("loglevel");
 import asyncHandler from "express-async-handler";
 import prisma from "@prismalocal/client";
-import { logZapRequest, updateInvoiceIfNeeded } from "@library/invoice";
+import { logZapRequest } from "@library/invoice";
 import { getContentFromId } from "@library/content";
-import { createCharge, getCharge } from "@library/zbd/zbdClient";
+import { createCharge } from "@library/zbd/zbdClient";
 import {
   MAX_INVOICE_AMOUNT,
   DEFAULT_EXPIRATION_SECONDS,
 } from "@library/constants";
+const nlInvoice = require("@node-lightning/invoice");
 import core from "express-serve-static-core";
 const { verifyEvent } = require("nostr-tools");
 import { getContentFromEventId } from "@library/content";
-import { ZBDChargeCallbackRequest } from "@library/zbd";
 const crypto = require("crypto");
 
-const getInvoice = asyncHandler(async (req, res, next) => {
-  const { id } = req.params;
-
-  // validate the id param
-  if (!id) {
-    res.status(400).send("Must include an invoice ID");
+const getPaymentHash = (invoice: string) => {
+  let decodedInvoice;
+  try {
+    decodedInvoice = nlInvoice.decode(invoice);
+  } catch (err) {
+    log.error(`Error decoding invoice ${err}`);
     return;
   }
+  const { paymentHash } = decodedInvoice;
 
-  const intId = parseInt(id);
-  if (isNaN(intId) || intId <= 0) {
-    res.status(400).send("Invalid invoice ID, must be a positive integer");
-    return;
-  }
-
-  const invoice = await prisma.externalReceive.findUnique({
-    where: { id: intId },
-  });
-
-  if (!invoice) {
-    res.status(404).send("Invoice not found");
-    return;
-  }
-
-  if (invoice.isPending) {
-    const charge = await getCharge(invoice.externalId);
-
-    const update = await updateInvoiceIfNeeded(
-      "external_receive",
-      intId,
-      charge.data as ZBDChargeCallbackRequest
-    );
-    if (!update.success) {
-      log.error(`Error updating invoice: ${update.message}`);
-      res.status(500).send("There has been an error updating the invoice");
-      return;
-    }
-  }
-
-  res.send({ success: true, data: invoice });
-});
+  return Buffer.from(paymentHash).toString("hex");
+};
 
 const createInvoice = asyncHandler(async (req, res: any, next) => {
   const request = {
@@ -136,11 +107,14 @@ const createInvoice = asyncHandler(async (req, res: any, next) => {
     `Received create invoice response: ${JSON.stringify(invoiceResponse)}`
   );
 
+  const paymentHash = getPaymentHash(invoiceResponse.data.invoice.request);
+
   // Update the invoice in the database
   const updatedInvoice = await prisma.externalReceive
     .update({
       where: { id: invoice.id },
       data: {
+        paymentHash: paymentHash,
         externalId: invoiceResponse.data.id,
         updatedAt: new Date(),
       },
@@ -285,10 +259,13 @@ const createZapInvoice = asyncHandler<
   );
 
   // Update the invoice in the database
+  const paymentHash = getPaymentHash(invoiceResponse.data.invoice.request);
+
   const updatedInvoice = await prisma.externalReceive
     .update({
       where: { id: invoice.id },
       data: {
+        paymentHash: paymentHash,
         externalId: invoiceResponse.data.id,
         updatedAt: new Date(),
       },
@@ -312,4 +289,4 @@ const createZapInvoice = asyncHandler<
   });
 });
 
-export default { getInvoice, createInvoice, createZapInvoice };
+export default { createInvoice, createZapInvoice };
