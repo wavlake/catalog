@@ -106,6 +106,8 @@ export const publishZapReceipt = async (
     content: "",
   };
 
+  // log.debug(`Signing zap receipt: ${JSON.stringify(zapReceipt)}`);
+
   const signedEvent = finalizeEvent(zapReceipt, WAVLAKE_SECRET);
 
   // Publish to all relays

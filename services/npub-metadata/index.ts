@@ -47,6 +47,18 @@ const checkPublicKey = async (
       return npub;
     }
 
+    // update the timestamp first so we don't have back to back requests updating the same npub
+    await prisma.npub.upsert({
+      where: { publicHex: publicHex },
+      update: {
+        updatedAt: new Date(),
+      },
+      create: {
+        publicHex: publicHex,
+        updatedAt: new Date(),
+      },
+    });
+
     log.debug(`Retrieving metadata for: ${publicHex}`);
 
     // TODO - get relay list from nip-05
@@ -82,7 +94,6 @@ const checkPublicKey = async (
 app.put("/:publicHex", async (req, res) => {
   const publicHex = req.params.publicHex;
   const metadata = await checkPublicKey(publicHex);
-
   res.send({
     success: !!metadata,
     data: metadata,
