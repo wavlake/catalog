@@ -7,6 +7,7 @@ const router = express.Router();
 //////// ROUTES ////////
 
 router.get("/zap", invoiceController.createZapInvoice);
+router.post("/", invoiceController.createInvoice);
 
 // Export router
 export default router;
