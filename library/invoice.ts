@@ -130,6 +130,7 @@ async function handleCompletedAmpInvoice(
     .update({
       is_pending: false,
       updated_at: db.knex.fn.now(),
+      preimage: preimage,
     })
     .where("id", "=", invoiceId)
     .catch((err) => {

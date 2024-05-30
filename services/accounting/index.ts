@@ -59,7 +59,6 @@ app.use(bodyParser.json());
 app.use(express.json());
 
 // Import routes
-// TODO: Invoice
 import deposit from "./routes/deposit";
 import invoice from "./routes/invoice";
 import send from "./routes/send";
