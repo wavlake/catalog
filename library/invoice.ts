@@ -147,6 +147,13 @@ async function handleCompletedAmpInvoice(
       return;
     });
 
+    log.debug(`Publishing party receipt for invoice id ${invoiceId}`);
+    await publishPartyReceipt(contentId).catch((e) => {
+      log.error(
+        `Error publishing party receipt for invoice id ${invoiceId}: ${e}`
+      );
+      return;
+    });
     // async update the npub metadata in the db
     updateNpubMetadata(pubkey)
       .then(({ isSuccess }) => {
@@ -159,16 +166,6 @@ async function handleCompletedAmpInvoice(
       .catch((err) => {
         log.debug("error updating npub metadata: ", err);
       });
-  }
-
-  if (paymentTypeCode === PaymentType.PartyMode) {
-    log.debug(`Publishing party receipt for invoice id ${invoiceId}`);
-    await publishPartyReceipt(contentId).catch((e) => {
-      log.error(
-        `Error publishing party receipt for invoice id ${invoiceId}: ${e}`
-      );
-      return;
-    });
   }
 
   return true;
