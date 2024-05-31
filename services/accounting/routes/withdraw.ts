@@ -3,6 +3,7 @@ const { isAuthorized } = require("@middlewares/auth");
 const { isZbdRegion } = require("@middlewares/zbdChecks");
 import withdrawController from "../controllers/withdraw";
 const { rateLimit } = require("express-rate-limit");
+const { isWalletVerified } = require("@middlewares/zbdChecks");
 
 const env = process.env.NODE_ENV || "dev";
 const rateTimeWindow = env === "dev" ? 5000 : 1 * 60 * 1000; // 5 seconds in dev, 1 minute in prod
@@ -24,6 +25,7 @@ const limiter = rateLimit({
 router.post(
   "/",
   isAuthorized,
+  isWalletVerified,
   limiter,
   isZbdRegion,
   withdrawController.createWithdraw

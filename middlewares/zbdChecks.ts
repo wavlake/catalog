@@ -1,6 +1,7 @@
 import asyncHandler from "express-async-handler";
 import log from "loglevel";
-import { getProductionIps, isSupportedRegion } from "../library/zbd";
+import { isSupportedRegion } from "../library/zbd";
+import { isRegionVerified } from "../library/userHelper";
 
 const environment = process.env.NODE_ENV;
 const ZBD_IPS = ["3.225.112.64"];
@@ -38,6 +39,18 @@ export const isZbdRegion = asyncHandler(async (req, res, next) => {
     return;
   } else {
     res.status(403).send({ error: "Not supported region" });
+    return;
+  }
+});
+
+export const isWalletVerified = asyncHandler(async (req, res, next) => {
+  const userId = req["uid"];
+  const isVerified = await isRegionVerified(userId);
+  if (isVerified) {
+    next();
+    return;
+  } else {
+    res.status(403).send({ error: "User is not verified for this activity." });
     return;
   }
 });
