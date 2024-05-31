@@ -11,19 +11,10 @@ interface ActivityItem {
   name: string;
   userId: string;
   pubkey: string;
-  // playlistCreate
-  // playlistUpdate
-  // zap
   type: ActivityType;
-
-  // amp table
   message?: string;
   zapAmount?: number;
-
-  // amp table or playlist table
   timestamp: string;
-
-  // playlist table/amp table
   contentId: string;
   contentTitle: string;
   contentType: SplitContentTypes | "playlist";
@@ -47,7 +38,7 @@ const getActivity = async (pubkeys: string[]) => {
     )
     .orderBy("playlist.created_at", "desc");
 
-  const createdPlaylistActivity = [];
+  const createdPlaylistActivity: ActivityItem[] = [];
   for (const playlist of createdPlaylists) {
     const tracks = await db
       .knex("playlist_track")
