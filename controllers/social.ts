@@ -2,7 +2,9 @@ import prisma from "../prisma/client";
 import asyncHandler from "express-async-handler";
 import { Prisma } from "@prisma/client";
 import db from "../library/db";
+import { SplitContentTypes } from "../library/userHelper";
 
+type ActivityType = "playlistCreate" | "zap" | "updatePlaylist";
 interface ActivityItem {
   //npub metadata
   picture: string;
@@ -12,7 +14,7 @@ interface ActivityItem {
   // playlistCreate
   // playlistUpdate
   // zap
-  type: string;
+  type: ActivityType;
 
   // amp table
   message?: string;
@@ -24,7 +26,7 @@ interface ActivityItem {
   // playlist table/amp table
   contentId: string;
   contentTitle: string;
-  contentType: string;
+  contentType: SplitContentTypes | "playlist";
   contentArtwork: string[];
   parentContentId?: string;
   parentContentTitle?: string;
@@ -45,18 +47,20 @@ const getActivity = async (pubkeys: string[]) => {
     )
     .orderBy("playlist.created_at", "desc");
 
-  const createdPlaylistActivity = await Promise.all(
-    createdPlaylists.map(async (playlist) => {
-      const tracks = await db
-        .knex("playlist_track")
-        .select(
-          "track_info.artwork_url as artworkUrl",
-          "playlist_track.order_int as order"
-        )
-        .join("track_info", "track_info.id", "=", "playlist_track.track_id")
-        .where("playlist_track.playlist_id", playlist.id)
-        .orderBy("playlist_track.order_int", "asc");
-      return {
+  const createdPlaylistActivity = [];
+  for (const playlist of createdPlaylists) {
+    const tracks = await db
+      .knex("playlist_track")
+      .select(
+        "track_info.artwork_url as artworkUrl",
+        "playlist_track.order_int as order"
+      )
+      .join("track_info", "track_info.id", "=", "playlist_track.track_id")
+      .where("playlist_track.playlist_id", playlist.id)
+      .orderBy("playlist_track.order_int", "asc");
+
+    if (tracks.length !== 0) {
+      createdPlaylistActivity.push({
         picture: playlist.metadata?.picture,
         name: playlist.metadata?.name,
         userId: playlist.user_id,
@@ -67,9 +71,9 @@ const getActivity = async (pubkeys: string[]) => {
         contentTitle: playlist.title,
         contentType: "playlist",
         contentArtwork: tracks.map((track) => track.artworkUrl),
-      };
-    })
-  );
+      });
+    }
+  }
 
   return createdPlaylistActivity.sort((a, b) => {
     return new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime();
