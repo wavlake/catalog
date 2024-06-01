@@ -50,7 +50,10 @@ export const isWalletVerified = asyncHandler(async (req, res, next) => {
     next();
     return;
   } else {
-    res.status(403).send({ error: "User is not verified for this activity." });
+    res.status(403).send({
+      error:
+        "Your account has not been verified to make this transaction. Please update your wallet in settings.",
+    });
     return;
   }
 });
