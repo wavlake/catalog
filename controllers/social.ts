@@ -65,8 +65,44 @@ const getActivity = async (pubkeys: string[]) => {
       });
     }
   }
+  const zaps = await db
+    .knex("amp")
+    .whereIn("amp.user_id", pubkeys)
+    .andWhere("amp.comment", true)
+    .join("npub", "amp.user_id", "=", "npub.public_hex")
+    .leftJoin("comment", "comment.amp_id", "=", "amp.id")
+    .select(
+      "amp.track_id as content_id",
+      "amp.msat_amount as msat_amount",
+      "amp.created_at as created_at",
+      "amp.content_type as content_type",
+      "npub.metadata as metadata",
+      "comment.content as content",
+      "amp.user_id as user_id"
+    )
+    .orderBy("amp.created_at", "desc");
 
-  return createdPlaylistActivity.sort((a, b) => {
+  const zapActivity = zaps.map((zap) => {
+    return {
+      picture: zap.metadata?.picture,
+      name: zap.metadata?.name,
+      userId: zap.user_id,
+      pubkey: zap.user_id,
+      type: "zap",
+      message: zap.content,
+      zapAmount: zap.msat_amount,
+      timestamp: zap.created_at,
+      contentId: zap.content_id,
+      // TODO - look up title based on content type
+      contentTitle: "TODO - title",
+      contentType: zap.content_type,
+      // TODO - look up artwork based on content type
+      contentArtwork: [],
+    };
+  });
+  const combinedActivity = [...createdPlaylistActivity, ...zapActivity];
+
+  return combinedActivity.sort((a, b) => {
     return new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime();
   });
 };
