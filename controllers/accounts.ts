@@ -725,7 +725,18 @@ const get_login_token_for_zbd_user = asyncHandler(async (req, res, next) => {
         emailVerified: false,
       });
 
-      const username = `zbduser_${user.uid.split("").slice(0, 7).join("")}`;
+      const incomingUsername = userData?.gamerTag;
+      const existingUsername = await prisma.user.findFirst({
+        where: {
+          name: incomingUsername,
+        },
+      });
+
+      // if the username is already taken, generate a new one, otherwise use the incoming username
+      const username =
+        existingUsername?.id || !incomingUsername
+          ? `zbduser_${user.uid.split("").slice(0, 7).join("")}`
+          : incomingUsername;
 
       // create the new user record in the user table
       await prisma.user.create({

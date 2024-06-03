@@ -1,7 +1,7 @@
 import express from "express";
 import { isAuthorized } from "@middlewares/auth";
 import sendController from "../controllers/send";
-const { isWalletVerified } = require("@middlewares/zbdChecks");
+import { isWalletVerified } from "@middlewares/zbdChecks";
 
 // Create router
 const router = express.Router();
