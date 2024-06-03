@@ -11,7 +11,10 @@ const createWithdraw = asyncHandler(async (req, res, next) => {
   const { valueMsat } = NLInvoice.decode(invoice);
 
   if (!valueMsat || valueMsat <= 0) {
-    res.status(400).send("Invalid invoice");
+    res.status(400).send({
+      success: false,
+      error: "Invalid invoice",
+    });
     return;
   }
 
@@ -23,15 +26,19 @@ const createWithdraw = asyncHandler(async (req, res, next) => {
     parseInt(msatMaxFee)
   ).catch((e) => {
     log.error(`Error running payment checks: ${e}`);
-    res.status(500).send("Error running user checks");
+    res.status(500).send({
+      success: false,
+      error: "Error running user checks",
+    });
     return;
   });
 
   if (!paymentChecks.success) {
     log.info(`Check for ${userId} payment request failed, skipping.`);
-    res
-      .status(400)
-      .send(paymentChecks.error.message || "Payment request failed");
+    res.status(400).send({
+      success: false,
+      error: paymentChecks.error.message || "Payment request failed",
+    });
     return;
   }
 
