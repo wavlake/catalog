@@ -19,11 +19,10 @@ const createDeposit = asyncHandler(async (req, res: any, next) => {
     request.msatAmount < 1000 ||
     request.msatAmount > MAX_INVOICE_AMOUNT
   ) {
-    return res
-      .status(400)
-      .send(
-        `Amount must be a number between 1000 and ${MAX_INVOICE_AMOUNT} (msats)`
-      );
+    return res.status(400).send({
+      success: false,
+      error: `Amount must be a number between 1000 and ${MAX_INVOICE_AMOUNT} (msats)`,
+    });
   }
 
   const userBalance = await getUserBalance(userId);
@@ -59,7 +58,10 @@ const createDeposit = asyncHandler(async (req, res: any, next) => {
 
   if (!invoiceResponse.success) {
     log.error(`Error creating invoice: ${invoiceResponse.message}`);
-    res.status(500).send("There has been an error generating an invoice");
+    res.status(500).send({
+      success: false,
+      error: "There has been an error generating an invoice",
+    });
     return;
   }
 
@@ -84,7 +86,10 @@ const createDeposit = asyncHandler(async (req, res: any, next) => {
 
   if (!updatedInvoice) {
     log.error(`Error updating invoice: ${invoiceResponse.message}`);
-    res.status(500).send("There has been an error generating an invoice");
+    res.status(500).send({
+      success: false,
+      error: "There has been an error generating an invoice",
+    });
     return;
   }
 
@@ -102,7 +107,10 @@ const getDeposit = asyncHandler(async (req, res: any, next) => {
 
   const invoiceId = parseInt(id);
   if (!id || isNaN(invoiceId)) {
-    return res.status(400).send("Invoice ID is required");
+    return res.status(400).send({
+      success: false,
+      error: "Invoice ID is required",
+    });
   }
 
   const invoice = await prisma.transaction.findUnique({
@@ -110,7 +118,10 @@ const getDeposit = asyncHandler(async (req, res: any, next) => {
   });
 
   if (!invoice || invoice.userId !== userId) {
-    return res.status(404).send("Invoice not found");
+    return res.status(404).send({
+      success: false,
+      error: "Invoice not found",
+    });
   }
 
   res.json({ success: true, data: { invoice } });

@@ -38,7 +38,7 @@ export const isZbdRegion = asyncHandler(async (req, res, next) => {
     next();
     return;
   } else {
-    res.status(403).send({ error: "Not supported region" });
+    res.status(403).send({ success: false, error: "Not supported region" });
     return;
   }
 });
@@ -51,6 +51,7 @@ export const isWalletVerified = asyncHandler(async (req, res, next) => {
     return;
   } else {
     res.status(403).send({
+      success: false,
       error:
         "Your account has not been verified to make this transaction. Please update your wallet in settings.",
     });

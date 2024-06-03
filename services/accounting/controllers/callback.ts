@@ -58,7 +58,10 @@ const processIncomingKeysend = asyncHandler<
 
   if (!contentId || !validate(contentId)) {
     log.error("Did not find a valid content id in the tlv records");
-    res.status(400);
+    res.status(400).send({
+      success: false,
+      error: "Invalid content id",
+    });
     return;
   }
 
@@ -76,10 +79,15 @@ const processIncomingKeysend = asyncHandler<
 
   if (success) {
     log.debug("Amp tx built successfully");
-    res.status(200).send();
+    res.status(200).send({
+      success: true,
+    });
   } else {
     log.error("Error building amp tx");
-    res.status(500).send("Error processing keysend");
+    res.status(500).send({
+      success: false,
+      error: "Error processing keysend",
+    });
   }
 });
 
@@ -96,9 +104,10 @@ const processOutgoingKeysend = asyncHandler<
 
   if (!internalTxId || !status) {
     log.error("Missing externalId or status");
-    res
-      .status(400)
-      .send("Must include id and status in the body's transaction object");
+    res.status(400).send({
+      success: false,
+      error: "Must include id and status in the body's transaction object",
+    });
     return;
   }
 
@@ -111,11 +120,14 @@ const processOutgoingKeysend = asyncHandler<
   })
     .then(() => {
       log.debug(`Updated keysend ${internalTxId} with status ${status}`);
-      res.status(200).send();
+      res.status(200).send({ success: true });
     })
     .catch((e) => {
       log.error(`Error updating keysend: ${e}`);
-      res.status(500).send("Error updating keysend");
+      res.status(500).send({
+        success: false,
+        error: "Error updating keysend",
+      });
     });
 });
 
@@ -136,11 +148,14 @@ const processIncomingInvoice = asyncHandler<
   );
 
   if (!success) {
-    res.status(500).send(`Error updating invoice ${message}`);
+    res.status(500).send({
+      success: false,
+      error: `Error updating invoice ${message}`,
+    });
     return;
   }
 
-  res.status(200).send();
+  res.status(200).send({ success: true });
   return;
 });
 
@@ -158,9 +173,10 @@ const processOutgoingInvoice = asyncHandler<
   const [invoiceType, internalIdString] = internalId.split("-");
   if (!validInvoiceTypes.includes(invoiceType)) {
     log.error(`Invalid internalId type: ${invoiceType}`);
-    res
-      .status(400)
-      .send(`Expected internalId to be of type: ${validInvoiceTypes}`);
+    res.status(400).send({
+      success: false,
+      error: `Expected internalId to be of type: ${validInvoiceTypes}`,
+    });
     return;
   }
 
@@ -175,11 +191,14 @@ const processOutgoingInvoice = asyncHandler<
 
     if (!isSuccess) {
       log.error(`Error updating forward ${internalId} with status ${status}`);
-      res.status(500).send("Forward update failed");
+      res.status(500).send({
+        success: false,
+        error: "Forward update failed",
+      });
       return;
     }
 
-    res.status(200).send();
+    res.status(200).send({ success: true });
     return;
   }
 
@@ -195,14 +214,17 @@ const processOutgoingInvoice = asyncHandler<
 
     if (!isSuccess) {
       log.error(`Error updating invoice id ${intId} with status ${status}`);
-      res.status(500).send("Withdrawal update failed");
+      res.status(500).send({
+        success: false,
+        error: "Withdrawal update failed",
+      });
       return;
     }
-    res.status(200).send();
+    res.status(200).send({ succes: true });
     return;
   }
 
-  res.status(200).send();
+  res.status(200).send({ succes: true });
 });
 
 export default {

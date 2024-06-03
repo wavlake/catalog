@@ -45,11 +45,10 @@ const createZapInvoice = asyncHandler<
 
   const amountInt = parseInt(amount);
   if (isNaN(amountInt) || amountInt < 1000 || amountInt > MAX_INVOICE_AMOUNT) {
-    res
-      .status(400)
-      .send(
-        `Amount must be a number between 1000 and ${MAX_INVOICE_AMOUNT} (msats)`
-      );
+    res.status(400).send({
+      success: false,
+      error: `Amount must be a number between 1000 and ${MAX_INVOICE_AMOUNT} (msats)`,
+    });
     return;
   }
 
@@ -188,7 +187,10 @@ const createZapInvoice = asyncHandler<
 
   if (!updatedInvoice) {
     log.error(`Error updating invoice: ${invoiceResponse.message}`);
-    res.status(500).send("There has been an error generating an invoice");
+    res.status(500).send({
+      success: false,
+      error: "There has been an error generating an invoice",
+    });
     return;
   }
 
