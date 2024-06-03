@@ -553,7 +553,7 @@ model npub {
   metadata      Json?
   updatedAt     DateTime? @default(now()) @map("updated_at") @db.Timestamptz(6)
   followerCount Int?      @default(0) @map("follower_count")
-  follows       Json?
+  follows       Json?     @default("[]")
 }
 
 model Forward {
