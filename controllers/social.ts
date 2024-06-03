@@ -6,7 +6,6 @@ import { SplitContentTypes } from "../library/userHelper";
 
 type ActivityType = "playlistCreate" | "zap" | "updatePlaylist";
 interface ActivityItem {
-  //npub metadata
   picture: string;
   name: string;
   userId: string;
@@ -81,7 +80,6 @@ const getActivity = async (pubkeys: string[]) => {
       "amp.user_id as user_id"
     )
     .orderBy("amp.created_at", "desc");
-
   const zapActivity = zaps.map((zap) => {
     return {
       picture: zap.metadata?.picture,
@@ -100,7 +98,11 @@ const getActivity = async (pubkeys: string[]) => {
       contentArtwork: [],
     };
   });
-  const combinedActivity = [...createdPlaylistActivity, ...zapActivity];
+  console.log({ createdPlaylistActivity, zapActivity });
+  const combinedActivity = [
+    // ...createdPlaylistActivity,
+    ...zapActivity,
+  ];
 
   return combinedActivity.sort((a, b) => {
     return new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime();
