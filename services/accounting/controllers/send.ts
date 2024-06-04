@@ -15,6 +15,8 @@ import { validate } from "uuid";
 import { processSplits } from "@library/amp";
 import { checkUserHasSufficientSats } from "@library/userHelper";
 import { TransactionStatus } from "@library/zbd/constants";
+import { randomUUID } from "crypto";
+import { handleInternalKeysends } from "@library/keysends/internalKeysend";
 
 const sendKeysend = asyncHandler<
   core.ParamsDictionary,
@@ -63,46 +65,49 @@ const sendKeysend = asyncHandler<
       return;
     }
 
+    // First we handle the internal keysends and filter them out of the list
+    const externalKeysends = await handleInternalKeysends(
+      message,
+      keysends,
+      userId
+    );
+
+    // We generate a unique interal tx id for each outgoing keysend to send to ZBD,
+    // which they return in the callback
+    const keysendsWithIds = externalKeysends.map((keysend) => {
+      return { ...keysend, internalTxId: randomUUID() };
+    });
     // Send keysends using service provider (ZBD)
-    const responses = await Promise.all(
-      keysends.map(async (keysend) => {
+    const processedResponses: ExternalKeysendResult[] = await Promise.all(
+      keysendsWithIds.map(async (keysend) => {
         const keysendMetadata = await constructKeysendMetadata(userId, body);
 
         const customRecords = constructCustomRecords(keysend, keysendMetadata);
         const res = await zbdSendKeysend({
           amount: keysend.msatAmount.toString(),
           pubkey: keysend.pubkey,
-          // not used for anything
-          // metadata: {}
+          metadata: { internalTxId: keysend.internalTxId },
           tlvRecords: customRecords,
         });
-        return {
-          response: res,
-          request: keysend,
-        };
-      })
-    );
-
-    const processedResponses: ExternalKeysendResult[] = await Promise.all(
-      responses.map(async ({ response, request }) => {
-        if (!response) {
+        if (!res) {
           log.error("Error sending keysend to ZBD. No response.");
           return {
             success: false,
-            msatAmount: request.msatAmount,
-            pubkey: request.pubkey,
+            msatAmount: keysend.msatAmount,
+            pubkey: keysend.pubkey,
             feeMsat: 0,
           };
         }
 
-        if (response.success) {
+        if (res.success) {
           // response from zbd
-          const { data } = response;
+          const { data } = res;
           // request sent to zbd
-          const { pubkey, name } = request;
+          const { msatAmount, pubkey, name, internalTxId } = keysend;
           recordInProgressKeysend({
             keysendData: data,
             pubkey,
+            internalTxId,
             metadata: {
               message,
               podcast,
@@ -115,28 +120,27 @@ const sendKeysend = asyncHandler<
               name,
             },
           });
-
           return {
             // this is not really true if the payment is in flight, but we report it as true to the client
             success: true,
             message:
-              response.data.transaction.status === TransactionStatus.Processing
+              res.data.transaction.status === TransactionStatus.Processing
                 ? "Keysend payment is in flight"
                 : undefined,
-            msatAmount: request.msatAmount,
-            pubkey: request.pubkey,
+            msatAmount: msatAmount,
+            pubkey: pubkey,
             feeMsat: parseInt(data.transaction.fee),
           };
+        } else {
+          // failed keysend
+          log.debug(`Keysend failed: ${res.message}`);
+          return {
+            success: false,
+            msatAmount: keysend.msatAmount,
+            pubkey: keysend.pubkey,
+            feeMsat: 0,
+          };
         }
-
-        // failed keysend
-        log.debug(`Keysend failed: ${response.message}`);
-        return {
-          success: false,
-          msatAmount: request.msatAmount,
-          pubkey: request.pubkey,
-          feeMsat: 0,
-        };
       })
     );
 
@@ -159,11 +163,16 @@ const createSend = asyncHandler(async (req, res: any, next) => {
   };
 
   if (isNaN(request.msatAmount || request.msatAmount < 1000)) {
-    return res.status(400).send("Amount should be a positive number");
+    return res
+      .status(400)
+      .json({ success: false, error: "Amount should be a positive number" });
   }
 
   if (!request.contentId || !validate(request.contentId)) {
-    res.status(400).send("Request does not contain a valid content id");
+    res.status(400).json({
+      success: false,
+      error: "Request does not contain a valid content id",
+    });
     return;
   }
 
@@ -174,7 +183,9 @@ const createSend = asyncHandler(async (req, res: any, next) => {
   );
 
   if (!userHasSufficientSats) {
-    return res.status(400).send("Insufficient balance");
+    return res
+      .status(400)
+      .json({ success: false, error: "Insufficient balance" });
   }
 
   log.debug(`Creating amp transaction for user ${userId}`);
@@ -190,7 +201,9 @@ const createSend = asyncHandler(async (req, res: any, next) => {
 
   if (!amp) {
     log.error(`Error processing splits for user ${userId}`);
-    return res.status(500).send("Error processing splits");
+    return res
+      .status(500)
+      .json({ success: false, error: "Error processing splits" });
   }
 
   return res.status(200).json({ success: true, data: { amp } });

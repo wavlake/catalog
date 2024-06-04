@@ -29,6 +29,7 @@ const router = express.Router();
 // router.get("/:userId/faves", usersController.get_user_public_faves);
 router.post("/", accountsController.create_account);
 router.get("/", isAuthorized, accountsController.get_account);
+router.get("/pubkey/:pubkey", accountsController.get_pubkey_metadata);
 router.put(
   "/",
   upload.single("artwork"),

@@ -1,8 +1,9 @@
 import express from "express";
 const { isAuthorized } = require("@middlewares/auth");
-const { isZbdIp, isZbdRegion } = require("@middlewares/zbdChecks");
-import sendController from "../controllers/withdraw";
+const { isZbdRegion } = require("@middlewares/zbdChecks");
+import withdrawController from "../controllers/withdraw";
 const { rateLimit } = require("express-rate-limit");
+const { isWalletVerified } = require("@middlewares/zbdChecks");
 
 const env = process.env.NODE_ENV || "dev";
 const rateTimeWindow = env === "dev" ? 5000 : 1 * 60 * 1000; // 5 seconds in dev, 1 minute in prod
@@ -21,13 +22,14 @@ const limiter = rateLimit({
 
 //////// ROUTES ////////
 
-// router.post(
-//   "/",
-//   isAuthorized,
-//   limiter,
-//   isZbdRegion,
-//   sendController.createWithdraw
-// );
+router.post(
+  "/",
+  isAuthorized,
+  isWalletVerified,
+  limiter,
+  isZbdRegion,
+  withdrawController.createWithdraw
+);
 
 // Export router
 export default router;

@@ -32,11 +32,10 @@ export const isFirebaseAuthorized = async (req) => {
 export const isAuthorized = asyncHandler(async (req, res, next) => {
   try {
     const user = await isFirebaseAuthorized(req);
-    console.log(user);
     if (!user) return next(formatError(500, "Authentication failed"));
     next();
   } catch (err) {
-    Sentry.captureException(err);
+    Sentry?.captureException(err);
     next(err);
   }
 });

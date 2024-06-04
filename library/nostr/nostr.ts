@@ -1,24 +1,11 @@
-import { Filter, relayInit, Event } from "nostr-tools";
 import fetch from "node-fetch";
+import { Filter, SimplePool } from "nostr-tools";
+import { Prisma } from "@prisma/client";
+import { DEFAULT_READ_RELAY_URIS } from "./common";
 
-const DEFAULT_READ_RELAY_URIS = [
-  "wss://purplepag.es",
-  "wss://relay.nostr.band",
-  "wss://relay.damus.io",
-  "wss://nostr.wine",
-  "wss://relay.snort.social",
-  "wss://relay.wavlake.com",
-];
+const pool = new SimplePool();
 
-const DEFAULT_WRITE_RELAY_URIS = [
-  "wss://purplepag.es",
-  "wss://relay.nostr.band",
-  "wss://relay.damus.io",
-  "wss://relay.wavlake.com",
-  "wss://nostr.mutinywallet.com",
-];
-
-export const getProfileMetadata = async (
+const getProfileMetadata = async (
   pubkey: string,
   relayUris: string[] = DEFAULT_READ_RELAY_URIS
 ) => {
@@ -26,69 +13,64 @@ export const getProfileMetadata = async (
     kinds: [0],
     authors: [pubkey],
   };
-  return getEventFromPool(filter, relayUris);
-};
-
-const getEventFromPool = async (
-  filter: Filter,
-  relayUris: string[] = DEFAULT_READ_RELAY_URIS
-) => {
-  const promises = relayUris.map((relayUri) =>
-    getEventFromRelay(relayUri, filter)
-  );
-  const events = (await Promise.allSettled(promises))
-    .map((result) => {
-      if (result.status === "fulfilled") {
-        return result.value;
-      }
-    })
-    .filter((result) => {
-      return result !== undefined && result !== null;
-    }) as Event[];
-
-  if (events.length === 0) {
-    return null;
-  }
-
-  return getMostRecentEvent(events);
-};
-
-const getMostRecentEvent = (events: Event[]) => {
-  return events.sort((a, b) => b.created_at - a.created_at)[0];
-};
-
-const getEventFromRelay = (
-  relayUri: string,
-  filter: Filter
-): Promise<Event | null> => {
-  return new Promise((resolve, reject) => {
-    const relay = relayInit(relayUri);
-
-    relay.on("connect", async () => {
-      const event = await relay.get(filter);
-
-      relay.close();
-      resolve(event);
-    });
-    relay.on("error", () => {
-      relay.close();
-      reject(new Error(`failed to connect to ${relay.url}`));
-    });
-
-    relay.connect().catch((e) => {
-      console.log(`error connecting to relay ${relay.url}`);
-      relay.close();
-      reject(e);
-    });
-  });
+  const events = await pool.get(relayUris, filter);
+  return events;
 };
 
 // put request to npub-metadata with /:npub as a route param
 const npubMetadataService = process.env.NPUB_UPDATE_SERVICE_URL;
-export const updateNpubMetadata = async function (npub) {
+const updateNpubMetadata = async function (npub: String) {
   const res = await fetch(`${npubMetadataService}/${npub}`, {
     method: "PUT",
   });
 
   return res.json();
+};
+
+const getFollowersList = async (publicHex: string) => {
+  const pool = new SimplePool();
+  const filter: Filter = {
+    kinds: [3],
+    ["#p"]: [publicHex],
+  };
+  return pool.querySync(DEFAULT_READ_RELAY_URIS, filter);
+};
+
+interface Follow extends Prisma.JsonArray {
+  pubkey: string;
+  relay?: string;
+  petname?: string;
+}
+
+const getFollowsList = async (publicHex: string): Promise<Follow[]> => {
+  const pool = new SimplePool();
+  const filter: Filter = {
+    kinds: [3],
+    authors: [publicHex],
+    limit: 1,
+  };
+
+  const event = await pool.get(DEFAULT_READ_RELAY_URIS, filter);
+  if (!event?.tags.length) {
+    return [];
+  }
+
+  const followsList = event.tags.reduce(
+    (acc, [tag, pubkey, relay, petname]) => {
+      if (tag === "p") {
+        return acc.concat([{ pubkey, relay, petname } as Follow]);
+      }
+      return acc;
+    },
+    [] as Follow[]
+  );
+
+  return followsList;
+};
+
+export {
+  getProfileMetadata,
+  getFollowersList,
+  getFollowsList,
+  updateNpubMetadata,
 };

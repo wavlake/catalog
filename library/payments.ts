@@ -3,6 +3,7 @@ import db from "./db";
 import { checkUserHasSufficientSats, getUserBalance } from "./userHelper";
 import { sendPayment } from "./zbd";
 import { ZBDSendPaymentResponse } from "./zbd/responseInterfaces";
+import { PaymentStatus } from "./zbd/constants";
 
 async function checkUserHasPendingTx(userId: string): Promise<boolean> {
   return db
@@ -221,7 +222,6 @@ export const runPaymentChecks = async (
 
 export const initiatePayment = async (
   res: any, // TODO: Use express response types
-  next: any,
   userId: string,
   invoice: string,
   msatAmount: number,
@@ -248,33 +248,32 @@ export const initiatePayment = async (
     internalId: `transaction-${paymentRecordId.toString()}`,
   });
 
-  // log.debug(`Payment response: ${JSON.stringify(paymentResponse)}`);
-  // Payment failed
-  if (!paymentResponse.success) {
-    await handleFailedPayment(res, userId, paymentRecordId, paymentResponse);
-  } else {
-    if (paymentResponse.data.status === "completed") {
-      // Handle completed payment
-      await handleCompletedPayment(
-        res,
-        userId,
-        msatAmount,
-        paymentRecordId,
-        paymentResponse
-      );
+  // console.log(`Payment response: ${JSON.stringify(paymentResponse)}`);
+
+  // Wrap in a try/catch to handle timeouts
+  try {
+    // Payment failed
+    if (
+      !paymentResponse.success &&
+      paymentResponse.data.status === PaymentStatus.Error
+    ) {
+      await handleFailedPayment(res, userId, paymentRecordId, paymentResponse);
       return;
     } else {
-      // Payment is pending
-      return res
-        ? res.status(200).send({
-            success: true,
-            data: { status: paymentResponse.data.status },
-          })
-        : { success: true, status: paymentResponse.data.status };
+      if (paymentResponse.data.status === PaymentStatus.Completed) {
+        // Handle completed payment
+        await handleCompletedPayment(
+          res,
+          userId,
+          msatAmount,
+          paymentRecordId,
+          paymentResponse
+        );
+      }
+      return { success: true, data: { ...paymentResponse.data } };
     }
+  } catch (e) {
+    log.error(`Error processing payment: ${e}`);
+    return res.status(500).send("An unknown error occurred");
   }
-
-  return res
-    ? res.status(500).send("Unknown error")
-    : { success: false, error: "UNKNOWN" };
 };

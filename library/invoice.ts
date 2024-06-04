@@ -3,15 +3,15 @@ log.setLevel("debug");
 import db from "./db";
 import { handleCompletedDeposit, wasTransactionAlreadyLogged } from "./deposit";
 import { processSplits } from "./amp";
-import { getZapPubkeyAndContent, publishZapReceipt } from "./zap";
+import {
+  getZapPubkeyAndContent,
+  publishPartyReceipt,
+  publishZapReceipt,
+} from "./zap";
 import { ZBDChargeCallbackRequest } from "./zbd/requestInterfaces";
 import { ChargeStatus } from "./zbd/constants";
-
-enum PaymentType {
-  Zap = 7,
-  PartyMode = 8,
-  Invoice = 6,
-}
+import { PaymentType } from "./common";
+import { updateNpubMetadata } from "./nostr/nostr";
 
 export const updateInvoiceIfNeeded = async (
   invoiceType: string,
@@ -30,6 +30,8 @@ export const updateInvoiceIfNeeded = async (
 
   const status = charge.status;
   const msatAmount = parseInt(charge.amount);
+  const paymentRequest = charge.invoice.request;
+  const preimage = charge.invoice.preimage;
   if (!Object.values(ChargeStatus).includes(status as ChargeStatus)) {
     log.error(`Invalid status: ${status}`);
     return { success: false, message: "Invalid invoice status" };
@@ -43,7 +45,7 @@ export const updateInvoiceIfNeeded = async (
 
     if (status === ChargeStatus.Error || status === ChargeStatus.Expired) {
       log.debug("Invoice failed or expired");
-      await handleFailedOrExpiredInvoice(invoiceType, invoiceId);
+      await handleFailedOrExpiredInvoice(invoiceType, invoiceId, status);
       return {
         success: true,
         data: { status: status },
@@ -57,7 +59,12 @@ export const updateInvoiceIfNeeded = async (
       if (invoiceType === "external_receive") {
         log.debug(`Processing external_receive invoice for id ${invoiceId}`);
         // Process should account for plain invoices and zaps
-        await handleCompletedAmpInvoice(invoiceId, msatAmount);
+        await handleCompletedAmpInvoice(
+          invoiceId,
+          msatAmount,
+          paymentRequest,
+          preimage
+        );
       }
       return { success: true, data: { status: status } };
     }
@@ -78,21 +85,20 @@ async function getContentIdFromInvoiceId(invoiceId: number) {
   return invoice.track_id;
 }
 
-async function handleCompletedAmpInvoice(invoiceId: number, amount: number) {
-  // TODO: Look up zap or party mode
-  const isZap = await checkIfAmpIsZap(invoiceId);
-  const isPartyMode = false;
+async function handleCompletedAmpInvoice(
+  invoiceId: number,
+  amount: number,
+  paymentRequest: string,
+  preimage: string
+) {
+  // Look up invoice type
+  const paymentTypeCode = await getInvoicePaymentTypeCode(invoiceId);
 
-  const paymentType = isZap
-    ? PaymentType.Zap
-    : isPartyMode
-    ? PaymentType.PartyMode
-    : PaymentType.Invoice;
-
-  let pubkey, content, timestamp;
-  if (isZap) {
+  let zapRequest, pubkey, content, timestamp;
+  if (paymentTypeCode === PaymentType.Zap) {
     log.debug(`Processing zap details for invoice id ${invoiceId}`);
     const zapInfo = await getZapPubkeyAndContent(invoiceId);
+    zapRequest = zapInfo.zapRequest;
     pubkey = zapInfo.pubkey;
     content = zapInfo.content;
     timestamp = zapInfo.timestamp;
@@ -105,11 +111,10 @@ async function handleCompletedAmpInvoice(invoiceId: number, amount: number) {
     return;
   }
 
-  log.debug(`paymentType: ${paymentType}`);
   const amp = await processSplits({
     contentId: contentId,
     msatAmount: amount,
-    paymentType: paymentType,
+    paymentType: paymentTypeCode,
     contentTime: timestamp ?? null,
     userId: pubkey ? pubkey : null,
     comment: content ? content : null,
@@ -120,55 +125,76 @@ async function handleCompletedAmpInvoice(invoiceId: number, amount: number) {
     return;
   }
 
-  // Publish zap receipt if isZap
-  if (isZap) {
-    log.debug(`Publishing zap receipt for invoice id ${invoiceId}`);
-    await publishZapReceipt(
-      content,
-      "paymentrequest", // TODO: get payment request
-      "preimage", // TODO: use preimage
-      Date.now().toString()
-    );
-  }
-
   await db
     .knex("external_receive")
     .update({
       is_pending: false,
       updated_at: db.knex.fn.now(),
+      preimage: preimage,
     })
     .where("id", "=", invoiceId)
     .catch((err) => {
       log.error(`Error updating external_receive invoice ${invoiceId}: ${err}`);
     });
 
+  // Publish zap receipt if isZap
+  if (paymentTypeCode === PaymentType.Zap) {
+    log.debug(`Publishing zap receipt for invoice id ${invoiceId}`);
+    await publishZapReceipt(zapRequest, paymentRequest, preimage).catch((e) => {
+      log.error(
+        `Error publishing zap receipt for invoice id ${invoiceId}: ${e}`
+      );
+      return;
+    });
+
+    log.debug(`Publishing party receipt for invoice id ${invoiceId}`);
+    await publishPartyReceipt(contentId).catch((e) => {
+      log.error(
+        `Error publishing party receipt for invoice id ${invoiceId}: ${e}`
+      );
+      return;
+    });
+    // async update the npub metadata in the db
+    updateNpubMetadata(pubkey)
+      .then(({ isSuccess }) => {
+        log.debug(
+          `${
+            isSuccess ? "Updated" : "Failed to update"
+          } nostr metadata for: ${pubkey}`
+        );
+      })
+      .catch((err) => {
+        log.debug("error updating npub metadata: ", err);
+      });
+  }
+
   return true;
 }
 
-// We use the `payment_hash` field for our internalId, which is unique in our system
-async function checkIfAmpIsZap(invoiceId: number) {
-  const zap = await db
-    .knex("zap_request")
-    .where("payment_hash", `external_receive-${invoiceId}`)
+async function getInvoicePaymentTypeCode(invoiceId: number) {
+  const pendingInvoice = await db
+    .knex("external_receive")
+    .select("payment_type_code")
+    .where("id", "=", invoiceId)
     .first()
-    .then((data) => {
-      return data ? true : false;
-    })
     .catch((err) => {
-      log.error(`Error checking if invoice is a zap: ${err}`);
+      log.error(
+        `Error getting payment type for invoice id ${invoiceId}: ${err}`
+      );
     });
-  return zap;
+  return pendingInvoice.payment_type_code;
 }
 
 async function handleFailedOrExpiredInvoice(
   invoiceType: string,
-  internalId: number
+  internalId: number,
+  status: string
 ) {
   await db
     .knex(invoiceType)
     .update({
       is_pending: false,
-      success: false,
+      error_message: status,
       updated_at: db.knex.fn.now(),
     })
     .catch((err) => {
