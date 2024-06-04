@@ -10,13 +10,8 @@ export enum PaymentType {
   BoostWithExternalTimeSplit = 9,
 }
 
-// Payment Types:
-// 1: Standard boost
-// 2: Boost with comment
-// 3: Reply
-// 4: Comment boost
-// 5: Keysend boost
-// 6: Invoice boost
-// 7: Zap
-// 8: Party mode boost
-// 9: Internal boost via external time split
+// Incoming Invoice Types
+export enum IncomingInvoiceType {
+  Transaction = "transaction",
+  ExternalReceive = "external_receive",
+}
