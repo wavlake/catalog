@@ -93,6 +93,14 @@ const checkPublicKey = async (
 
 app.put("/:publicHex", async (req, res) => {
   const publicHex = req.params.publicHex;
+  if (publicHex?.length !== 64) {
+    log.debug("Invalid public key: ", publicHex);
+    res.status(400).json({ success: false, error: "Invalid public key" });
+    return;
+  }
+
+  log.debug("Received public key: ", publicHex);
+
   const metadata = await checkPublicKey(publicHex);
   res.send({
     success: !!metadata,
