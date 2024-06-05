@@ -23,7 +23,11 @@ interface ActivityItem {
   parentContentType?: string;
 }
 
-const getActivity = async (pubkeys: string[]) => {
+const getActivity = async (
+  pubkeys: string[],
+  limit: number,
+  offset: number = 0
+) => {
   const createdPlaylists = await db
     .knex("playlist")
     .whereIn("user_id", pubkeys)
@@ -98,15 +102,17 @@ const getActivity = async (pubkeys: string[]) => {
       contentArtwork: [],
     };
   });
-  console.log({ createdPlaylistActivity, zapActivity });
-  const combinedActivity = [
-    // ...createdPlaylistActivity,
-    ...zapActivity,
-  ];
+  const combinedActivity = [...createdPlaylistActivity, ...zapActivity];
 
-  return combinedActivity.sort((a, b) => {
+  // sort the activity by timestamp
+  const sortedActivity = combinedActivity.sort((a, b) => {
     return new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime();
   });
+  // apply the limit and offset
+  const pageStart = (offset - 1) * limit;
+  const pageEnd = pageStart + limit;
+  const paginatedActivity = sortedActivity.slice(pageStart, pageEnd);
+  return paginatedActivity;
 };
 
 interface Follow extends Prisma.JsonArray {
@@ -116,8 +122,7 @@ interface Follow extends Prisma.JsonArray {
 }
 
 const get_activity_feed = asyncHandler(async (req, res, next) => {
-  const pubkey = req.params.pubkey;
-
+  const { page, pageSize, pubkey } = req.params;
   if (!pubkey) {
     res.status(400).json({ success: false, error: "Must provde a pubkey" });
     return;
@@ -133,7 +138,11 @@ const get_activity_feed = asyncHandler(async (req, res, next) => {
     (follow) => follow.pubkey
   );
 
-  const activityItems = await getActivity(pubkeyList);
+  const activityItems = await getActivity(
+    pubkeyList,
+    parseInt(pageSize),
+    parseInt(page)
+  );
 
   res.send({
     success: true,
@@ -142,13 +151,18 @@ const get_activity_feed = asyncHandler(async (req, res, next) => {
 });
 
 const get_account_activity = asyncHandler(async (req, res, next) => {
-  const pubkey = req.params.pubkey;
+  const { page, pageSize, pubkey } = req.params;
+
   if (!pubkey) {
     res.status(400).json({ success: false, error: "Must provde a pubkey" });
     return;
   }
 
-  const activityItems = await getActivity([pubkey]);
+  const activityItems = await getActivity(
+    [pubkey],
+    parseInt(pageSize),
+    parseInt(page)
+  );
   res.send({
     success: true,
     data: activityItems,
