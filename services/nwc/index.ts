@@ -1,20 +1,22 @@
-require("dotenv").config();
-const log = require("loglevel");
-log.setLevel(process.env.LOGLEVEL);
-const { rateLimit } = require("express-rate-limit");
-const {
+import dotenv from "dotenv";
+dotenv.config();
+import log, { LogLevelDesc } from "loglevel";
+log.setLevel((process.env.LOGLEVEL as LogLevelDesc) ?? "info");
+import { rateLimit } from "express-rate-limit";
+import {
   getPublicKey,
   Relay,
   nip04,
   useWebSocketImplementation,
-} = require("nostr-tools");
+} from "nostr-tools";
 import { hexToBytes } from "@noble/hashes/utils"; // already an installed dependency
-useWebSocketImplementation(require("ws"));
-const {
+import ws from "ws";
+useWebSocketImplementation(ws);
+import {
   validateEventAndGetUser,
   broadcastEventResponse,
-} = require("./library/event");
-const { payInvoice, getBalance } = require("./library/method");
+} from "./library/event";
+import { payInvoice, getBalance } from "./library/method";
 const { webcrypto } = require("node:crypto");
 globalThis.crypto = webcrypto;
 
@@ -34,10 +36,10 @@ const limiter = rateLimit({
 // Adaptation of rate limiter for express middleware
 const applyRateLimit = async (npub) => {
   // Mock request and response objects
-  const request = {
+  const request: any = {
     npub: npub,
   };
-  const response = {
+  const response: any = {
     status: () => {},
     send: () => {},
   };
@@ -75,10 +77,16 @@ const monitorForNWCRequests = async () => {
         log.debug(`Received event: ${event.id}`);
         handleRequest(event);
       },
+      onclose(reason) {
+        log.debug("Connection closed: ", reason);
+      },
+      oneose() {
+        log.debug("Connection ended");
+      },
     }
   );
-
   // sub.on("event", handleRequest);
+  return sub;
 };
 
 // Request handler
