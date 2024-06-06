@@ -33,6 +33,13 @@ const getActivity = async (
   limit: number,
   offset: number = 0
 ) => {
+  const threeMonthsAgo = new Date();
+  threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
+  const filterDate = threeMonthsAgo
+    .toISOString()
+    .slice(0, 19)
+    .replace("T", " ");
+
   const createdPlaylists = await db
     .knex("playlist")
     .whereIn("user_id", pubkeys)
@@ -44,7 +51,8 @@ const getActivity = async (
       "playlist.updated_at as updated_at",
       "npub.metadata as metadata"
     )
-    .orderBy("playlist.created_at", "desc");
+    .orderBy("playlist.updated_at", "desc")
+    .where("playlist.updated_at", ">", filterDate);
 
   const createdPlaylistActivity: ActivityItem[] = [];
   for (const playlist of createdPlaylists) {
@@ -88,7 +96,9 @@ const getActivity = async (
       "comment.content as content",
       "amp.user_id as user_id"
     )
-    .orderBy("amp.created_at", "desc");
+    .orderBy("amp.created_at", "desc")
+    .where("amp.created_at", ">", filterDate);
+
   const zapActivity = await Promise.all(
     zaps.map(async (zap) => {
       const { parentId, contentType: parentContentType } =
