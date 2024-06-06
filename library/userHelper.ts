@@ -223,6 +223,24 @@ export async function isArtistOwner(
     });
 }
 
+export async function isRegionVerified(userId: string): Promise<boolean> {
+  return db
+    .knex("user_verification")
+    .select("user_id as userId")
+    .where("user_id", "=", userId)
+    .first()
+    .then((data) => {
+      return data ?? false;
+    })
+    .catch((err) => {
+      Sentry.captureException(err);
+      log.error(
+        `Error looking up user ${userId} in user_verifiation table: ${err}`
+      );
+      return false;
+    });
+}
+
 export async function getCommentUser(commentId: string): Promise<any> {
   return db
     .knex("comment")

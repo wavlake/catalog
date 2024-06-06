@@ -163,11 +163,16 @@ const createSend = asyncHandler(async (req, res: any, next) => {
   };
 
   if (isNaN(request.msatAmount || request.msatAmount < 1000)) {
-    return res.status(400).send("Amount should be a positive number");
+    return res
+      .status(400)
+      .json({ success: false, error: "Amount should be a positive number" });
   }
 
   if (!request.contentId || !validate(request.contentId)) {
-    res.status(400).send("Request does not contain a valid content id");
+    res.status(400).json({
+      success: false,
+      error: "Request does not contain a valid content id",
+    });
     return;
   }
 
@@ -178,7 +183,9 @@ const createSend = asyncHandler(async (req, res: any, next) => {
   );
 
   if (!userHasSufficientSats) {
-    return res.status(400).send("Insufficient balance");
+    return res
+      .status(400)
+      .json({ success: false, error: "Insufficient balance" });
   }
 
   log.debug(`Creating amp transaction for user ${userId}`);
@@ -194,7 +201,9 @@ const createSend = asyncHandler(async (req, res: any, next) => {
 
   if (!amp) {
     log.error(`Error processing splits for user ${userId}`);
-    return res.status(500).send("Error processing splits");
+    return res
+      .status(500)
+      .json({ success: false, error: "Error processing splits" });
   }
 
   return res.status(200).json({ success: true, data: { amp } });
