@@ -2,6 +2,7 @@ import fetch from "node-fetch";
 import { Filter, SimplePool } from "nostr-tools";
 import { DEFAULT_READ_RELAY_URIS } from "./common";
 import { Follow } from "../common";
+import log from "loglevel";
 
 const pool = new SimplePool();
 
@@ -22,9 +23,21 @@ const npubMetadataService = process.env.NPUB_UPDATE_SERVICE_URL;
 const updateNpubMetadata = async function (npub: String) {
   const res = await fetch(`${npubMetadataService}/${npub}`, {
     method: "PUT",
+  }).catch((err) => {
+    log.debug("error fetching npub metadata: ", err);
+    return { ok: false };
   });
 
-  return res.json();
+  if (!res.ok) {
+    log.debug(
+      "error response while updating npub metadata: ",
+      res.status,
+      res.statusText
+    );
+    return { success: false };
+  }
+
+  return { success: true, data: res?.json() };
 };
 
 const getFollowersList = async (publicHex: string) => {
