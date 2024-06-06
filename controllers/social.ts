@@ -3,6 +3,7 @@ import asyncHandler from "express-async-handler";
 import { Prisma } from "@prisma/client";
 import db from "../library/db";
 import { SplitContentTypes } from "../library/userHelper";
+import log from "loglevel";
 
 type ActivityType = "playlistCreate" | "zap" | "updatePlaylist";
 interface ActivityItem {
@@ -28,6 +29,8 @@ const getActivity = async (
   limit: number,
   offset: number = 0
 ) => {
+  console.log("getActivity");
+  console.log("pubkeys", pubkeys, limit, offset);
   const createdPlaylists = await db
     .knex("playlist")
     .whereIn("user_id", pubkeys)
@@ -122,17 +125,22 @@ interface Follow extends Prisma.JsonArray {
 }
 
 const get_activity_feed = asyncHandler(async (req, res, next) => {
-  const { page, pageSize, pubkey } = req.params;
+  const { page = "1", pageSize = "10", pubkey } = req.params;
   if (!pubkey) {
     res.status(400).json({ success: false, error: "Must provde a pubkey" });
     return;
   }
 
-  const pubkeyFollows = await prisma.npub.findFirstOrThrow({
-    where: {
-      publicHex: pubkey,
-    },
-  });
+  const pubkeyFollows = await prisma.npub
+    .findFirstOrThrow({
+      where: {
+        publicHex: pubkey,
+      },
+    })
+    .catch((err) => {
+      log.debug("Pubkey not found in npub table: ", err);
+      return { follows: [] };
+    });
 
   const pubkeyList = (pubkeyFollows.follows as Follow[]).map(
     (follow) => follow.pubkey
@@ -151,8 +159,7 @@ const get_activity_feed = asyncHandler(async (req, res, next) => {
 });
 
 const get_account_activity = asyncHandler(async (req, res, next) => {
-  const { page, pageSize, pubkey } = req.params;
-
+  const { page = "1", pageSize = "10", pubkey } = req.params;
   if (!pubkey) {
     res.status(400).json({ success: false, error: "Must provde a pubkey" });
     return;

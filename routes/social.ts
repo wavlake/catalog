@@ -10,14 +10,14 @@ const router = express.Router();
 //////// ROUTES ////////
 
 router.get(
-  "/feed/:pubkey/:page?/:pageSize?",
-  validatePaginationAndId(),
-  socialController.get_activity_feed
-);
-router.get(
   "/feed/user/:pubkey/:page?/:pageSize?",
   validatePaginationAndId(),
   socialController.get_account_activity
+);
+router.get(
+  "/feed/:pubkey/:page?/:pageSize?",
+  validatePaginationAndId(),
+  socialController.get_activity_feed
 );
 
 // Export router
