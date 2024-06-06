@@ -1,0 +1,36 @@
+# /etc/systemd/system/nwc-monitor.service
+
+[Unit]
+Description=nwc-monitor
+
+[Service]
+Type=simple
+ExecStart=node -r tsconfig-paths/register -r ts-node/register /home/michael/catalog/services/nwc/index.ts
+WorkingDirectory=/home/michael/catalog/services/nwc
+Restart=always
+RestartSec=5
+
+User=michael
+Group=michael
+
+# Environment variables:
+Environment=NODE_ENV=production
+
+# Allow many incoming connections
+LimitNOFILE=infinity
+
+# Allow core dumps for debugging
+LimitCORE=infinity
+
+StandardInput=null
+StandardOutput=syslog
+StandardError=syslog
+Restart=always
+
+# Output to syslog
+StandardOutput=syslog
+StandardError=syslog
+SyslogIdentifier=nwc-monitor
+
+[Install]
+WantedBy=multi-user.target
