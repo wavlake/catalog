@@ -8,12 +8,13 @@ const router = express.Router();
 
 //////// ROUTES ////////
 
-router.post(
-  "/keysend",
-  isAuthorized,
-  isWalletVerified,
-  sendController.sendKeysend
-);
+// Disable keysends
+// router.post(
+//   "/keysend",
+//   isAuthorized,
+//   isWalletVerified,
+//   sendController.sendKeysend
+// );
 router.post("/", isAuthorized, sendController.createSend);
 
 // Export router
