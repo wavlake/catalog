@@ -3,6 +3,7 @@ import db from "../db";
 import { getUserName } from "../userHelper";
 import log from "loglevel";
 
+const BUFFER_AMOUNT = 0.15;
 const BLIP0010 = "7629169";
 
 export const recordInProgressKeysend = async ({
@@ -23,7 +24,6 @@ export const recordInProgressKeysend = async ({
     guid,
     userId,
   } = metadata;
-  const BUFFER_AMOUNT = 0.15;
   const estimatedFee = keysendData.transaction.amount * BUFFER_AMOUNT;
   return db.knex("external_payment").insert(
     {
@@ -61,19 +61,20 @@ export const updateKeysend = async ({
   status: SendKeysendStatus;
   fee: string;
 }) => {
-  const feeMsat = parseInt(fee);
-  const staleKeysend = await db
+  // We use 1000 msat for the fee to account for the default 1 sat fee in case of 0 fee amount
+  const feeMsat = parseInt(fee) === 0 ? 1000 : parseInt(fee);
+  const keysendRecord = await db
     .knex("external_payment")
     .where({ tx_id: internalTxId })
     .select("is_settled", "user_id", "msat_amount")
     .first();
 
-  if (!staleKeysend) {
+  if (!keysendRecord) {
     log.error(`Keysend not found for ${internalTxId}`);
     return;
   }
 
-  if (staleKeysend.is_settled) {
+  if (keysendRecord.is_settled) {
     log.debug("Keysend already settled, skipping update");
     return;
   }
@@ -83,12 +84,12 @@ export const updateKeysend = async ({
 
   if (isSettled) {
     // decrement the user balance if the payment is settled
-    trx("user")
+    await trx("user")
       .decrement({
-        msat_balance: parseInt(staleKeysend.msat_amount) + feeMsat,
+        msat_balance: parseInt(keysendRecord.msat_amount) + feeMsat,
       })
       .update({ updated_at: db.knex.fn.now() })
-      .where({ id: staleKeysend.user_id });
+      .where({ id: keysendRecord.user_id });
   }
 
   await trx("external_payment").where({ tx_id: internalTxId }).update({
