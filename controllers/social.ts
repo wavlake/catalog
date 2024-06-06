@@ -65,7 +65,7 @@ const getActivity = async (
         userId: playlist.user_id,
         pubkey: playlist.user_id,
         type: "playlistCreate",
-        timestamp: playlist.created_at,
+        timestamp: playlist.updated_at,
         contentId: playlist.id,
         contentTitle: playlist.title,
         contentType: "playlist",
@@ -158,7 +158,7 @@ const getActivity = async (
   );
 
   const combinedActivity = [...createdPlaylistActivity, ...zapActivity];
-
+  console.log(combinedActivity.map((a) => a.timestamp + " " + a.type));
   // sort the activity by timestamp
   const sortedActivity = combinedActivity.sort((a, b) => {
     return new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime();
