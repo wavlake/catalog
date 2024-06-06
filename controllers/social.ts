@@ -4,6 +4,10 @@ import { Prisma } from "@prisma/client";
 import db from "../library/db";
 import { SplitContentTypes } from "../library/userHelper";
 import log from "loglevel";
+import {
+  getContentFromId,
+  getParentContentTypeAndId,
+} from "../library/content";
 
 type ActivityType = "playlistCreate" | "zap" | "updatePlaylist";
 interface ActivityItem {
@@ -29,8 +33,6 @@ const getActivity = async (
   limit: number,
   offset: number = 0
 ) => {
-  console.log("getActivity");
-  console.log("pubkeys", pubkeys, limit, offset);
   const createdPlaylists = await db
     .knex("playlist")
     .whereIn("user_id", pubkeys)
@@ -87,24 +89,74 @@ const getActivity = async (
       "amp.user_id as user_id"
     )
     .orderBy("amp.created_at", "desc");
-  const zapActivity = zaps.map((zap) => {
-    return {
-      picture: zap.metadata?.picture,
-      name: zap.metadata?.name,
-      userId: zap.user_id,
-      pubkey: zap.user_id,
-      type: "zap",
-      message: zap.content,
-      zapAmount: zap.msat_amount,
-      timestamp: zap.created_at,
-      contentId: zap.content_id,
-      // TODO - look up title based on content type
-      contentTitle: "TODO - title",
-      contentType: zap.content_type,
-      // TODO - look up artwork based on content type
-      contentArtwork: [],
-    };
-  });
+  const zapActivity = await Promise.all(
+    zaps.map(async (zap) => {
+      const { parentId, contentType: parentContentType } =
+        await getParentContentTypeAndId(zap.content_id);
+      const content = await getContentFromId(zap.content_id);
+      const activity = {
+        picture: zap.metadata?.picture,
+        name: zap.metadata?.name,
+        userId: zap.user_id,
+        pubkey: zap.user_id,
+        type: "zap",
+        message: zap.content,
+        zapAmount: zap.msat_amount,
+        timestamp: zap.created_at,
+        contentId: zap.content_id,
+        contentTitle: content.title,
+        parentContentId: parentId,
+        contentType: zap.content_type,
+        contentArtwork: [content.artwork_url],
+      };
+      if (parentContentType === "album") {
+        const album = await db
+          .knex("album")
+          .select("*")
+          .where("id", parentId)
+          .then((data) => {
+            return data[0];
+          });
+        return {
+          ...activity,
+          parentContentTitle: album.title,
+          parentContentType,
+          contentArtwork: [album.artwork_url],
+        };
+      } else if (parentContentType === "podcast") {
+        const podcast = await db
+          .knex("podcast")
+          .select("*")
+          .where("id", parentId)
+          .then((data) => {
+            return data[0];
+          });
+        return {
+          ...activity,
+          parentContentTitle: podcast.name,
+          parentContentType,
+          contentArtwork: [podcast.artwork_url],
+        };
+      } else if (parentContentType === "artist") {
+        const artist = await db
+          .knex("artist")
+          .select("*")
+          .where("id", parentId)
+          .then((data) => {
+            return data[0];
+          });
+        return {
+          ...activity,
+          parentContentTitle: artist.name,
+          parentContentType,
+          contentArtwork: [content.artwork_url],
+        };
+      }
+
+      return activity;
+    })
+  );
+
   const combinedActivity = [...createdPlaylistActivity, ...zapActivity];
 
   // sort the activity by timestamp
