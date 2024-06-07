@@ -10,6 +10,11 @@ const router = express.Router();
 //////// ROUTES ////////
 
 router.get(
+  "/feed/global/:page?/:pageSize?",
+  validatePaginationAndId(),
+  socialController.get_global_feed
+);
+router.get(
   "/feed/user/:pubkey/:page?/:pageSize?",
   validatePaginationAndId(),
   socialController.get_account_activity
