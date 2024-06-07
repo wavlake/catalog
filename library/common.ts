@@ -11,18 +11,6 @@ export enum PaymentType {
   PartyMode = 8,
   BoostWithExternalTimeSplit = 9,
 }
-
-// Payment Types:
-// 1: Standard boost
-// 2: Boost with comment
-// 3: Reply
-// 4: Comment boost
-// 5: Keysend boost
-// 6: Invoice boost
-// 7: Zap
-// 8: Party mode boost
-// 9: Internal boost via external time split
-
 export interface NpubMetadata {
   publicHex: string;
   metadata: Prisma.JsonValue;
@@ -34,4 +22,9 @@ export interface Follow extends Prisma.JsonArray {
   pubkey: string;
   relay?: string;
   petname?: string;
+}
+// Incoming Invoice Types
+export enum IncomingInvoiceType {
+  Transaction = "transaction",
+  ExternalReceive = "external_receive",
 }

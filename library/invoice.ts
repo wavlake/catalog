@@ -10,7 +10,7 @@ import {
 } from "./zap";
 import { ZBDChargeCallbackRequest } from "./zbd/requestInterfaces";
 import { ChargeStatus } from "./zbd/constants";
-import { PaymentType } from "./common";
+import { PaymentType, IncomingInvoiceType } from "./common";
 import { updateNpubMetadata } from "./nostr/nostr";
 
 export const updateInvoiceIfNeeded = async (
@@ -52,11 +52,11 @@ export const updateInvoiceIfNeeded = async (
         message: "The invoice has failed or expired.",
       };
     } else {
-      if (invoiceType === "transaction") {
+      if (invoiceType === IncomingInvoiceType.Transaction) {
         log.debug(`Processing transaction invoice for id ${invoiceId}`);
         await handleCompletedDeposit(invoiceId, msatAmount);
       }
-      if (invoiceType === "external_receive") {
+      if (invoiceType === IncomingInvoiceType.ExternalReceive) {
         log.debug(`Processing external_receive invoice for id ${invoiceId}`);
         // Process should account for plain invoices and zaps
         await handleCompletedAmpInvoice(
@@ -190,13 +190,17 @@ async function handleFailedOrExpiredInvoice(
   internalId: number,
   status: string
 ) {
+  const update = {
+    is_pending: false,
+    updated_at: db.knex.fn.now(),
+    ...(invoiceType === IncomingInvoiceType.ExternalReceive
+      ? { error_message: status }
+      : { failure_reason: status }),
+  };
   await db
     .knex(invoiceType)
-    .update({
-      is_pending: false,
-      error_message: status,
-      updated_at: db.knex.fn.now(),
-    })
+    .update(update)
+    .where("id", "=", internalId)
     .catch((err) => {
       log.error(
         `Error in handleFailedOrExpiredInvoice: ${invoiceType} invoice ${internalId}: ${err}`
