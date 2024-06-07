@@ -29,7 +29,7 @@ interface ActivityItem {
 }
 
 const getActivity = async (
-  pubkeys: string[],
+  pubkeys: string[] | null,
   limit: number,
   offset: number = 0
 ) => {
@@ -40,9 +40,8 @@ const getActivity = async (
     .slice(0, 19)
     .replace("T", " ");
 
-  const createdPlaylists = await db
+  const playlistQuery = db
     .knex("playlist")
-    .whereIn("user_id", pubkeys)
     .join("npub", "playlist.user_id", "npub.public_hex")
     .select(
       "playlist.id as id",
@@ -53,6 +52,35 @@ const getActivity = async (
     )
     .orderBy("playlist.updated_at", "desc")
     .where("playlist.updated_at", ">", filterDate);
+
+  const zapQuery = db
+    .knex("amp")
+    .andWhere("amp.comment", true)
+    .andWhere("amp.type", 7)
+    .join("npub", "amp.user_id", "=", "npub.public_hex")
+    .leftJoin("comment", "comment.amp_id", "=", "amp.id")
+    .select(
+      "amp.track_id as content_id",
+      "amp.msat_amount as msat_amount",
+      "amp.created_at as created_at",
+      "amp.content_type as content_type",
+      "npub.metadata as metadata",
+      "comment.content as content",
+      "amp.user_id as user_id"
+    )
+    .orderBy("amp.created_at", "desc")
+    .where("amp.created_at", ">", filterDate);
+
+  let createdPlaylists: any[] = [];
+  let zaps: any[] = [];
+  if (!pubkeys) {
+    // if no pubkeys are provided, get all playlist activity that has a pubkey (string length 64)
+    createdPlaylists = await playlistQuery.whereRaw("LENGTH(user_id) = 64");
+    zaps = await zapQuery.whereRaw("LENGTH(amp.user_id) = 64");
+  } else {
+    createdPlaylists = await playlistQuery.whereIn("user_id", pubkeys);
+    zaps = await zapQuery.whereIn("amp.user_id", pubkeys);
+  }
 
   const createdPlaylistActivity: ActivityItem[] = [];
   for (const playlist of createdPlaylists) {
@@ -84,24 +112,6 @@ const getActivity = async (
       });
     }
   }
-  const zaps = await db
-    .knex("amp")
-    .whereIn("amp.user_id", pubkeys)
-    .andWhere("amp.comment", true)
-    .andWhere("amp.type", 7)
-    .join("npub", "amp.user_id", "=", "npub.public_hex")
-    .leftJoin("comment", "comment.amp_id", "=", "amp.id")
-    .select(
-      "amp.track_id as content_id",
-      "amp.msat_amount as msat_amount",
-      "amp.created_at as created_at",
-      "amp.content_type as content_type",
-      "npub.metadata as metadata",
-      "comment.content as content",
-      "amp.user_id as user_id"
-    )
-    .orderBy("amp.created_at", "desc")
-    .where("amp.created_at", ">", filterDate);
 
   const zapActivity = await Promise.all(
     zaps.map(async (zap) => {
@@ -241,7 +251,23 @@ const get_account_activity = asyncHandler(async (req, res, next) => {
   });
 });
 
+const get_global_feed = asyncHandler(async (req, res, next) => {
+  const { page = "1", pageSize = "10" } = req.params;
+
+  const activityItems = await getActivity(
+    null,
+    parseInt(pageSize),
+    parseInt(page)
+  );
+
+  res.send({
+    success: true,
+    data: activityItems,
+  });
+});
+
 export default {
   get_activity_feed,
+  get_global_feed,
   get_account_activity,
 };
