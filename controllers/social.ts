@@ -168,7 +168,6 @@ const getActivity = async (
   );
 
   const combinedActivity = [...createdPlaylistActivity, ...zapActivity];
-  console.log(combinedActivity.map((a) => a.timestamp + " " + a.type));
   // sort the activity by timestamp
   const sortedActivity = combinedActivity.sort((a, b) => {
     return new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime();
