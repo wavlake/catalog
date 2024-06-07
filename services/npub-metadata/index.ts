@@ -9,14 +9,7 @@ import {
   getProfileMetadata,
 } from "@library/nostr/nostr";
 import express from "express";
-import { Prisma } from "@prisma/client";
-
-interface NpubMetadata {
-  publicHex: string;
-  metadata: Prisma.JsonValue;
-  followerCount: number;
-  follows: Prisma.JsonValue;
-}
+import { NpubMetadata } from "@library/common";
 
 log.setLevel((process.env.LOGLEVEL as LogLevelDesc) ?? "info");
 const app = express();
