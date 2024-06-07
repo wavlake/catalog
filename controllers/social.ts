@@ -85,6 +85,7 @@ const getActivity = async (
     .knex("amp")
     .whereIn("amp.user_id", pubkeys)
     .andWhere("amp.comment", true)
+    .andWhere("amp.type", 7)
     .join("npub", "amp.user_id", "=", "npub.public_hex")
     .leftJoin("comment", "comment.amp_id", "=", "amp.id")
     .select(
