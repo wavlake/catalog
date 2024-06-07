@@ -77,7 +77,7 @@ const getActivity = async (
         contentId: playlist.id,
         contentTitle: playlist.title,
         parentContentTitle: `${tracks.length} track${
-          tracks.length > 1 ? "" : "s"
+          tracks.length > 1 ? "s" : ""
         }`,
         contentType: "playlist",
         contentArtwork: tracks.map((track) => track.artworkUrl),
