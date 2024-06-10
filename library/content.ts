@@ -82,10 +82,10 @@ export const getParentContentTypeAndId = async (contentId) => {
     .select("album_id")
     .where("track.id", "=", contentId)
     .then((data) => {
-      if (!data) {
+      if (!data || data.length === 0) {
         return null;
       }
-      return data[0]?.album_id;
+      return data[0].album_id;
     });
 
   if (album) {
@@ -97,10 +97,10 @@ export const getParentContentTypeAndId = async (contentId) => {
     .select("podcast_id")
     .where("episode.id", "=", contentId)
     .then((data) => {
-      if (!data) {
+      if (!data || data.length === 0) {
         return null;
       }
-      return data[0]?.podcast_id;
+      return data[0].podcast_id;
     });
 
   if (podcast) {
