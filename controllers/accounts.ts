@@ -832,21 +832,6 @@ const add_pubkey_to_account = asyncHandler(async (req, res, next) => {
       return;
     }
 
-    // find any existing pubkey for this user
-    const existingPubkeyForUserId = await prisma.userPubkey.findFirst({
-      where: {
-        userId: user.uid,
-      },
-    });
-    if (existingPubkeyForUserId?.pubkey) {
-      // delete it if it exists
-      await prisma.userPubkey.delete({
-        where: {
-          pubkey: existingPubkeyForUserId.pubkey,
-        },
-      });
-    }
-
     await prisma.userPubkey.create({
       data: {
         userId: user.uid,
