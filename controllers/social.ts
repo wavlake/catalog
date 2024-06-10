@@ -53,9 +53,10 @@ const getActivity = async (
     .orderBy("playlist.updated_at", "desc")
     .where("playlist.updated_at", ">", filterDate);
 
+  const ZAP_TYPE = 7;
   const zapQuery = db
     .knex("amp")
-    .andWhere("amp.type", 7)
+    .andWhere("amp.type", ZAP_TYPE)
     .join("npub", "amp.user_id", "=", "npub.public_hex")
     .leftJoin("comment", "comment.id", "=", "amp.type_key")
     .select(
