@@ -85,7 +85,7 @@ export const getParentContentTypeAndId = async (contentId) => {
       if (!data) {
         return null;
       }
-      return data[0].album_id;
+      return data[0]?.album_id;
     });
 
   if (album) {
@@ -100,7 +100,7 @@ export const getParentContentTypeAndId = async (contentId) => {
       if (!data) {
         return null;
       }
-      return data[0].podcast_id;
+      return data[0]?.podcast_id;
     });
 
   if (podcast) {

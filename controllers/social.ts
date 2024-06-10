@@ -127,10 +127,10 @@ const getActivity = async (
         zapAmount: zap.msat_amount,
         timestamp: zap.created_at,
         contentId: zap.content_id,
-        contentTitle: content.title,
+        contentTitle: content?.title,
         parentContentId: parentId,
         contentType: zap.content_type,
-        contentArtwork: [content.artwork_url],
+        contentArtwork: [content?.artwork_url],
       };
       if (parentContentType === "album") {
         const album = await db
@@ -142,7 +142,7 @@ const getActivity = async (
           });
         return {
           ...activity,
-          parentContentTitle: album.title,
+          parentContentTitle: album?.title,
           parentContentType,
           contentArtwork: [album.artwork_url],
         };
