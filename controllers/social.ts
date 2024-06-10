@@ -58,6 +58,7 @@ const getActivity = async (
     .knex("amp")
     .andWhere("amp.type", ZAP_TYPE)
     .join("npub", "amp.user_id", "=", "npub.public_hex")
+    // for zaps, the type_key is the content_id
     .leftJoin("comment", "comment.id", "=", "amp.type_key")
     .select(
       "amp.track_id as content_id",
