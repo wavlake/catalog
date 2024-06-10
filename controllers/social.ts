@@ -10,6 +10,7 @@ import {
 } from "../library/content";
 
 type ActivityType = "playlistCreate" | "zap" | "updatePlaylist";
+
 interface ActivityItem {
   picture: string;
   name: string;
@@ -28,60 +29,69 @@ interface ActivityItem {
   parentContentType?: string;
 }
 
+interface Follow extends Prisma.JsonArray {
+  pubkey: string;
+  relay?: string;
+  petname?: string;
+}
+
+////// QUERIES //////
+
+const THREE_MONTHS_AGO = new Date();
+THREE_MONTHS_AGO.setMonth(THREE_MONTHS_AGO.getMonth() - 3);
+const FILTER_DATE = THREE_MONTHS_AGO.toISOString()
+  .slice(0, 19)
+  .replace("T", " ");
+
+const PLAYLIST_QUERY = db
+  .knex("playlist")
+  .join("npub", "playlist.user_id", "npub.public_hex")
+  .select(
+    "playlist.id as id",
+    "playlist.user_id as user_id",
+    "playlist.title as title",
+    "playlist.updated_at as updated_at",
+    "npub.metadata as metadata"
+  )
+  .orderBy("playlist.updated_at", "desc")
+  .where("playlist.updated_at", ">", FILTER_DATE);
+
+const ZAP_TYPE = 7;
+const ZAP_QUERY = db
+  .knex("amp")
+  .andWhere("amp.type", ZAP_TYPE)
+  .join("npub", "amp.user_id", "=", "npub.public_hex")
+  // for zaps, the type_key is the content_id
+  // zap comments have comment.amp_id hardcoded to 0
+  .leftJoin("comment", "comment.id", "=", "amp.type_key")
+  .select(
+    "amp.track_id as content_id",
+    "amp.msat_amount as msat_amount",
+    "amp.created_at as created_at",
+    "amp.content_type as content_type",
+    "npub.metadata as metadata",
+    "comment.content as content",
+    "amp.user_id as user_id"
+  )
+  .orderBy("amp.created_at", "desc")
+  .where("amp.created_at", ">", FILTER_DATE);
+
+////// FUNCTIONS //////
+
 const getActivity = async (
   pubkeys: string[] | null,
   limit: number,
   offset: number = 0
 ) => {
-  const threeMonthsAgo = new Date();
-  threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
-  const filterDate = threeMonthsAgo
-    .toISOString()
-    .slice(0, 19)
-    .replace("T", " ");
-
-  const playlistQuery = db
-    .knex("playlist")
-    .join("npub", "playlist.user_id", "npub.public_hex")
-    .select(
-      "playlist.id as id",
-      "playlist.user_id as user_id",
-      "playlist.title as title",
-      "playlist.updated_at as updated_at",
-      "npub.metadata as metadata"
-    )
-    .orderBy("playlist.updated_at", "desc")
-    .where("playlist.updated_at", ">", filterDate);
-
-  const ZAP_TYPE = 7;
-  const zapQuery = db
-    .knex("amp")
-    .andWhere("amp.type", ZAP_TYPE)
-    .join("npub", "amp.user_id", "=", "npub.public_hex")
-    // for zaps, the type_key is the content_id
-    // zap comments have comment.amp_id hardcoded to 0
-    .leftJoin("comment", "comment.id", "=", "amp.type_key")
-    .select(
-      "amp.track_id as content_id",
-      "amp.msat_amount as msat_amount",
-      "amp.created_at as created_at",
-      "amp.content_type as content_type",
-      "npub.metadata as metadata",
-      "comment.content as content",
-      "amp.user_id as user_id"
-    )
-    .orderBy("amp.created_at", "desc")
-    .where("amp.created_at", ">", filterDate);
-
   let createdPlaylists: any[] = [];
   let zaps: any[] = [];
   if (!pubkeys) {
     // if no pubkeys are provided, get all playlist activity that has a pubkey (string length 64)
-    createdPlaylists = await playlistQuery.whereRaw("LENGTH(user_id) = 64");
-    zaps = await zapQuery.whereRaw("LENGTH(amp.user_id) = 64");
+    createdPlaylists = await PLAYLIST_QUERY.whereRaw("LENGTH(user_id) = 64");
+    zaps = await ZAP_QUERY.whereRaw("LENGTH(amp.user_id) = 64");
   } else {
-    createdPlaylists = await playlistQuery.whereIn("user_id", pubkeys);
-    zaps = await zapQuery.whereIn("amp.user_id", pubkeys);
+    createdPlaylists = await PLAYLIST_QUERY.whereIn("user_id", pubkeys);
+    zaps = await ZAP_QUERY.whereIn("amp.user_id", pubkeys);
   }
 
   const createdPlaylistActivity: ActivityItem[] = [];
@@ -195,11 +205,7 @@ const getActivity = async (
   return paginatedActivity;
 };
 
-interface Follow extends Prisma.JsonArray {
-  pubkey: string;
-  relay?: string;
-  petname?: string;
-}
+////// CONTROLLERS //////
 
 const get_activity_feed = asyncHandler(async (req, res, next) => {
   const { page = "1", pageSize = "10", pubkey } = req.params;
