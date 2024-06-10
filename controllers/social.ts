@@ -78,24 +78,9 @@ const ZAP_QUERY = db
 
 ////// FUNCTIONS //////
 
-const getActivity = async (
-  pubkeys: string[] | null,
-  limit: number,
-  offset: number = 0
-) => {
-  let createdPlaylists: any[] = [];
-  let zaps: any[] = [];
-  if (!pubkeys) {
-    // if no pubkeys are provided, get all playlist activity that has a pubkey (string length 64)
-    createdPlaylists = await PLAYLIST_QUERY.whereRaw("LENGTH(user_id) = 64");
-    zaps = await ZAP_QUERY.whereRaw("LENGTH(amp.user_id) = 64");
-  } else {
-    createdPlaylists = await PLAYLIST_QUERY.whereIn("user_id", pubkeys);
-    zaps = await ZAP_QUERY.whereIn("amp.user_id", pubkeys);
-  }
-
+const getPlaylistActivityMetadata = async (playlists: any[]) => {
   const createdPlaylistActivity: ActivityItem[] = [];
-  for (const playlist of createdPlaylists) {
+  for (const playlist of playlists) {
     const tracks = await db
       .knex("playlist_track")
       .select(
@@ -124,9 +109,12 @@ const getActivity = async (
       });
     }
   }
+  return createdPlaylistActivity;
+};
 
-  const zapActivity = await Promise.all(
-    zaps.map(async (zap) => {
+const getZappedContentActivityMetadata = async (zaps: any[]) => {
+  const zappedContent = await Promise.all(
+    zaps.map(async (zap: any): Promise<ActivityItem> => {
       const { parentId, contentType: parentContentType } =
         await getParentContentTypeAndId(zap.content_id);
       const content = await getContentFromId(zap.content_id);
@@ -135,7 +123,7 @@ const getActivity = async (
         name: zap.metadata?.name,
         userId: zap.user_id,
         pubkey: zap.user_id,
-        type: "zap",
+        type: "zap" as ActivityType,
         message: zap.content,
         zapAmount: zap.msat_amount,
         timestamp: zap.created_at,
@@ -192,6 +180,30 @@ const getActivity = async (
       return activity;
     })
   );
+
+  return zappedContent;
+};
+
+const getActivity = async (
+  pubkeys: string[] | null,
+  limit: number,
+  offset: number = 0
+) => {
+  let createdPlaylists: any[] = [];
+  let zaps: any[] = [];
+  if (!pubkeys) {
+    // if no pubkeys are provided, get all playlist activity that has a pubkey (string length 64)
+    createdPlaylists = await PLAYLIST_QUERY.whereRaw("LENGTH(user_id) = 64");
+    zaps = await ZAP_QUERY.whereRaw("LENGTH(amp.user_id) = 64");
+  } else {
+    createdPlaylists = await PLAYLIST_QUERY.whereIn("user_id", pubkeys);
+    zaps = await ZAP_QUERY.whereIn("amp.user_id", pubkeys);
+  }
+
+  const createdPlaylistActivity = await getPlaylistActivityMetadata(
+    createdPlaylists
+  );
+  const zapActivity = await getZappedContentActivityMetadata(zaps);
 
   const combinedActivity = [...createdPlaylistActivity, ...zapActivity];
   // sort the activity by timestamp
