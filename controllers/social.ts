@@ -55,10 +55,9 @@ const getActivity = async (
 
   const zapQuery = db
     .knex("amp")
-    .andWhere("amp.comment", true)
     .andWhere("amp.type", 7)
     .join("npub", "amp.user_id", "=", "npub.public_hex")
-    .leftJoin("comment", "comment.amp_id", "=", "amp.id")
+    .leftJoin("comment", "comment.id", "=", "amp.type_key")
     .select(
       "amp.track_id as content_id",
       "amp.msat_amount as msat_amount",
