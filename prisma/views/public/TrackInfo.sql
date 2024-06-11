@@ -23,7 +23,8 @@ SELECT
   track.is_explicit,
   album.genre_id,
   album.subgenre_id,
-  track.compressor_error
+  track.compressor_error,
+  artist.npub AS artist_npub
 FROM
   (
     (
