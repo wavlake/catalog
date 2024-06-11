@@ -73,7 +73,6 @@ const get_account = asyncHandler(async (req, res, next) => {
       )
       .orderBy("user_pubkey.created_at", "desc");
 
-    console.log("userPubkeysWithMetadata", userPubkeysWithMetadata);
     const { emailVerified, providerData } = await auth().getUser(
       request.accountId
     );
