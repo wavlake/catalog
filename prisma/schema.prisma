@@ -651,7 +651,7 @@ view TrackInfo {
   genreId         Int?      @map("genre_id")
   subgenreId      Int?      @map("subgenre_id")
   compressorError Boolean?  @map("compressor_error")
-  artist_npub     String?   @db.VarChar(64)
+  artistNpub      String?   @map("artist_npub") @db.VarChar(64)
 
   @@map("track_info")
 }
