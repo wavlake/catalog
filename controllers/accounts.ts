@@ -45,8 +45,6 @@ const get_account = asyncHandler(async (req, res, next) => {
       )
       .where("user.id", "=", request.accountId);
 
-    if (userData.length > 0) log.debug("found user in db:", userData[0]);
-
     const trackData = await db
       .knex("playlist")
       .join("playlist_track", "playlist.id", "=", "playlist_track.playlist_id")
@@ -61,50 +59,46 @@ const get_account = asyncHandler(async (req, res, next) => {
       .where("user_id", "=", request.accountId)
       .first();
 
-    const userPubkeys = await prisma.userPubkey.findMany({
-      where: {
-        userId: request.accountId,
-      },
-      select: {
-        pubkey: true,
-      },
-    });
+    const userPubkeysWithMetadata = await db
+      .knex("user_pubkey")
+      .join("npub", "user_pubkey.pubkey", "=", "npub.public_hex")
+      .where("user_pubkey.user_id", request.accountId)
+      .select(
+        "user_pubkey.pubkey",
+        "user_pubkey.created_at",
+        "npub.public_hex",
+        "npub.metadata",
+        "npub.follower_count",
+        "npub.follows"
+      )
+      .orderBy("user_pubkey.created_at", "desc");
 
-    const pubkeyMetadata = await prisma.npub.findMany({
-      where: {
-        publicHex: {
-          in: userPubkeys.map((row) => row.pubkey),
-        },
-      },
-      select: {
-        publicHex: true,
-        metadata: true,
-        followerCount: true,
-        follows: true,
-        updatedAt: true,
-      },
-    });
-
-    // the most recently updated pubkeys is used in by the mobile app to suggest a user login with that nsec
-    const pubkeySortedByUpdatedAt = pubkeyMetadata.sort((a, b) => {
-      return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
-    });
-
+    console.log("userPubkeysWithMetadata", userPubkeysWithMetadata);
     const { emailVerified, providerData } = await auth().getUser(
       request.accountId
     );
 
+    const responseData = {
+      ...userData[0],
+      nostrProfileData: userPubkeysWithMetadata.map((pubkey) => ({
+        publicHex: pubkey.pubkey,
+        metadata: pubkey.metadata,
+        followerCount: pubkey.follower_count,
+        follows: pubkey.follows,
+      })),
+
+      emailVerified,
+      isRegionVerified: !!isRegionVerified,
+      providerId: providerData[0]?.providerId,
+      userFavoritesId: (trackData[0] || {}).playlistId,
+      userFavorites: trackData.map((track) => track.id),
+    };
+
+    if (responseData) log.debug("found user in db:", responseData);
+
     res.send({
       success: true,
-      data: {
-        ...userData[0],
-        nostrProfileData: pubkeySortedByUpdatedAt,
-        emailVerified,
-        isRegionVerified: !!isRegionVerified,
-        providerId: providerData[0]?.providerId,
-        userFavoritesId: (trackData[0] || {}).playlistId,
-        userFavorites: trackData.map((track) => track.id),
-      },
+      data: responseData,
     });
   } catch (err) {
     next(err);
