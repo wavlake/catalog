@@ -85,7 +85,6 @@ const get_account = asyncHandler(async (req, res, next) => {
         followerCount: pubkey.follower_count,
         follows: pubkey.follows,
       })),
-
       emailVerified,
       isRegionVerified: !!isRegionVerified,
       providerId: providerData[0]?.providerId,
