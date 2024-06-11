@@ -81,7 +81,13 @@ const get_account = asyncHandler(async (req, res, next) => {
         metadata: true,
         followerCount: true,
         follows: true,
+        updatedAt: true,
       },
+    });
+
+    // the most recently updated pubkeys is used in by the mobile app to suggest a user login with that nsec
+    const pubkeySortedByUpdatedAt = pubkeyMetadata.sort((a, b) => {
+      return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
     });
 
     const { emailVerified, providerData } = await auth().getUser(
@@ -92,7 +98,7 @@ const get_account = asyncHandler(async (req, res, next) => {
       success: true,
       data: {
         ...userData[0],
-        nostrProfileData: pubkeyMetadata,
+        nostrProfileData: pubkeySortedByUpdatedAt,
         emailVerified,
         isRegionVerified: !!isRegionVerified,
         providerId: providerData[0]?.providerId,
@@ -830,21 +836,6 @@ const add_pubkey_to_account = asyncHandler(async (req, res, next) => {
         error: "Pubkey is registered to another account",
       });
       return;
-    }
-
-    // find any existing pubkey for this user
-    const existingPubkeyForUserId = await prisma.userPubkey.findFirst({
-      where: {
-        userId: user.uid,
-      },
-    });
-    if (existingPubkeyForUserId?.pubkey) {
-      // delete it if it exists
-      await prisma.userPubkey.delete({
-        where: {
-          pubkey: existingPubkeyForUserId.pubkey,
-        },
-      });
     }
 
     await prisma.userPubkey.create({
