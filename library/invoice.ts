@@ -156,10 +156,10 @@ async function handleCompletedAmpInvoice(
     });
     // async update the npub metadata in the db
     updateNpubMetadata(pubkey)
-      .then(({ isSuccess }) => {
+      .then(({ success }) => {
         log.debug(
           `${
-            isSuccess ? "Updated" : "Failed to update"
+            success ? "Updated" : "Failed to update"
           } nostr metadata for: ${pubkey}`
         );
       })

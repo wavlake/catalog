@@ -1,7 +1,8 @@
 import fetch from "node-fetch";
 import { Filter, SimplePool } from "nostr-tools";
-import { Prisma } from "@prisma/client";
 import { DEFAULT_READ_RELAY_URIS } from "./common";
+import { Follow } from "../common";
+import log from "loglevel";
 
 const pool = new SimplePool();
 
@@ -22,9 +23,21 @@ const npubMetadataService = process.env.NPUB_UPDATE_SERVICE_URL;
 const updateNpubMetadata = async function (npub: String) {
   const res = await fetch(`${npubMetadataService}/${npub}`, {
     method: "PUT",
+  }).catch((err) => {
+    log.debug("error fetching npub metadata: ", err);
+    return { ok: false };
   });
 
-  return res.json();
+  if (!res.ok) {
+    log.debug(
+      "error response while updating npub metadata: ",
+      res.status,
+      res.statusText
+    );
+    return { success: false };
+  }
+
+  return { success: true, data: res?.json() };
 };
 
 const getFollowersList = async (publicHex: string) => {
@@ -35,12 +48,6 @@ const getFollowersList = async (publicHex: string) => {
   };
   return pool.querySync(DEFAULT_READ_RELAY_URIS, filter);
 };
-
-interface Follow extends Prisma.JsonArray {
-  pubkey: string;
-  relay?: string;
-  petname?: string;
-}
 
 const getFollowsList = async (publicHex: string): Promise<Follow[]> => {
   const pool = new SimplePool();

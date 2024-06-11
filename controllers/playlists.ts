@@ -5,7 +5,7 @@ import prisma from "../prisma/client";
 import { Event } from "nostr-tools";
 import db from "../library/db";
 import { isValidDateString } from "../library/validation";
-import { userOwnsContent } from "../library/userHelper";
+import { getUserIds, userOwnsContent } from "../library/userHelper";
 
 const MAX_PLAYLIST_LENGTH = 200;
 export const addTrackToPlaylist = asyncHandler(async (req, res, next) => {
@@ -251,6 +251,8 @@ export const getUserPlaylists = asyncHandler(async (req, res, next) => {
   const pubkey = (res.locals?.authEvent as Event)?.pubkey;
   const id = req.params.id;
 
+  // profile page request if id is present, aka its a public list of playlists
+  const isProfilePageRequest = !!id;
   // use auth token uid, nip-98 pubkey, or id from request params
   const userId = req["uid"] ?? pubkey ?? id;
   if (!userId) {
@@ -258,8 +260,10 @@ export const getUserPlaylists = asyncHandler(async (req, res, next) => {
     return;
   }
 
+  // need to get all user ids for the user (npub(s) + firebase uid)
+  const userIds = await getUserIds(userId);
   const playlists = await prisma.playlist.findMany({
-    where: { userId: userId },
+    where: { userId: { in: userIds } },
   });
 
   const playlistsWithTracks = [];
@@ -278,14 +282,16 @@ export const getUserPlaylists = asyncHandler(async (req, res, next) => {
       .where("playlist_track.playlist_id", playlist.id)
       .orderBy("playlist_track.order_int", "asc");
 
-    const playlistObject = {
-      id: playlist.id,
-      title: playlist.title,
-      tracks: tracks,
-    };
-
-    playlistsWithTracks.push(playlistObject);
+    // skip empty playlists for profile pages, only a user's library page should show their empty playlists
+    if (tracks.length !== 0 || !isProfilePageRequest) {
+      playlistsWithTracks.push({
+        id: playlist.id,
+        title: playlist.title,
+        tracks: tracks,
+      });
+    }
   }
+
   res.json({ success: true, data: playlistsWithTracks });
   return;
 });
