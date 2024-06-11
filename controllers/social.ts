@@ -53,12 +53,14 @@ const getActivity = async (
     .orderBy("playlist.updated_at", "desc")
     .where("playlist.updated_at", ">", filterDate);
 
+  const ZAP_TYPE = 7;
   const zapQuery = db
     .knex("amp")
-    .andWhere("amp.comment", true)
-    .andWhere("amp.type", 7)
+    .andWhere("amp.type", ZAP_TYPE)
     .join("npub", "amp.user_id", "=", "npub.public_hex")
-    .leftJoin("comment", "comment.amp_id", "=", "amp.id")
+    // for zaps, the type_key is the content_id
+    // zap comments have comment.amp_id hardcoded to 0
+    .leftJoin("comment", "comment.id", "=", "amp.type_key")
     .select(
       "amp.track_id as content_id",
       "amp.msat_amount as msat_amount",
@@ -128,10 +130,10 @@ const getActivity = async (
         zapAmount: zap.msat_amount,
         timestamp: zap.created_at,
         contentId: zap.content_id,
-        contentTitle: content.title,
+        contentTitle: content?.title,
         parentContentId: parentId,
         contentType: zap.content_type,
-        contentArtwork: [content.artwork_url],
+        contentArtwork: [content?.artwork_url],
       };
       if (parentContentType === "album") {
         const album = await db
@@ -143,7 +145,7 @@ const getActivity = async (
           });
         return {
           ...activity,
-          parentContentTitle: album.title,
+          parentContentTitle: album?.title,
           parentContentType,
           contentArtwork: [album.artwork_url],
         };
