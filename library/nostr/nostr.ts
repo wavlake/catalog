@@ -3,6 +3,7 @@ import { Filter, SimplePool } from "nostr-tools";
 import { DEFAULT_READ_RELAY_URIS } from "./common";
 import { Follow } from "../common";
 import log from "loglevel";
+import axios from "axios";
 
 const pool = new SimplePool();
 
@@ -40,13 +41,28 @@ const updateNpubMetadata = async function (npub: String) {
   return { success: true, data: res?.json() };
 };
 
+const nostrBandApi = axios.create({
+  baseURL: "https://api.nostr.band",
+  timeout: 10000,
+});
+
 const getFollowersList = async (publicHex: string) => {
-  const pool = new SimplePool();
-  const filter: Filter = {
-    kinds: [3],
-    ["#p"]: [publicHex],
-  };
-  return pool.querySync(DEFAULT_READ_RELAY_URIS, filter);
+  const response = await nostrBandApi
+    .get<{
+      stats: {
+        [pubkey: string]: {
+          followers_pubkey_count: number;
+        };
+      };
+    }>(`/v0/stats/profile/${publicHex}`)
+    .catch((err) => {
+      log.debug("error fetching followers list from nostr.band API: ", err);
+      return { data: { stats: {} } };
+    });
+
+  const followersCount =
+    response?.data?.stats?.[publicHex]?.followers_pubkey_count ?? 0;
+  return followersCount as number;
 };
 
 const getFollowsList = async (publicHex: string): Promise<Follow[]> => {
