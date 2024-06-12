@@ -118,18 +118,19 @@ const NEW_TRACKS_QUERY = db
   .where("published_at", ">", FILTER_DATE);
 
 const ZAP_TYPE = 7;
-// TODO: Add zaps for Artists, Albums, Episodes, Podcasts
+// TODO: Add zaps for Albums, Episodes, Podcasts
 const ZAP_QUERY = db
   .knex("amp")
   .leftOuterJoin("track", "track.id", "=", "amp.track_id")
   .leftOuterJoin("album", "album.id", "=", "track.album_id")
-  .join("npub", "amp.user_id", "=", "npub.public_hex")
+  .leftOuterJoin("artist", "artist.id", "=", "amp.track_id")
+  .leftOuterJoin("npub", "amp.user_id", "=", "npub.public_hex")
   .leftOuterJoin("comment", "comment.tx_id", "=", "amp.tx_id")
   .select(
     db.knex.raw("npub.metadata::jsonb -> 'picture' as picture"),
     db.knex.raw("npub.metadata::jsonb -> 'name' as name"),
     db.knex.raw('COALESCE("amp"."track_id") as content_id'),
-    db.knex.raw('COALESCE("track"."title") as content_title'),
+    db.knex.raw('COALESCE("track"."title", "artist"."name") as content_title'),
     db.knex.raw('COALESCE("album"."id") as parent_content_id'),
     db.knex.raw('COALESCE("album"."title") as parent_content_title'),
     db.knex.raw("'zap' as type"),
@@ -143,8 +144,7 @@ const ZAP_QUERY = db
   )
   .orderBy("amp.created_at", "desc")
   .where("amp.created_at", ">", FILTER_DATE)
-  .andWhere("amp.type", ZAP_TYPE)
-  .andWhere("amp.content_type", "track"); // Fix with ^ TODO
+  .andWhere("amp.type", ZAP_TYPE);
 
 ////// FUNCTIONS //////
 
