@@ -176,36 +176,32 @@ const getNpubs = async (hexList: string[]) => {
   return npubs;
 };
 
-const formatActivityItems = async (activities: any) => {
-  const formattedActivities = await Promise.all(
-    activities.map(async (activity: any) => {
-      const contentArtwork = activity.content_artwork
-        ? [activity.content_artwork]
-        : activity.content_artwork_list;
-      return {
-        picture: activity.picture,
-        name: activity.name,
-        userId: activity.npub
-          ? nip19.decode(activity.npub).data
-          : activity.user_id,
-        type: activity.type,
-        message: activity.content,
-        zapAmount: activity.msat_amount,
-        timestamp: activity.timestamp,
-        contentId: activity.content_id,
-        contentTitle: activity.content_title,
-        contentType: activity.content_type,
-        contentArtwork: contentArtwork,
-        parentContentId: activity.parent_content_id,
-        parentContentTitle: activity.track_count
-          ? `${activity.track_count} track${
-              activity.track_count > 1 ? "s" : ""
-            }`
-          : activity.parent_content_title,
-        parentContentType: activity.parent_content_type,
-      } as ActivityItem;
-    })
-  );
+const formatActivityItems = (activities: any[]) => {
+  const formattedActivities = activities.map((activity: any) => {
+    const contentArtwork = activity.content_artwork
+      ? [activity.content_artwork]
+      : activity.content_artwork_list;
+    return {
+      picture: activity.picture,
+      name: activity.name,
+      userId: activity.npub
+        ? nip19.decode(activity.npub).data
+        : activity.user_id,
+      type: activity.type,
+      message: activity.content,
+      zapAmount: activity.msat_amount,
+      timestamp: activity.timestamp,
+      contentId: activity.content_id,
+      contentTitle: activity.content_title,
+      contentType: activity.content_type,
+      contentArtwork: contentArtwork,
+      parentContentId: activity.parent_content_id,
+      parentContentTitle: activity.track_count
+        ? `${activity.track_count} track${activity.track_count > 1 ? "s" : ""}`
+        : activity.parent_content_title,
+      parentContentType: activity.parent_content_type,
+    } as ActivityItem;
+  });
   return formattedActivities;
 };
 
@@ -216,7 +212,7 @@ const getActivity = async (
 ) => {
   const activities: any[] = await runQueries(pubkeys);
 
-  const formattedActivity = await formatActivityItems(activities);
+  const formattedActivity = formatActivityItems(activities);
 
   // sort the activity by timestamp
   const sortedActivity = formattedActivity.sort((a, b) => {
