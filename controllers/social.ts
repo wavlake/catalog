@@ -100,14 +100,23 @@ const PLAYLIST_QUERY = db
 
 const NEW_TRACKS_QUERY = db
   .knex("track_info")
+  .join("user", "track_info.user_id", "user.id")
   .select(
-    "track_info.id as contentId",
-    "track_info.title as contentTitle",
-    "track_info.artwork_url as contentArtwork",
-    "track_info.album_id as parentContentId",
-    "track_info.album_title as parentContentTitle",
-    "track_info.published_at as created_at",
-    "track_info.artist_npub as artist_npub"
+    "track_info.id as content_id",
+    "track_info.title as content_title",
+    "track_info.artwork_url as content_artwork",
+    "track_info.album_id as parent_content_id",
+    "track_info.album_title as parent_content_title",
+    "track_info.published_at as timestamp",
+    "track_info.artist_npub as npub",
+    "track_info.artist as name",
+    // TODO: No way to join decoded npub in artist table to npub table in db
+    db.knex.raw(
+      'COALESCE("user"."artwork_url", "track_info"."avatar_url") as picture'
+    ),
+    db.knex.raw("'trackPublish' as type"),
+    db.knex.raw("'track' as content_type"),
+    db.knex.raw("'album' as parent_content_type")
   )
   .orderBy("published_at", "desc")
   .where("published_at", ">", FILTER_DATE);
@@ -140,7 +149,9 @@ const formatActivityItems = async (activities: any) => {
       return {
         picture: activity.picture,
         name: activity.name,
-        userId: activity.user_id,
+        userId: activity.npub
+          ? nip19.decode(activity.npub).data
+          : activity.user_id,
         type: activity.type,
         message: activity.content,
         zapAmount: activity.msat_amount,
@@ -154,8 +165,8 @@ const formatActivityItems = async (activities: any) => {
           ? `${activity.track_count} track${
               activity.track_count > 1 ? "s" : ""
             }`
-          : activity.parentContentTitle,
-        parentContentType: activity.parentContentType,
+          : activity.parent_content_title,
+        parentContentType: activity.parent_content_type,
       } as ActivityItem;
     })
   );
@@ -287,20 +298,20 @@ const getActivity = async (
     // if no pubkeys are provided, get all playlist activity that has a pubkey (string length 64)
     createdPlaylists = await PLAYLIST_QUERY.whereRaw("LENGTH(user_id) = 64");
     // zaps = await ZAP_QUERY.whereRaw("LENGTH(amp.user_id) = 64");
-    // createdTracks = await NEW_TRACKS_QUERY.whereRaw(
-    //   "LENGTH(track_info.artist_npub) = 64"
-    // );
+    createdTracks = await NEW_TRACKS_QUERY.whereRaw(
+      "LENGTH(track_info.artist_npub) = 64"
+    );
   } else {
-    const npubs = await getNpubs(pubkeys);
     createdPlaylists = await PLAYLIST_QUERY.whereIn(
       "playlist.user_id",
       pubkeys
     );
     // zaps = await ZAP_QUERY.whereIn("amp.user_id", pubkeys);
-    // createdTracks = await NEW_TRACKS_QUERY.whereIn(
-    //   "track_info.artist_npub",
-    //   npubs
-    // );
+    const npubs = await getNpubs(pubkeys);
+    createdTracks = await NEW_TRACKS_QUERY.whereIn(
+      "track_info.artist_npub",
+      npubs
+    );
   }
 
   // get the content metadata for all activity items
@@ -317,7 +328,10 @@ const getActivity = async (
   //   ...trackActivity,
   // ];
 
-  const formattedActivity = await formatActivityItems([...createdPlaylists]);
+  const formattedActivity = await formatActivityItems([
+    ...createdPlaylists,
+    ...createdTracks,
+  ]);
   // sort the activity by timestamp
   const sortedActivity = formattedActivity.sort((a, b) => {
     return new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime();
