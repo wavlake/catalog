@@ -57,23 +57,23 @@ const checkPublicKey = async (
     // TODO - get relay list from nip-05
     const latestMetadataEvent = await getProfileMetadata(publicHex);
     const latestMetadata = JSON.parse(latestMetadataEvent.content);
-
-    const followers = await getFollowersList(publicHex);
+    const followersCount = await getFollowersList(publicHex);
     const follows = await getFollowsList(publicHex);
+
     log.debug(`Updating DB: ${latestMetadata.name} ${publicHex}`);
     const updatedData = await prisma.npub.upsert({
       where: { publicHex: publicHex },
       update: {
         metadata: latestMetadata,
         updatedAt: new Date(),
-        followerCount: followers.length,
+        followerCount: followersCount,
         follows: follows,
       },
       create: {
         publicHex: publicHex,
         metadata: latestMetadata,
         updatedAt: new Date(),
-        followerCount: followers.length,
+        followerCount: followersCount,
         follows: follows,
       },
     });

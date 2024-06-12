@@ -45,8 +45,6 @@ const get_account = asyncHandler(async (req, res, next) => {
       )
       .where("user.id", "=", request.accountId);
 
-    if (userData.length > 0) log.debug("found user in db:", userData[0]);
-
     const trackData = await db
       .knex("playlist")
       .join("playlist_track", "playlist.id", "=", "playlist_track.playlist_id")
@@ -61,44 +59,44 @@ const get_account = asyncHandler(async (req, res, next) => {
       .where("user_id", "=", request.accountId)
       .first();
 
-    const userPubkeys = await prisma.userPubkey.findMany({
-      where: {
-        userId: request.accountId,
-      },
-      select: {
-        pubkey: true,
-      },
-    });
-
-    const pubkeyMetadata = await prisma.npub.findMany({
-      where: {
-        publicHex: {
-          in: userPubkeys.map((row) => row.pubkey),
-        },
-      },
-      select: {
-        publicHex: true,
-        metadata: true,
-        followerCount: true,
-        follows: true,
-      },
-    });
+    const userPubkeysWithMetadata = await db
+      .knex("user_pubkey")
+      .join("npub", "user_pubkey.pubkey", "=", "npub.public_hex")
+      .where("user_pubkey.user_id", request.accountId)
+      .select(
+        "user_pubkey.pubkey",
+        "user_pubkey.created_at",
+        "npub.public_hex",
+        "npub.metadata",
+        "npub.follower_count",
+        "npub.follows"
+      )
+      .orderBy("user_pubkey.created_at", "desc");
 
     const { emailVerified, providerData } = await auth().getUser(
       request.accountId
     );
 
+    const responseData = {
+      ...userData[0],
+      nostrProfileData: userPubkeysWithMetadata.map((pubkey) => ({
+        publicHex: pubkey.pubkey,
+        metadata: pubkey.metadata,
+        followerCount: pubkey.follower_count,
+        follows: pubkey.follows,
+      })),
+      emailVerified,
+      isRegionVerified: !!isRegionVerified,
+      providerId: providerData[0]?.providerId,
+      userFavoritesId: (trackData[0] || {}).playlistId,
+      userFavorites: trackData.map((track) => track.id),
+    };
+
+    if (responseData) log.debug("found user in db:", responseData);
+
     res.send({
       success: true,
-      data: {
-        ...userData[0],
-        nostrProfileData: pubkeyMetadata,
-        emailVerified,
-        isRegionVerified: !!isRegionVerified,
-        providerId: providerData[0]?.providerId,
-        userFavoritesId: (trackData[0] || {}).playlistId,
-        userFavorites: trackData.map((track) => track.id),
-      },
+      data: responseData,
     });
   } catch (err) {
     next(err);
@@ -830,21 +828,6 @@ const add_pubkey_to_account = asyncHandler(async (req, res, next) => {
         error: "Pubkey is registered to another account",
       });
       return;
-    }
-
-    // find any existing pubkey for this user
-    const existingPubkeyForUserId = await prisma.userPubkey.findFirst({
-      where: {
-        userId: user.uid,
-      },
-    });
-    if (existingPubkeyForUserId?.pubkey) {
-      // delete it if it exists
-      await prisma.userPubkey.delete({
-        where: {
-          pubkey: existingPubkeyForUserId.pubkey,
-        },
-      });
     }
 
     await prisma.userPubkey.create({
