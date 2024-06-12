@@ -86,7 +86,7 @@ const PLAYLIST_QUERY = db
     db.knex.raw("MIN(playlist.user_id) as user_id"),
     db.knex.raw("MIN(playlist.title) as title"),
     db.knex.raw("MIN(playlist.updated_at) as timestamp"),
-    db.knex.raw("ARRAY_AGG(track_info.artwork_url) as content_artwork"),
+    db.knex.raw("ARRAY_AGG(track_info.artwork_url) as content_artwork_list"),
     db.knex.raw("MIN(playlist_track_count.count) as track_count")
   )
   .orderBy("playlist.updated_at", "desc")
@@ -132,6 +132,7 @@ const ZAP_QUERY = db
     db.knex.raw('COALESCE("track"."title") as content_title'),
     db.knex.raw('COALESCE("album"."title") as parent_content_title'),
     db.knex.raw("'zap' as type"),
+    "album.artwork_url as content_artwork",
     "amp.msat_amount as msat_amount",
     "amp.created_at as timestamp",
     "amp.content_type as content_type",
@@ -149,6 +150,9 @@ const ZAP_QUERY = db
 const formatActivityItems = async (activities: any) => {
   const formattedActivities = await Promise.all(
     activities.map(async (activity: any) => {
+      const contentArtwork = activity.content_artwork
+        ? [activity.content_artwork]
+        : activity.content_artwork_list;
       return {
         picture: activity.picture,
         name: activity.name,
@@ -162,7 +166,7 @@ const formatActivityItems = async (activities: any) => {
         contentId: activity.content_id,
         contentTitle: activity.content_title,
         contentType: activity.content_type,
-        contentArtwork: activity.content_artwork,
+        contentArtwork: contentArtwork,
         parentContentId: activity.parent_content_id,
         parentContentTitle: activity.track_count
           ? `${activity.track_count} track${
