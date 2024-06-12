@@ -48,18 +48,55 @@ const NEW_DATE = new Date();
 NEW_DATE.setDate(NEW_DATE.getDate() - LOOKBACK_DAYS);
 const FILTER_DATE = NEW_DATE.toISOString().slice(0, 19).replace("T", " ");
 
+// Query to get just the first 4 tracks in a playlist
+const PLAYLIST_TRACKS_METADATA = db
+  .knex("playlist_track")
+  .select("playlist_id", "track_id")
+  .rowNumber("row_number", function () {
+    this.orderBy("order_int").partitionBy("playlist_id");
+  })
+  .as("playlist_four");
+
+const PLAYLIST_TRACKS_COUNT = db
+  .knex("playlist_track")
+  .select("playlist_id")
+  .count("playlist_id as count")
+  .groupBy("playlist_id")
+  .as("playlist_track_count");
+
 const PLAYLIST_QUERY = db
   .knex("playlist")
   .join("npub", "playlist.user_id", "npub.public_hex")
+  .join(
+    PLAYLIST_TRACKS_METADATA,
+    "playlist.id",
+    "=",
+    "playlist_four.playlist_id"
+  )
+  .join(
+    PLAYLIST_TRACKS_COUNT,
+    "playlist.id",
+    "=",
+    "playlist_track_count.playlist_id"
+  )
+  .join("track_info", "track_info.id", "=", "playlist_four.track_id")
   .select(
     "playlist.id as id",
-    "playlist.user_id as user_id",
-    "playlist.title as title",
-    "playlist.updated_at as updated_at",
-    "npub.metadata as metadata"
+    db.knex.raw("npub.metadata::jsonb -> 'picture' as picture"),
+    db.knex.raw("npub.metadata::jsonb -> 'name' as name"),
+    db.knex.raw("'playlistCreate' as type"),
+    db.knex.raw("'playlist' as content_type"),
+    db.knex.raw("MIN(playlist.title) as content_title"),
+    db.knex.raw("MIN(playlist.user_id) as user_id"),
+    db.knex.raw("MIN(playlist.title) as title"),
+    db.knex.raw("MIN(playlist.updated_at) as timestamp"),
+    db.knex.raw("ARRAY_AGG(track_info.artwork_url) as content_artwork"),
+    db.knex.raw("MIN(playlist_track_count.count) as track_count")
   )
   .orderBy("playlist.updated_at", "desc")
-  .where("playlist.updated_at", ">", FILTER_DATE);
+  .groupBy("playlist.id", "npub.metadata")
+  .where("playlist.updated_at", ">", FILTER_DATE)
+  .andWhere("playlist_four.row_number", "<=", 4);
 
 const NEW_TRACKS_QUERY = db
   .knex("track_info")
@@ -97,37 +134,32 @@ const ZAP_QUERY = db
 
 ////// FUNCTIONS //////
 
-const getPlaylistActivityMetadata = async (playlists: any[]) => {
-  const createdPlaylistActivity: ActivityItem[] = [];
-  for (const playlist of playlists) {
-    const tracks = await db
-      .knex("playlist_track")
-      .select(
-        "track_info.artwork_url as artworkUrl",
-        "playlist_track.order_int as order"
-      )
-      .join("track_info", "track_info.id", "=", "playlist_track.track_id")
-      .where("playlist_track.playlist_id", playlist.id)
-      .orderBy("playlist_track.order_int", "asc");
-
-    if (tracks.length !== 0) {
-      createdPlaylistActivity.push({
-        picture: playlist.metadata?.picture,
-        name: playlist.metadata?.name,
-        userId: playlist.user_id,
-        type: "playlistCreate",
-        timestamp: playlist.updated_at,
-        contentId: playlist.id,
-        contentTitle: playlist.title,
-        parentContentTitle: `${tracks.length} track${
-          tracks.length > 1 ? "s" : ""
-        }`,
-        contentType: "playlist",
-        contentArtwork: tracks.map((track) => track.artworkUrl),
-      });
-    }
-  }
-  return createdPlaylistActivity;
+const formatActivityItems = async (activities: any) => {
+  const formattedActivities = await Promise.all(
+    activities.map(async (activity: any) => {
+      return {
+        picture: activity.picture,
+        name: activity.name,
+        userId: activity.user_id,
+        type: activity.type,
+        message: activity.content,
+        zapAmount: activity.msat_amount,
+        timestamp: activity.timestamp,
+        contentId: activity.content_id,
+        contentTitle: activity.content_title,
+        contentType: activity.content_type,
+        contentArtwork: activity.content_artwork,
+        parentContentId: activity.parent_content_id,
+        parentContentTitle: activity.track_count
+          ? `${activity.track_count} track${
+              activity.track_count > 1 ? "s" : ""
+            }`
+          : activity.parentContentTitle,
+        parentContentType: activity.parentContentType,
+      } as ActivityItem;
+    })
+  );
+  return formattedActivities;
 };
 
 const getZappedContentActivityMetadata = async (zaps: any[]) => {
@@ -254,35 +286,40 @@ const getActivity = async (
   if (!pubkeys) {
     // if no pubkeys are provided, get all playlist activity that has a pubkey (string length 64)
     createdPlaylists = await PLAYLIST_QUERY.whereRaw("LENGTH(user_id) = 64");
-    zaps = await ZAP_QUERY.whereRaw("LENGTH(amp.user_id) = 64");
-    createdTracks = await NEW_TRACKS_QUERY.whereRaw(
-      "LENGTH(track_info.artist_npub) = 64"
-    );
+    // zaps = await ZAP_QUERY.whereRaw("LENGTH(amp.user_id) = 64");
+    // createdTracks = await NEW_TRACKS_QUERY.whereRaw(
+    //   "LENGTH(track_info.artist_npub) = 64"
+    // );
   } else {
     const npubs = await getNpubs(pubkeys);
-    createdPlaylists = await PLAYLIST_QUERY.whereIn("user_id", pubkeys);
-    zaps = await ZAP_QUERY.whereIn("amp.user_id", pubkeys);
-    createdTracks = await NEW_TRACKS_QUERY.whereIn(
-      "track_info.artist_npub",
-      npubs
+    createdPlaylists = await PLAYLIST_QUERY.whereIn(
+      "playlist.user_id",
+      pubkeys
     );
+    // zaps = await ZAP_QUERY.whereIn("amp.user_id", pubkeys);
+    // createdTracks = await NEW_TRACKS_QUERY.whereIn(
+    //   "track_info.artist_npub",
+    //   npubs
+    // );
   }
 
   // get the content metadata for all activity items
-  const createdPlaylistActivity = await getPlaylistActivityMetadata(
-    createdPlaylists
-  );
-  const zapActivity = await getZappedContentActivityMetadata(zaps);
+  // const createdPlaylistActivity = await getPlaylistActivityMetadata(
+  //   createdPlaylists
+  // );
+  // const zapActivity = await getZappedContentActivityMetadata(zaps);
 
-  const trackActivity = await getNewTracksActivityMetadata(createdTracks);
+  // const trackActivity = await getNewTracksActivityMetadata(createdTracks);
 
-  const combinedActivity = [
-    ...createdPlaylistActivity,
-    ...zapActivity,
-    ...trackActivity,
-  ];
+  // const combinedActivity = [
+  //   ...createdPlaylistActivity,
+  //   ...zapActivity,
+  //   ...trackActivity,
+  // ];
+
+  const formattedActivity = await formatActivityItems([...createdPlaylists]);
   // sort the activity by timestamp
-  const sortedActivity = combinedActivity.sort((a, b) => {
+  const sortedActivity = formattedActivity.sort((a, b) => {
     return new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime();
   });
   // apply the limit and offset
