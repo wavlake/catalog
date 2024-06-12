@@ -40,9 +40,14 @@ interface Follow extends Prisma.JsonArray {
 ////// QUERIES //////
 
 const LOOKBACK_DAYS = 45;
-const NEW_DATE = new Date();
-NEW_DATE.setDate(NEW_DATE.getDate() - LOOKBACK_DAYS);
-const FILTER_DATE = NEW_DATE.toISOString().slice(0, 19).replace("T", " ");
+let filterDate;
+
+const updateFilterDate = () => {
+  const newDate = new Date();
+  newDate.setDate(newDate.getDate() - LOOKBACK_DAYS);
+  filterDate = newDate.toISOString().slice(0, 19).replace("T", " ");
+};
+updateFilterDate();
 
 // Query to get just the first 4 tracks in a playlist
 const PLAYLIST_TRACKS_METADATA = db
@@ -62,7 +67,7 @@ const PLAYLIST_TRACKS_COUNT = db
 
 const PLAYLIST_QUERY = db
   .knex("playlist")
-  .join("npub", "playlist.user_id", "npub.public_hex")
+  .leftOuterJoin("npub", "playlist.user_id", "npub.public_hex")
   .join(
     PLAYLIST_TRACKS_METADATA,
     "playlist.id",
@@ -91,8 +96,10 @@ const PLAYLIST_QUERY = db
   )
   .orderBy("playlist.updated_at", "desc")
   .groupBy("playlist.id", "npub.metadata")
-  .where("playlist.updated_at", ">", FILTER_DATE)
-  .andWhere("playlist_four.row_number", "<=", 4);
+  .where("playlist.updated_at", ">", filterDate)
+  .andWhere("playlist_four.row_number", "<=", 4)
+  .whereRaw("LENGTH(playlist.user_id) = 64")
+  .as("playlist_query");
 
 const NEW_TRACKS_QUERY = db
   .knex("track_info")
@@ -115,7 +122,9 @@ const NEW_TRACKS_QUERY = db
     db.knex.raw("'album' as parent_content_type")
   )
   .orderBy("published_at", "desc")
-  .where("published_at", ">", FILTER_DATE);
+  .where("published_at", ">", filterDate)
+  .whereRaw("LENGTH(track_info.artist_npub) = 64")
+  .as("new_tracks_query");
 
 const ZAP_TYPE = 7;
 // TODO: Add zaps for Albums, Episodes, Podcasts
@@ -143,10 +152,60 @@ const ZAP_QUERY = db
     "amp.user_id as user_id"
   )
   .orderBy("amp.created_at", "desc")
-  .where("amp.created_at", ">", FILTER_DATE)
-  .andWhere("amp.type", ZAP_TYPE);
+  .where("amp.created_at", ">", filterDate)
+  .andWhere("amp.type", ZAP_TYPE)
+  .as("zap_query");
 
 ////// FUNCTIONS //////
+
+const getPlaylistActivity = async (pubkeys: string[] | null) => {
+  updateFilterDate();
+  let createdPlaylists: any[] = [];
+  if (!pubkeys) {
+    // if no pubkeys are provided, get all playlist activity that has a pubkey (string length 64)
+    createdPlaylists = await db.knex(PLAYLIST_QUERY);
+    // .whereRaw("LENGTH(playlist.user_id) = 64");
+  } else {
+    createdPlaylists = await db
+      .knex(PLAYLIST_QUERY)
+      .whereIn("user_id", pubkeys);
+  }
+  return createdPlaylists;
+};
+
+const getZapActivity = async (pubkeys: string[] | null) => {
+  updateFilterDate();
+  let zaps: any[] = [];
+  if (!pubkeys) {
+    zaps = await db.knex(ZAP_QUERY);
+    // .whereRaw("LENGTH(amp.user_id) = 64");
+  } else {
+    zaps = await db.knex(ZAP_QUERY).whereIn("user_id", pubkeys);
+  }
+  return zaps;
+};
+
+const getNpubs = async (hexList: string[]) => {
+  let npubs: string[] = [];
+  hexList.forEach(async (hex) => {
+    npubs.push(nip19.npubEncode(hex));
+  });
+  return npubs;
+};
+
+const getNewTrackActivity = async (pubkeys: string[] | null) => {
+  updateFilterDate();
+  let createdTracks: any[] = [];
+  if (!pubkeys) {
+    createdTracks = await db.knex(NEW_TRACKS_QUERY);
+    // .whereRaw("LENGTH(track_info.artist_npub) = 64");
+  } else {
+    // We have to convert the hex pubkeys to npub format to query the artist table
+    const npubs = await getNpubs(pubkeys);
+    createdTracks = await db.knex(NEW_TRACKS_QUERY).whereIn("npub", npubs);
+  }
+  return createdTracks;
+};
 
 const formatActivityItems = async (activities: any) => {
   const formattedActivities = await Promise.all(
@@ -181,14 +240,6 @@ const formatActivityItems = async (activities: any) => {
   return formattedActivities;
 };
 
-const getNpubs = async (hexList: string[]) => {
-  let npubs: string[] = [];
-  hexList.forEach(async (hex) => {
-    npubs.push(nip19.npubEncode(hex));
-  });
-  return npubs;
-};
-
 const getActivity = async (
   pubkeys: string[] | null,
   limit: number,
@@ -199,25 +250,13 @@ const getActivity = async (
   let zaps: any[] = [];
   if (!pubkeys) {
     // if no pubkeys are provided, get all playlist activity that has a pubkey (string length 64)
-    createdPlaylists = await PLAYLIST_QUERY.whereRaw(
-      "LENGTH(playlist.user_id) = 64"
-    );
-    zaps = await ZAP_QUERY.whereRaw("LENGTH(amp.user_id) = 64");
-    createdTracks = await NEW_TRACKS_QUERY.whereRaw(
-      "LENGTH(track_info.artist_npub) = 64"
-    );
+    createdPlaylists = await getPlaylistActivity(null);
+    zaps = await getZapActivity(null);
+    createdTracks = await getNewTrackActivity(null);
   } else {
-    createdPlaylists = await PLAYLIST_QUERY.whereIn(
-      "playlist.user_id",
-      pubkeys
-    );
-    zaps = await ZAP_QUERY.whereIn("amp.user_id", pubkeys);
-    // We have to convert the hex pubkeys to npub format to query the artist table
-    const npubs = await getNpubs(pubkeys);
-    createdTracks = await NEW_TRACKS_QUERY.whereIn(
-      "track_info.artist_npub",
-      npubs
-    );
+    createdPlaylists = await getPlaylistActivity(pubkeys);
+    zaps = await getZapActivity(pubkeys);
+    createdTracks = await getNewTrackActivity(pubkeys);
   }
 
   const formattedActivity = await formatActivityItems([
