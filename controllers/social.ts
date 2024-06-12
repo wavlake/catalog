@@ -37,153 +37,136 @@ interface Follow extends Prisma.JsonArray {
   petname?: string;
 }
 
-////// QUERIES //////
-
 const LOOKBACK_DAYS = 45;
-let filterDate;
-
-const updateFilterDate = () => {
+////// QUERIES //////
+const runQueries = async (pubkeys: any[] | null) => {
   const newDate = new Date();
   newDate.setDate(newDate.getDate() - LOOKBACK_DAYS);
-  filterDate = newDate.toISOString().slice(0, 19).replace("T", " ");
+  const filterDate = newDate.toISOString().slice(0, 19).replace("T", " ");
+
+  // Query to get just the first 4 tracks in a playlist
+  const PLAYLIST_TRACKS_METADATA = db
+    .knex("playlist_track")
+    .select("playlist_id", "track_id")
+    .rowNumber("row_number", function () {
+      this.orderBy("order_int").partitionBy("playlist_id");
+    })
+    .as("playlist_four");
+
+  const PLAYLIST_TRACKS_COUNT = db
+    .knex("playlist_track")
+    .select("playlist_id")
+    .count("playlist_id as count")
+    .groupBy("playlist_id")
+    .as("playlist_track_count");
+
+  const PLAYLIST_QUERY = db
+    .knex("playlist")
+    .leftOuterJoin("npub", "playlist.user_id", "npub.public_hex")
+    .join(
+      PLAYLIST_TRACKS_METADATA,
+      "playlist.id",
+      "=",
+      "playlist_four.playlist_id"
+    )
+    .join(
+      PLAYLIST_TRACKS_COUNT,
+      "playlist.id",
+      "=",
+      "playlist_track_count.playlist_id"
+    )
+    .join("track_info", "track_info.id", "=", "playlist_four.track_id")
+    .select(
+      "playlist.id as content_id",
+      db.knex.raw("MIN(playlist.title) as content_title"),
+      db.knex.raw("ARRAY_AGG(track_info.artwork_url) as content_artwork_list"),
+      db.knex.raw("npub.metadata::jsonb -> 'picture' as picture"),
+      db.knex.raw("npub.metadata::jsonb -> 'name' as name"),
+      db.knex.raw("'playlistCreate' as type"),
+      db.knex.raw("'playlist' as content_type"),
+      db.knex.raw("MIN(playlist.user_id) as user_id"),
+      db.knex.raw("MIN(playlist.title) as title"),
+      db.knex.raw("MIN(playlist.updated_at) as timestamp"),
+      db.knex.raw("MIN(playlist_track_count.count) as track_count")
+    )
+    .orderBy("playlist.updated_at", "desc")
+    .groupBy("playlist.id", "npub.metadata")
+    .where("playlist.updated_at", ">", filterDate)
+    .andWhere("playlist_four.row_number", "<=", 4)
+    .whereRaw("LENGTH(playlist.user_id) = 64")
+    .as("playlist_query");
+
+  const NEW_TRACKS_QUERY = db
+    .knex("track_info")
+    .join("user", "track_info.user_id", "user.id")
+    .select(
+      "track_info.id as content_id",
+      "track_info.title as content_title",
+      "track_info.artwork_url as content_artwork",
+      "track_info.album_id as parent_content_id",
+      "track_info.album_title as parent_content_title",
+      "track_info.published_at as timestamp",
+      "track_info.artist_npub as npub",
+      "track_info.artist as name",
+      // TODO: No way to join decoded npub in artist table to npub table in db
+      db.knex.raw(
+        'COALESCE("user"."artwork_url", "track_info"."avatar_url") as picture'
+      ),
+      db.knex.raw("'trackPublish' as type"),
+      db.knex.raw("'track' as content_type"),
+      db.knex.raw("'album' as parent_content_type")
+    )
+    .orderBy("published_at", "desc")
+    .where("published_at", ">", filterDate)
+    .whereRaw("LENGTH(track_info.artist_npub) = 64")
+    .as("new_tracks_query");
+
+  const ZAP_TYPE = 7;
+  // TODO: Add zaps for Albums, Episodes, Podcasts
+  const ZAP_QUERY = db
+    .knex("amp")
+    .leftOuterJoin("track", "track.id", "=", "amp.track_id")
+    .leftOuterJoin("album", "album.id", "=", "track.album_id")
+    .leftOuterJoin("artist", "artist.id", "=", "amp.track_id")
+    .leftOuterJoin("npub", "amp.user_id", "=", "npub.public_hex")
+    .leftOuterJoin("comment", "comment.tx_id", "=", "amp.tx_id")
+    .select(
+      db.knex.raw("npub.metadata::jsonb -> 'picture' as picture"),
+      db.knex.raw("npub.metadata::jsonb -> 'name' as name"),
+      db.knex.raw('COALESCE("amp"."track_id") as content_id'),
+      db.knex.raw(
+        'COALESCE("track"."title", "artist"."name") as content_title'
+      ),
+      db.knex.raw('COALESCE("album"."id") as parent_content_id'),
+      db.knex.raw('COALESCE("album"."title") as parent_content_title'),
+      db.knex.raw("'zap' as type"),
+      "album.artwork_url as content_artwork",
+      "amp.msat_amount as msat_amount",
+      "amp.created_at as timestamp",
+      "amp.content_type as content_type",
+      "npub.metadata as metadata",
+      "comment.content as content",
+      "amp.user_id as user_id"
+    )
+    .orderBy("amp.created_at", "desc")
+    .where("amp.created_at", ">", filterDate)
+    .andWhere("amp.type", ZAP_TYPE)
+    .as("zap_query");
+
+  const npubs = pubkeys ? await getNpubs(pubkeys) : null;
+  const playlists = pubkeys
+    ? await db.knex(PLAYLIST_QUERY).whereIn("user_id", pubkeys)
+    : await db.knex(PLAYLIST_QUERY);
+  const tracks = pubkeys
+    ? await db.knex(NEW_TRACKS_QUERY).whereIn("npub", npubs)
+    : await db.knex(NEW_TRACKS_QUERY);
+  const zaps = pubkeys
+    ? await db.knex(ZAP_QUERY).whereIn("user_id", pubkeys)
+    : await db.knex(ZAP_QUERY);
+  return [...playlists, ...tracks, ...zaps];
 };
-updateFilterDate();
-
-// Query to get just the first 4 tracks in a playlist
-const PLAYLIST_TRACKS_METADATA = db
-  .knex("playlist_track")
-  .select("playlist_id", "track_id")
-  .rowNumber("row_number", function () {
-    this.orderBy("order_int").partitionBy("playlist_id");
-  })
-  .as("playlist_four");
-
-const PLAYLIST_TRACKS_COUNT = db
-  .knex("playlist_track")
-  .select("playlist_id")
-  .count("playlist_id as count")
-  .groupBy("playlist_id")
-  .as("playlist_track_count");
-
-const PLAYLIST_QUERY = db
-  .knex("playlist")
-  .leftOuterJoin("npub", "playlist.user_id", "npub.public_hex")
-  .join(
-    PLAYLIST_TRACKS_METADATA,
-    "playlist.id",
-    "=",
-    "playlist_four.playlist_id"
-  )
-  .join(
-    PLAYLIST_TRACKS_COUNT,
-    "playlist.id",
-    "=",
-    "playlist_track_count.playlist_id"
-  )
-  .join("track_info", "track_info.id", "=", "playlist_four.track_id")
-  .select(
-    "playlist.id as id",
-    db.knex.raw("npub.metadata::jsonb -> 'picture' as picture"),
-    db.knex.raw("npub.metadata::jsonb -> 'name' as name"),
-    db.knex.raw("'playlistCreate' as type"),
-    db.knex.raw("'playlist' as content_type"),
-    db.knex.raw("MIN(playlist.title) as content_title"),
-    db.knex.raw("MIN(playlist.user_id) as user_id"),
-    db.knex.raw("MIN(playlist.title) as title"),
-    db.knex.raw("MIN(playlist.updated_at) as timestamp"),
-    db.knex.raw("ARRAY_AGG(track_info.artwork_url) as content_artwork_list"),
-    db.knex.raw("MIN(playlist_track_count.count) as track_count")
-  )
-  .orderBy("playlist.updated_at", "desc")
-  .groupBy("playlist.id", "npub.metadata")
-  .where("playlist.updated_at", ">", filterDate)
-  .andWhere("playlist_four.row_number", "<=", 4)
-  .whereRaw("LENGTH(playlist.user_id) = 64")
-  .as("playlist_query");
-
-const NEW_TRACKS_QUERY = db
-  .knex("track_info")
-  .join("user", "track_info.user_id", "user.id")
-  .select(
-    "track_info.id as content_id",
-    "track_info.title as content_title",
-    "track_info.artwork_url as content_artwork",
-    "track_info.album_id as parent_content_id",
-    "track_info.album_title as parent_content_title",
-    "track_info.published_at as timestamp",
-    "track_info.artist_npub as npub",
-    "track_info.artist as name",
-    // TODO: No way to join decoded npub in artist table to npub table in db
-    db.knex.raw(
-      'COALESCE("user"."artwork_url", "track_info"."avatar_url") as picture'
-    ),
-    db.knex.raw("'trackPublish' as type"),
-    db.knex.raw("'track' as content_type"),
-    db.knex.raw("'album' as parent_content_type")
-  )
-  .orderBy("published_at", "desc")
-  .where("published_at", ">", filterDate)
-  .whereRaw("LENGTH(track_info.artist_npub) = 64")
-  .as("new_tracks_query");
-
-const ZAP_TYPE = 7;
-// TODO: Add zaps for Albums, Episodes, Podcasts
-const ZAP_QUERY = db
-  .knex("amp")
-  .leftOuterJoin("track", "track.id", "=", "amp.track_id")
-  .leftOuterJoin("album", "album.id", "=", "track.album_id")
-  .leftOuterJoin("artist", "artist.id", "=", "amp.track_id")
-  .leftOuterJoin("npub", "amp.user_id", "=", "npub.public_hex")
-  .leftOuterJoin("comment", "comment.tx_id", "=", "amp.tx_id")
-  .select(
-    db.knex.raw("npub.metadata::jsonb -> 'picture' as picture"),
-    db.knex.raw("npub.metadata::jsonb -> 'name' as name"),
-    db.knex.raw('COALESCE("amp"."track_id") as content_id'),
-    db.knex.raw('COALESCE("track"."title", "artist"."name") as content_title'),
-    db.knex.raw('COALESCE("album"."id") as parent_content_id'),
-    db.knex.raw('COALESCE("album"."title") as parent_content_title'),
-    db.knex.raw("'zap' as type"),
-    "album.artwork_url as content_artwork",
-    "amp.msat_amount as msat_amount",
-    "amp.created_at as timestamp",
-    "amp.content_type as content_type",
-    "npub.metadata as metadata",
-    "comment.content as content",
-    "amp.user_id as user_id"
-  )
-  .orderBy("amp.created_at", "desc")
-  .where("amp.created_at", ">", filterDate)
-  .andWhere("amp.type", ZAP_TYPE)
-  .as("zap_query");
 
 ////// FUNCTIONS //////
-
-const getPlaylistActivity = async (pubkeys: string[] | null) => {
-  updateFilterDate();
-  let createdPlaylists: any[] = [];
-  if (!pubkeys) {
-    // if no pubkeys are provided, get all playlist activity that has a pubkey (string length 64)
-    createdPlaylists = await db.knex(PLAYLIST_QUERY);
-    // .whereRaw("LENGTH(playlist.user_id) = 64");
-  } else {
-    createdPlaylists = await db
-      .knex(PLAYLIST_QUERY)
-      .whereIn("user_id", pubkeys);
-  }
-  return createdPlaylists;
-};
-
-const getZapActivity = async (pubkeys: string[] | null) => {
-  updateFilterDate();
-  let zaps: any[] = [];
-  if (!pubkeys) {
-    zaps = await db.knex(ZAP_QUERY);
-    // .whereRaw("LENGTH(amp.user_id) = 64");
-  } else {
-    zaps = await db.knex(ZAP_QUERY).whereIn("user_id", pubkeys);
-  }
-  return zaps;
-};
 
 const getNpubs = async (hexList: string[]) => {
   let npubs: string[] = [];
@@ -191,20 +174,6 @@ const getNpubs = async (hexList: string[]) => {
     npubs.push(nip19.npubEncode(hex));
   });
   return npubs;
-};
-
-const getNewTrackActivity = async (pubkeys: string[] | null) => {
-  updateFilterDate();
-  let createdTracks: any[] = [];
-  if (!pubkeys) {
-    createdTracks = await db.knex(NEW_TRACKS_QUERY);
-    // .whereRaw("LENGTH(track_info.artist_npub) = 64");
-  } else {
-    // We have to convert the hex pubkeys to npub format to query the artist table
-    const npubs = await getNpubs(pubkeys);
-    createdTracks = await db.knex(NEW_TRACKS_QUERY).whereIn("npub", npubs);
-  }
-  return createdTracks;
 };
 
 const formatActivityItems = async (activities: any) => {
@@ -245,25 +214,9 @@ const getActivity = async (
   limit: number,
   offset: number = 0
 ) => {
-  let createdPlaylists: any[] = [];
-  let createdTracks: any[] = [];
-  let zaps: any[] = [];
-  if (!pubkeys) {
-    // if no pubkeys are provided, get all playlist activity that has a pubkey (string length 64)
-    createdPlaylists = await getPlaylistActivity(null);
-    zaps = await getZapActivity(null);
-    createdTracks = await getNewTrackActivity(null);
-  } else {
-    createdPlaylists = await getPlaylistActivity(pubkeys);
-    zaps = await getZapActivity(pubkeys);
-    createdTracks = await getNewTrackActivity(pubkeys);
-  }
+  const activities: any[] = await runQueries(pubkeys);
 
-  const formattedActivity = await formatActivityItems([
-    ...createdPlaylists,
-    ...createdTracks,
-    ...zaps,
-  ]);
+  const formattedActivity = await formatActivityItems(activities);
 
   // sort the activity by timestamp
   const sortedActivity = formattedActivity.sort((a, b) => {
