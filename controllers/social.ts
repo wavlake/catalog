@@ -130,6 +130,7 @@ const ZAP_QUERY = db
     db.knex.raw("npub.metadata::jsonb -> 'name' as name"),
     db.knex.raw('COALESCE("amp"."track_id") as content_id'),
     db.knex.raw('COALESCE("track"."title") as content_title'),
+    db.knex.raw('COALESCE("album"."id") as parent_content_id'),
     db.knex.raw('COALESCE("album"."title") as parent_content_title'),
     db.knex.raw("'zap' as type"),
     "album.artwork_url as content_artwork",
