@@ -4,10 +4,6 @@ import { Prisma } from "@prisma/client";
 import db from "../library/db";
 import { SplitContentTypes } from "../library/userHelper";
 import log from "loglevel";
-import {
-  getContentFromId,
-  getParentContentTypeAndId,
-} from "../library/content";
 import { nip19 } from "nostr-tools";
 
 type ActivityType =
@@ -122,24 +118,31 @@ const NEW_TRACKS_QUERY = db
   .where("published_at", ">", FILTER_DATE);
 
 const ZAP_TYPE = 7;
+// TODO: Add zaps for Artists, Albums, Episodes, Podcasts
 const ZAP_QUERY = db
   .knex("amp")
-  .andWhere("amp.type", ZAP_TYPE)
+  .leftOuterJoin("track", "track.id", "=", "amp.track_id")
+  .leftOuterJoin("album", "album.id", "=", "track.album_id")
   .join("npub", "amp.user_id", "=", "npub.public_hex")
-  // for zaps, the type_key is the content_id
-  // zap comments have comment.amp_id hardcoded to 0
-  .leftJoin("comment", "comment.id", "=", "amp.type_key")
+  .leftOuterJoin("comment", "comment.tx_id", "=", "amp.tx_id")
   .select(
-    "amp.track_id as content_id",
+    db.knex.raw("npub.metadata::jsonb -> 'picture' as picture"),
+    db.knex.raw("npub.metadata::jsonb -> 'name' as name"),
+    db.knex.raw('COALESCE("amp"."track_id") as content_id'),
+    db.knex.raw('COALESCE("track"."title") as content_title'),
+    db.knex.raw('COALESCE("album"."title") as parent_content_title'),
+    db.knex.raw("'zap' as type"),
     "amp.msat_amount as msat_amount",
-    "amp.created_at as created_at",
+    "amp.created_at as timestamp",
     "amp.content_type as content_type",
     "npub.metadata as metadata",
     "comment.content as content",
     "amp.user_id as user_id"
   )
   .orderBy("amp.created_at", "desc")
-  .where("amp.created_at", ">", FILTER_DATE);
+  .where("amp.created_at", ">", FILTER_DATE)
+  .andWhere("amp.type", ZAP_TYPE)
+  .andWhere("amp.content_type", "track"); // Fix with ^ TODO
 
 ////// FUNCTIONS //////
 
@@ -173,111 +176,6 @@ const formatActivityItems = async (activities: any) => {
   return formattedActivities;
 };
 
-const getZappedContentActivityMetadata = async (zaps: any[]) => {
-  const zappedContent = await Promise.all(
-    zaps.map(async (zap: any): Promise<ActivityItem> => {
-      const { parentId, contentType: parentContentType } =
-        await getParentContentTypeAndId(zap.content_id);
-      const content = await getContentFromId(zap.content_id);
-      const activity = {
-        picture: zap.metadata?.picture,
-        name: zap.metadata?.name,
-        userId: zap.user_id,
-        type: "zap" as ActivityType,
-        message: zap.content,
-        zapAmount: zap.msat_amount,
-        timestamp: zap.created_at,
-        contentId: zap.content_id,
-        contentTitle: content?.title,
-        parentContentId: parentId,
-        contentType: zap.content_type,
-        contentArtwork: [content?.artwork_url],
-      };
-      if (parentContentType === "album") {
-        const album = await db
-          .knex("album")
-          .select("*")
-          .where("id", parentId)
-          .then((data) => {
-            return data[0];
-          });
-        return {
-          ...activity,
-          parentContentTitle: album?.title,
-          parentContentType,
-          contentArtwork: [album.artwork_url],
-        };
-      } else if (parentContentType === "podcast") {
-        const podcast = await db
-          .knex("podcast")
-          .select("*")
-          .where("id", parentId)
-          .then((data) => {
-            return data[0];
-          });
-        return {
-          ...activity,
-          parentContentTitle: podcast.name,
-          parentContentType,
-          contentArtwork: [podcast.artwork_url],
-        };
-      } else if (parentContentType === "artist") {
-        const artist = await db
-          .knex("artist")
-          .select("*")
-          .where("id", parentId)
-          .then((data) => {
-            return data[0];
-          });
-        return {
-          ...activity,
-          parentContentTitle: artist.name,
-          parentContentType,
-          contentArtwork: [content.artwork_url],
-        };
-      }
-
-      return activity;
-    })
-  );
-
-  return zappedContent;
-};
-
-const getNewTracksActivityMetadata = async (tracks: any[]) => {
-  const newTracksActivity: ActivityItem[] = [];
-  for (const track of tracks) {
-    // get the artist pubkey in hex
-    const { type, data } = nip19.decode(track.artist_npub);
-    const artistMetadata = await db
-      .knex("npub")
-      .select("metadata")
-      .where("public_hex", data)
-      .then((data) => {
-        if (data.length === 0) {
-          return {};
-        }
-        return data[0];
-      });
-
-    newTracksActivity.push({
-      picture: artistMetadata.metadata?.picture,
-      name: artistMetadata.metadata?.name,
-      userId: data as string,
-      type: "trackPublish",
-      timestamp: track.created_at,
-      contentId: track.id,
-      contentTitle: track.contentTitle,
-      contentType: "track",
-      contentArtwork: [track.contentArtwork],
-      parentContentId: track.parentContentId,
-      parentContentTitle: track.parentContentTitle,
-      parentContentType: "album",
-    });
-  }
-  return newTracksActivity;
-};
-
 const getNpubs = async (hexList: string[]) => {
   let npubs: string[] = [];
   hexList.forEach(async (hex) => {
@@ -296,8 +194,10 @@ const getActivity = async (
   let zaps: any[] = [];
   if (!pubkeys) {
     // if no pubkeys are provided, get all playlist activity that has a pubkey (string length 64)
-    createdPlaylists = await PLAYLIST_QUERY.whereRaw("LENGTH(user_id) = 64");
-    // zaps = await ZAP_QUERY.whereRaw("LENGTH(amp.user_id) = 64");
+    createdPlaylists = await PLAYLIST_QUERY.whereRaw(
+      "LENGTH(playlist.user_id) = 64"
+    );
+    zaps = await ZAP_QUERY.whereRaw("LENGTH(amp.user_id) = 64");
     createdTracks = await NEW_TRACKS_QUERY.whereRaw(
       "LENGTH(track_info.artist_npub) = 64"
     );
@@ -306,7 +206,8 @@ const getActivity = async (
       "playlist.user_id",
       pubkeys
     );
-    // zaps = await ZAP_QUERY.whereIn("amp.user_id", pubkeys);
+    zaps = await ZAP_QUERY.whereIn("amp.user_id", pubkeys);
+    // We have to convert the hex pubkeys to npub format to query the artist table
     const npubs = await getNpubs(pubkeys);
     createdTracks = await NEW_TRACKS_QUERY.whereIn(
       "track_info.artist_npub",
@@ -314,24 +215,12 @@ const getActivity = async (
     );
   }
 
-  // get the content metadata for all activity items
-  // const createdPlaylistActivity = await getPlaylistActivityMetadata(
-  //   createdPlaylists
-  // );
-  // const zapActivity = await getZappedContentActivityMetadata(zaps);
-
-  // const trackActivity = await getNewTracksActivityMetadata(createdTracks);
-
-  // const combinedActivity = [
-  //   ...createdPlaylistActivity,
-  //   ...zapActivity,
-  //   ...trackActivity,
-  // ];
-
   const formattedActivity = await formatActivityItems([
     ...createdPlaylists,
     ...createdTracks,
+    ...zaps,
   ]);
+
   // sort the activity by timestamp
   const sortedActivity = formattedActivity.sort((a, b) => {
     return new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime();
