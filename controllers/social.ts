@@ -140,7 +140,9 @@ const runQueries = async (pubkeys: any[] | null) => {
       db.knex.raw('COALESCE("album"."id") as parent_content_id'),
       db.knex.raw('COALESCE("album"."title") as parent_content_title'),
       db.knex.raw("'zap' as type"),
-      "album.artwork_url as content_artwork",
+      db.knex.raw(
+        'COALESCE("album"."artwork_url", "artist"."artwork_url") as content_artwork'
+      ),
       "amp.msat_amount as msat_amount",
       "amp.created_at as timestamp",
       "amp.content_type as content_type",
@@ -151,6 +153,7 @@ const runQueries = async (pubkeys: any[] | null) => {
     .orderBy("amp.created_at", "desc")
     .where("amp.created_at", ">", filterDate)
     .andWhere("amp.type", ZAP_TYPE)
+    .whereIn("amp.content_type", ["track", "artist"])
     .as("zap_query");
 
   const npubs = pubkeys ? await getNpubs(pubkeys) : null;
