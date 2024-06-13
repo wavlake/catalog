@@ -100,21 +100,25 @@ const runQueries = async (pubkeys: any[] | null) => {
     .knex("track_info")
     .join("user", "track_info.user_id", "user.id")
     .select(
-      "track_info.id as content_id",
-      "track_info.title as content_title",
-      "track_info.artwork_url as content_artwork",
-      "track_info.album_id as parent_content_id",
-      "track_info.album_title as parent_content_title",
-      "track_info.published_at as timestamp",
-      "track_info.artist_npub as npub",
+      db.knex.raw("'{}'::jsonb as npub_name"),
+      db.knex.raw("'{}'::jsonb as npub_picture"),
       "track_info.artist as name",
       // TODO: No way to join decoded npub in artist table to npub table in db
       db.knex.raw(
         'COALESCE("user"."artwork_url", "track_info"."avatar_url") as picture'
       ),
-      db.knex.raw("'trackPublish' as type"),
+      "track_info.artist_npub as user_id",
+      "track_info.id as content_id",
+      "track_info.title as content_title",
+      "track_info.artwork_url as content_artwork",
       db.knex.raw("'track' as content_type"),
-      db.knex.raw("'album' as parent_content_type")
+      "track_info.album_id as parent_content_id",
+      "track_info.album_title as parent_content_title",
+      db.knex.raw("'album' as parent_content_type"),
+      db.knex.raw("'trackPublish' as type"),
+      "track_info.published_at as timestamp",
+      db.knex.raw("0 as msat_amount"),
+      db.knex.raw("null as content")
     )
     .orderBy("published_at", "desc")
     .where("published_at", ">", filterDate)
@@ -125,36 +129,61 @@ const runQueries = async (pubkeys: any[] | null) => {
   // TODO: Add zaps for Albums, Episodes, Podcasts
   const ZAP_QUERY = db
     .knex("amp")
-    .leftOuterJoin("track", "track.id", "=", "amp.track_id")
-    .leftOuterJoin("album", "album.id", "=", "track.album_id")
-    .leftOuterJoin("artist", "artist.id", "=", "amp.track_id")
-    .leftOuterJoin("npub", "amp.user_id", "=", "npub.public_hex")
     .leftOuterJoin("comment", "comment.tx_id", "=", "amp.tx_id")
     .select(
-      db.knex.raw("npub.metadata::jsonb -> 'picture' as picture"),
-      db.knex.raw("npub.metadata::jsonb -> 'name' as name"),
-      db.knex.raw('COALESCE("amp"."track_id") as content_id'),
-      db.knex.raw(
-        'COALESCE("track"."title", "artist"."name") as content_title'
-      ),
-      db.knex.raw('COALESCE("album"."id") as parent_content_id'),
-      db.knex.raw('COALESCE("album"."title") as parent_content_title'),
-      db.knex.raw("'zap' as type"),
-      db.knex.raw(
-        'COALESCE("album"."artwork_url", "artist"."artwork_url") as content_artwork'
-      ),
-      "amp.msat_amount as msat_amount",
-      "amp.created_at as timestamp",
-      "amp.content_type as content_type",
-      "npub.metadata as metadata",
-      "comment.content as content",
-      "amp.user_id as user_id"
+      "amp.user_id as user_id",
+      "amp.track_id as content_id",
+      db.knex.raw("date_part('hour', amp.created_at) as hour"),
+      db.knex.raw("'zap' as type")
     )
-    .orderBy("amp.created_at", "desc")
+    .sum("amp.msat_amount as msat_amount")
+    .min("amp.created_at as timestamp")
+    .min("amp.content_type as content_type")
+    .min("comment.content as content")
+    // to dedupe zaps for the same user, track, and hour
+    .groupBy(
+      "amp.user_id",
+      "amp.track_id",
+      db.knex.raw("date_part('hour', amp.created_at)")
+    )
+    .orderBy("timestamp", "desc")
     .where("amp.created_at", ">", filterDate)
     .andWhere("amp.type", ZAP_TYPE)
     .whereIn("amp.content_type", ["track", "artist"])
     .as("zap_query");
+
+  const ZAP_WITH_METADATA = db
+    .knex(ZAP_QUERY)
+    .leftOuterJoin("npub", "zap_query.user_id", "=", "npub.public_hex")
+    .leftOuterJoin("track", "track.id", "=", "zap_query.content_id")
+    .leftOuterJoin("album", "album.id", "=", "track.album_id")
+    .leftOuterJoin("artist", "artist.id", "=", "zap_query.content_id")
+    .select(
+      db.knex.raw("npub.metadata::jsonb -> 'name' as npub_name"),
+      db.knex.raw("npub.metadata::jsonb -> 'picture' as npub_picture"),
+      db.knex.raw("null as name"),
+      db.knex.raw("null as picture"),
+      "zap_query.user_id as user_id",
+      "zap_query.content_id as content_id",
+      db.knex.raw("COALESCE(track.title, artist.name) as content_title"),
+      "zap_query.content_type as content_type",
+      db.knex.raw(
+        "COALESCE(album.artwork_url, artist.artwork_url) as content_artwork"
+      ),
+      db.knex.raw("COALESCE(album.id) as parent_content_id"),
+      db.knex.raw("COALESCE(album.title) as parent_content_title"),
+      db.knex.raw("'placeholder' as parent_content_type"),
+      "zap_query.type as type",
+      "zap_query.timestamp as timestamp",
+      "zap_query.msat_amount as msat_amount",
+      "zap_query.content as content"
+    )
+    .as("zap_with_metadata");
+
+  // const UNION_QUERY = db
+  //   .knex(NEW_TRACKS_QUERY)
+  //   .unionAll([db.knex(ZAP_WITH_METADATA)])
+  //   .as("union_query");
 
   const npubs = pubkeys ? await getNpubs(pubkeys) : null;
   const playlists = pubkeys
@@ -164,8 +193,9 @@ const runQueries = async (pubkeys: any[] | null) => {
     ? await db.knex(NEW_TRACKS_QUERY).whereIn("npub", npubs)
     : await db.knex(NEW_TRACKS_QUERY);
   const zaps = pubkeys
-    ? await db.knex(ZAP_QUERY).whereIn("user_id", pubkeys)
-    : await db.knex(ZAP_QUERY);
+    ? await db.knex(ZAP_WITH_METADATA).whereIn("user_id", pubkeys)
+    : await db.knex(ZAP_WITH_METADATA);
+
   return [...playlists, ...tracks, ...zaps];
 };
 
@@ -185,8 +215,8 @@ const formatActivityItems = (activities: any[]) => {
       ? [activity.content_artwork]
       : activity.content_artwork_list;
     return {
-      picture: activity.picture,
-      name: activity.name,
+      picture: activity.npub_picture ? activity.npub_picture : activity.picture,
+      name: activity.npub_name ? activity.npub_name : activity.name,
       userId: activity.npub
         ? nip19.decode(activity.npub).data
         : activity.user_id,
