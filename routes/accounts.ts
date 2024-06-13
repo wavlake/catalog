@@ -30,6 +30,7 @@ const router = express.Router();
 router.post("/", accountsController.create_account);
 router.get("/", isAuthorized, accountsController.get_account);
 router.get("/pubkey/:pubkey", accountsController.get_pubkey_metadata);
+router.put("/pubkey/:pubkey", accountsController.update_metadata);
 router.put(
   "/",
   upload.single("artwork"),
