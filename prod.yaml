@@ -23,7 +23,7 @@ service: catalog-prod
 # Resource Settings Guide:
 # https://cloud.google.com/appengine/docs/flexible/reference/app-yaml?tab=node.js#resource-settings
 manual_scaling:
-  instances: 2
+  instances: 1
 resources:
   cpu: 1
   memory_gb: 2.0
