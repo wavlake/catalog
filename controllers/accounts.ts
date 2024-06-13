@@ -925,6 +925,29 @@ const get_pubkey_metadata = asyncHandler(async (req, res, next) => {
   }
 });
 
+const update_metadata = asyncHandler(async (req, res, next) => {
+  const pubkey = req.params.pubkey;
+
+  if (!pubkey) {
+    res.status(400).json({
+      success: false,
+      error: "pubkey is required",
+    });
+    return;
+  }
+
+  try {
+    const response = await updateNpubMetadata(pubkey);
+
+    res.status(response.success ? 200 : 404).send(response);
+  } catch (err) {
+    log.debug("error updating pubkey metadata", { pubkey });
+    log.debug(err);
+    next(err);
+    return;
+  }
+});
+
 export default {
   create_update_lnaddress,
   get_account,
@@ -944,4 +967,5 @@ export default {
   add_pubkey_to_account,
   delete_pubkey_from_account,
   get_pubkey_metadata,
+  update_metadata,
 };
