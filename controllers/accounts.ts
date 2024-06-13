@@ -927,6 +927,7 @@ const get_pubkey_metadata = asyncHandler(async (req, res, next) => {
 
 const update_metadata = asyncHandler(async (req, res, next) => {
   const pubkey = req.params.pubkey;
+  const forceUpdate = req.params.forceUpdate;
 
   if (!pubkey) {
     res.status(400).json({
@@ -937,7 +938,7 @@ const update_metadata = asyncHandler(async (req, res, next) => {
   }
 
   try {
-    const response = await updateNpubMetadata(pubkey);
+    const response = await updateNpubMetadata(pubkey, Boolean(forceUpdate));
 
     res.status(response.success ? 200 : 404).send(response);
   } catch (err) {

@@ -21,10 +21,18 @@ const getProfileMetadata = async (
 
 // put request to npub-metadata with /:npub as a route param
 const npubMetadataService = process.env.NPUB_UPDATE_SERVICE_URL;
-const updateNpubMetadata = async function (npub: String) {
-  const res = await fetch(`${npubMetadataService}/${npub}`, {
-    method: "PUT",
-  }).catch((err) => {
+const updateNpubMetadata = async function (
+  npub: String,
+  forceUpdate: boolean = false
+) {
+  const res = await fetch(
+    forceUpdate
+      ? `${npubMetadataService}/${npub}/true`
+      : `${npubMetadataService}/${npub}`,
+    {
+      method: "PUT",
+    }
+  ).catch((err) => {
     log.debug("error fetching npub metadata: ", err);
     return { ok: false };
   });
