@@ -46,7 +46,7 @@ const updateNpubMetadata = async function (
     return { success: false };
   }
 
-  return { success: true, data: res?.json() };
+  return res?.json();
 };
 
 const nostrBandApi = axios.create({
