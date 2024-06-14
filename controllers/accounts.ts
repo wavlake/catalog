@@ -936,7 +936,7 @@ const update_metadata = asyncHandler(async (req, res, next) => {
 
   try {
     const response = await updateNpubMetadata(pubkey, true);
-    console.log("response", response);
+
     res.status(response.success ? 200 : 404).send(response);
   } catch (err) {
     log.debug("error updating pubkey metadata", { pubkey });
