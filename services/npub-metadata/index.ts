@@ -15,7 +15,8 @@ log.setLevel((process.env.LOGLEVEL as LogLevelDesc) ?? "info");
 const app = express();
 
 const checkPublicKey = async (
-  publicHex: string
+  publicHex: string,
+  forceUpdate: boolean
 ): Promise<NpubMetadata | undefined> => {
   try {
     const npub = await prisma.npub.findUnique({
@@ -35,7 +36,7 @@ const checkPublicKey = async (
       npub?.updatedAt &&
       new Date().getTime() - npub.updatedAt.getTime() < STALE_TIME;
 
-    if (npubUpdatedRecently) {
+    if (npubUpdatedRecently && !forceUpdate) {
       log.debug("Skipping check, metadata was recently updated");
       return npub;
     }
@@ -52,7 +53,9 @@ const checkPublicKey = async (
       },
     });
 
-    log.debug(`Retrieving metadata for: ${publicHex}`);
+    log.debug(
+      `Retrieving metadata for: ${publicHex}, forceUpdate: ${forceUpdate}`
+    );
 
     // TODO - get relay list from nip-05
     const latestMetadataEvent = await getProfileMetadata(publicHex);
@@ -84,9 +87,11 @@ const checkPublicKey = async (
   }
 };
 
-app.put("/:publicHex", async (req, res) => {
+app.put("/:publicHex/:forceUpdate?", async (req, res) => {
   const publicHex = req.params.publicHex;
-  const metadata = await checkPublicKey(publicHex);
+  const forceUpdate = req.params.forceUpdate;
+
+  const metadata = await checkPublicKey(publicHex, Boolean(forceUpdate));
   res.send({
     success: !!metadata,
     data: metadata,
