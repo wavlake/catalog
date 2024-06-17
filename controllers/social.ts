@@ -190,7 +190,7 @@ const runQueries = async (pubkeys: any[] | null) => {
     ? await db.knex(PLAYLIST_QUERY).whereIn("user_id", pubkeys)
     : await db.knex(PLAYLIST_QUERY);
   const tracks = pubkeys
-    ? await db.knex(NEW_TRACKS_QUERY).whereIn("npub", npubs)
+    ? await db.knex(NEW_TRACKS_QUERY).whereIn("user_id", npubs)
     : await db.knex(NEW_TRACKS_QUERY);
   const zaps = pubkeys
     ? await db.knex(ZAP_WITH_METADATA).whereIn("user_id", pubkeys)
