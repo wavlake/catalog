@@ -92,8 +92,6 @@ const get_account = asyncHandler(async (req, res, next) => {
       userFavorites: trackData.map((track) => track.id),
     };
 
-    if (responseData) log.debug("found user in db:", responseData);
-
     res.send({
       success: true,
       data: responseData,
@@ -937,7 +935,7 @@ const update_metadata = asyncHandler(async (req, res, next) => {
   }
 
   try {
-    const response = await updateNpubMetadata(pubkey);
+    const response = await updateNpubMetadata(pubkey, true);
 
     res.status(response.success ? 200 : 404).send(response);
   } catch (err) {
