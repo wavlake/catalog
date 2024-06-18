@@ -9,7 +9,7 @@ const router = express.Router();
 
 router.post(
   "/receive/keysend",
-  // isZbdIp,
+  isZbdIp,
   callbackController.processIncomingKeysend
 );
 router.post(
