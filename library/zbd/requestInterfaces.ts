@@ -59,7 +59,7 @@ export interface ZBDKeysendCallbackRequest {
     updatedAt: any;
     createdAt: any;
   };
-  keysendData: {
+  invoice: {
     paymentHash: string;
     preimage: string;
     receivedAmount: string;

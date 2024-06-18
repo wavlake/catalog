@@ -37,19 +37,24 @@ const processIncomingKeysend = asyncHandler<
 >(async (req, res, next) => {
   log.debug(`Keysend received`);
 
-  const { transaction, keysendData } = req.body;
+  const { invoice, transaction } = req.body;
 
-  const metaDataRecord = keysendData.tlvRecords.find(
+  const metaDataRecord = invoice.tlvRecords.find(
     (record) => record.type === BLIP0010
   );
-  const contentIdRecord = keysendData.tlvRecords.find(
+  const contentIdRecord = invoice.tlvRecords.find(
     (record) => record.type === WAVLAKE_CUSTOM_KEY
   );
 
-  const keysendMetadata: KeysendMetadata = jsonParser(metaDataRecord?.value);
+  const keysendMetadata: KeysendMetadata = metaDataRecord?.value
+    ? jsonParser(Buffer.from(metaDataRecord.value, "hex").toString())
+    : undefined;
 
   // expected to be hex string that needs to be decoded
-  const contentId = Buffer.from(contentIdRecord?.value).toString("hex");
+  // convert hex value to string
+  const contentId = contentIdRecord?.value
+    ? Buffer.from(contentIdRecord.value, "hex").toString()
+    : undefined;
 
   // for testing in deployed service
   log.debug("request body", req.body);
@@ -67,13 +72,14 @@ const processIncomingKeysend = asyncHandler<
 
   const success = await processSplits({
     contentId,
-    contentTime: keysendMetadata.ts ? parseInt(keysendMetadata.ts) : undefined,
+    contentTime: keysendMetadata?.ts ? parseInt(keysendMetadata.ts) : undefined,
     msatAmount: transaction.amount,
     userId: undefined,
     externalTxId: undefined,
     // type 5 is keysend
     paymentType: 5,
-    boostData: undefined,
+    boostData: keysendMetadata,
+    comment: keysendMetadata?.message ? keysendMetadata.message : undefined,
     isNostr: false,
   });
 
