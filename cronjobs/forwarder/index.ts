@@ -95,11 +95,10 @@ const run = async () => {
   // For each group where the sum is greater than or equal to the minimum_forward_amount, initiate a payment
   await handlePayments(groupedForwards);
 
+  log.debug("Finished processing forwards");
   return;
   // DONE
 };
-
-run();
 
 const handlePayments = async (groupedForwards: groupedForwards) => {
   // Iterate over each group
@@ -213,3 +212,5 @@ const handleReconciliation = async (uniqueExternalPaymentIds: string[]) => {
     });
   }
 };
+
+run();
