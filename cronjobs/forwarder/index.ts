@@ -66,11 +66,19 @@ const run = async () => {
   const groupedForwards = forwardsOutstanding.reduce((acc, curr) => {
     if (!acc[curr.userId]) {
       acc[curr.userId] = {
-        lightningAddress: curr.lightningAddress,
         msatAmount: 0,
         ids: [],
       };
     }
+
+    // Use the most recent lightningAddress value where remainderId is null
+    if (!acc[curr.userId].lightningAddress && !curr.remainderId) {
+      acc[curr.userId].lightningAddress = curr.lightningAddress;
+    } else if (curr.createdAt > acc[curr.userId].createdAt) {
+      acc[curr.userId].lightningAddress = curr.lightningAddress;
+    }
+
+    // Accumulate msatAmount
     acc[curr.userId].msatAmount += curr.msatAmount;
     // Use the oldest created_at date
     if (!acc[curr.userId].createdAt) {
@@ -78,6 +86,7 @@ const run = async () => {
     } else if (curr.createdAt < acc[curr.userId].createdAt) {
       acc[curr.userId].createdAt = curr.createdAt;
     }
+    // Add the forward id to the list of ids
     acc[curr.userId].ids.push(curr.id);
     return acc;
   }, {});
@@ -101,6 +110,9 @@ const handlePayments = async (groupedForwards: groupedForwards) => {
     const remainderMsats = msatAmount % 1000;
     const amountToSend = msatAmount - remainderMsats;
     const internalId = `forward-${ids[0]}`;
+    if (!lightningAddress) {
+      continue;
+    }
 
     // For forwards that are less than the MIN_BATCH_FORWARD_AMOUNT but need to be sent because they're 24 hours old
     const isOneDayOld =
@@ -179,6 +191,7 @@ const handlePayments = async (groupedForwards: groupedForwards) => {
       // DONE
     }
   }
+  return;
 };
 
 const handleReconciliation = async (uniqueExternalPaymentIds: string[]) => {
