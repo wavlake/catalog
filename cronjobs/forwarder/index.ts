@@ -119,14 +119,16 @@ const handlePayments = async (groupedForwards: groupedForwards) => {
       new Date(createdAt) < new Date(Date.now() - 24 * 60 * 60 * 1000);
     const isOldEnoughAndMeetsMinimum =
       isOneDayOld && msatAmount >= MIN_FORWARD_AMOUNT;
-    // Add sleep to avoid rate limiting
-    await new Promise((resolve) => setTimeout(resolve, TIME_BETWEEN_REQUESTS));
     if (
       (msatAmount as number) >= MIN_BATCH_FORWARD_AMOUNT ||
       isOldEnoughAndMeetsMinimum
     ) {
       log.debug(
         `Processing payment for lightning address: ${lightningAddress} with msat amount: ${amountToSend}`
+      );
+      // Add sleep to avoid rate limiting
+      await new Promise((resolve) =>
+        setTimeout(resolve, TIME_BETWEEN_REQUESTS)
       );
       // Send payment request to ZBD
       const request: LightningAddressPaymentRequest = {
