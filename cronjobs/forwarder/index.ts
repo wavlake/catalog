@@ -27,77 +27,82 @@ interface groupedForwards {
 }
 
 const run = async () => {
-  // Reconcilation Step:
-  // Check the forward table for any records with a status of in_flight = true and is_settled = false
-  // If there are any, check the status of the payment with ZBD
-  // Update the forward record accordingly
-  const inFlightForwards = await prisma.forward.findMany({
-    where: {
-      inFlight: true,
-      isSettled: false,
-    },
-  });
-
-  log.debug("In flight forwards:", inFlightForwards);
-  // Filter inFlightForwards to only include unique externalPaymentIds
-  const uniqueExternalPaymentIds = [
-    ...new Set(inFlightForwards.map((forward) => forward.externalPaymentId)),
-  ];
-
-  await handleReconciliation(uniqueExternalPaymentIds);
-
-  // Check the forward table for any records with a status of in_flight = false and is_settled = false
-  // and where attempt_count is less than or equal to MAX_ATTEMPT_COUNT
-  const forwardsOutstanding = await prisma.forward.findMany({
-    where: {
-      inFlight: false,
-      isSettled: false,
-      createdAt: {
-        lte: CURRENT_DATE,
+  try {
+    // Reconcilation Step:
+    // Check the forward table for any records with a status of in_flight = true and is_settled = false
+    // If there are any, check the status of the payment with ZBD
+    // Update the forward record accordingly
+    const inFlightForwards = await prisma.forward.findMany({
+      where: {
+        inFlight: true,
+        isSettled: false,
       },
-      attemptCount: {
-        lte: MAX_ATTEMPT_COUNT,
+    });
+
+    log.debug("In flight forwards:", inFlightForwards);
+    // Filter inFlightForwards to only include unique externalPaymentIds
+    const uniqueExternalPaymentIds = [
+      ...new Set(inFlightForwards.map((forward) => forward.externalPaymentId)),
+    ];
+
+    await handleReconciliation(uniqueExternalPaymentIds);
+
+    // Check the forward table for any records with a status of in_flight = false and is_settled = false
+    // and where attempt_count is less than or equal to MAX_ATTEMPT_COUNT
+    const forwardsOutstanding = await prisma.forward.findMany({
+      where: {
+        inFlight: false,
+        isSettled: false,
+        createdAt: {
+          lte: CURRENT_DATE,
+        },
+        attemptCount: {
+          lte: MAX_ATTEMPT_COUNT,
+        },
       },
-    },
-  });
+    });
 
-  log.debug("Forwards outstanding:", forwardsOutstanding);
-  // If there are any, group the payments by lightning_address and sum msat_amount
-  const groupedForwards = forwardsOutstanding.reduce((acc, curr) => {
-    if (!acc[curr.userId]) {
-      acc[curr.userId] = {
-        msatAmount: 0,
-        ids: [],
-      };
-    }
+    log.debug("Forwards outstanding:", forwardsOutstanding);
+    // If there are any, group the payments by lightning_address and sum msat_amount
+    const groupedForwards = forwardsOutstanding.reduce((acc, curr) => {
+      if (!acc[curr.userId]) {
+        acc[curr.userId] = {
+          msatAmount: 0,
+          ids: [],
+        };
+      }
 
-    // Use the most recent lightningAddress value where remainderId is null
-    if (!acc[curr.userId].lightningAddress && !curr.remainderId) {
-      acc[curr.userId].lightningAddress = curr.lightningAddress;
-    } else if (curr.createdAt > acc[curr.userId].createdAt) {
-      acc[curr.userId].lightningAddress = curr.lightningAddress;
-    }
+      // Use the most recent lightningAddress value where remainderId is null
+      if (!acc[curr.userId].lightningAddress && !curr.remainderId) {
+        acc[curr.userId].lightningAddress = curr.lightningAddress;
+      } else if (curr.createdAt > acc[curr.userId].createdAt) {
+        acc[curr.userId].lightningAddress = curr.lightningAddress;
+      }
 
-    // Accumulate msatAmount
-    acc[curr.userId].msatAmount += curr.msatAmount;
-    // Use the oldest created_at date
-    if (!acc[curr.userId].createdAt) {
-      acc[curr.userId].createdAt = curr.createdAt;
-    } else if (curr.createdAt < acc[curr.userId].createdAt) {
-      acc[curr.userId].createdAt = curr.createdAt;
-    }
-    // Add the forward id to the list of ids
-    acc[curr.userId].ids.push(curr.id);
-    return acc;
-  }, {});
+      // Accumulate msatAmount
+      acc[curr.userId].msatAmount += curr.msatAmount;
+      // Use the oldest created_at date
+      if (!acc[curr.userId].createdAt) {
+        acc[curr.userId].createdAt = curr.createdAt;
+      } else if (curr.createdAt < acc[curr.userId].createdAt) {
+        acc[curr.userId].createdAt = curr.createdAt;
+      }
+      // Add the forward id to the list of ids
+      acc[curr.userId].ids.push(curr.id);
+      return acc;
+    }, {});
 
-  log.debug("Grouped forwards:", groupedForwards);
-  // For each group where the sum is greater than or equal to the minimum_forward_amount, initiate a payment
-  await handlePayments(groupedForwards);
+    log.debug("Grouped forwards:", groupedForwards);
+    // For each group where the sum is greater than or equal to the minimum_forward_amount, initiate a payment
+    await handlePayments(groupedForwards);
 
-  log.debug("Finished processing forwards");
-  return;
-  // DONE
+    log.debug("Finished processing forwards");
+    // DONE
+  } catch (error) {
+    log.error("Error in run():", error);
+  } finally {
+    process.exit(0);
+  }
 };
 
 const handlePayments = async (groupedForwards: groupedForwards) => {
