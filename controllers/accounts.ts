@@ -102,6 +102,36 @@ const get_account = asyncHandler(async (req, res, next) => {
   }
 });
 
+const get_user_public = asyncHandler(async (req, res, next) => {
+  const request = {
+    userProfileUrl: req.params.userProfileUrl,
+  };
+
+  const userProfileData = await db
+    .knex("user")
+    .join("playlist", "playlist.user_id", "=", "user.id")
+    .select(
+      "user.id as id",
+      "user.name as name",
+      "user.artwork_url as artworkUrl",
+      "user.profile_url as profileUrl",
+      "playlist.id as userFavoritesId"
+    )
+    .where("user.profile_url", "=", request.userProfileUrl)
+    .andWhere("playlist.is_favorites", "=", true)
+    .first();
+
+  if (!userProfileData) {
+    res.status(404).json({
+      success: false,
+      error: "User not found",
+    });
+    return;
+  }
+
+  res.send({ success: true, data: userProfileData });
+});
+
 const get_activity = asyncHandler(async (req, res, next) => {
   const request = {
     accountId: req["uid"],
@@ -949,6 +979,7 @@ const update_metadata = asyncHandler(async (req, res, next) => {
 export default {
   create_update_lnaddress,
   get_account,
+  get_user_public,
   create_account,
   edit_account,
   get_activity,
