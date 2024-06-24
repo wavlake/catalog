@@ -3,6 +3,8 @@ import asyncHandler from "express-async-handler";
 import { SplitRecipient } from "@prisma/client";
 import { formatError } from "../library/errors";
 
+const MAX_SPLIT_COUNT = 12;
+
 type ValidatedSplitReceipient = Partial<SplitRecipient> & {
   username?: string;
   error?: boolean;
@@ -22,10 +24,10 @@ const parseSplitsAndValidateUsername = async (
     return [];
   }
 
-  if (incomingSplits.length > 10) {
+  if (incomingSplits.length > MAX_SPLIT_COUNT) {
     res.status(400).json({
       success: false,
-      error: "Number of split recipients must be 10 or fewer",
+      error: `Number of split recipients must be ${MAX_SPLIT_COUNT} or fewer`,
     });
     return [];
   }
