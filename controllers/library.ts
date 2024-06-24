@@ -113,13 +113,39 @@ const get_user_library = ({
             .where("library.user_id", "=", pubkey)
         : [];
 
+      const playlistsWithTracks = [];
+      for (const playlist of libraryPlaylists) {
+        const tracks = await db
+          .knex("playlist_track")
+          .select(
+            "track_info.id",
+            "track_info.title",
+            "track_info.duration",
+            "track_info.artist",
+            "track_info.artwork_url as artworkUrl",
+            "playlist_track.order_int as order"
+          )
+          .join("track_info", "track_info.id", "=", "playlist_track.track_id")
+          .where("playlist_track.playlist_id", playlist.id)
+          .orderBy("playlist_track.order_int", "asc");
+
+        // skip empty playlists, user-owned empty playlists are returned by getUserPlaylists /playlists
+        if (tracks.length !== 0) {
+          playlistsWithTracks.push({
+            id: playlist.id,
+            title: playlist.title,
+            tracks: tracks,
+          });
+        }
+      }
+
       res.json({
         success: true,
         data: {
           ...(artists ? { artists: libraryArtists } : {}),
           ...(albums ? { albums: libraryAlbums } : {}),
           ...(tracks ? { tracks: libraryTracks } : {}),
-          ...(playlists ? { playlists: libraryPlaylists } : {}),
+          ...(playlists ? { playlists: playlistsWithTracks } : {}),
         },
       });
     } catch (err) {
