@@ -262,37 +262,68 @@ export const getUserPlaylists = asyncHandler(async (req, res, next) => {
 
   // need to get all user ids for the user (npub(s) + firebase uid)
   const userIds = await getUserIds(userId);
-  const playlists = await prisma.playlist.findMany({
-    where: { userId: { in: userIds } },
+
+  const PLAYLIST_TRACKS = db
+    .knex("playlist_track")
+    .join("track_info", "track_info.id", "=", "playlist_track.track_id")
+    .select(
+      "playlist_id",
+      "track_info.id",
+      "track_info.title",
+      "track_info.duration",
+      "track_info.artist",
+      "track_info.artwork_url",
+      "playlist_track.order_int as order"
+    )
+    .as("playlist_tracks_info");
+
+  const playlists = await db
+    .knex("playlist")
+    .join(
+      PLAYLIST_TRACKS,
+      "playlist.id",
+      "=",
+      "playlist_tracks_info.playlist_id"
+    )
+    .leftOuterJoin("npub", "playlist.user_id", "npub.public_hex")
+    .select(
+      "playlist.id as id",
+      "playlist.created_at as createdAt",
+      "playlist.title as title",
+      "playlist.updated_at as updatedAt",
+      db.knex.raw("npub.metadata::jsonb -> 'picture' as picture"),
+      db.knex.raw("npub.metadata::jsonb -> 'name' as name"),
+      db.knex.raw("MIN(playlist.user_id) as user_id"),
+      db.knex.raw(`
+        json_agg(
+          json_build_object(
+            'id', playlist_tracks_info.id,
+            'title', playlist_tracks_info.title,
+            'duration', playlist_tracks_info.duration,
+            'artist', playlist_tracks_info.artist,
+            'artworkUrl', playlist_tracks_info.artwork_url,
+            'order', playlist_tracks_info.order
+          ) ORDER BY playlist_tracks_info.order
+        ) as tracks
+      `)
+    )
+    .groupBy(
+      "playlist.id",
+      "playlist.created_at",
+      "playlist.title",
+      "playlist.updated_at",
+      "npub.metadata"
+    )
+    .orderBy("playlist.updated_at", "desc")
+    .whereIn("playlist.user_id", userIds)
+    .whereRaw("LENGTH(playlist.user_id) = 64");
+
+  res.json({
+    success: true,
+    data: isProfilePageRequest
+      ? playlists.filter((playlist) => playlist.tracks.length !== 0)
+      : playlists,
   });
-
-  const playlistsWithTracks = [];
-  for (const playlist of playlists) {
-    const tracks = await db
-      .knex("playlist_track")
-      .select(
-        "track_info.id",
-        "track_info.title",
-        "track_info.duration",
-        "track_info.artist",
-        "track_info.artwork_url as artworkUrl",
-        "playlist_track.order_int as order"
-      )
-      .join("track_info", "track_info.id", "=", "playlist_track.track_id")
-      .where("playlist_track.playlist_id", playlist.id)
-      .orderBy("playlist_track.order_int", "asc");
-
-    // skip empty playlists for profile pages, only a user's library page should show their empty playlists
-    if (tracks.length !== 0 || !isProfilePageRequest) {
-      playlistsWithTracks.push({
-        id: playlist.id,
-        title: playlist.title,
-        tracks: tracks,
-      });
-    }
-  }
-
-  res.json({ success: true, data: playlistsWithTracks });
   return;
 });
 
