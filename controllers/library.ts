@@ -113,26 +113,13 @@ const get_user_library = ({
             .where("library.user_id", "=", pubkey)
         : [];
 
-      // TODO - migrate user owned playlists auto-added to the library onCreate?
-      const userOwnedPlaylists = playlists
-        ? await prisma.playlist.findMany({
-            where: {
-              userId: pubkey,
-            },
-          })
-        : [];
-
-      const sortedPlaylists = [...libraryPlaylists, ...userOwnedPlaylists].sort(
-        (a, b) => b.createdAt - a.createdAt
-      );
-
       res.json({
         success: true,
         data: {
           ...(artists ? { artists: libraryArtists } : {}),
           ...(albums ? { albums: libraryAlbums } : {}),
           ...(tracks ? { tracks: libraryTracks } : {}),
-          ...(playlists ? { playlists: sortedPlaylists } : {}),
+          ...(playlists ? { playlists: libraryPlaylists } : {}),
         },
       });
     } catch (err) {
