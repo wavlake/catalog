@@ -111,8 +111,8 @@ const handlePayments = async (groupedForwards: groupedForwards) => {
   ] of Object.entries(groupedForwards)) {
     forwardCounter++;
     if (forwardCounter === totalForwardCount + 1) {
-      log.debug("No more forwards in batch, exiting");
-      process.exit(0);
+      log.debug("No more forwards in batch, exiting...");
+      break;
     }
 
     const remainderMsats = msatAmount % 1000;
