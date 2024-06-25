@@ -100,8 +100,8 @@ async function handleCompletedPayment(
       return trx("user")
         .decrement({
           msat_balance: substituteFeeAmount
-            ? totalAmount
-            : msatAmount + substituteFeeAmount,
+            ? msatAmount + parseInt(substituteFeeAmount)
+            : totalAmount,
         })
         .update({ updated_at: db.knex.fn.now(), is_locked: false })
         .where({ id: userId });
