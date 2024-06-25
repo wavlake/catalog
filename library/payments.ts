@@ -213,7 +213,7 @@ export const runPaymentChecks = async (
     return {
       success: false,
       error: {
-        message: "Insufficient funds",
+        message: "Insufficient funds to cover payment and transaction fees",
       },
     };
   }

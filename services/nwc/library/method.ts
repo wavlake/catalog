@@ -10,9 +10,7 @@ const { initiatePayment, runPaymentChecks } = require("@library/payments");
 const { broadcastEventResponse } = require("./event");
 const { webcrypto } = require("node:crypto");
 globalThis.crypto = webcrypto;
-
-// TODO: Remove hard coding fee buffer
-const FEE_BUFFER = 10000;
+import { FEE_BUFFER } from "@library/constants";
 
 const payInvoice = async (event, content, walletUser) => {
   log.debug(`Processing pay_invoice event ${event.id}`);
@@ -52,7 +50,7 @@ const payInvoice = async (event, content, walletUser) => {
     userId,
     invoice,
     parseInt(valueMsat),
-    FEE_BUFFER
+    FEE_BUFFER * parseInt(valueMsat)
   );
 
   if (!passedChecks.success) {
@@ -64,7 +62,8 @@ const payInvoice = async (event, content, walletUser) => {
         result_type: "pay_invoice",
         error: {
           code:
-            passedChecks.error == "Insufficient funds"
+            passedChecks.error ==
+            "Insufficient funds to cover payment and transaction fees"
               ? "INSUFFICIENT_BALANCE"
               : "OTHER",
           message: passedChecks.error,
