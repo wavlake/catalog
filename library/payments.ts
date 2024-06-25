@@ -94,9 +94,10 @@ async function handleCompletedPayment(
     .then(() => {
       log.debug(`Payment successful for ${userId}`);
       return res
-        ? res
-            .status(200)
-            .send({ invoiceId: paymentRecordId, ...paymentData.data })
+        ? res.status(200).send({
+            success: true,
+            data: { invoiceId: paymentRecordId, ...paymentData.data },
+          })
         : {
             success: true,
             data: {
@@ -247,8 +248,6 @@ export const initiatePayment = async (
     invoice: invoice,
     internalId: `transaction-${paymentRecordId.toString()}`,
   });
-
-  // console.log(`Payment response: ${JSON.stringify(paymentResponse)}`);
 
   // Wrap in a try/catch to handle timeouts
   try {

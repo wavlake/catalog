@@ -73,6 +73,20 @@ export const handleCompletedForward = async ({
   );
 };
 
+async function checkWithdrawalStatus(transactionId: number) {
+  return db
+    .knex("transaction")
+    .select("is_pending")
+    .where({ id: transactionId })
+    .then((data) => {
+      return data[0].is_pending;
+    })
+    .catch((err) => {
+      log.error(`Error checking withdrawal status: ${err}`);
+      return false;
+    });
+}
+
 export const handleCompletedWithdrawal = async ({
   transactionId,
   msatAmount,
@@ -87,6 +101,17 @@ export const handleCompletedWithdrawal = async ({
   preimage: string;
 }): Promise<boolean> => {
   const userId = await getUserIdFromTransactionId(transactionId);
+  if (!userId) {
+    log.error(`Error getting userId from transactionId: ${transactionId}`);
+    return false;
+  }
+  const isPending = await checkWithdrawalStatus(transactionId);
+  if (!isPending) {
+    log.debug(
+      `Withdrawal already processed for ${transactionId}, skipping update.`
+    );
+    return true;
+  }
   const trx = await db.knex.transaction();
   if (status === PaymentStatus.Completed) {
     // Update transaction table and user balance in one tx
@@ -127,7 +152,6 @@ export const handleCompletedWithdrawal = async ({
         success: false,
         is_pending: false,
         updated_at: db.knex.fn.now(),
-        preimage: preimage,
       })
       .where({ id: transactionId })
       .then(trx.commit)
