@@ -2,6 +2,7 @@ const log = require("loglevel");
 import asyncHandler from "express-async-handler";
 import { initiatePayment, runPaymentChecks } from "@library/payments";
 const NLInvoice = require("@node-lightning/invoice");
+import { FEE_BUFFER } from "@library/constants";
 
 const createWithdraw = asyncHandler(async (req, res, next) => {
   const { description, invoice, msatMaxFee } = req.body;
@@ -23,7 +24,7 @@ const createWithdraw = asyncHandler(async (req, res, next) => {
     userId,
     invoice,
     parseInt(valueMsat),
-    parseInt(msatMaxFee)
+    FEE_BUFFER * parseInt(valueMsat)
   ).catch((e) => {
     log.error(`Error running payment checks: ${e}`);
     res.status(500).send({

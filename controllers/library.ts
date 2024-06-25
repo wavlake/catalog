@@ -99,32 +99,64 @@ const get_user_library = ({
             })
         : [];
 
+      const PLAYLIST_TRACKS = db
+        .knex("playlist_track")
+        .join("track_info", "track_info.id", "=", "playlist_track.track_id")
+        .select(
+          "playlist_id",
+          "track_info.id",
+          "track_info.title",
+          "track_info.duration",
+          "track_info.artist",
+          "track_info.artwork_url",
+          "playlist_track.order_int as order"
+        )
+        .as("playlist_tracks_info");
+
       const libraryPlaylists = playlists
         ? await db
             .knex("library")
             .join("playlist", "library.content_id", "playlist.id")
+            .join(
+              PLAYLIST_TRACKS,
+              "playlist.id",
+              "=",
+              "playlist_tracks_info.playlist_id"
+            )
+            .leftOuterJoin("npub", "playlist.user_id", "npub.public_hex")
             .select(
               "playlist.id as id",
               "playlist.created_at as createdAt",
               "playlist.title as title",
-              "playlist.updated_at as updatedAt"
+              "playlist.updated_at as updatedAt",
+              db.knex.raw("npub.metadata::jsonb -> 'picture' as picture"),
+              db.knex.raw("npub.metadata::jsonb -> 'name' as name"),
+              db.knex.raw("MIN(playlist.user_id) as user_id"),
+              db.knex.raw(`
+              json_agg(
+                json_build_object(
+                  'id', playlist_tracks_info.id,
+                  'title', playlist_tracks_info.title,
+                  'duration', playlist_tracks_info.duration,
+                  'artist', playlist_tracks_info.artist,
+                  'artworkUrl', playlist_tracks_info.artwork_url,
+                  'order', playlist_tracks_info.order
+                ) ORDER BY playlist_tracks_info.order
+              ) as tracks
+            `)
+            )
+            .groupBy(
+              "playlist.id",
+              "playlist.created_at",
+              "playlist.title",
+              "playlist.updated_at",
+              "npub.metadata",
+              "library.created_at"
             )
             .orderBy("library.created_at", "desc")
             .where("library.user_id", "=", pubkey)
+            .whereRaw("LENGTH(playlist.user_id) = 64")
         : [];
-
-      // TODO - migrate user owned playlists auto-added to the library onCreate?
-      const userOwnedPlaylists = playlists
-        ? await prisma.playlist.findMany({
-            where: {
-              userId: pubkey,
-            },
-          })
-        : [];
-
-      const sortedPlaylists = [...libraryPlaylists, ...userOwnedPlaylists].sort(
-        (a, b) => b.createdAt - a.createdAt
-      );
 
       res.json({
         success: true,
@@ -132,7 +164,7 @@ const get_user_library = ({
           ...(artists ? { artists: libraryArtists } : {}),
           ...(albums ? { albums: libraryAlbums } : {}),
           ...(tracks ? { tracks: libraryTracks } : {}),
-          ...(playlists ? { playlists: sortedPlaylists } : {}),
+          ...(playlists ? { playlists: libraryPlaylists } : {}),
         },
       });
     } catch (err) {

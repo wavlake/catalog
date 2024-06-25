@@ -25,10 +25,9 @@ const router = express.Router();
 //////// ROUTES ////////
 
 // USER
-// router.get("/:userProfileUrl", usersController.get_user_public);
-// router.get("/:userId/faves", usersController.get_user_public_faves);
 router.post("/", accountsController.create_account);
 router.get("/", isAuthorized, accountsController.get_account);
+router.get("/public/:userProfileUrl", accountsController.get_user_public);
 router.get("/pubkey/:pubkey", accountsController.get_pubkey_metadata);
 router.put("/pubkey/:pubkey", accountsController.update_metadata);
 router.put(
