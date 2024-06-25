@@ -69,6 +69,20 @@ async function handleCompletedPayment(
   paymentRecordId: number,
   paymentData: ZBDSendPaymentResponse
 ) {
+  const totalAmount = msatAmount + parseInt(paymentData.data.fee);
+  const userBalance = await getUserBalance(userId);
+  // Check if the payment amount + final fee is greater than the user's balance
+  let substituteFeeAmount;
+  if (parseInt(userBalance) < totalAmount) {
+    log.debug(
+      `Total transaction amount exceeds user balance for ${userId} with ${userBalance} msats`
+    );
+    log.debug(
+      `Transaction total: ${msatAmount} msats + ${paymentData.data.fee} msats`
+    );
+    substituteFeeAmount = Math.abs(parseInt(userBalance) - totalAmount);
+  }
+
   const trx = await db.knex.transaction();
   // Update transaction table and user balance in one tx
   return trx("transaction")
@@ -85,7 +99,9 @@ async function handleCompletedPayment(
       // Decrement balance and unlock user
       return trx("user")
         .decrement({
-          msat_balance: msatAmount + parseInt(paymentData.data.fee),
+          msat_balance: substituteFeeAmount
+            ? totalAmount
+            : msatAmount + substituteFeeAmount,
         })
         .update({ updated_at: db.knex.fn.now(), is_locked: false })
         .where({ id: userId });
