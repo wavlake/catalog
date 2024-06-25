@@ -38,7 +38,7 @@ const run = async () => {
     },
   });
 
-  log.debug("In flight forwards:", inFlightForwards);
+  log.debug("In flight forwards:", inFlightForwards.length);
   // Filter inFlightForwards to only include unique externalPaymentIds
   const uniqueExternalPaymentIds = [
     ...new Set(inFlightForwards.map((forward) => forward.externalPaymentId)),
@@ -61,7 +61,7 @@ const run = async () => {
     },
   });
 
-  log.debug("Forwards outstanding:", forwardsOutstanding);
+  log.debug("Forwards outstanding:", forwardsOutstanding.length);
   // If there are any, group the payments by lightning_address and sum msat_amount
   const groupedForwards = forwardsOutstanding.reduce((acc, curr) => {
     if (!acc[curr.userId]) {
@@ -91,7 +91,6 @@ const run = async () => {
     return acc;
   }, {});
 
-  log.debug("Grouped forwards:", groupedForwards);
   // For each group where the sum is greater than or equal to the minimum_forward_amount, initiate a payment
   await handlePayments(groupedForwards);
 
@@ -101,11 +100,21 @@ const run = async () => {
 };
 
 const handlePayments = async (groupedForwards: groupedForwards) => {
+  const totalForwardCount = Object.keys(groupedForwards).length;
+  log.debug("Grouped forwards:", totalForwardCount);
+  // Forward counter to know when to exit
+  let forwardCounter = 0;
   // Iterate over each group
   for (const [
     userId,
     { lightningAddress, msatAmount, createdAt, ids },
   ] of Object.entries(groupedForwards)) {
+    forwardCounter++;
+    if (forwardCounter === totalForwardCount + 1) {
+      log.debug("No more forwards in batch, exiting");
+      process.exit(0);
+    }
+
     const remainderMsats = msatAmount % 1000;
     const amountToSend = msatAmount - remainderMsats;
     const internalId = `forward-${ids[0]}`;
