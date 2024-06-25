@@ -220,6 +220,7 @@ const handleReconciliation = async (uniqueExternalPaymentIds: string[]) => {
       fee: parseInt(fee),
     });
   }
+  return;
 };
 
 run();
