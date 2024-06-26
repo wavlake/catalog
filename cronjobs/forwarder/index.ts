@@ -217,7 +217,7 @@ const handleReconciliation = async (uniqueExternalPaymentIds: string[]) => {
       status: status as PaymentStatus,
       preimage: preimage,
       msatAmount: parseInt(amount),
-      fee: parseInt(fee),
+      fee: parseInt(fee) || 0,
     });
   }
   return;
