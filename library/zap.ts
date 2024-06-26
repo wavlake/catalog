@@ -82,11 +82,9 @@ export const publishZapReceipt = async (
   paymentRequest: string,
   preimage: string
 ) => {
-  // const aTag = zapRequestEventObj.tags.find((x) => x[0] === "a");
-
-  const eTag = zapRequestEvent.tags.find((x) => x[0] === "e");
-  const aTag = zapRequestEvent.tags.find((x) => x[0] === "a");
-  const pTag = zapRequestEvent.tags.find((x) => x[0] === "p");
+  const allTags = zapRequestEvent.tags;
+  const eTag = allTags.find((x) => x[0] === "e");
+  const aTag = allTags.find((x) => x[0] === "a");
 
   if (!aTag && !eTag) {
     log.error("No e or a tag found");
@@ -99,14 +97,12 @@ export const publishZapReceipt = async (
       ["bolt11", paymentRequest],
       ["description", JSON.stringify(zapRequestEvent)],
       ["preimage", preimage],
-      ...(pTag ? [pTag] : []),
-      ...(aTag ? [aTag] : []),
-      ...(eTag ? [eTag] : []),
+      ...allTags,
     ],
     content: "",
   };
 
-  // log.debug(`Signing zap receipt: ${JSON.stringify(zapReceipt)}`);
+  log.debug(`Signing zap receipt: ${JSON.stringify(zapReceipt)}`);
 
   const signedEvent = finalizeEvent(zapReceipt, WAVLAKE_SECRET);
 
