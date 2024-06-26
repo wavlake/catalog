@@ -215,7 +215,7 @@ const handleReconciliation = async (uniqueExternalPaymentIds: string[]) => {
     await handleCompletedForward({
       externalPaymentId: id,
       status: status as PaymentStatus,
-      preimage: preimage,
+      preimage: preimage || "",
       msatAmount: parseInt(amount),
       fee: parseInt(fee) || 0,
     });
