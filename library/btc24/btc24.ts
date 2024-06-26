@@ -49,7 +49,7 @@ export const handleConferenceZap = async (zapRequestEvent: ZapRequestEvent) => {
   const trackDetails = await getTrackMetadata(trackId);
 
   const messageObject = {
-    sats: amount,
+    sats: parseInt(amount) / 1000,
     message: comment,
     trackName: trackDetails.title,
     trackArtist: trackDetails.artist,
