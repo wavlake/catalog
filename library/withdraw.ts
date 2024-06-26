@@ -45,7 +45,6 @@ export const handleCompletedForward = async ({
           // Delete remainder record if not successful
           return trx("forward").delete().where({
             remainder_id: externalPaymentId,
-            is_remainder: true,
           });
         }
       })
