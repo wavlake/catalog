@@ -8,6 +8,7 @@ import {
 } from "nostr-tools";
 import { hexToBytes } from "@noble/hashes/utils";
 useWebSocketImplementation(require("ws"));
+import { handleConferenceZap } from "./btc24/btc24";
 const { DEFAULT_WRITE_RELAY_URIS } = require("./nostr/common");
 
 const WAVLAKE_RELAY = process.env.WAVLAKE_RELAY;
@@ -56,6 +57,7 @@ export const getZapPubkeyAndContent = async (invoiceId: number) => {
 };
 
 interface ZapRequestEvent {
+  content: string;
   tags: [string, string][];
 }
 
@@ -87,6 +89,17 @@ export const publishZapReceipt = async (
   const eTag = zapRequestEvent.tags.find((x) => x[0] === "e");
   const aTag = zapRequestEvent.tags.find((x) => x[0] === "a");
   const pTag = zapRequestEvent.tags.find((x) => x[0] === "p");
+
+  ///////// TEMPORARY /////////
+  try {
+    const btc24Tag = zapRequestEvent.tags.find((x) => x[0] === "btc24");
+    if (btc24Tag) {
+      handleConferenceZap(zapRequestEvent);
+    }
+  } catch (e) {
+    log.error(`Error handling conference zap: ${e}`);
+  }
+  ////////// TEMPORARY /////////
 
   if (!aTag && !eTag) {
     log.error("No e or a tag found");
