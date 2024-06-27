@@ -72,7 +72,6 @@ const createZapInvoice = asyncHandler<
   // https://github.com/nostr-protocol/nips/blob/master/57.md#appendix-a-zap-request-event
   const eTag = zapRequestEvent.tags.find((x) => x[0] === "e");
   const aTag = zapRequestEvent.tags.find((x) => x[0] === "a");
-
   // one of these is needed to determine the track ID
   if (!aTag && !eTag) {
     res.status(400).send({
@@ -95,11 +94,22 @@ const createZapInvoice = asyncHandler<
     zappedContent = await getContentFromId(contentId);
   }
 
-  // log.debug(`Zapped content: ${JSON.stringify(zappedContent)}`);
   if (!zappedContent) {
     res
       .status(404)
       .send({ success: false, error: `Content id for zap could not be found` });
+    return;
+  }
+
+  // Amount check
+  const [amountTag, amountTagValue] =
+    zapRequestEvent.tags.find((x) => x[0] === "amount") ?? [];
+
+  if (!amountTagValue || parseInt(amount) !== parseInt(amountTagValue)) {
+    res.status(400).send({
+      success: false,
+      error: `Amount in zap request event is missing or does not match invoice amount`,
+    });
     return;
   }
 

@@ -41,7 +41,7 @@ export const handleConferenceZap = async (zapRequestEvent: ZapRequestEvent) => {
   // Parse zap request for track id and message
   const aTag = zapRequestEvent.tags.find((x) => x[0] === "a");
   const comment = zapRequestEvent.content;
-  const amount = zapRequestEvent.tags.find((x) => x[0] === "amount");
+  const amount = zapRequestEvent.tags.find((x) => x[0] === "amount")[1];
 
   const trackId = aTag[1].split(":")[2];
 
