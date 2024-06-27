@@ -10,7 +10,7 @@ import axios from "axios";
 const log = require("loglevel");
 log.setLevel(process.env.LOGLEVEL);
 
-const TIME_BETWEEN_REQUESTS = 3000; // 3 seconds
+const TIME_BETWEEN_REQUESTS = 2000; // 2 seconds
 const MIN_BATCH_FORWARD_AMOUNT =
   parseInt(process.env.MIN_BATCH_FORWARD_AMOUNT) || 100000; // min amount in msat to batch forward
 const MIN_FORWARD_AMOUNT = 1000; // min amount in msat to forward
@@ -102,19 +102,11 @@ const run = async () => {
 const handlePayments = async (groupedForwards: groupedForwards) => {
   const totalForwardCount = Object.keys(groupedForwards).length;
   log.debug("Grouped forwards:", totalForwardCount);
-  // Forward counter to know when to exit
-  let forwardCounter = 0;
   // Iterate over each group
   for (const [
     userId,
     { lightningAddress, msatAmount, createdAt, ids },
   ] of Object.entries(groupedForwards)) {
-    forwardCounter++;
-    if (forwardCounter === totalForwardCount + 1) {
-      log.debug("No more forwards in batch, exiting...");
-      break;
-    }
-
     const remainderMsats = msatAmount % 1000;
     const amountToSend = msatAmount - remainderMsats;
     const internalId = `forward-${ids[0]}`;
