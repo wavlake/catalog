@@ -102,19 +102,11 @@ const run = async () => {
 const handlePayments = async (groupedForwards: groupedForwards) => {
   const totalForwardCount = Object.keys(groupedForwards).length;
   log.debug("Grouped forwards:", totalForwardCount);
-  // Forward counter to know when to exit
-  let forwardCounter = 0;
   // Iterate over each group
   for (const [
     userId,
     { lightningAddress, msatAmount, createdAt, ids },
   ] of Object.entries(groupedForwards)) {
-    forwardCounter++;
-    if (forwardCounter === totalForwardCount + 1) {
-      log.debug("No more forwards in batch, exiting...");
-      break;
-    }
-
     const remainderMsats = msatAmount % 1000;
     const amountToSend = msatAmount - remainderMsats;
     const internalId = `forward-${ids[0]}`;
@@ -215,11 +207,12 @@ const handleReconciliation = async (uniqueExternalPaymentIds: string[]) => {
     await handleCompletedForward({
       externalPaymentId: id,
       status: status as PaymentStatus,
-      preimage: preimage,
+      preimage: preimage || "",
       msatAmount: parseInt(amount),
-      fee: parseInt(fee),
+      fee: parseInt(fee) || 0,
     });
   }
+  return;
 };
 
 run();
