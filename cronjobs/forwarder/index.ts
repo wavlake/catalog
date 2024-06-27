@@ -10,7 +10,7 @@ import axios from "axios";
 const log = require("loglevel");
 log.setLevel(process.env.LOGLEVEL);
 
-const TIME_BETWEEN_REQUESTS = 2000; // 2 seconds
+const TIME_BETWEEN_REQUESTS = 3000; // 3 seconds
 const MIN_BATCH_FORWARD_AMOUNT =
   parseInt(process.env.MIN_BATCH_FORWARD_AMOUNT) || 100000; // min amount in msat to batch forward
 const MIN_FORWARD_AMOUNT = 1000; // min amount in msat to forward
@@ -215,11 +215,12 @@ const handleReconciliation = async (uniqueExternalPaymentIds: string[]) => {
     await handleCompletedForward({
       externalPaymentId: id,
       status: status as PaymentStatus,
-      preimage: preimage,
+      preimage: preimage || "",
       msatAmount: parseInt(amount),
-      fee: parseInt(fee),
+      fee: parseInt(fee) || 0,
     });
   }
+  return;
 };
 
 run();

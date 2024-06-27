@@ -191,8 +191,8 @@ const processOutgoingInvoice = asyncHandler<
       externalPaymentId: id,
       status,
       msatAmount: parseInt(amount),
-      fee: parseInt(fee),
-      preimage,
+      fee: parseInt(fee) || 0,
+      preimage: preimage || "",
     });
 
     if (!isSuccess) {
