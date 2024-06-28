@@ -38,51 +38,55 @@ const getTrackMetadata = async (trackId: string) => {
 
 export const handleConferenceZap = async (zapRequestEvent: ZapRequestEvent) => {
   log.info("Handling conference zap request");
-  // Parse zap request for track id and message
-  const aTag = zapRequestEvent.tags.find((x) => x[0] === "a");
-  const comment = zapRequestEvent.content;
-  const amount = zapRequestEvent.tags.find((x) => x[0] === "amount")[1];
+  try {
+    // Parse zap request for track id and message
+    const aTag = zapRequestEvent.tags.find((x) => x[0] === "a");
+    const comment = zapRequestEvent.content;
+    const amount = zapRequestEvent.tags.find((x) => x[0] === "amount")[1];
 
-  const trackId = aTag[1].split(":")[2];
+    const trackId = aTag[1].split(":")[2];
 
-  // Retrive track metadata (artwork, title, artist)
-  const trackDetails = await getTrackMetadata(trackId);
+    // Retrive track metadata (artwork, title, artist)
+    const trackDetails = await getTrackMetadata(trackId);
 
-  const messageObject = {
-    sats: parseInt(amount) / 1000,
-    message: comment,
-    trackName: trackDetails.title,
-    trackArtist: trackDetails.artist,
-    trackAlbumArt: trackDetails.artworkUrl,
-  };
+    const messageObject = {
+      sats: parseInt(amount) / 1000,
+      message: comment,
+      trackName: trackDetails.title,
+      trackArtist: trackDetails.artist,
+      trackAlbumArt: trackDetails.artworkUrl,
+    };
 
-  const encryptedMessage = await encrypt(
-    WAVLAKE_SECRET,
-    DM_RECEIVER_PUBKEY,
-    JSON.stringify(messageObject)
-  );
-  let event = {
-    kind: 4,
-    created_at: Math.round(Date.now() / 1000),
-    tags: [["p", DM_RECEIVER_PUBKEY, "wss://relay.primal.net"]],
-    content: encryptedMessage,
-  };
+    const encryptedMessage = await encrypt(
+      WAVLAKE_SECRET,
+      DM_RECEIVER_PUBKEY,
+      JSON.stringify(messageObject)
+    );
+    let event = {
+      kind: 4,
+      created_at: Math.round(Date.now() / 1000),
+      tags: [["p", DM_RECEIVER_PUBKEY, "wss://relay.primal.net"]],
+      content: encryptedMessage,
+    };
 
-  // log.debug(`Signing zap receipt: ${JSON.stringify(zapReceipt)}`);
+    // log.debug(`Signing zap receipt: ${JSON.stringify(zapReceipt)}`);
 
-  const signedEvent = finalizeEvent(event, WAVLAKE_SECRET);
+    const signedEvent = finalizeEvent(event, WAVLAKE_SECRET);
 
-  // Publish to all relays
-  const pool = new SimplePool();
-  let relays = DM_RECEIVER_RELAYS;
-  Promise.any(pool.publish(relays, signedEvent))
-    .then(() => {
-      log.debug(`Published btc24 message for ${trackId}`);
-      return;
-    })
-    .catch((e) => {
-      log.error(`Error publishing btc24 message receipt: ${e}`);
-      return;
-    });
-  return;
+    // Publish to all relays
+    const pool = new SimplePool();
+    let relays = DM_RECEIVER_RELAYS;
+    Promise.any(pool.publish(relays, signedEvent))
+      .then(() => {
+        log.debug(`Published btc24 message for ${trackId}`);
+        return;
+      })
+      .catch((e) => {
+        log.error(`Error publishing btc24 message receipt: ${e}`);
+        return;
+      });
+    return;
+  } catch (e) {
+    log.error(`Error handling conference zap: ${e}`);
+  }
 };
