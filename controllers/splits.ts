@@ -3,7 +3,7 @@ import asyncHandler from "express-async-handler";
 import { SplitRecipient } from "@prisma/client";
 import { formatError } from "../library/errors";
 
-const MAX_SPLIT_COUNT = 12;
+const MAX_SPLIT_COUNT = 15;
 
 type ValidatedSplitReceipient = Partial<SplitRecipient> & {
   username?: string;
