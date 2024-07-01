@@ -1,6 +1,6 @@
 import db from "@library/db";
-const log = require("loglevel");
-log.setLevel(process.env.LOGLEVEL);
+import log, { LogLevelDesc } from "loglevel";
+log.setLevel((process.env.LOGLEVEL as LogLevelDesc) ?? "info");
 
 async function getWalletUser(pubkey) {
   // log.debug(weeklySpend);
@@ -72,8 +72,4 @@ const walletHasRemainingBudget = async (
     });
 };
 
-module.exports = {
-  getWalletUser,
-  walletHasRemainingBudget,
-  updateWallet,
-};
+export { getWalletUser, walletHasRemainingBudget, updateWallet };

@@ -6,9 +6,9 @@ import {
   Relay,
 } from "nostr-tools";
 import { hexToBytes } from "@noble/hashes/utils"; // already an installed dependency
-const log = require("loglevel");
-log.setLevel(process.env.LOGLEVEL);
-const { getWalletUser } = require("./wallet");
+import log, { LogLevelDesc } from "loglevel";
+log.setLevel((process.env.LOGLEVEL as LogLevelDesc) ?? "info");
+import { getWalletUser } from "./wallet";
 
 const relayUrl = process.env.WAVLAKE_RELAY;
 const walletSk = hexToBytes(process.env.WALLET_SERVICE_SECRET);
@@ -58,7 +58,4 @@ const broadcastEventResponse = async (
   return;
 };
 
-module.exports = {
-  validateEventAndGetUser,
-  broadcastEventResponse,
-};
+export { validateEventAndGetUser, broadcastEventResponse };
