@@ -7,7 +7,7 @@ import db from "../library/db";
 import { isValidDateString } from "../library/validation";
 import { getUserIds, userOwnsContent } from "../library/userHelper";
 
-const MAX_PLAYLIST_LENGTH = 200;
+const MAX_PLAYLIST_LENGTH = 300;
 export const addTrackToPlaylist = asyncHandler(async (req, res, next) => {
   let userId: string = req["uid"];
 
