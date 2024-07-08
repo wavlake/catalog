@@ -38,7 +38,7 @@ interface Follow extends Prisma.JsonArray {
   petname?: string;
 }
 
-const LOOKBACK_DAYS = 45;
+const LOOKBACK_DAYS = 450;
 ////// QUERIES //////
 const runQueries = async (pubkeys: any[] | null) => {
   const newDate = new Date();
@@ -158,6 +158,7 @@ const runQueries = async (pubkeys: any[] | null) => {
     .knex(ZAP_QUERY)
     .leftOuterJoin("npub", "zap_query.user_id", "=", "npub.public_hex")
     .leftOuterJoin("track", "track.id", "=", "zap_query.content_id")
+    .leftOuterJoin("track_info", "track_info.id", "=", "zap_query.content_id")
     .leftOuterJoin("album", "album.id", "=", "track.album_id")
     .leftOuterJoin("artist", "artist.id", "=", "zap_query.content_id")
     .select(
@@ -174,7 +175,7 @@ const runQueries = async (pubkeys: any[] | null) => {
       ),
       db.knex.raw("COALESCE(album.id) as parent_content_id"),
       db.knex.raw("COALESCE(album.title) as parent_content_title"),
-      db.knex.raw("COALESCE(album.artist, artist.name) as grand_parent_title"),
+      db.knex.raw("COALESCE(track_info.artist) as grand_parent_title"),
       db.knex.raw("'placeholder' as parent_content_type"),
       "zap_query.type as type",
       "zap_query.timestamp as timestamp",
