@@ -38,7 +38,7 @@ interface Follow extends Prisma.JsonArray {
   petname?: string;
 }
 
-const LOOKBACK_DAYS = 450;
+const LOOKBACK_DAYS = 45;
 ////// QUERIES //////
 const runQueries = async (pubkeys: any[] | null) => {
   const newDate = new Date();
