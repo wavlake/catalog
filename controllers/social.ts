@@ -29,7 +29,7 @@ interface ActivityItem {
   parentContentId?: string;
   parentContentTitle?: string;
   parentContentType?: string;
-  grandParentTitle?: string;
+  artist?: string;
 }
 
 interface Follow extends Prisma.JsonArray {
@@ -175,7 +175,7 @@ const runQueries = async (pubkeys: any[] | null) => {
       ),
       db.knex.raw("COALESCE(album.id) as parent_content_id"),
       db.knex.raw("COALESCE(album.title) as parent_content_title"),
-      db.knex.raw("COALESCE(track_info.artist) as grand_parent_title"),
+      db.knex.raw("COALESCE(track_info.artist) as artist"),
       db.knex.raw("'placeholder' as parent_content_type"),
       "zap_query.type as type",
       "zap_query.timestamp as timestamp",
@@ -236,7 +236,7 @@ const formatActivityItems = (activities: any[]) => {
       parentContentTitle: activity.track_count
         ? `${activity.track_count} track${activity.track_count > 1 ? "s" : ""}`
         : activity.parent_content_title,
-      grandParentTitle: activity.grand_parent_title,
+      artist: activity.artist,
       parentContentType: activity.parent_content_type,
     } as ActivityItem;
   });
