@@ -22,24 +22,7 @@ async function deleteFromS3(key) {
       if (err) {
         log.debug(`Error deleting ${key} from S3: ${err}`);
       }
-      log.debug(`Deleted ${key} from S3: ${data}`);
-    })
-    .promise();
-}
-
-async function uploadS3(sourcePath, key, type) {
-  const object = {
-    Bucket: s3BucketName,
-    Key: key,
-    Body: fs.readFileSync(sourcePath),
-    ContentType: "image/*",
-  };
-
-  return s3
-    .upload(object, (err, data) => {
-      if (err) {
-        log.debug(`Error uploading ${type}:${key} to S3: ${err}`);
-      }
+      log.debug(`Deleted ${key} from S3`);
     })
     .promise();
 }
@@ -64,6 +47,5 @@ async function generatePresignedUrl({ key, extension }) {
 module.exports = {
   s3,
   deleteFromS3,
-  uploadS3,
   generatePresignedUrl,
 };
