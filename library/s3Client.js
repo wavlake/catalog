@@ -27,6 +27,23 @@ async function deleteFromS3(key) {
     .promise();
 }
 
+async function uploadS3(sourcePath, key, type) {
+  const object = {
+    Bucket: s3BucketName,
+    Key: key,
+    Body: fs.readFileSync(sourcePath),
+    ContentType: "image/*",
+  };
+
+  return s3
+    .upload(object, (err, data) => {
+      if (err) {
+        log.debug(`Error uploading ${type}:${key} to S3: ${err}`);
+      }
+    })
+    .promise();
+}
+
 async function generatePresignedUrl({ key, extension }) {
   const params = {
     Bucket: s3BucketName,
@@ -48,4 +65,5 @@ module.exports = {
   s3,
   deleteFromS3,
   generatePresignedUrl,
+  uploadS3,
 };
