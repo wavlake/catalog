@@ -118,6 +118,7 @@ async function handleCompletedAmpInvoice(
     contentTime: timestamp ?? null,
     userId: pubkey ? pubkey : null,
     comment: content ? content : null,
+    isNostr: paymentTypeCode === PaymentType.Zap ? true : false,
   });
 
   if (!amp) {
