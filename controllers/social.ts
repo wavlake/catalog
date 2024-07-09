@@ -115,7 +115,7 @@ const runQueries = async (pubkeys: any[] | null) => {
       db.knex.raw("'track' as content_type"),
       "track_info.album_id as parent_content_id",
       "track_info.album_title as parent_content_title",
-      "track_info.artist as grand_parent_title",
+      "track_info.artist as artist",
       db.knex.raw("'album' as parent_content_type"),
       db.knex.raw("'trackPublish' as type"),
       "track_info.published_at as timestamp",
