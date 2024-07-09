@@ -2,6 +2,7 @@ import prisma from "../prisma/client";
 import db from "../library/db";
 import log from "loglevel";
 import { randomUUID } from "crypto";
+import { invalidateCdn } from "../library/cloudfrontClient";
 import s3Client from "../library/s3Client";
 import { isAlbumOwner, isTrackOwner } from "../library/userHelper";
 import { validate } from "uuid";
@@ -337,26 +338,30 @@ const delete_track = asyncHandler(async (req, res, next) => {
   }
 
   log.debug(`Deleting track ${request.trackId}`);
-  return db
+  const deleteTrackData = await db
     .knex("track")
     .where("id", "=", request.trackId)
-    .update({ deleted: true }, ["id", "title", "album_id as albumId"])
-    .then(async (data) => {
-      const updatedAt = new Date();
-      // update the album's updatedAt field
-      await prisma.album.update({
-        where: { id: data[0].albumId },
-        data: { updatedAt },
-      });
-      res.send({ success: true, data: data[0] });
-    })
-    .catch((err) => {
-      log.debug(`Error deleting track ${request.trackId}: ${err}`);
-      res.status(500).json({
-        success: false,
-        error: "Something went wrong",
-      });
+    .update({ deleted: true }, ["id", "title", "album_id as albumId"]);
+
+  if (!deleteTrackData) {
+    res.status(404).json({
+      success: false,
+      error: `Track not found for id: ${request.trackId}`,
     });
+    return;
+  }
+  const updatedAt = new Date();
+  // update the album's updatedAt field
+  await prisma.album.update({
+    where: { id: deleteTrackData[0].albumId },
+    data: { updatedAt },
+  });
+
+  // Clean up S3 and CDN
+  s3Client.deleteFromS3(`${AWS_S3_TRACK_PREFIX}/${request.trackId}.mp3`);
+  invalidateCdn(`${AWS_S3_TRACK_PREFIX}/${request.trackId}.mp3`);
+
+  res.send({ success: true, data: deleteTrackData[0] });
 });
 
 const create_track = asyncHandler(async (req, res, next) => {
