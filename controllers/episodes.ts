@@ -2,6 +2,7 @@ import prisma from "../prisma/client";
 import db from "../library/db";
 import log from "loglevel";
 import { randomUUID } from "crypto";
+import { invalidateCdn } from "../library/cloudfrontClient";
 import s3Client from "../library/s3Client";
 import asyncHandler from "express-async-handler";
 import { isEpisodeOwner, isPodcastOwner } from "../library/userHelper";
@@ -97,27 +98,35 @@ export const delete_episode = asyncHandler(async (req, res, next) => {
   }
 
   log.debug(`Deleting episode ${episodeId}`);
-  db.knex("episode")
+  const deleteEpisodeData = await db
+    .knex("episode")
     .where("id", "=", episodeId)
-    .update({ deleted: true }, ["id", "episode", "podcast_id as podcastId"])
-    .then(async (data) => {
-      const updatedAt = new Date();
-      // Update podcast updatedAt
-      await prisma.podcast.update({
-        where: {
-          id: data[0].podcastId,
-        },
-        data: {
-          updatedAt,
-        },
-      });
+    .update({ deleted: true }, ["id", "episode", "podcast_id as podcastId"]);
 
-      res.send({ success: true, data: data[0] });
-    })
-    .catch((err) => {
-      log.debug(`Error deleting episode ${episodeId}: ${err}`);
-      next(err);
+  if (!deleteEpisodeData) {
+    res.status(404).json({
+      success: false,
+      error: "Episode not found",
     });
+    return;
+  }
+
+  const updatedAt = new Date();
+  // Update podcast updatedAt
+  await prisma.podcast.update({
+    where: {
+      id: deleteEpisodeData[0].podcastId,
+    },
+    data: {
+      updatedAt,
+    },
+  });
+
+  // Clean up S3 and CDN
+  s3Client.deleteFromS3(`${AWS_S3_EPISODE_PREFIX}/${episodeId}.mp3`);
+  invalidateCdn(`${AWS_S3_EPISODE_PREFIX}/${episodeId}.mp3`);
+
+  res.send({ success: true, data: deleteEpisodeData[0] });
 });
 
 export const create_episode = asyncHandler(async (req, res, next) => {
