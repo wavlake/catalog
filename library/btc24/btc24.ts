@@ -54,7 +54,7 @@ export const handleConferenceZap = async (zapRequestEvent: ZapRequestEvent) => {
       message: comment,
       trackName: trackDetails.title,
       trackArtist: trackDetails.artist,
-      trackAlbumArt: trackDetails.artworkUrl,
+      trackAlbumArt: trackDetails.artwork_url,
     };
 
     const encryptedMessage = await encrypt(

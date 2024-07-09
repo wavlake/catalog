@@ -29,6 +29,7 @@ interface ActivityItem {
   parentContentId?: string;
   parentContentTitle?: string;
   parentContentType?: string;
+  artist?: string;
 }
 
 interface Follow extends Prisma.JsonArray {
@@ -114,6 +115,7 @@ const runQueries = async (pubkeys: any[] | null) => {
       db.knex.raw("'track' as content_type"),
       "track_info.album_id as parent_content_id",
       "track_info.album_title as parent_content_title",
+      "track_info.artist as artist",
       db.knex.raw("'album' as parent_content_type"),
       db.knex.raw("'trackPublish' as type"),
       "track_info.published_at as timestamp",
@@ -156,6 +158,7 @@ const runQueries = async (pubkeys: any[] | null) => {
     .knex(ZAP_QUERY)
     .leftOuterJoin("npub", "zap_query.user_id", "=", "npub.public_hex")
     .leftOuterJoin("track", "track.id", "=", "zap_query.content_id")
+    .leftOuterJoin("track_info", "track_info.id", "=", "zap_query.content_id")
     .leftOuterJoin("album", "album.id", "=", "track.album_id")
     .leftOuterJoin("artist", "artist.id", "=", "zap_query.content_id")
     .select(
@@ -172,6 +175,7 @@ const runQueries = async (pubkeys: any[] | null) => {
       ),
       db.knex.raw("COALESCE(album.id) as parent_content_id"),
       db.knex.raw("COALESCE(album.title) as parent_content_title"),
+      db.knex.raw("COALESCE(track_info.artist) as artist"),
       db.knex.raw("'placeholder' as parent_content_type"),
       "zap_query.type as type",
       "zap_query.timestamp as timestamp",
@@ -232,6 +236,7 @@ const formatActivityItems = (activities: any[]) => {
       parentContentTitle: activity.track_count
         ? `${activity.track_count} track${activity.track_count > 1 ? "s" : ""}`
         : activity.parent_content_title,
+      artist: activity.artist,
       parentContentType: activity.parent_content_type,
     } as ActivityItem;
   });
