@@ -43,9 +43,31 @@ const get_album_comments = asyncHandler(async (req, res, next) => {
   await getCommentsCommon(trackIds, res, next);
 });
 
+const get_comment_by_id = asyncHandler(async (req, res, next) => {
+  const commentId = req.params.commentId;
+  const commentIdInt = parseInt(commentId);
+
+  if (isNaN(commentIdInt)) {
+    res.json({ success: false, error: "Invalid comment ID" });
+    return;
+  }
+
+  const comment = await prisma.comment.findUnique({
+    where: { id: commentIdInt },
+  });
+
+  if (!comment) {
+    res.json({ success: false, error: "Comment not found" });
+    return;
+  }
+
+  res.json({ success: true, data: comment });
+});
+
 export default {
   get_comments,
   get_podcast_comments,
   get_artist_comments,
   get_album_comments,
+  get_comment_by_id,
 };

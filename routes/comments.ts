@@ -7,6 +7,8 @@ const router = express.Router();
 
 //////// ROUTES ////////
 
+router.get("/id/:commentId", commentsController.get_comment_by_id);
+
 router.get(
   "/show/:podcastId/:page?/:pageSize?",
   validatePaginationAndId("podcastId"),
@@ -29,5 +31,6 @@ router.get(
   validatePaginationAndId("contentId"),
   commentsController.get_comments
 );
+
 // Export router
 export default router;
