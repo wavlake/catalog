@@ -1,6 +1,8 @@
 import db from "../library/db";
 import log from "loglevel";
 
+const BAD_COMMENTS = ["Zapped by", "TrueFans Stream"];
+
 export const getAllComments = async (
   contentIds: string[],
   limit: number,
@@ -17,6 +19,15 @@ export const getAllComments = async (
     .catch((e) => {
       log.error(e);
     });
+
+  // Replace boilerplate comments null object
+  if (Array.isArray(allComments) && allComments.length) {
+    allComments.forEach((comment) => {
+      if (BAD_COMMENTS.some((bad) => comment.content.includes(bad))) {
+        delete comment.content;
+      }
+    });
+  }
 
   return allComments;
 };
