@@ -373,6 +373,7 @@ model zap_request {
   created_at   DateTime? @default(now()) @db.Timestamptz(6)
 
   @@index([payment_hash], map: "idx_zap_payment_hash")
+  @@index([event_id], map: "idx_zap_request_event_id")
 }
 
 model Split {
