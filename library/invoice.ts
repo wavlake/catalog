@@ -32,6 +32,7 @@ export const updateInvoiceIfNeeded = async (
   const msatAmount = parseInt(charge.amount);
   const paymentRequest = charge.invoice.request;
   const preimage = charge.invoice.preimage;
+  const externalId = charge.id;
   if (!Object.values(ChargeStatus).includes(status as ChargeStatus)) {
     log.error(`Invalid status: ${status}`);
     return { success: false, message: "Invalid invoice status" };
@@ -63,7 +64,8 @@ export const updateInvoiceIfNeeded = async (
           invoiceId,
           msatAmount,
           paymentRequest,
-          preimage
+          preimage,
+          externalId
         );
       }
       return { success: true, data: { status: status } };
@@ -89,7 +91,8 @@ async function handleCompletedAmpInvoice(
   invoiceId: number,
   amount: number,
   paymentRequest: string,
-  preimage: string
+  preimage: string,
+  externalId: string
 ) {
   // Look up invoice type
   const paymentTypeCode = await getInvoicePaymentTypeCode(invoiceId);
@@ -119,6 +122,7 @@ async function handleCompletedAmpInvoice(
     userId: pubkey ? pubkey : null,
     comment: content ? content : null,
     isNostr: paymentTypeCode === PaymentType.Zap,
+    externalTxId: externalId,
   });
 
   if (!amp) {
