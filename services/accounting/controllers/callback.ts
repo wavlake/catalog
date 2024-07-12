@@ -75,7 +75,7 @@ const processIncomingKeysend = asyncHandler<
     contentTime: keysendMetadata?.ts ? parseInt(keysendMetadata.ts) : undefined,
     msatAmount: transaction.amount,
     userId: undefined,
-    externalTxId: undefined,
+    externalTxId: transaction.id,
     // type 5 is keysend
     paymentType: 5,
     boostData: keysendMetadata,
