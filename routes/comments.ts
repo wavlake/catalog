@@ -10,9 +10,9 @@ const router = express.Router();
 
 router.get("/id/:commentId", commentsController.get_comment_by_id);
 router.put(
-  "/id/:commentId/:eventId",
+  "/event-id/:zapRequestEventId/:kind1EventId",
   isFirebaseOrNostrAuthorized,
-  commentsController.save_event_id
+  commentsController.update_event_id
 );
 
 router.get(

@@ -1,4 +1,6 @@
 import prisma from "../prisma/client";
+import db from "../library/db";
+const log = require("loglevel");
 import asyncHandler from "express-async-handler";
 import { getAllComments } from "../library/comments";
 import { formatError } from "../library/errors";
@@ -65,39 +67,71 @@ const get_comment_by_id = asyncHandler(async (req, res, next) => {
   res.json({ success: true, data: comment });
 });
 
-const save_event_id = asyncHandler(async (req, res, next) => {
+const update_event_id = asyncHandler(async (req, res, next) => {
   const pubkey = (res.locals?.authEvent as Event)?.pubkey;
-  const commentId = req.params.commentId;
-  const eventId = req.params.eventId;
-  const commentIdInt = parseInt(commentId);
+  const zapRequestEventId = req.params.zapRequestEventId;
+  const kind1EventId = req.params.kind1EventId;
 
-  if (isNaN(commentIdInt)) {
-    res.json({ success: false, error: "Invalid comment ID" });
+  if (!zapRequestEventId || !kind1EventId) {
+    res.status(400).json({
+      success: false,
+      error: "zapRequestEventId and kind1EventId are required",
+    });
+  }
+
+  const zapRequest = await db
+    .knex("zap_request")
+    .select(
+      db.knex.raw(
+        "split_part(payment_hash, '-', 2)::int as external_receive_id"
+      ),
+      "event_id"
+    )
+    .where("event_id", "=", zapRequestEventId)
+    .first();
+
+  if (!zapRequest || isNaN(zapRequest.external_receive_id)) {
+    res.json({ success: false, error: "Zap request not found" });
     return;
   }
 
-  const comment = await prisma.comment.findUnique({
-    where: { id: commentIdInt },
-  });
+  // Get tx from zapRequestEventId
+  const tx = await db
+    .knex("external_receive")
+    .select("external_id")
+    .where("id", "=", zapRequest.external_receive_id)
+    .from("external_receive")
+    .first();
 
-  if (!comment) {
-    res.json({ success: false, error: "Comment not found" });
+  if (!tx) {
+    res.json({ success: false, error: "Transaction not found" });
     return;
   }
 
-  if (pubkey !== comment.userId) {
+  // Get comment
+  const comment = await db
+    .knex("comment")
+    .where("comment.tx_id", "=", tx.external_id)
+    .first();
+
+  // Check if user is authorized to update comment
+  if (pubkey !== comment.user_id) {
     res.status(401).json({ success: false, error: "Unauthorized" });
     return;
   }
 
-  const updatedComment = await prisma.comment.update({
-    where: { id: commentIdInt },
-    data: {
-      eventId,
-    },
-  });
+  // Update comment with kind1EventId using zapRequestEventId as lookup
+  const updatedComment = await db
+    .knex("comment")
+    .where("comment.id", "=", comment.id)
+    .update({ event_id: kind1EventId }, ["id", "event_id"]);
 
-  res.json({ success: true });
+  if (!updatedComment) {
+    res.json({ success: false, error: "Failed to update kind 1 for comment" });
+    return;
+  }
+
+  res.json({ success: true, data: updatedComment });
 });
 
 export default {
@@ -106,5 +140,5 @@ export default {
   get_artist_comments,
   get_album_comments,
   get_comment_by_id,
-  save_event_id,
+  update_event_id,
 };
