@@ -98,6 +98,11 @@ async function handleCompletedAmpInvoice(
   const paymentTypeCode = await getInvoicePaymentTypeCode(invoiceId);
 
   let zapRequest, pubkey, content, timestamp;
+
+  ///////// TEMPORARY - REMOVE AFTER 240728 /////////
+  let isConferenceZap = false;
+  /////////
+
   if (paymentTypeCode === PaymentType.Zap) {
     log.debug(`Processing zap details for invoice id ${invoiceId}`);
     const zapInfo = await getZapPubkeyAndContent(invoiceId);
@@ -105,6 +110,18 @@ async function handleCompletedAmpInvoice(
     pubkey = zapInfo.pubkey;
     content = zapInfo.content;
     timestamp = zapInfo.timestamp;
+
+    ///////// TEMPORARY - REMOVE AFTER 240728 /////////
+    try {
+      const hashtag = zapRequest.tags.find((x) => x[0] === "t");
+      const btc24Tag = hashtag && hashtag[1] === "btc24jukebox";
+      if (btc24Tag) {
+        isConferenceZap = true;
+      }
+    } catch (e) {
+      log.error(`Error checking for conference zap: ${e}`);
+    }
+    /////////
   }
   const contentId = await getContentIdFromInvoiceId(invoiceId);
   log.debug(`Processing amp invoice for content id ${contentId}`);
@@ -123,6 +140,9 @@ async function handleCompletedAmpInvoice(
     comment: content ? content : null,
     isNostr: paymentTypeCode === PaymentType.Zap,
     externalTxId: externalId,
+    ///////// TEMPORARY - REMOVE AFTER 240728 /////////
+    isConferenceZap: isConferenceZap,
+    /////////
   });
 
   if (!amp) {
