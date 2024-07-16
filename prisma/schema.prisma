@@ -100,6 +100,7 @@ model comment {
   contentId   String?   @map("content_id") @db.Uuid
   contentType String?   @default("track") @map("content_type") @db.VarChar(12)
   isNostr     Boolean?  @default(false) @map("is_nostr")
+  eventId     String?   @map("event_id") @db.VarChar(255)
 
   @@index([parentId], map: "idx_comment_parent_id")
   @@index([userId], map: "idx_comment_user_id")
@@ -372,6 +373,7 @@ model zap_request {
   created_at   DateTime? @default(now()) @db.Timestamptz(6)
 
   @@index([payment_hash], map: "idx_zap_payment_hash")
+  @@index([event_id], map: "idx_zap_request_event_id")
 }
 
 model Split {
