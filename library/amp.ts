@@ -43,7 +43,10 @@ export const processSplits = async ({
   rHashStr = null,
   comment = null,
   settleIndex = 0,
-}: {
+  ///////// TEMPORARY - REMOVE AFTER 240728 /////////
+  isConferenceZap = false,
+}: /////////
+{
   contentId: string;
   contentTime: number;
   msatAmount: number;
@@ -57,6 +60,9 @@ export const processSplits = async ({
   rHashStr?: string;
   comment?: string;
   settleIndex?: number;
+  ///////// TEMPORARY - REMOVE AFTER 240728 /////////
+  isConferenceZap?: boolean;
+  /////////
 }) => {
   log.debug(`Building amp tx: ${externalTxId}`);
   const contentType = await getType(contentId);
@@ -274,7 +280,7 @@ export const processSplits = async ({
   }
 
   // Add comment if present
-  if (comment) {
+  if (comment && !isConferenceZap) {
     await trx("comment").insert({
       user_id: userIdForDb,
       content: comment,
