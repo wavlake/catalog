@@ -3,7 +3,6 @@ import db from "../library/db";
 const asyncHandler = require("express-async-handler");
 import { formatError } from "../library/errors";
 const Sentry = require("@sentry/node");
-import prisma from "../prisma/client";
 
 const d = new Date();
 const d30 = new Date();
@@ -15,7 +14,8 @@ const get_earnings_by_account = asyncHandler(async (req, res, next) => {
     userId: req["uid"],
   };
 
-  db.knex("track")
+  const musicQuery = await db
+    .knex("track")
     .join("amp", "track.id", "=", "amp.track_id")
     .join("artist", "artist.id", "=", "track.artist_id")
     .sum("amp.msat_amount as msatTotal")
@@ -23,25 +23,35 @@ const get_earnings_by_account = asyncHandler(async (req, res, next) => {
     .andWhere("track.deleted", "=", false)
     .andWhere("amp.created_at", ">", d30)
     .groupBy("artist.user_id")
-    .then((data) => {
-      if (data.length === 0) {
-        res.send({ success: true, data: { msatTotal: 0 } });
-        return;
-      }
-      const formatted = data.map((item) => {
-        return {
-          msatTotal: parseInt(item.msatTotal),
-        };
-      });
-      res.send({ success: true, data: formatted[0] });
-    })
-    .catch((err) => {
-      const error = formatError(
-        500,
-        "There was a problem retrieving earnings data"
-      );
-      next(error);
-    });
+    .first();
+
+  const podcastQuery = await db
+    .knex("podcast")
+    .join("episode", "podcast.id", "=", "episode.podcast_id")
+    .join("amp", "amp.track_id", "=", "episode.id")
+    .sum("amp.msat_amount as msatTotal")
+    .where("podcast.user_id", "=", request.userId)
+    .andWhere("episode.deleted", "=", false)
+    .andWhere("amp.created_at", ">", d30)
+    .groupBy("podcast.user_id")
+    .first();
+  const musicMsatTotal = parseInt(
+    isNaN(musicQuery?.msatTotal) ? "0" : musicQuery.msatTotal
+  );
+  const podcastMsatTotal = parseInt(
+    isNaN(podcastQuery?.msatTotal) ? "0" : podcastQuery.msatTotal
+  );
+
+  const msatTotal = musicMsatTotal + podcastMsatTotal;
+
+  res.send({
+    success: true,
+    data: {
+      msatTotal: msatTotal,
+      musicMsatTotal: musicMsatTotal,
+      podcastMsatTotal: podcastMsatTotal,
+    },
+  });
 });
 
 const get_earnings_all_time_by_account = asyncHandler(
@@ -50,32 +60,42 @@ const get_earnings_all_time_by_account = asyncHandler(
       userId: req["uid"],
     };
 
-    db.knex("track")
+    const musicQuery = await db
+      .knex("track")
       .join("amp", "track.id", "=", "amp.track_id")
       .join("artist", "artist.id", "=", "track.artist_id")
       .sum("amp.msat_amount as msatTotal")
       .where("artist.user_id", "=", request.userId)
       .andWhere("track.deleted", "=", false)
       .groupBy("artist.user_id")
-      .then((data) => {
-        if (data.length === 0) {
-          res.send({ success: true, data: { msatTotal: 0 } });
-          return;
-        }
-        const formatted = data.map((item) => {
-          return {
-            msatTotal: parseInt(item.msatTotal),
-          };
-        });
-        res.send({ success: true, data: formatted[0] });
-      })
-      .catch((err) => {
-        const error = formatError(
-          500,
-          "There was a problem retrieving earnings data"
-        );
-        next(error);
-      });
+      .first();
+
+    const podcastQuery = await db
+      .knex("podcast")
+      .join("episode", "podcast.id", "=", "episode.podcast_id")
+      .join("amp", "amp.track_id", "=", "episode.id")
+      .sum("amp.msat_amount as msatTotal")
+      .where("podcast.user_id", "=", request.userId)
+      .andWhere("episode.deleted", "=", false)
+      .groupBy("podcast.user_id")
+      .first();
+    const musicMsatTotal = parseInt(
+      isNaN(musicQuery?.msatTotal) ? "0" : musicQuery.msatTotal
+    );
+    const podcastMsatTotal = parseInt(
+      isNaN(podcastQuery?.msatTotal) ? "0" : podcastQuery.msatTotal
+    );
+
+    const msatTotal = musicMsatTotal + podcastMsatTotal;
+
+    res.send({
+      success: true,
+      data: {
+        msatTotal: msatTotal,
+        musicMsatTotal: musicMsatTotal,
+        podcastMsatTotal: podcastMsatTotal,
+      },
+    });
   }
 );
 
