@@ -115,8 +115,15 @@ describe("Accounting integration tests", () => {
       .first()
       .then((track) => track.msat_total);
 
+    const ampUser = await db
+      .knex("amp")
+      .where({ user_id: "testernpub" })
+      .first()
+      .then((amp) => amp.user_id);
+
     expect(testerOneBalance).toBe("12700");
     expect(testerTwoBalance).toBe("7000");
     expect(trackBalance).toBe("2000");
+    expect(ampUser).toBe("testernpub");
   });
 });
