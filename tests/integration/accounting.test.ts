@@ -83,4 +83,40 @@ describe("Accounting integration tests", () => {
     expect(testerTwoBalance).toBe("8000");
     expect(artistBalance).toBe("1000");
   });
+
+  it("adjusts all balances correctly for a NWC amp", async () => {
+    await amp.processSplits({
+      contentId: seeds.testerOneTrackId,
+      contentType: "track",
+      msatAmount: 1000,
+      paymentType: 10,
+      userId: seeds.testerTwoId,
+      npub: "testernpub",
+    });
+
+    const testerOneBalance = await db
+      .knex("user")
+      .where({ id: seeds.testerOneId })
+      .select("msat_balance")
+      .first()
+      .then((user) => user.msat_balance);
+
+    const testerTwoBalance = await db
+      .knex("user")
+      .where({ id: seeds.testerTwoId })
+      .select("msat_balance")
+      .first()
+      .then((user) => user.msat_balance);
+
+    const trackBalance = await db
+      .knex("track")
+      .where({ id: seeds.testerOneTrackId })
+      .select("msat_total")
+      .first()
+      .then((track) => track.msat_total);
+
+    expect(testerOneBalance).toBe("12700");
+    expect(testerTwoBalance).toBe("7000");
+    expect(trackBalance).toBe("2000");
+  });
 });
