@@ -2,7 +2,7 @@ import prisma from "@prismalocal/client";
 const log = require("loglevel");
 log.setLevel(process.env.LOGLEVEL);
 const nlInvoice = require("@node-lightning/invoice");
-const amp = require("@library/amp");
+import { processSplits } from "@library/amp";
 import db from "@library/db";
 const { getZapPubkeyAndContent, publishZapReceipt } = require("@library/zap");
 const { updateWallet, walletHasRemainingBudget } = require("./wallet");
@@ -228,18 +228,15 @@ const createInternalPayment = async (
   msatBalance,
   event
 ) => {
-  const trx = await db.knex.transaction();
-  const payment = await amp.processSplits({
-    res: null,
-    trx: trx,
-    type: 10,
+  const payment = await processSplits({
+    paymentType: 10,
+    contentTime: null,
     contentId: contentId,
     userId: userId,
     npub: pubkey,
     msatAmount: valueMsat,
     comment: content,
     isNostr: true,
-    isNwc: true,
   });
   if (payment) {
     log.debug(`Paid internal invoice with id ${invoiceId}, cancelling...`);
