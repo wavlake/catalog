@@ -89,15 +89,17 @@ export const publishZapReceipt = async (
   const eTag = zapRequestEvent.tags.find((x) => x[0] === "e");
   const aTag = zapRequestEvent.tags.find((x) => x[0] === "a");
   const pTag = zapRequestEvent.tags.find((x) => x[0] === "p");
-
+  const iTags = zapRequestEvent.tags.filter((x) => x[0] === "i");
   ///////// TEMPORARY /////////
+
+  ///////// TEMPORARY - REMOVE AFTER 240728 /////////
   const hashtag = zapRequestEvent.tags.find((x) => x[0] === "t");
   const btc24Tag = hashtag && hashtag[1] === "btc24jukebox";
 
   if (btc24Tag) {
     handleConferenceZap(zapRequestEvent);
   }
-  ////////// TEMPORARY /////////
+  //////////
 
   if (!aTag && !eTag) {
     log.error("No e or a tag found");
@@ -114,6 +116,7 @@ export const publishZapReceipt = async (
       ...(aTag ? [aTag] : []),
       ...(eTag ? [eTag] : []),
       ...(hashtag ? [hashtag] : []),
+      ...(iTags.length > 0 ? iTags : []),
     ],
     content: "",
   };

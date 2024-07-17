@@ -32,6 +32,7 @@ export const updateInvoiceIfNeeded = async (
   const msatAmount = parseInt(charge.amount);
   const paymentRequest = charge.invoice.request;
   const preimage = charge.invoice.preimage;
+  const externalId = charge.id;
   if (!Object.values(ChargeStatus).includes(status as ChargeStatus)) {
     log.error(`Invalid status: ${status}`);
     return { success: false, message: "Invalid invoice status" };
@@ -63,7 +64,8 @@ export const updateInvoiceIfNeeded = async (
           invoiceId,
           msatAmount,
           paymentRequest,
-          preimage
+          preimage,
+          externalId
         );
       }
       return { success: true, data: { status: status } };
@@ -89,12 +91,18 @@ async function handleCompletedAmpInvoice(
   invoiceId: number,
   amount: number,
   paymentRequest: string,
-  preimage: string
+  preimage: string,
+  externalId: string
 ) {
   // Look up invoice type
   const paymentTypeCode = await getInvoicePaymentTypeCode(invoiceId);
 
   let zapRequest, pubkey, content, timestamp;
+
+  ///////// TEMPORARY - REMOVE AFTER 240728 /////////
+  let isConferenceZap = false;
+  /////////
+
   if (paymentTypeCode === PaymentType.Zap) {
     log.debug(`Processing zap details for invoice id ${invoiceId}`);
     const zapInfo = await getZapPubkeyAndContent(invoiceId);
@@ -102,6 +110,18 @@ async function handleCompletedAmpInvoice(
     pubkey = zapInfo.pubkey;
     content = zapInfo.content;
     timestamp = zapInfo.timestamp;
+
+    ///////// TEMPORARY - REMOVE AFTER 240728 /////////
+    try {
+      const hashtag = zapRequest.tags.find((x) => x[0] === "t");
+      const btc24Tag = hashtag && hashtag[1] === "btc24jukebox";
+      if (btc24Tag) {
+        isConferenceZap = true;
+      }
+    } catch (e) {
+      log.error(`Error checking for conference zap: ${e}`);
+    }
+    /////////
   }
   const contentId = await getContentIdFromInvoiceId(invoiceId);
   log.debug(`Processing amp invoice for content id ${contentId}`);
@@ -119,6 +139,10 @@ async function handleCompletedAmpInvoice(
     userId: pubkey ? pubkey : null,
     comment: content ? content : null,
     isNostr: paymentTypeCode === PaymentType.Zap,
+    externalTxId: externalId,
+    ///////// TEMPORARY - REMOVE AFTER 240728 /////////
+    isConferenceZap: isConferenceZap,
+    /////////
   });
 
   if (!amp) {
