@@ -36,7 +36,7 @@ export const processSplits = async ({
   contentTime,
   msatAmount,
   userId,
-  npub = null,
+  npub = null, // This value only comes from NWC payments
   externalTxId = randomUUID(),
   paymentType = 1,
   boostData = undefined,
