@@ -52,6 +52,7 @@ function commentsLegacy(contentIds) {
     .min("comment.user_id as userId")
     .min("comment.created_at as createdAt")
     .min("comment.content as content")
+    .min("comment.event_id as eventId")
     .min("user.artwork_url as commenterArtworkUrl")
     .min("user.name as name")
     .min("track.title as title")
@@ -74,6 +75,7 @@ function commentsV2(contentIds) {
   "preamp"."user_id" AS "userId",
   "comment"."created_at" AS "createdAt",
   "comment"."content" AS "content",
+  "comment"."event_id" AS "eventId",
   COALESCE("user"."artwork_url", JSONB_EXTRACT_PATH_TEXT("npub"."metadata", 'picture')::text) AS "commenterArtworkUrl",
   COALESCE("user"."name", JSONB_EXTRACT_PATH_TEXT("npub"."metadata", 'display_name')::text, JSONB_EXTRACT_PATH_TEXT("npub"."metadata", 'name')::text, "preamp"."sender_name") AS "name",
   COALESCE("track"."title", "episode"."title") AS "title"
