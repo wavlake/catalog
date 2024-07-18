@@ -11,6 +11,7 @@ const { broadcastEventResponse } = require("./event");
 const { webcrypto } = require("node:crypto");
 globalThis.crypto = webcrypto;
 import { FEE_BUFFER } from "@library/constants";
+import { randomUUID } from "crypto";
 
 const payInvoice = async (event, content, walletUser) => {
   log.debug(`Processing pay_invoice event ${event.id}`);
@@ -228,6 +229,7 @@ const createInternalPayment = async (
   msatBalance,
   event
 ) => {
+  const txId = randomUUID();
   const payment = await processSplits({
     paymentType: 10,
     contentTime: null,
@@ -237,6 +239,7 @@ const createInternalPayment = async (
     msatAmount: valueMsat,
     comment: content,
     isNostr: true,
+    externalTxId: txId,
   });
   if (payment) {
     log.debug(`Paid internal invoice with id ${invoiceId}, cancelling...`);
@@ -252,7 +255,7 @@ const createInternalPayment = async (
     // NOTE: We use "nwc" as the preimage value to share in zap receipts
     // because we do not have access to the actual preimage and it is not
     // a true, verifiable proof of payment
-    await publishZapReceipt(zapRequest, paymentRequest, "nwc");
+    await publishZapReceipt(zapRequest, paymentRequest, "nwc", txId);
     // Broadcast response
 
     const newBalance = parseInt(msatBalance) - parseInt(valueMsat);
