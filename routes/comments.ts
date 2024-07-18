@@ -2,6 +2,7 @@ import express from "express";
 import commentsController from "../controllers/comments";
 import { validatePaginationAndId } from "../middlewares/validatePagination";
 import { isFirebaseOrNostrAuthorized } from "../middlewares/firebaseOrNostrAuth";
+import { isNostrAuthorized } from "../middlewares/nostrAuth";
 
 // Create router
 const router = express.Router();
@@ -30,6 +31,8 @@ router.get(
   validatePaginationAndId("albumId"),
   commentsController.get_album_comments
 );
+// Support for legacy comments only
+router.post("/reply", isNostrAuthorized, commentsController.post_reply);
 
 // this must be last so that contentId doesn't match the other routes
 router.get(

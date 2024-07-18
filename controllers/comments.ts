@@ -134,6 +134,41 @@ const update_event_id = asyncHandler(async (req, res, next) => {
   res.json({ success: true, data: updatedComment });
 });
 
+const post_reply = asyncHandler(async (req, res, next) => {
+  const { commentId, content } = req.body;
+  const pubkey = (res.locals?.authEvent as Event)?.pubkey;
+
+  if (!commentId) {
+    res.status(400).json({
+      success: false,
+      error: "commentId is required",
+    });
+  }
+
+  const comment = await prisma.comment.findUnique({
+    where: { id: parseInt(commentId) },
+  });
+
+  if (!comment) {
+    res.json({ success: false, error: "Comment not found" });
+    return;
+  }
+
+  const reply = await prisma.comment.create({
+    data: {
+      content,
+      parentId: comment.id,
+      userId: pubkey,
+      ampId: 0,
+    },
+  });
+
+  if (!reply.id) {
+    res.json({ success: false, error: "Failed to create reply" });
+  }
+  res.json({ success: true, data: reply });
+});
+
 export default {
   get_comments,
   get_podcast_comments,
@@ -141,4 +176,5 @@ export default {
   get_album_comments,
   get_comment_by_id,
   update_event_id,
+  post_reply,
 };
