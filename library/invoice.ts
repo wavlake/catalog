@@ -165,7 +165,12 @@ async function handleCompletedAmpInvoice(
   // Publish zap receipt if isZap
   if (paymentTypeCode === PaymentType.Zap) {
     log.debug(`Publishing zap receipt for invoice id ${invoiceId}`);
-    await publishZapReceipt(zapRequest, paymentRequest, preimage).catch((e) => {
+    await publishZapReceipt(
+      zapRequest,
+      paymentRequest,
+      preimage,
+      externalId
+    ).catch((e) => {
       log.error(
         `Error publishing zap receipt for invoice id ${invoiceId}: ${e}`
       );

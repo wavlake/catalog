@@ -82,7 +82,8 @@ export const publishPartyReceipt = async (trackId: string) => {
 export const publishZapReceipt = async (
   zapRequestEvent: ZapRequestEvent,
   paymentRequest: string,
-  preimage: string
+  preimage: string,
+  txId: string
 ) => {
   // const aTag = zapRequestEventObj.tags.find((x) => x[0] === "a");
 
@@ -121,8 +122,6 @@ export const publishZapReceipt = async (
     content: "",
   };
 
-  // log.debug(`Signing zap receipt: ${JSON.stringify(zapReceipt)}`);
-
   const signedEvent = finalizeEvent(zapReceipt, WAVLAKE_SECRET);
 
   // Publish to all relays
@@ -131,6 +130,16 @@ export const publishZapReceipt = async (
   Promise.any(pool.publish(relays, signedEvent))
     .then(() => {
       log.debug(`Published zap receipt for ${paymentRequest}`);
+      // Log zap receipt event id
+      db.knex("comment")
+        .where({ tx_id: txId })
+        .update({ zap_receipt_id: signedEvent.id })
+        .then(() => {
+          log.debug(`Logged zap receipt event id for txId: ${txId}`);
+        })
+        .catch((e) => {
+          log.error(`Error logging zap receipt event id: ${e}`);
+        });
       return;
     })
     .catch((e) => {
