@@ -29,6 +29,19 @@ export const getAllComments = async (
     });
   }
 
+  // Replace parent_id with parentId in replies
+  if (Array.isArray(allComments) && allComments.length) {
+    allComments.forEach((comment) => {
+      if (comment.replies) {
+        comment.replies = comment.replies.map((reply) => {
+          reply.parentId = reply.parent_id;
+          delete reply.parent_id;
+          return reply;
+        });
+      }
+    });
+  }
+
   return allComments;
 };
 
@@ -69,7 +82,7 @@ function commentsV2(contentIds) {
   return db.knex.raw(`
   SELECT 
   "comment"."id" AS "id",
-  '[]' AS "replies",
+  COALESCE(JSON_AGG(DISTINCT reply) FILTER (WHERE reply.parent_id IS NOT NULL), '[]') AS "replies",
   "comment"."is_nostr" AS "isNostr",
   "preamp"."content_id" AS "contentId",
   "preamp"."msat_amount" AS "msatAmount",
@@ -93,8 +106,35 @@ function commentsV2(contentIds) {
     "user" ON "user"."id" = "preamp"."user_id"
   LEFT JOIN
     "npub" ON "npub"."public_hex" = "preamp"."user_id"
+  LEFT OUTER JOIN
+    (SELECT "comment"."id" AS "id",
+            "comment"."parent_id" AS "parent_id",
+            "comment"."content" AS "content",
+            "comment"."created_at" AS "createdAt",
+            "comment"."user_id" AS "userId",
+            COALESCE(JSONB_EXTRACT_PATH_TEXT("npub"."metadata", 'picture')::text) AS "commenterArtworkUrl",
+            COALESCE(JSONB_EXTRACT_PATH_TEXT("npub"."metadata", 'display_name')::text, JSONB_EXTRACT_PATH_TEXT("npub"."metadata", 'name')::text) AS "name"
+            FROM "comment"
+            LEFT OUTER JOIN "npub" ON "npub"."public_hex" = "comment"."user_id"
+            ) AS "reply" ON "comment"."id" = "reply"."parent_id"
   WHERE
     "preamp"."content_id" IN (${contentIds.map((id) => `'${id}'`).join(", ")})
+  GROUP BY
+    "comment"."id",
+    "comment"."is_nostr",
+    "preamp"."content_id",
+    "preamp"."msat_amount",
+    "preamp"."user_id",
+    "comment"."created_at",
+    "comment"."content",
+    "comment"."event_id",
+    "comment"."zap_event_id",
+    "user"."artwork_url",
+    "user"."name",
+    "track"."title",
+    "episode"."title",
+    "npub"."metadata",
+    "preamp"."sender_name"
 `);
 }
 
