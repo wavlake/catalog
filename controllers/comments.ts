@@ -64,7 +64,11 @@ const get_comment_by_id = asyncHandler(async (req, res, next) => {
     return;
   }
 
-  res.json({ success: true, data: comment });
+  const replies = await prisma.comment.findMany({
+    where: { parentId: commentIdInt },
+  });
+
+  res.json({ success: true, data: { ...comment, replies } });
 });
 
 const update_event_id = asyncHandler(async (req, res, next) => {
