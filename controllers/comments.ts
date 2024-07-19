@@ -160,6 +160,9 @@ const post_reply = asyncHandler(async (req, res, next) => {
       parentId: comment.id,
       userId: pubkey,
       ampId: 0,
+      contentId: comment.contentId,
+      contentType: comment.contentType,
+      isNostr: true,
     },
   });
 
