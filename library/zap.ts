@@ -133,7 +133,7 @@ export const publishZapReceipt = async (
       // Log zap receipt event id
       db.knex("comment")
         .where({ tx_id: txId })
-        .update({ zap_receipt_id: signedEvent.id })
+        .update({ zap_event_id: signedEvent.id })
         .then(() => {
           log.debug(`Logged zap receipt event id for txId: ${txId}`);
         })
