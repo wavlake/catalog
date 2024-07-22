@@ -2,7 +2,7 @@ import prisma from "../prisma/client";
 import db from "../library/db";
 const log = require("loglevel");
 import asyncHandler from "express-async-handler";
-import { getAllComments } from "../library/comments";
+import { getAllComments, getCommentById } from "../library/comments";
 import { formatError } from "../library/errors";
 import { Event } from "nostr-tools";
 
@@ -55,20 +55,14 @@ const get_comment_by_id = asyncHandler(async (req, res, next) => {
     return;
   }
 
-  const comment = await prisma.comment.findUnique({
-    where: { id: commentIdInt },
-  });
+  const comment = await getCommentById(commentIdInt);
 
   if (!comment) {
     res.json({ success: false, error: "Comment not found" });
     return;
   }
 
-  const replies = await prisma.comment.findMany({
-    where: { parentId: commentIdInt },
-  });
-
-  res.json({ success: true, data: { ...comment, replies } });
+  res.json({ success: true, data: comment });
 });
 
 const update_event_id = asyncHandler(async (req, res, next) => {
