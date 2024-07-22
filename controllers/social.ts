@@ -101,8 +101,6 @@ const runQueries = async (pubkeys: any[] | null) => {
     .knex("track_info")
     .join("user", "track_info.user_id", "user.id")
     .select(
-      db.knex.raw("'{}'::jsonb as npub_name"),
-      db.knex.raw("'{}'::jsonb as npub_picture"),
       "track_info.artist as name",
       // TODO: No way to join decoded npub in artist table to npub table in db
       db.knex.raw(
@@ -162,8 +160,8 @@ const runQueries = async (pubkeys: any[] | null) => {
     .leftOuterJoin("album", "album.id", "=", "track.album_id")
     .leftOuterJoin("artist", "artist.id", "=", "zap_query.content_id")
     .select(
-      db.knex.raw("npub.metadata::jsonb -> 'name' as npub_name"),
-      db.knex.raw("npub.metadata::jsonb -> 'picture' as npub_picture"),
+      db.knex.raw("npub.metadata::jsonb -> 'name' as name"),
+      db.knex.raw("npub.metadata::jsonb -> 'picture' as picture"),
       db.knex.raw("null as name"),
       db.knex.raw("null as picture"),
       "zap_query.user_id as user_id",
@@ -229,16 +227,9 @@ const formatActivityItems = (activities: any[]) => {
       userId = activity.user_id;
     }
     return {
-      picture:
-        activity.type === "trackPublish"
-          ? activity.picture
-          : activity.npub_picture,
-      name:
-        activity.type === "trackPublish" ? activity.name : activity.npub_name,
-      userId:
-        activity.type === "trackPublish"
-          ? nip19.decode(activity.user_id).data
-          : activity.user_id,
+      picture: activity.picture,
+      name: activity.name,
+      userId: userId,
       type: activity.type,
       message: activity.content,
       zapAmount: activity.msat_amount,
