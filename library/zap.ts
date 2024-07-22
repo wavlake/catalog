@@ -127,24 +127,23 @@ export const publishZapReceipt = async (
   // Publish to all relays
   const pool = new SimplePool();
   let relays = DEFAULT_WRITE_RELAY_URIS;
-  Promise.any(pool.publish(relays, signedEvent))
-    .then(() => {
-      log.debug(`Published zap receipt for ${paymentRequest}`);
-      // Log zap receipt event id
-      db.knex("comment")
-        .where({ tx_id: txId })
-        .update({ zap_event_id: signedEvent.id })
-        .then(() => {
-          log.debug(`Logged zap receipt event id for txId: ${txId}`);
-        })
-        .catch((e) => {
-          log.error(`Error logging zap receipt event id: ${e}`);
-        });
-      return;
-    })
-    .catch((e) => {
-      log.error(`Error issuing zap receipt: ${e}`);
-      return;
-    });
+  try {
+    await Promise.any(pool.publish(relays, signedEvent));
+    log.debug(`Published zap receipt for ${paymentRequest}`);
+    // Log zap receipt event id
+    return db
+      .knex("comment")
+      .where({ tx_id: txId })
+      .update({ zap_event_id: signedEvent.id })
+      .then(() => {
+        log.debug(`Logged zap receipt event id for txId: ${txId}`);
+      })
+      .catch((e) => {
+        log.error(`Error logging zap receipt event id: ${e}`);
+      });
+  } catch (e) {
+    log.error(`Error issuing zap receipt: ${e}`);
+    return;
+  }
   return;
 };
