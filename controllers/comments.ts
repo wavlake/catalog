@@ -2,7 +2,7 @@ import prisma from "../prisma/client";
 import db from "../library/db";
 const log = require("loglevel");
 import asyncHandler from "express-async-handler";
-import { getAllComments } from "../library/comments";
+import { getAllComments, getCommentById } from "../library/comments";
 import { formatError } from "../library/errors";
 import { Event } from "nostr-tools";
 
@@ -55,39 +55,14 @@ const get_comment_by_id = asyncHandler(async (req, res, next) => {
     return;
   }
 
-  const comment = await db
-    .knex("comment")
-    .leftOuterJoin("user", "comment.user_id", "=", "user.id")
-    .join("amp", "comment.amp_id", "=", "amp.id")
-    .join("track", "track.id", "=", "amp.track_id")
-    .select(
-      "comment.id as id",
-      db.knex.raw(`bool_or(is_nostr) as "isNostr"`),
-      "track.id as contentId"
-    )
-    .min("amp.msat_amount as msatAmount")
-    .min("comment.user_id as userId")
-    .min("comment.created_at as createdAt")
-    .min("comment.content as content")
-    .min("comment.event_id as eventId")
-    .min("comment.zap_event_id as zapEventId")
-    .min("user.artwork_url as commenterArtworkUrl")
-    .min("user.name as name")
-    .min("track.title as title")
-    .where("comment.id", "=", commentIdInt)
-    .groupBy("comment.id", "track.id")
-    .first();
+  const comment = await getCommentById(commentIdInt);
 
   if (!comment) {
     res.json({ success: false, error: "Comment not found" });
     return;
   }
 
-  const replies = await prisma.comment.findMany({
-    where: { parentId: commentIdInt },
-  });
-
-  res.json({ success: true, data: { ...comment, replies } });
+  res.json({ success: true, data: comment });
 });
 
 const update_event_id = asyncHandler(async (req, res, next) => {
