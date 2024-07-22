@@ -127,7 +127,7 @@ const runQueries = async (pubkeys: any[] | null) => {
     .whereRaw("LENGTH(track_info.artist_npub) = 63")
     .as("new_tracks_query");
 
-  const ZAP_TYPE = 7;
+  const ZAP_TYPES = [7, 10];
   // TODO: Add zaps for Albums, Episodes, Podcasts
   const ZAP_QUERY = db
     .knex("amp")
@@ -150,7 +150,7 @@ const runQueries = async (pubkeys: any[] | null) => {
     )
     .orderBy("timestamp", "desc")
     .where("amp.created_at", ">", filterDate)
-    .andWhere("amp.type", ZAP_TYPE)
+    .whereIn("amp.type", ZAP_TYPES)
     .whereIn("amp.content_type", ["track", "artist"])
     .as("zap_query");
 
@@ -218,12 +218,27 @@ const formatActivityItems = (activities: any[]) => {
     const contentArtwork = activity.content_artwork
       ? [activity.content_artwork]
       : activity.content_artwork_list;
+    let userId: string;
+    if (activity.type === "trackPublish") {
+      try {
+        userId = nip19.decode(activity.user_id).data as string;
+      } catch (e) {
+        userId = activity.user_id;
+      }
+    } else {
+      userId = activity.user_id;
+    }
     return {
-      picture: activity.npub_picture ? activity.npub_picture : activity.picture,
-      name: activity.npub_name ? activity.npub_name : activity.name,
-      userId: activity.npub
-        ? nip19.decode(activity.npub).data
-        : activity.user_id,
+      picture:
+        activity.type === "trackPublish"
+          ? activity.picture
+          : activity.npub_picture,
+      name:
+        activity.type === "trackPublish" ? activity.name : activity.npub_name,
+      userId:
+        activity.type === "trackPublish"
+          ? nip19.decode(activity.user_id).data
+          : activity.user_id,
       type: activity.type,
       message: activity.content,
       zapAmount: activity.msat_amount,
