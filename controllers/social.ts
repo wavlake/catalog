@@ -124,7 +124,7 @@ const runQueries = async (pubkeys: any[] | null) => {
     )
     .orderBy("published_at", "desc")
     .where("published_at", ">", filterDate)
-    .whereRaw("LENGTH(track_info.artist_npub) = 64")
+    .whereRaw("LENGTH(track_info.artist_npub) = 63")
     .as("new_tracks_query");
 
   const ZAP_TYPE = 7;
