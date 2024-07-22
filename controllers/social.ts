@@ -230,11 +230,13 @@ const formatActivityItems = (activities: any[]) => {
     }
     return {
       picture:
-        activity.type === "trackPublish"
+        activity.type === "trackPublish" || activity.type === "playlistCreate"
           ? activity.picture
           : activity.npub_picture,
       name:
-        activity.type === "trackPublish" ? activity.name : activity.npub_name,
+        activity.type === "trackPublish" || activity.type === "playlistCreate"
+          ? activity.name
+          : activity.npub_name,
       userId:
         activity.type === "trackPublish"
           ? nip19.decode(activity.user_id).data
