@@ -55,9 +55,28 @@ const get_comment_by_id = asyncHandler(async (req, res, next) => {
     return;
   }
 
-  const comment = await prisma.comment.findUnique({
-    where: { id: commentIdInt },
-  });
+  const comment = await db
+    .knex("comment")
+    .leftOuterJoin("user", "comment.user_id", "=", "user.id")
+    .join("amp", "comment.amp_id", "=", "amp.id")
+    .join("track", "track.id", "=", "amp.track_id")
+    .select(
+      "comment.id as id",
+      db.knex.raw(`bool_or(is_nostr) as "isNostr"`),
+      "track.id as contentId"
+    )
+    .min("amp.msat_amount as msatAmount")
+    .min("comment.user_id as userId")
+    .min("comment.created_at as createdAt")
+    .min("comment.content as content")
+    .min("comment.event_id as eventId")
+    .min("comment.zap_event_id as zapEventId")
+    .min("user.artwork_url as commenterArtworkUrl")
+    .min("user.name as name")
+    .min("track.title as title")
+    .where("comment.id", "=", commentIdInt)
+    .groupBy("comment.id", "track.id")
+    .first();
 
   if (!comment) {
     res.json({ success: false, error: "Comment not found" });
