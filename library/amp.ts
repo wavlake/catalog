@@ -21,6 +21,7 @@ const AMP_FEE = 0.1; // 10% fee
 // 7: Zap
 // 8: Party mode boost
 // 9: Internal boost via external time split
+// 10: NWC internal payment
 
 // this will look up the content and associated splits and do the following:
 // 1. process the splits and adjust user/content balances
@@ -35,6 +36,7 @@ export const processSplits = async ({
   contentTime,
   msatAmount,
   userId,
+  npub = null, // This value only comes from NWC payments
   externalTxId = randomUUID(),
   paymentType = 1,
   boostData = undefined,
@@ -53,6 +55,7 @@ export const processSplits = async ({
   paymentType: number;
   // userId or npub, else this will be hardcoded to keysend or invoice
   userId?: string;
+  npub?: string;
   externalTxId?: string;
   boostData?: any;
   isNostr?: boolean;
@@ -117,7 +120,7 @@ export const processSplits = async ({
   const trx = await db.knex.transaction();
   const ampTx = await trx("preamp").insert({
     tx_id: externalTxId,
-    user_id: userIdForDb,
+    user_id: npub ? npub : userIdForDb,
     content_id: contentId,
     msat_amount: msatAmount,
     guid: boostData?.guid,
@@ -248,7 +251,7 @@ export const processSplits = async ({
       return trx("amp").insert({
         // track_id is really the content_id (track/episode/podcast/album/artist)
         track_id: recipient.contentId ? recipient.contentId : contentId,
-        user_id: userIdForDb,
+        user_id: npub ? npub : userIdForDb,
         type: paymentType,
         type_key: settleIndex,
         msat_amount: Math.floor(msatAmount * recipient.splitPercentage),
@@ -282,7 +285,7 @@ export const processSplits = async ({
   // Add comment if present
   if (comment && !isConferenceZap) {
     await trx("comment").insert({
-      user_id: userIdForDb,
+      user_id: npub ? npub : userIdForDb,
       content: comment,
       amp_id: 0, // Irrelevant now b/c amps can be split but keeping for backwards compatibility
       tx_id: externalTxId,

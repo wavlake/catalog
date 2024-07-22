@@ -149,8 +149,9 @@ const get_tracks_by_new = asyncHandler(async (req, res, next) => {
     .where("ranking", "=", 1)
     .limit(limit)
     .then((data) => {
-      // console.log(data);
-      res.send({ success: true, data: data });
+      // Shuffle the data to get a random order
+      const shuffledData = shuffle(data);
+      res.send({ success: true, data: shuffledData });
     })
     .catch((err) => {
       log.debug(`Error querying track table for New: ${err}`);

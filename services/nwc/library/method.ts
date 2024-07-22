@@ -2,7 +2,7 @@ import prisma from "@prismalocal/client";
 const log = require("loglevel");
 log.setLevel(process.env.LOGLEVEL);
 const nlInvoice = require("@node-lightning/invoice");
-const amp = require("@library/amp");
+import { processSplits } from "@library/amp";
 import db from "@library/db";
 const { getZapPubkeyAndContent, publishZapReceipt } = require("@library/zap");
 const { updateWallet, walletHasRemainingBudget } = require("./wallet");
@@ -11,6 +11,7 @@ const { broadcastEventResponse } = require("./event");
 const { webcrypto } = require("node:crypto");
 globalThis.crypto = webcrypto;
 import { FEE_BUFFER } from "@library/constants";
+import { randomUUID } from "crypto";
 
 const payInvoice = async (event, content, walletUser) => {
   log.debug(`Processing pay_invoice event ${event.id}`);
@@ -228,18 +229,17 @@ const createInternalPayment = async (
   msatBalance,
   event
 ) => {
-  const trx = await db.knex.transaction();
-  const payment = await amp.processSplits({
-    res: null,
-    trx: trx,
-    type: 10,
+  const txId = randomUUID();
+  const payment = await processSplits({
+    paymentType: 10,
+    contentTime: null,
     contentId: contentId,
     userId: userId,
     npub: pubkey,
     msatAmount: valueMsat,
     comment: content,
     isNostr: true,
-    isNwc: true,
+    externalTxId: txId,
   });
   if (payment) {
     log.debug(`Paid internal invoice with id ${invoiceId}, cancelling...`);
@@ -255,7 +255,7 @@ const createInternalPayment = async (
     // NOTE: We use "nwc" as the preimage value to share in zap receipts
     // because we do not have access to the actual preimage and it is not
     // a true, verifiable proof of payment
-    await publishZapReceipt(zapRequest, paymentRequest, "nwc");
+    await publishZapReceipt(zapRequest, paymentRequest, "nwc", txId);
     // Broadcast response
 
     const newBalance = parseInt(msatBalance) - parseInt(valueMsat);
