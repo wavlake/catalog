@@ -33,11 +33,21 @@ export const getAllComments = async (
   if (Array.isArray(allComments) && allComments.length) {
     allComments.forEach((comment) => {
       if (comment.replies) {
-        comment.replies = comment.replies.map((reply) => {
-          reply.parentId = reply.parent_id;
-          delete reply.parent_id;
-          return reply;
-        });
+        comment.replies = comment.replies
+          // Remove null values
+          .filter((x) => (!x ? false : true))
+          // Replace parent_id with parentId
+          .map((reply) => {
+            if (!reply) {
+              return;
+            }
+            if (!reply.parentId) {
+              return reply;
+            }
+            reply.parentId = reply.parent_id;
+            delete reply.parent_id;
+            return reply;
+          });
       }
     });
   }
