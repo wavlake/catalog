@@ -130,7 +130,8 @@ function commentsV2(contentIds) {
             "comment"."created_at" AS "createdAt",
             "comment"."user_id" AS "userId",
             COALESCE(JSONB_EXTRACT_PATH_TEXT("npub"."metadata", 'picture')::text) AS "commenterArtworkUrl",
-            COALESCE(JSONB_EXTRACT_PATH_TEXT("npub"."metadata", 'display_name')::text, JSONB_EXTRACT_PATH_TEXT("npub"."metadata", 'name')::text) AS "name"
+            COALESCE(JSONB_EXTRACT_PATH_TEXT("npub"."metadata", 'display_name')::text, JSONB_EXTRACT_PATH_TEXT("npub"."metadata", 'name')::text) AS "name",
+            "comment"."is_nostr" AS "isNostr"
             FROM "comment"
             LEFT OUTER JOIN "npub" ON "npub"."public_hex" = "comment"."user_id"
             ) AS "reply" ON "comment"."id" = "reply"."parent_id"
@@ -166,30 +167,23 @@ const amps = db
   .from("amp")
   .as("amps");
 
-const reply_amps = db
-  .knex("amp")
-  .select("type_key")
-  .min("type as type")
-  .sum("amp.msat_amount as msatAmount")
-  .groupBy("type_key")
-  .where("type", "=", 3)
-  .orWhere("type", "=", 4)
-  .from("amp")
-  .as("reply_amps");
-
 const reply = db.knex
-  .select("comment.id")
-  .min("user.name as name")
-  .min("comment.user_id as userId")
-  .min("user.artwork_url as artworkUrl")
-  .min("user.profile_url as profileUrl")
-  .min("parent_id as parentId")
-  .min("content as content")
-  .min("comment.created_at as createdAt")
-  .sum("reply_amps.msatAmount as msatAmount")
-  .join("user", "comment.user_id", "=", "user.id")
-  .leftOuterJoin(reply_amps, "comment.id", "=", "reply_amps.type_key")
-  .groupBy("comment.id")
+  .select(
+    "comment.id",
+    db.knex.raw(
+      `COALESCE("user"."name", JSONB_EXTRACT_PATH_TEXT("npub"."metadata", 'display_name')::text, JSONB_EXTRACT_PATH_TEXT("npub"."metadata", 'name')::text) AS "name"`
+    ),
+    "comment.user_id as userId",
+    db.knex.raw(
+      `COALESCE("user"."artwork_url", JSONB_EXTRACT_PATH_TEXT("npub"."metadata", 'picture')::text) as "artworkUrl"`
+    ),
+    "parent_id as parentId",
+    "content as content",
+    "comment.created_at as createdAt",
+    "is_nostr as isNostr"
+  )
+  .leftOuterJoin("user", "comment.user_id", "=", "user.id")
+  .leftOuterJoin("npub", "npub.public_hex", "=", "comment.user_id")
   .from("comment")
   .orderBy("comment.created_at")
   .as("reply");
@@ -260,7 +254,8 @@ function commentV2ById(commentId) {
               "comment"."created_at" AS "createdAt",
               "comment"."user_id" AS "userId",
               COALESCE(JSONB_EXTRACT_PATH_TEXT("npub"."metadata", 'picture')::text) AS "commenterArtworkUrl",
-              COALESCE(JSONB_EXTRACT_PATH_TEXT("npub"."metadata", 'display_name')::text, JSONB_EXTRACT_PATH_TEXT("npub"."metadata", 'name')::text) AS "name"
+              COALESCE(JSONB_EXTRACT_PATH_TEXT("npub"."metadata", 'display_name')::text, JSONB_EXTRACT_PATH_TEXT("npub"."metadata", 'name')::text) AS "name",
+              "comment"."is_nostr" AS "isNostr"
               FROM "comment"
               LEFT OUTER JOIN "npub" ON "npub"."public_hex" = "comment"."user_id"
               ) AS "reply" ON "comment"."id" = "reply"."parent_id"
