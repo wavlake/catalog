@@ -49,9 +49,17 @@ export const handleConferenceZap = async (zapRequestEvent: ZapRequestEvent) => {
     // Retrive track metadata (artwork, title, artist)
     const trackDetails = await getTrackMetadata(trackId);
 
+    // Truncate comment if too long
+    let cleanComment;
+    if (comment.length > 40) {
+      cleanComment = `${comment.substring(0, 40)}...`;
+    } else {
+      cleanComment = comment;
+    }
+
     const messageObject = {
       sats: parseInt(amount) / 1000,
-      message: comment,
+      message: cleanComment,
       trackName: trackDetails.title,
       trackArtist: trackDetails.artist,
       trackAlbumArt: trackDetails.artwork_url,
