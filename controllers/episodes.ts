@@ -449,7 +449,7 @@ export const get_featured_episodes = asyncHandler(async (req, res, next) => {
     WHERE
       p."is_draft" = false AND
       p."published_at" <= ${new Date()} AND
-      p."is_featured" = true;
+      p."is_featured" = true
     ORDER BY
       e."published_at" DESC
   `;
