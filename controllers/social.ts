@@ -101,8 +101,6 @@ const runQueries = async (pubkeys: any[] | null) => {
     .knex("track_info")
     .join("user", "track_info.user_id", "user.id")
     .select(
-      db.knex.raw("'{}'::jsonb as npub_name"),
-      db.knex.raw("'{}'::jsonb as npub_picture"),
       "track_info.artist as name",
       // TODO: No way to join decoded npub in artist table to npub table in db
       db.knex.raw(
@@ -124,10 +122,10 @@ const runQueries = async (pubkeys: any[] | null) => {
     )
     .orderBy("published_at", "desc")
     .where("published_at", ">", filterDate)
-    .whereRaw("LENGTH(track_info.artist_npub) = 64")
+    .whereRaw("LENGTH(track_info.artist_npub) = 63")
     .as("new_tracks_query");
 
-  const ZAP_TYPE = 7;
+  const ZAP_TYPES = [7, 10];
   // TODO: Add zaps for Albums, Episodes, Podcasts
   const ZAP_QUERY = db
     .knex("amp")
@@ -150,7 +148,7 @@ const runQueries = async (pubkeys: any[] | null) => {
     )
     .orderBy("timestamp", "desc")
     .where("amp.created_at", ">", filterDate)
-    .andWhere("amp.type", ZAP_TYPE)
+    .whereIn("amp.type", ZAP_TYPES)
     .whereIn("amp.content_type", ["track", "artist"])
     .as("zap_query");
 
@@ -162,8 +160,8 @@ const runQueries = async (pubkeys: any[] | null) => {
     .leftOuterJoin("album", "album.id", "=", "track.album_id")
     .leftOuterJoin("artist", "artist.id", "=", "zap_query.content_id")
     .select(
-      db.knex.raw("npub.metadata::jsonb -> 'name' as npub_name"),
-      db.knex.raw("npub.metadata::jsonb -> 'picture' as npub_picture"),
+      db.knex.raw("npub.metadata::jsonb -> 'name' as name"),
+      db.knex.raw("npub.metadata::jsonb -> 'picture' as picture"),
       db.knex.raw("null as name"),
       db.knex.raw("null as picture"),
       "zap_query.user_id as user_id",
@@ -218,12 +216,20 @@ const formatActivityItems = (activities: any[]) => {
     const contentArtwork = activity.content_artwork
       ? [activity.content_artwork]
       : activity.content_artwork_list;
+    let userId: string;
+    if (activity.type === "trackPublish") {
+      try {
+        userId = nip19.decode(activity.user_id).data as string;
+      } catch (e) {
+        userId = activity.user_id;
+      }
+    } else {
+      userId = activity.user_id;
+    }
     return {
-      picture: activity.npub_picture ? activity.npub_picture : activity.picture,
-      name: activity.npub_name ? activity.npub_name : activity.name,
-      userId: activity.npub
-        ? nip19.decode(activity.npub).data
-        : activity.user_id,
+      picture: activity.picture,
+      name: activity.name,
+      userId: userId,
       type: activity.type,
       message: activity.content,
       zapAmount: activity.msat_amount,
