@@ -381,6 +381,8 @@ export const get_new_episodes = asyncHandler(async (req, res, next) => {
     WHERE
       p."is_draft" = false AND
       p."published_at" <= ${new Date()}
+    ORDER BY
+      e."published_at" DESC
   `;
     res.json({
       success: true,
@@ -448,6 +450,8 @@ export const get_featured_episodes = asyncHandler(async (req, res, next) => {
       p."is_draft" = false AND
       p."published_at" <= ${new Date()} AND
       p."is_featured" = true;
+    ORDER BY
+      e."published_at" DESC
   `;
     res.json({
       success: true,
