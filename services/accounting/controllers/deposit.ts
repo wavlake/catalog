@@ -7,7 +7,6 @@ import {
   MAX_INVOICE_AMOUNT,
   DEFAULT_EXPIRATION_SECONDS,
 } from "@library/constants";
-import { verifyEvent } from "nostr-tools";
 
 const createDeposit = asyncHandler(async (req, res: any, next) => {
   const userId = req["uid"];
