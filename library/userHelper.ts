@@ -233,7 +233,7 @@ export async function isRegionVerified(userId: string): Promise<boolean> {
       return data ?? false;
     })
     .catch((err) => {
-      Sentry.captureException(err);
+      Sentry?.captureException(err);
       log.error(
         `Error looking up user ${userId} in user_verifiation table: ${err}`
       );

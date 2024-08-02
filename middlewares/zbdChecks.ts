@@ -45,6 +45,7 @@ export const isZbdRegion = asyncHandler(async (req, res, next) => {
 
 export const isWalletVerified = asyncHandler(async (req, res, next) => {
   const userId = req["uid"] ?? req.body.userId;
+  log.debug(`Checking if wallet is verified for userId: ${userId}`);
   const isVerified = await isRegionVerified(userId);
   if (isVerified) {
     next();
