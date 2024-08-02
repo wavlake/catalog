@@ -1,4 +1,4 @@
-const log = require("loglevel");
+import log from "loglevel";
 import asyncHandler from "express-async-handler";
 import prisma from "@prismalocal/client";
 import { getUserBalance } from "@library/userHelper";
