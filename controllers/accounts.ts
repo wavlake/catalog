@@ -976,7 +976,48 @@ const update_metadata = asyncHandler(async (req, res, next) => {
   }
 });
 
+const check_user_verified = asyncHandler(async (req, res, next) => {
+  const userProfileUrl = req.params.userProfileUrl;
+
+  const user = await prisma.user.findFirst({
+    where: {
+      profileUrl: userProfileUrl,
+    },
+  });
+
+  if (!user) {
+    res.status(404).json({
+      success: false,
+      error: "User not found",
+    });
+    return;
+  }
+
+  const isVerified = await prisma.userVerification.findFirst({
+    where: {
+      userId: user.id,
+    },
+  });
+
+  if (!isVerified) {
+    res.status(403).json({
+      success: false,
+      error: "User not verified",
+    });
+    return;
+  }
+
+  res.send({
+    success: true,
+    data: {
+      isVerified: true,
+      userId: user.id,
+    },
+  });
+});
+
 export default {
+  check_user_verified,
   create_update_lnaddress,
   get_account,
   get_user_public,
