@@ -9,9 +9,6 @@ export const isAPITokenAuthorized = (req, res, next) => {
   const [bearer, secret] = authHeader.split(" ");
 
   if (bearer !== "Bearer" || secret !== sharedSecret) {
-    console.log({ authHeader });
-    console.log("client sent ", secret);
-    console.log("checked against ", sharedSecret);
     return res.status(401).json({ error: "Invalid authorization" });
   }
 
