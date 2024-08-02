@@ -1,3 +1,4 @@
+import log from "loglevel";
 import { auth } from "../library/firebaseService";
 import Sentry from "@sentry/node";
 
@@ -35,6 +36,7 @@ export const isAuthorized = asyncHandler(async (req, res, next) => {
     if (!user) return next(formatError(500, "Authentication failed"));
     next();
   } catch (err) {
+    log.error(`isAuthorized error: ${err}`);
     Sentry?.captureException(err);
     next(err);
   }
