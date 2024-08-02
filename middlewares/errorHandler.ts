@@ -12,7 +12,7 @@ export const errorHandler = (
   next: NextFunction
 ) => {
   log.error(`${error}`);
-  Sentry.captureException(error);
+  Sentry?.captureException(error);
   res.status(error.status || 500).json({
     success: false,
     data: null,
