@@ -109,7 +109,13 @@ const get_user_public = asyncHandler(async (req, res, next) => {
 
   const userProfileData = await db
     .knex("user")
-    .join("playlist", "playlist.user_id", "=", "user.id")
+    .leftJoin("playlist", function () {
+      this.on("playlist.user_id", "=", "user.id").andOn(
+        "playlist.is_favorites",
+        "=",
+        db.knex.raw("?", [true])
+      );
+    })
     .select(
       "user.id as id",
       "user.name as name",
@@ -118,7 +124,6 @@ const get_user_public = asyncHandler(async (req, res, next) => {
       "playlist.id as userFavoritesId"
     )
     .where("user.profile_url", "=", request.userProfileUrl)
-    .andWhere("playlist.is_favorites", "=", true)
     .first();
 
   if (!userProfileData) {
