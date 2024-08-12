@@ -27,4 +27,6 @@ export interface Follow extends Prisma.JsonArray {
 export enum IncomingInvoiceType {
   Transaction = "transaction",
   ExternalReceive = "external_receive",
+  LNURL = "lnurl",
+  LNURL_Zap = "lnurl_zap",
 }

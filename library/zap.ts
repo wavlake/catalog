@@ -5,15 +5,62 @@ import {
   finalizeEvent,
   useWebSocketImplementation,
   Relay,
+  verifyEvent,
+  Event,
 } from "nostr-tools";
 import { hexToBytes } from "@noble/hashes/utils";
 useWebSocketImplementation(require("ws"));
 import { handleConferenceZap } from "./btc24/btc24";
+import { IncomingInvoiceType } from "./common";
 const { DEFAULT_WRITE_RELAY_URIS } = require("./nostr/common");
 
 const WAVLAKE_RELAY = process.env.WAVLAKE_RELAY;
 const WAVLAKE_SECRET = hexToBytes(process.env.NOSTR_SECRET);
 
+export const validateNostrZapRequest = ({
+  nostr,
+  amount,
+  requireAOrETag = false,
+}: {
+  nostr: string;
+  amount: string;
+  requireAOrETag?: boolean;
+}): { isValid: boolean; error?: string; zapRequestEvent?: Event } => {
+  let zapRequestEvent: Event;
+  try {
+    zapRequestEvent = JSON.parse(nostr);
+  } catch (e) {
+    return { isValid: false, error: "Invalid nostr object" };
+  }
+
+  if (!verifyEvent(zapRequestEvent) || zapRequestEvent.kind !== 9734) {
+    return { isValid: false, error: "Invalid zap request event" };
+  }
+
+  // https://github.com/nostr-protocol/nips/blob/master/57.md#appendix-a-zap-request-event
+  const eTag = zapRequestEvent.tags.find((x) => x[0] === "e");
+  const aTag = zapRequestEvent.tags.find((x) => x[0] === "a");
+  if (requireAOrETag && !aTag && !eTag) {
+    return {
+      isValid: false,
+      error: "Event must include either an a tag or an e tag.",
+    };
+  }
+
+  const [amountTag, amountTagValue] =
+    zapRequestEvent.tags.find((x) => x[0] === "amount") ?? [];
+  if (!amountTagValue || parseInt(amount) !== parseInt(amountTagValue)) {
+    return {
+      isValid: false,
+      error:
+        "Amount in zap request event is missing or does not match invoice amount",
+    };
+  }
+
+  return { isValid: true, zapRequestEvent };
+};
+
+// the below function is not used anywhere in the codebase
 export const logZapRequest = async (
   paymentHash: string,
   eventId: string,
@@ -27,8 +74,15 @@ export const logZapRequest = async (
     });
 };
 
-export const getZapPubkeyAndContent = async (invoiceId: number) => {
-  const paymentHash = `external_receive-${invoiceId}`;
+export const getZapPubkeyAndContent = async (
+  invoiceId: number,
+  isLNURLZap = false
+) => {
+  const paymentHash = `${
+    isLNURLZap
+      ? IncomingInvoiceType.LNURL_Zap
+      : IncomingInvoiceType.ExternalReceive
+  }-${invoiceId}`;
   const zapRequestEvent = await db
     .knex("zap_request")
     .where("payment_hash", paymentHash)

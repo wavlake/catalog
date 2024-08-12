@@ -7,6 +7,9 @@ import {
   MAX_INVOICE_AMOUNT,
   DEFAULT_EXPIRATION_SECONDS,
 } from "@library/constants";
+import { validateNostrZapRequest } from "@library/zap";
+import { logZapRequest } from "@library/invoice";
+import { IncomingInvoiceType } from "@library/common";
 
 const createDeposit = asyncHandler(async (req, res: any, next) => {
   const userId = req["uid"];
@@ -44,7 +47,7 @@ const createDeposit = asyncHandler(async (req, res: any, next) => {
     description: `Wavlake deposit`,
     amount: request.msatAmount.toString(),
     expiresIn: DEFAULT_EXPIRATION_SECONDS,
-    internalId: `transaction-${invoice.id.toString()}`,
+    internalId: `${IncomingInvoiceType.Transaction}-${invoice.id.toString()}`,
   };
 
   log.debug(
@@ -118,6 +121,16 @@ const createDepositLNURL = asyncHandler(async (req, res: any, next) => {
     return;
   }
 
+  let zapRequestEvent;
+  if (nostr) {
+    const validationResult = validateNostrZapRequest({ nostr, amount });
+    if (!validationResult.isValid) {
+      res.status(400).send({ success: false, error: validationResult.error });
+      return;
+    }
+    zapRequestEvent = validationResult.zapRequestEvent;
+  }
+
   const userBalance = await getUserBalance(userId);
   // Create a blank invoice in the database to reference
   const invoice = await prisma.transaction.create({
@@ -133,11 +146,25 @@ const createDepositLNURL = asyncHandler(async (req, res: any, next) => {
 
   log.debug(`Created placeholder lnurl invoice: ${invoice.id}`);
 
+  if (zapRequestEvent) {
+    // Create zap request record
+    await logZapRequest(
+      invoice.id,
+      zapRequestEvent.id,
+      JSON.stringify(zapRequestEvent),
+      true
+    );
+  }
+
   const invoiceRequest = {
     description: `Wavlake lnurl deposit`,
     amount: amountInt.toString(),
     expiresIn: DEFAULT_EXPIRATION_SECONDS,
-    internalId: `transaction-${invoice.id.toString()}`,
+    internalId: `${
+      zapRequestEvent
+        ? IncomingInvoiceType.LNURL_Zap
+        : IncomingInvoiceType.LNURL
+    }-${invoice.id.toString()}`,
   };
 
   log.debug(
