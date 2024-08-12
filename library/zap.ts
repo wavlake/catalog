@@ -60,20 +60,6 @@ export const validateNostrZapRequest = ({
   return { isValid: true, zapRequestEvent };
 };
 
-// the below function is not used anywhere in the codebase
-export const logZapRequest = async (
-  paymentHash: string,
-  eventId: string,
-  event: string
-) => {
-  return db
-    .knex("zap_request")
-    .insert({ payment_hash: paymentHash, event_id: eventId, event: event })
-    .catch((err) => {
-      throw new Error(`Error inserting zap request: ${err}`);
-    });
-};
-
 export const getZapPubkeyAndContent = async (
   invoiceId: number,
   isLNURLZap = false
