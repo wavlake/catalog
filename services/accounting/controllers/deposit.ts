@@ -107,10 +107,10 @@ const createDeposit = asyncHandler(async (req, res: any, next) => {
 const createDepositLNURL = asyncHandler(async (req, res: any, next) => {
   const userId = req.body.userId as string;
   const amount = req.body.amount as string;
-  // TODO - handle nostr zaps
   const nostr = req.body.nostr as string;
   const metadata = req.body.metadata as string;
   const lnurl = req.body.lnurl as string;
+  const comment = req.body.comment as string;
 
   const amountInt = parseInt(amount);
   if (isNaN(amountInt) || amountInt < 1000 || amountInt > MAX_INVOICE_AMOUNT) {
@@ -141,6 +141,8 @@ const createDepositLNURL = asyncHandler(async (req, res: any, next) => {
       msatAmount: amountInt,
       preTxBalance: parseInt(userBalance), // This will have to be updated when the payment is made
       paymentRequest: "",
+      // TODO - add comment field to table
+      // comment,
     },
   });
 
@@ -157,7 +159,7 @@ const createDepositLNURL = asyncHandler(async (req, res: any, next) => {
   }
 
   const invoiceRequest = {
-    description: `Wavlake lnurl deposit`,
+    description: `Wavlake lnurl${zapRequestEvent ? "-zap" : ""} deposit`,
     amount: amountInt.toString(),
     expiresIn: DEFAULT_EXPIRATION_SECONDS,
     internalId: `${
