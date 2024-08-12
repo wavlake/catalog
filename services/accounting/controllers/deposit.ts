@@ -7,6 +7,9 @@ import {
   MAX_INVOICE_AMOUNT,
   DEFAULT_EXPIRATION_SECONDS,
 } from "@library/constants";
+import { validateNostrZapRequest } from "@library/zap";
+import { logZapRequest } from "@library/invoice";
+import { IncomingInvoiceType } from "@library/common";
 
 const createDeposit = asyncHandler(async (req, res: any, next) => {
   const userId = req["uid"];
@@ -44,7 +47,7 @@ const createDeposit = asyncHandler(async (req, res: any, next) => {
     description: `Wavlake deposit`,
     amount: request.msatAmount.toString(),
     expiresIn: DEFAULT_EXPIRATION_SECONDS,
-    internalId: `transaction-${invoice.id.toString()}`,
+    internalId: `${IncomingInvoiceType.Transaction}-${invoice.id.toString()}`,
   };
 
   log.debug(
@@ -104,10 +107,10 @@ const createDeposit = asyncHandler(async (req, res: any, next) => {
 const createDepositLNURL = asyncHandler(async (req, res: any, next) => {
   const userId = req.body.userId as string;
   const amount = req.body.amount as string;
-  // TODO - handle nostr zaps
   const nostr = req.body.nostr as string;
   const metadata = req.body.metadata as string;
   const lnurl = req.body.lnurl as string;
+  const comment = req.body.comment as string;
 
   const amountInt = parseInt(amount);
   if (isNaN(amountInt) || amountInt < 1000 || amountInt > MAX_INVOICE_AMOUNT) {
@@ -116,6 +119,16 @@ const createDepositLNURL = asyncHandler(async (req, res: any, next) => {
       error: `Amount must be a number between 1000 and ${MAX_INVOICE_AMOUNT} (msats)`,
     });
     return;
+  }
+
+  let zapRequestEvent;
+  if (nostr) {
+    const validationResult = validateNostrZapRequest({ nostr, amount });
+    if (!validationResult.isValid) {
+      res.status(400).send({ success: false, error: validationResult.error });
+      return;
+    }
+    zapRequestEvent = validationResult.zapRequestEvent;
   }
 
   const userBalance = await getUserBalance(userId);
@@ -128,16 +141,32 @@ const createDepositLNURL = asyncHandler(async (req, res: any, next) => {
       msatAmount: amountInt,
       preTxBalance: parseInt(userBalance), // This will have to be updated when the payment is made
       paymentRequest: "",
+      // TODO - add comment field to table
+      // comment,
     },
   });
 
   log.debug(`Created placeholder lnurl invoice: ${invoice.id}`);
 
+  if (zapRequestEvent) {
+    // Create zap request record
+    await logZapRequest(
+      invoice.id,
+      zapRequestEvent.id,
+      JSON.stringify(zapRequestEvent),
+      true
+    );
+  }
+
   const invoiceRequest = {
-    description: `Wavlake lnurl deposit`,
+    description: `Wavlake lnurl${zapRequestEvent ? "-zap" : ""} deposit`,
     amount: amountInt.toString(),
     expiresIn: DEFAULT_EXPIRATION_SECONDS,
-    internalId: `transaction-${invoice.id.toString()}`,
+    internalId: `${
+      zapRequestEvent
+        ? IncomingInvoiceType.LNURL_Zap
+        : IncomingInvoiceType.LNURL
+    }-${invoice.id.toString()}`,
   };
 
   log.debug(

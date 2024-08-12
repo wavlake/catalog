@@ -1,7 +1,11 @@
 const log = require("loglevel");
 log.setLevel("debug");
 import db from "./db";
-import { handleCompletedDeposit, wasTransactionAlreadyLogged } from "./deposit";
+import {
+  getUserIdFromTransactionId,
+  handleCompletedDeposit,
+  wasTransactionAlreadyLogged,
+} from "./deposit";
 import { processSplits } from "./amp";
 import {
   getZapPubkeyAndContent,
@@ -61,6 +65,20 @@ export const updateInvoiceIfNeeded = async (
         log.debug(`Processing external_receive invoice for id ${invoiceId}`);
         // Process should account for plain invoices and zaps
         await handleCompletedAmpInvoice(
+          invoiceId,
+          msatAmount,
+          paymentRequest,
+          preimage,
+          externalId
+        );
+      }
+      if (invoiceType === IncomingInvoiceType.LNURL) {
+        log.debug(`Processing lnurl invoice for id ${invoiceId}`);
+        await handleCompletedDeposit(invoiceId, msatAmount);
+      }
+      if (invoiceType === IncomingInvoiceType.LNURL_Zap) {
+        log.debug(`Processing lnurl zap invoice for id ${invoiceId}`);
+        await handleCompletedLNURLZapInvoice(
           invoiceId,
           msatAmount,
           paymentRequest,
@@ -201,6 +219,73 @@ async function handleCompletedAmpInvoice(
   return true;
 }
 
+async function handleCompletedLNURLZapInvoice(
+  transactionId: number,
+  msatAmount: number,
+  paymentRequest: string,
+  preimage: string,
+  externalId: string
+) {
+  const userId = await getUserIdFromTransactionId(transactionId);
+  const trx = await db.knex.transaction();
+  // Update transaction table and user balance in one tx
+  const tx = await trx("transaction")
+    .update({
+      success: true,
+      is_pending: false,
+    })
+    .where({ id: transactionId })
+    .then(() => {
+      // Increment user balance and unlock user
+      return trx("user")
+        .increment({
+          msat_balance: msatAmount,
+        })
+        .update({ updated_at: db.knex.fn.now(), is_locked: false })
+        .where({ id: userId });
+    })
+    .then(trx.commit)
+    .then(() => {
+      log.debug(`Successfully logged deposit of ${msatAmount} for ${userId}`);
+      return true;
+    })
+    .catch((err) => {
+      log.error(
+        `Error updating transaction table on handleCompletedDeposit: ${err}`
+      );
+      return false;
+    });
+
+  const { zapRequest, pubkey, content, timestamp } =
+    await getZapPubkeyAndContent(transactionId, true);
+
+  log.debug(`Publishing zap receipt for invoice id ${transactionId}`);
+  await publishZapReceipt(
+    zapRequest,
+    paymentRequest,
+    preimage,
+    externalId
+  ).catch((e) => {
+    log.error(
+      `Error publishing zap receipt for invoice id ${transactionId}: ${e}`
+    );
+    return;
+  });
+
+  // async update the npub metadata in the db
+  updateNpubMetadata(pubkey)
+    .then(({ success }) => {
+      log.debug(
+        `${
+          success ? "Updated" : "Failed to update"
+        } nostr metadata for: ${pubkey}`
+      );
+    })
+    .catch((err) => {
+      log.debug("error updating npub metadata: ", err);
+    });
+}
+
 async function getInvoicePaymentTypeCode(invoiceId: number) {
   const pendingInvoice = await db
     .knex("external_receive")
@@ -241,12 +326,17 @@ async function handleFailedOrExpiredInvoice(
 export const logZapRequest = async (
   invoiceId: number,
   eventId: string,
-  event: string
+  event: string,
+  isLNURLZap = false
 ) => {
   return db
     .knex("zap_request")
     .insert({
-      payment_hash: `external_receive-${invoiceId}`,
+      payment_hash: `${
+        isLNURLZap
+          ? IncomingInvoiceType.LNURL_Zap
+          : IncomingInvoiceType.ExternalReceive
+      }-${invoiceId}`,
       event_id: eventId,
       event: event,
     })

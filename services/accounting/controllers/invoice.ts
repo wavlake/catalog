@@ -1,5 +1,5 @@
-const log = require("loglevel");
-log.setLevel(process.env.LOG_LEVEL || "info");
+import log, { LogLevelDesc } from "loglevel";
+log.setLevel((process.env.LOG_LEVEL as LogLevelDesc) || "info");
 import asyncHandler from "express-async-handler";
 import prisma from "@prismalocal/client";
 import { logZapRequest } from "@library/invoice";
@@ -9,11 +9,11 @@ import {
   MAX_INVOICE_AMOUNT,
   DEFAULT_EXPIRATION_SECONDS,
 } from "@library/constants";
-const nlInvoice = require("@node-lightning/invoice");
+import nlInvoice from "@node-lightning/invoice";
 import core from "express-serve-static-core";
-const { verifyEvent } = require("nostr-tools");
 import { getContentFromEventId } from "@library/content";
-const crypto = require("crypto");
+import crypto from "crypto";
+import { validateNostrZapRequest } from "@library/zap";
 
 const getPaymentHash = (invoice: string) => {
   let decodedInvoice;
@@ -53,33 +53,21 @@ const createZapInvoice = asyncHandler<
   }
 
   log.debug(`Zap request: ${JSON.stringify(nostr)}`);
-  // Validate nostr object
-  let zapRequestEvent;
-  try {
-    zapRequestEvent = JSON.parse(nostr);
-  } catch (e) {
-    res.status(400).send({ success: false, error: "Invalid nostr object" });
-    return;
-  }
-  let eventIsOK = verifyEvent(zapRequestEvent);
-  if (!eventIsOK) {
-    res
-      .status(400)
-      .send({ success: false, error: "Invalid zap request event" });
+  const validationResult = validateNostrZapRequest({
+    nostr,
+    amount,
+    requireAOrETag: true,
+  });
+
+  if (!validationResult.isValid) {
+    res.status(400).send({ success: false, error: validationResult.error });
     return;
   }
 
-  // https://github.com/nostr-protocol/nips/blob/master/57.md#appendix-a-zap-request-event
+  const zapRequestEvent = validationResult.zapRequestEvent;
+
   const eTag = zapRequestEvent.tags.find((x) => x[0] === "e");
   const aTag = zapRequestEvent.tags.find((x) => x[0] === "a");
-  // one of these is needed to determine the track ID
-  if (!aTag && !eTag) {
-    res.status(400).send({
-      success: false,
-      error: "Event must include either an a tag or an e tag.",
-    });
-    return;
-  }
 
   let zappedContent = null;
 
@@ -125,7 +113,11 @@ const createZapInvoice = asyncHandler<
   log.debug(`Created placeholder invoice: ${invoice.id}`);
 
   // Create zap request record
-  await logZapRequest(invoice.id, zapRequestEvent.id, zapRequestEvent);
+  await logZapRequest(
+    invoice.id,
+    zapRequestEvent.id,
+    JSON.stringify(zapRequestEvent)
+  );
 
   const hash = crypto.createHash("sha256");
 
