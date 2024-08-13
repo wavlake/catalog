@@ -9,7 +9,7 @@ import {
 } from "@library/constants";
 import { validateNostrZapRequest } from "@library/zap";
 import { logZapRequest } from "@library/invoice";
-import { IncomingInvoiceType } from "@library/common";
+import { IncomingInvoiceTypes } from "@library/common";
 
 const createDeposit = asyncHandler(async (req, res: any, next) => {
   const userId = req["uid"];
@@ -38,6 +38,7 @@ const createDeposit = asyncHandler(async (req, res: any, next) => {
       msatAmount: request.msatAmount,
       preTxBalance: parseInt(userBalance), // This will have to be updated when the payment is made
       paymentRequest: "",
+      isLnurl: false,
     },
   });
 
@@ -47,7 +48,7 @@ const createDeposit = asyncHandler(async (req, res: any, next) => {
     description: `Wavlake deposit`,
     amount: request.msatAmount.toString(),
     expiresIn: DEFAULT_EXPIRATION_SECONDS,
-    internalId: `${IncomingInvoiceType.Transaction}-${invoice.id.toString()}`,
+    internalId: `${IncomingInvoiceTypes.Transaction}-${invoice.id.toString()}`,
   };
 
   log.debug(
@@ -141,6 +142,7 @@ const createDepositLNURL = asyncHandler(async (req, res: any, next) => {
       msatAmount: amountInt,
       preTxBalance: parseInt(userBalance), // This will have to be updated when the payment is made
       paymentRequest: "",
+      isLnurl: true,
       // TODO - add comment field to table
       // comment,
     },
@@ -164,8 +166,8 @@ const createDepositLNURL = asyncHandler(async (req, res: any, next) => {
     expiresIn: DEFAULT_EXPIRATION_SECONDS,
     internalId: `${
       zapRequestEvent
-        ? IncomingInvoiceType.LNURL_Zap
-        : IncomingInvoiceType.LNURL
+        ? IncomingInvoiceTypes.LNURL_Zap
+        : IncomingInvoiceTypes.LNURL
     }-${invoice.id.toString()}`,
   };
 
