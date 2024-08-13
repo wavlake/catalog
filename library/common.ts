@@ -24,7 +24,7 @@ export interface Follow extends Prisma.JsonArray {
   petname?: string;
 }
 
-export enum IncomingInvoiceTypes {
+export enum IncomingInvoiceType {
   ExternalReceive = "external_receive",
   Transaction = "transaction",
   LNURL_Zap = "lnurl_zap",
@@ -32,11 +32,21 @@ export enum IncomingInvoiceTypes {
 }
 
 export const IncomingInvoiceTableMap: Record<
-  IncomingInvoiceTypes,
+  IncomingInvoiceType,
   "transaction" | "external_receive"
 > = {
-  [IncomingInvoiceTypes.Transaction]: "transaction",
-  [IncomingInvoiceTypes.ExternalReceive]: "external_receive",
-  [IncomingInvoiceTypes.LNURL_Zap]: "transaction",
-  [IncomingInvoiceTypes.LNURL]: "transaction",
+  [IncomingInvoiceType.Transaction]: "transaction",
+  [IncomingInvoiceType.ExternalReceive]: "external_receive",
+  [IncomingInvoiceType.LNURL_Zap]: "transaction",
+  [IncomingInvoiceType.LNURL]: "transaction",
+};
+
+export const ZapInvoiceTypeMap: Record<
+  IncomingInvoiceType,
+  "transaction" | "external_receive"
+> = {
+  [IncomingInvoiceType.Transaction]: "transaction",
+  [IncomingInvoiceType.ExternalReceive]: "external_receive",
+  [IncomingInvoiceType.LNURL_Zap]: "transaction",
+  [IncomingInvoiceType.LNURL]: "transaction",
 };

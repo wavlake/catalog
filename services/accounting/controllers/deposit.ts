@@ -9,7 +9,7 @@ import {
 } from "@library/constants";
 import { validateNostrZapRequest } from "@library/zap";
 import { logZapRequest } from "@library/invoice";
-import { IncomingInvoiceTypes } from "@library/common";
+import { IncomingInvoiceType } from "@library/common";
 
 const createDeposit = asyncHandler(async (req, res: any, next) => {
   const userId = req["uid"];
@@ -48,7 +48,7 @@ const createDeposit = asyncHandler(async (req, res: any, next) => {
     description: `Wavlake deposit`,
     amount: request.msatAmount.toString(),
     expiresIn: DEFAULT_EXPIRATION_SECONDS,
-    internalId: `${IncomingInvoiceTypes.Transaction}-${invoice.id.toString()}`,
+    internalId: `${IncomingInvoiceType.Transaction}-${invoice.id.toString()}`,
   };
 
   log.debug(
@@ -155,7 +155,7 @@ const createDepositLNURL = asyncHandler(async (req, res: any, next) => {
       invoice.id,
       zapRequestEvent.id,
       JSON.stringify(zapRequestEvent),
-      true
+      IncomingInvoiceType.LNURL_Zap
     );
   }
 
@@ -165,8 +165,8 @@ const createDepositLNURL = asyncHandler(async (req, res: any, next) => {
     expiresIn: DEFAULT_EXPIRATION_SECONDS,
     internalId: `${
       zapRequestEvent
-        ? IncomingInvoiceTypes.LNURL_Zap
-        : IncomingInvoiceTypes.LNURL
+        ? IncomingInvoiceType.LNURL_Zap
+        : IncomingInvoiceType.LNURL
     }-${invoice.id.toString()}`,
   };
 

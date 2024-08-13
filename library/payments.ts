@@ -4,7 +4,7 @@ import { checkUserHasSufficientSats, getUserBalance } from "./userHelper";
 import { sendPayment } from "./zbd";
 import { ZBDSendPaymentResponse } from "./zbd/responseInterfaces";
 import { PaymentStatus } from "./zbd/constants";
-import { IncomingInvoiceTypes } from "./common";
+import { IncomingInvoiceType } from "./common";
 
 async function checkUserHasPendingTx(userId: string): Promise<boolean> {
   return db
@@ -264,7 +264,7 @@ export const initiatePayment = async (
     amount: msatAmount.toString(),
     invoice: invoice,
     internalId: `${
-      IncomingInvoiceTypes.Transaction
+      IncomingInvoiceType.Transaction
     }-${paymentRecordId.toString()}`,
   });
 

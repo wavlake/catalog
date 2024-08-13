@@ -14,6 +14,7 @@ import core from "express-serve-static-core";
 import { getContentFromEventId } from "@library/content";
 import crypto from "crypto";
 import { validateNostrZapRequest } from "@library/zap";
+import { IncomingInvoiceType } from "@library/common";
 
 const getPaymentHash = (invoice: string) => {
   let decodedInvoice;
@@ -116,7 +117,8 @@ const createZapInvoice = asyncHandler<
   await logZapRequest(
     invoice.id,
     zapRequestEvent.id,
-    JSON.stringify(zapRequestEvent)
+    JSON.stringify(zapRequestEvent),
+    IncomingInvoiceType.ExternalReceive
   );
 
   const hash = crypto.createHash("sha256");
