@@ -143,8 +143,7 @@ const createDepositLNURL = asyncHandler(async (req, res: any, next) => {
       preTxBalance: parseInt(userBalance), // This will have to be updated when the payment is made
       paymentRequest: "",
       isLnurl: true,
-      // TODO - add comment field to table
-      // comment,
+      lnurlComment: comment,
     },
   });
 
