@@ -40,13 +40,3 @@ export const IncomingInvoiceTableMap: Record<
   [IncomingInvoiceType.LNURL_Zap]: "transaction",
   [IncomingInvoiceType.LNURL]: "transaction",
 };
-
-export const ZapInvoiceTypeMap: Record<
-  IncomingInvoiceType,
-  "transaction" | "external_receive"
-> = {
-  [IncomingInvoiceType.Transaction]: "transaction",
-  [IncomingInvoiceType.ExternalReceive]: "external_receive",
-  [IncomingInvoiceType.LNURL_Zap]: "transaction",
-  [IncomingInvoiceType.LNURL]: "transaction",
-};
