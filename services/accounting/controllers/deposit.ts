@@ -113,12 +113,7 @@ const createDepositLNURL = asyncHandler(async (req, res: any, next) => {
   const lnurl = req.body.lnurl as string;
   const comment = req.body.comment as string;
   const amountInt = parseInt(amount);
-  log.debug("Incoming lnurl deposit request:", {
-    amount,
-    userId,
-    comment,
-    nostr,
-  });
+
   if (isNaN(amountInt) || amountInt < 1000 || amountInt > MAX_INVOICE_AMOUNT) {
     log.debug(
       `Invalid amount, must be between 1000 and ${MAX_INVOICE_AMOUNT} sats, recieved ${amount}`
@@ -138,9 +133,6 @@ const createDepositLNURL = asyncHandler(async (req, res: any, next) => {
       res.status(400).send({ success: false, error: validationResult.error });
       return;
     }
-    log.debug(
-      `Lnurl zap request is valid, event ID: ${validationResult.zapRequestEvent.id}`
-    );
     zapRequestEvent = validationResult.zapRequestEvent;
   }
 
@@ -155,7 +147,8 @@ const createDepositLNURL = asyncHandler(async (req, res: any, next) => {
       preTxBalance: parseInt(userBalance), // This will have to be updated when the payment is made
       paymentRequest: "",
       isLnurl: true,
-      lnurlComment: comment,
+      // comment may be an empty string
+      lnurlComment: comment || undefined,
     },
   });
 
