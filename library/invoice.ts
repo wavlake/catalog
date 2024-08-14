@@ -14,11 +14,15 @@ import {
 } from "./zap";
 import { ZBDChargeCallbackRequest } from "./zbd/requestInterfaces";
 import { ChargeStatus } from "./zbd/constants";
-import { PaymentType, IncomingInvoiceType } from "./common";
+import {
+  PaymentType,
+  IncomingInvoiceType,
+  IncomingInvoiceTableMap,
+} from "./common";
 import { updateNpubMetadata } from "./nostr/nostr";
 
 export const updateInvoiceIfNeeded = async (
-  invoiceType: string,
+  invoiceType: IncomingInvoiceType,
   invoiceId: number,
   charge: ZBDChargeCallbackRequest
 ): Promise<{
@@ -57,34 +61,39 @@ export const updateInvoiceIfNeeded = async (
         message: "The invoice has failed or expired.",
       };
     } else {
-      if (invoiceType === IncomingInvoiceType.Transaction) {
-        log.debug(`Processing transaction invoice for id ${invoiceId}`);
-        await handleCompletedDeposit(invoiceId, msatAmount);
-      }
-      if (invoiceType === IncomingInvoiceType.ExternalReceive) {
-        log.debug(`Processing external_receive invoice for id ${invoiceId}`);
-        // Process should account for plain invoices and zaps
-        await handleCompletedAmpInvoice(
-          invoiceId,
-          msatAmount,
-          paymentRequest,
-          preimage,
-          externalId
-        );
-      }
-      if (invoiceType === IncomingInvoiceType.LNURL) {
-        log.debug(`Processing lnurl invoice for id ${invoiceId}`);
-        await handleCompletedDeposit(invoiceId, msatAmount);
-      }
-      if (invoiceType === IncomingInvoiceType.LNURL_Zap) {
-        log.debug(`Processing lnurl zap invoice for id ${invoiceId}`);
-        await handleCompletedLNURLZapInvoice(
-          invoiceId,
-          msatAmount,
-          paymentRequest,
-          preimage,
-          externalId
-        );
+      switch (invoiceType) {
+        case IncomingInvoiceType.Transaction:
+          log.debug(`Processing transaction invoice for id ${invoiceId}`);
+          await handleCompletedDeposit(invoiceId, msatAmount);
+          break;
+        case IncomingInvoiceType.ExternalReceive:
+          log.debug(`Processing external_receive invoice for id ${invoiceId}`);
+          // Process should account for plain invoices and zaps
+          await handleCompletedAmpInvoice(
+            invoiceId,
+            msatAmount,
+            paymentRequest,
+            preimage,
+            externalId
+          );
+          break;
+        case IncomingInvoiceType.LNURL:
+          log.debug(`Processing lnurl invoice for id ${invoiceId}`);
+          await handleCompletedDeposit(invoiceId, msatAmount);
+          break;
+        case IncomingInvoiceType.LNURL_Zap:
+          log.debug(`Processing lnurl zap invoice for id ${invoiceId}`);
+          await handleCompletedLNURLZapInvoice(
+            invoiceId,
+            msatAmount,
+            paymentRequest,
+            preimage,
+            externalId
+          );
+          break;
+        default:
+          log.error(`Invalid invoiceType: ${invoiceType}`);
+          return { success: false, message: "Invalid invoice type" };
       }
       return { success: true, data: { status: status } };
     }
@@ -257,7 +266,7 @@ async function handleCompletedLNURLZapInvoice(
     });
 
   const { zapRequest, pubkey, content, timestamp } =
-    await getZapPubkeyAndContent(transactionId, true);
+    await getZapPubkeyAndContent(transactionId, IncomingInvoiceType.LNURL_Zap);
 
   log.debug(`Publishing zap receipt for invoice id ${transactionId}`);
   await publishZapReceipt(
@@ -301,19 +310,25 @@ async function getInvoicePaymentTypeCode(invoiceId: number) {
 }
 
 async function handleFailedOrExpiredInvoice(
-  invoiceType: string,
+  invoiceType: IncomingInvoiceType,
   internalId: number,
   status: string
 ) {
+  const table = IncomingInvoiceTableMap[invoiceType];
+  if (!table) {
+    log.error(`Invalid invoice type: ${invoiceType}`);
+    return;
+  }
+
   const update = {
     is_pending: false,
     updated_at: db.knex.fn.now(),
-    ...(invoiceType === IncomingInvoiceType.ExternalReceive
+    ...(table === "external_receive"
       ? { error_message: status }
       : { failure_reason: status }),
   };
   await db
-    .knex(invoiceType)
+    .knex(table)
     .update(update)
     .where("id", "=", internalId)
     .catch((err) => {
@@ -327,16 +342,12 @@ export const logZapRequest = async (
   invoiceId: number,
   eventId: string,
   event: string,
-  isLNURLZap = false
+  invoiceType = IncomingInvoiceType.ExternalReceive
 ) => {
   return db
     .knex("zap_request")
     .insert({
-      payment_hash: `${
-        isLNURLZap
-          ? IncomingInvoiceType.LNURL_Zap
-          : IncomingInvoiceType.ExternalReceive
-      }-${invoiceId}`,
+      payment_hash: `${IncomingInvoiceTableMap[invoiceType]}-${invoiceId}`,
       event_id: eventId,
       event: event,
     })

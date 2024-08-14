@@ -239,6 +239,8 @@ model Transaction {
   updatedAt      DateTime? @default(now()) @map("updated_at") @db.Timestamptz(6)
   externalId     String?   @map("external_id") @db.VarChar(255)
   preimage       String?   @db.VarChar(255)
+  isLnurl        Boolean?  @default(false) @map("is_lnurl")
+  lnurlComment   String?   @map("lnurl_comment")
   user           User      @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "transaction_user_id_foreign")
 
   @@index([userId], map: "idx_transaction_user_id")

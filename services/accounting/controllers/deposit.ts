@@ -38,6 +38,7 @@ const createDeposit = asyncHandler(async (req, res: any, next) => {
       msatAmount: request.msatAmount,
       preTxBalance: parseInt(userBalance), // This will have to be updated when the payment is made
       paymentRequest: "",
+      isLnurl: false,
     },
   });
 
@@ -141,8 +142,8 @@ const createDepositLNURL = asyncHandler(async (req, res: any, next) => {
       msatAmount: amountInt,
       preTxBalance: parseInt(userBalance), // This will have to be updated when the payment is made
       paymentRequest: "",
-      // TODO - add comment field to table
-      // comment,
+      isLnurl: true,
+      lnurlComment: comment,
     },
   });
 
@@ -154,7 +155,7 @@ const createDepositLNURL = asyncHandler(async (req, res: any, next) => {
       invoice.id,
       zapRequestEvent.id,
       JSON.stringify(zapRequestEvent),
-      true
+      IncomingInvoiceType.LNURL_Zap
     );
   }
 

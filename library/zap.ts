@@ -11,7 +11,8 @@ import {
 import { hexToBytes } from "@noble/hashes/utils";
 useWebSocketImplementation(require("ws"));
 import { handleConferenceZap } from "./btc24/btc24";
-import { IncomingInvoiceType } from "./common";
+import { IncomingInvoiceTableMap, IncomingInvoiceType } from "./common";
+
 const { DEFAULT_WRITE_RELAY_URIS } = require("./nostr/common");
 
 const WAVLAKE_RELAY = process.env.WAVLAKE_RELAY;
@@ -62,13 +63,9 @@ export const validateNostrZapRequest = ({
 
 export const getZapPubkeyAndContent = async (
   invoiceId: number,
-  isLNURLZap = false
+  invoiceType = IncomingInvoiceType.ExternalReceive
 ) => {
-  const paymentHash = `${
-    isLNURLZap
-      ? IncomingInvoiceType.LNURL_Zap
-      : IncomingInvoiceType.ExternalReceive
-  }-${invoiceId}`;
+  const paymentHash = `${IncomingInvoiceTableMap[invoiceType]}-${invoiceId}`;
   const zapRequestEvent = await db
     .knex("zap_request")
     .where("payment_hash", paymentHash)
