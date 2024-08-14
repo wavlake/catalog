@@ -53,11 +53,8 @@ export const validateNostrZapRequest = ({
   if (!amountTagValue || parseInt(amount) !== parseInt(amountTagValue)) {
     log.debug("Invalid zap request amount: ", amountTagValue);
     log.debug("Invoice amount: ", amount);
-    return {
-      isValid: false,
-      error:
-        "Amount in zap request event is missing or does not match invoice amount",
-    };
+    // we continue here because we want to allow the zap to go through
+    // some clients may not include the amount tag
   }
 
   return { isValid: true, zapRequestEvent };
