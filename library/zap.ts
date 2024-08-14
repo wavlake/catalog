@@ -51,6 +51,8 @@ export const validateNostrZapRequest = ({
   const [amountTag, amountTagValue] =
     zapRequestEvent.tags.find((x) => x[0] === "amount") ?? [];
   if (!amountTagValue || parseInt(amount) !== parseInt(amountTagValue)) {
+    log.debug("Invalid zap request amount: ", amountTagValue);
+    log.debug("Invoice amount: ", amount);
     return {
       isValid: false,
       error:
