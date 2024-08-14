@@ -94,6 +94,7 @@ exports.getMusicFeed = handleErrorAsync(async (req, res, next) => {
       "track.created_at as createDate",
       "track.deleted as deleted",
       "track.is_draft as isDraft",
+      "track.is_processing as isProcessing",
       "track.is_explicit as isExplicit",
       "music_genre.name as genre",
       "music_subgenre.name as subgenre"
@@ -101,6 +102,7 @@ exports.getMusicFeed = handleErrorAsync(async (req, res, next) => {
     .where("track.deleted", false)
     .andWhere("track.album_id", "=", feedId)
     .andWhere("track.is_draft", false)
+    .andWhere("track.is_processing", false)
     .catch((err) => {
       log.debug(`Error querying tracks table to generate music feed: ${err}`);
       return [];
@@ -167,6 +169,7 @@ exports.getPodcastFeed = handleErrorAsync(async (req, res, next) => {
       "episode.created_at as createDate",
       "episode.deleted as deleted",
       "episode.is_draft as isDraft",
+      "episode.is_processing as isProcessing",
       "podcast_category.name as primaryCategory",
       "podcast_subcategory.name as primarySubcategory",
       "secondary_category.name as secondaryCategory",
@@ -175,6 +178,7 @@ exports.getPodcastFeed = handleErrorAsync(async (req, res, next) => {
     .where("episode.deleted", false)
     .andWhere("podcast.id", "=", feedId)
     .andWhere("episode.is_draft", false)
+    .andWhere("episode.is_processing", false)
     .catch((err) => {
       log.debug(`Error querying podcast table to generate feed: ${err}`);
       return [];
