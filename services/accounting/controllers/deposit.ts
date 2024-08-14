@@ -138,9 +138,6 @@ const createDepositLNURL = asyncHandler(async (req, res: any, next) => {
       res.status(400).send({ success: false, error: validationResult.error });
       return;
     }
-    log.debug(
-      `Lnurl zap request is valid, event ID: ${validationResult.zapRequestEvent.id}`
-    );
     zapRequestEvent = validationResult.zapRequestEvent;
   }
 
