@@ -656,9 +656,10 @@ function transactions(userId) {
       "transaction.fee_msat as feemsat",
       "transaction.success as success",
       db.knex.raw(
-        "CASE WHEN withdraw=true THEN 'Withdraw' ELSE 'Deposit' END AS type"
+        "CASE WHEN is_lnurl=true THEN 'Zap' WHEN withdraw=true THEN 'Withdraw' ELSE 'Deposit' END AS type"
       ),
       "transaction.is_pending as ispending",
+      "transaction.lnurl_comment as comment",
       "transaction.id as id",
       "transaction.msat_amount as msatAmount",
       "transaction.failure_reason as failureReason",
@@ -682,7 +683,8 @@ function forwards(userId) {
       db.knex.raw("0 as feeMsat"),
       db.knex.raw("bool_and(forward_detail.success) as success"),
       db.knex.raw("'Autoforward' as type"),
-      db.knex.raw("false as ispending")
+      db.knex.raw("false as ispending"),
+      db.knex.raw("'' as comment")
     )
     .min("forward_detail.id as id")
     .min("forward_detail.msat_amount as msatAmount")
