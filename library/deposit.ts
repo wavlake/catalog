@@ -1,5 +1,6 @@
 import log from "loglevel";
 import db from "./db";
+import { IncomingInvoiceTableMap, IncomingInvoiceType } from "./common";
 
 export async function getUserIdFromTransactionId(
   transactionId: number
@@ -19,10 +20,11 @@ export async function getUserIdFromTransactionId(
 
 export const wasTransactionAlreadyLogged = async (
   invoiceId: number,
-  invoiceType: string
+  invoiceType: IncomingInvoiceType
 ): Promise<boolean> => {
+  const tableName = IncomingInvoiceTableMap[invoiceType];
   return db
-    .knex(invoiceType)
+    .knex(tableName)
     .select("is_pending as isPending")
     .where("id", "=", invoiceId)
     .first()
@@ -31,7 +33,7 @@ export const wasTransactionAlreadyLogged = async (
     })
     .catch((err) => {
       log.error(
-        `Error finding invoice id ${invoiceId} in ${invoiceType}: ${err}`
+        `Error finding invoice id ${invoiceId} in ${tableName}: ${err}`
       );
       return false;
     });
