@@ -27,6 +27,7 @@ export const validateNostrZapRequest = ({
   amount: string;
   requireAOrETag?: boolean;
 }): { isValid: boolean; error?: string; zapRequestEvent?: Event } => {
+  log.debug(`Validating zap request: ${nostr}`);
   let zapRequestEvent: Event;
   try {
     zapRequestEvent = JSON.parse(nostr);
