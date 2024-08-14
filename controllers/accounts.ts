@@ -1015,7 +1015,6 @@ const check_user_verified = asyncHandler(async (req, res, next) => {
   res.send({
     success: true,
     data: {
-      isVerified: true,
       userId: user.id,
     },
   });
