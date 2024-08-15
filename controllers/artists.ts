@@ -66,6 +66,7 @@ const get_artist_by_id = asyncHandler(async (req, res, next) => {
     where: {
       artistId: artistId,
       isDraft: false,
+      isProcessing: false,
       publishedAt: { lte: new Date() },
     },
     orderBy: { msatTotal: "desc" },

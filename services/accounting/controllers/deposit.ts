@@ -1,4 +1,4 @@
-const log = require("loglevel");
+import log from "loglevel";
 import asyncHandler from "express-async-handler";
 import prisma from "@prismalocal/client";
 import { getUserBalance } from "@library/userHelper";
@@ -7,6 +7,9 @@ import {
   MAX_INVOICE_AMOUNT,
   DEFAULT_EXPIRATION_SECONDS,
 } from "@library/constants";
+import { validateNostrZapRequest } from "@library/zap";
+import { logZapRequest } from "@library/invoice";
+import { IncomingInvoiceType } from "@library/common";
 
 const createDeposit = asyncHandler(async (req, res: any, next) => {
   const userId = req["uid"];
@@ -35,6 +38,7 @@ const createDeposit = asyncHandler(async (req, res: any, next) => {
       msatAmount: request.msatAmount,
       preTxBalance: parseInt(userBalance), // This will have to be updated when the payment is made
       paymentRequest: "",
+      isLnurl: false,
     },
   });
 
@@ -44,7 +48,7 @@ const createDeposit = asyncHandler(async (req, res: any, next) => {
     description: `Wavlake deposit`,
     amount: request.msatAmount.toString(),
     expiresIn: DEFAULT_EXPIRATION_SECONDS,
-    internalId: `transaction-${invoice.id.toString()}`,
+    internalId: `${IncomingInvoiceType.Transaction}-${invoice.id.toString()}`,
   };
 
   log.debug(
@@ -101,6 +105,130 @@ const createDeposit = asyncHandler(async (req, res: any, next) => {
   });
 });
 
+const createDepositLNURL = asyncHandler(async (req, res: any, next) => {
+  const userId = req.body.userId as string;
+  const amount = req.body.amount as string;
+  const nostr = req.body.nostr as string;
+  const metadata = req.body.metadata as string;
+  const lnurl = req.body.lnurl as string;
+  const comment = req.body.comment as string;
+  const amountInt = parseInt(amount);
+
+  if (isNaN(amountInt) || amountInt < 1000 || amountInt > MAX_INVOICE_AMOUNT) {
+    log.debug(
+      `Invalid amount, must be between 1000 and ${MAX_INVOICE_AMOUNT} sats, recieved ${amount}`
+    );
+    res.status(400).send({
+      success: false,
+      error: `Amount must be a number between 1000 and ${MAX_INVOICE_AMOUNT} (msats)`,
+    });
+    return;
+  }
+
+  let zapRequestEvent;
+  if (nostr) {
+    const validationResult = validateNostrZapRequest({ nostr, amount });
+    if (!validationResult.isValid) {
+      log.debug(`Lnurl zap request is invalid: ${validationResult.error}`);
+      res.status(400).send({ success: false, error: validationResult.error });
+      return;
+    }
+    zapRequestEvent = validationResult.zapRequestEvent;
+  }
+
+  const userBalance = await getUserBalance(userId);
+  // Create a blank invoice in the database to reference
+  const invoice = await prisma.transaction.create({
+    data: {
+      userId: userId,
+      isPending: true,
+      withdraw: false,
+      msatAmount: amountInt,
+      preTxBalance: parseInt(userBalance), // This will have to be updated when the payment is made
+      paymentRequest: "",
+      isLnurl: true,
+      // comment may be an empty string
+      lnurlComment: comment || undefined,
+    },
+  });
+
+  log.debug(`Created placeholder lnurl invoice: ${invoice.id}`);
+
+  if (zapRequestEvent) {
+    // Create zap request record
+    await logZapRequest(
+      invoice.id,
+      zapRequestEvent.id,
+      JSON.stringify(zapRequestEvent),
+      IncomingInvoiceType.LNURL_Zap
+    );
+  }
+
+  const invoiceRequest = {
+    description: `Wavlake lnurl${zapRequestEvent ? "-zap" : ""} deposit`,
+    amount: amountInt.toString(),
+    expiresIn: DEFAULT_EXPIRATION_SECONDS,
+    internalId: `${
+      zapRequestEvent
+        ? IncomingInvoiceType.LNURL_Zap
+        : IncomingInvoiceType.LNURL
+    }-${invoice.id.toString()}`,
+  };
+
+  log.debug(
+    `Sending create invoice request for lnurl deposit: ${JSON.stringify(
+      invoiceRequest
+    )}`
+  );
+
+  // call ZBD api to create an invoice
+  const invoiceResponse = await createCharge(invoiceRequest);
+
+  if (!invoiceResponse.success) {
+    log.error(`Error creating lnurl invoice: ${invoiceResponse.message}`);
+    res.status(500).send({
+      success: false,
+      error: "There has been an error generating an invoice",
+    });
+    return;
+  }
+
+  log.debug(
+    `Received create lnurl invoice response: ${JSON.stringify(invoiceResponse)}`
+  );
+
+  // Update the invoice in the database
+  const updatedInvoice = await prisma.transaction
+    .update({
+      where: { id: invoice.id },
+      data: {
+        paymentRequest: invoiceResponse.data.invoice.request,
+        externalId: invoiceResponse.data.id,
+        updatedAt: new Date(),
+      },
+    })
+    .catch((e) => {
+      log.error(`Error updating lnurl invoice: ${e}`);
+      return null;
+    });
+
+  if (!updatedInvoice) {
+    log.error(`Error updating invoice: ${invoiceResponse.message}`);
+    res.status(500).send({
+      success: false,
+      error: "There has been an error generating an invoice",
+    });
+    return;
+  }
+
+  log.debug(`Updated lnurl invoice: ${JSON.stringify(updatedInvoice)}`);
+
+  res.json({
+    success: true,
+    data: { ...invoiceResponse.data.invoice, invoiceId: updatedInvoice.id },
+  });
+});
+
 const getDeposit = asyncHandler(async (req, res: any, next) => {
   const userId = req["uid"];
   const { id } = req.params;
@@ -128,4 +256,4 @@ const getDeposit = asyncHandler(async (req, res: any, next) => {
   return;
 });
 
-export default { createDeposit, getDeposit };
+export default { createDeposit, getDeposit, createDepositLNURL };

@@ -1,8 +1,8 @@
-const log = require("loglevel");
+import log from "loglevel";
 import { NextFunction, Response, Request } from "express";
 import { PrismaClientKnownRequestError } from "@prisma/client/runtime";
 import { FirebaseError } from "firebase-admin";
-const Sentry = require("@sentry/node");
+import Sentry from "@sentry/node";
 
 // https://www.prisma.io/docs/reference/api-reference/error-reference
 export const errorHandler = (
@@ -12,7 +12,7 @@ export const errorHandler = (
   next: NextFunction
 ) => {
   log.error(`${error}`);
-  Sentry.captureException(error);
+  Sentry?.captureException(error);
   res.status(error.status || 500).json({
     success: false,
     data: null,

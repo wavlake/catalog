@@ -3,7 +3,6 @@ const log = require("loglevel");
 log.setLevel(process.env.LOGLEVEL);
 const nlInvoice = require("@node-lightning/invoice");
 import { processSplits } from "@library/amp";
-import db from "@library/db";
 const { getZapPubkeyAndContent, publishZapReceipt } = require("@library/zap");
 const { updateWallet, walletHasRemainingBudget } = require("./wallet");
 const { initiatePayment, runPaymentChecks } = require("@library/payments");
@@ -12,6 +11,7 @@ const { webcrypto } = require("node:crypto");
 globalThis.crypto = webcrypto;
 import { FEE_BUFFER } from "@library/constants";
 import { randomUUID } from "crypto";
+import { IncomingInvoiceType } from "@library/common";
 
 const payInvoice = async (event, content, walletUser) => {
   log.debug(`Processing pay_invoice event ${event.id}`);
@@ -106,7 +106,8 @@ const payInvoice = async (event, content, walletUser) => {
   if (wavlakeInvoiceInfo?.isWavlake) {
     if (!wavlakeInvoiceInfo.isSettled) {
       const zapRequestData = await getZapPubkeyAndContent(
-        wavlakeInvoiceInfo.id
+        wavlakeInvoiceInfo.id,
+        IncomingInvoiceType.ExternalReceive
       );
 
       if (!zapRequestData) {

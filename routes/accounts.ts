@@ -18,6 +18,7 @@ import accountsController from "../controllers/accounts";
 import connectionsController from "../controllers/connections";
 import { isAuthorized } from "../middlewares/auth";
 import { isNostrAuthorized } from "../middlewares/nostrAuth";
+import { isAPITokenAuthorized } from "../middlewares/isAPITokenAuthorized";
 
 // Create router
 const router = express.Router();
@@ -27,6 +28,11 @@ const router = express.Router();
 // USER
 router.post("/", accountsController.create_account);
 router.get("/", isAuthorized, accountsController.get_account);
+router.get(
+  "/public/verified/:userProfileUrl",
+  isAPITokenAuthorized,
+  accountsController.check_user_verified
+);
 router.get("/public/:userProfileUrl", accountsController.get_user_public);
 router.get("/pubkey/:pubkey", accountsController.get_pubkey_metadata);
 router.put("/pubkey/:pubkey", accountsController.update_metadata);

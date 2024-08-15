@@ -109,7 +109,13 @@ const get_user_public = asyncHandler(async (req, res, next) => {
 
   const userProfileData = await db
     .knex("user")
-    .join("playlist", "playlist.user_id", "=", "user.id")
+    .leftJoin("playlist", function () {
+      this.on("playlist.user_id", "=", "user.id").andOn(
+        "playlist.is_favorites",
+        "=",
+        db.knex.raw("?", [true])
+      );
+    })
     .select(
       "user.id as id",
       "user.name as name",
@@ -118,7 +124,6 @@ const get_user_public = asyncHandler(async (req, res, next) => {
       "playlist.id as userFavoritesId"
     )
     .where("user.profile_url", "=", request.userProfileUrl)
-    .andWhere("playlist.is_favorites", "=", true)
     .first();
 
   if (!userProfileData) {
@@ -651,9 +656,10 @@ function transactions(userId) {
       "transaction.fee_msat as feemsat",
       "transaction.success as success",
       db.knex.raw(
-        "CASE WHEN withdraw=true THEN 'Withdraw' ELSE 'Deposit' END AS type"
+        "CASE WHEN is_lnurl=true THEN 'Zap' WHEN withdraw=true THEN 'Withdraw' ELSE 'Deposit' END AS type"
       ),
       "transaction.is_pending as ispending",
+      "transaction.lnurl_comment as comment",
       "transaction.id as id",
       "transaction.msat_amount as msatAmount",
       "transaction.failure_reason as failureReason",
@@ -677,7 +683,8 @@ function forwards(userId) {
       db.knex.raw("0 as feeMsat"),
       db.knex.raw("bool_and(forward_detail.success) as success"),
       db.knex.raw("'Autoforward' as type"),
-      db.knex.raw("false as ispending")
+      db.knex.raw("false as ispending"),
+      db.knex.raw("'' as comment")
     )
     .min("forward_detail.id as id")
     .min("forward_detail.msat_amount as msatAmount")
@@ -976,7 +983,47 @@ const update_metadata = asyncHandler(async (req, res, next) => {
   }
 });
 
+const check_user_verified = asyncHandler(async (req, res, next) => {
+  const userProfileUrl = req.params.userProfileUrl;
+
+  const user = await prisma.user.findFirst({
+    where: {
+      profileUrl: userProfileUrl,
+    },
+  });
+
+  if (!user) {
+    res.status(404).json({
+      success: false,
+      error: "User not found",
+    });
+    return;
+  }
+
+  const isVerified = await prisma.userVerification.findFirst({
+    where: {
+      userId: user.id,
+    },
+  });
+
+  if (!isVerified) {
+    res.status(403).json({
+      success: false,
+      error: "User not verified",
+    });
+    return;
+  }
+
+  res.send({
+    success: true,
+    data: {
+      userId: user.id,
+    },
+  });
+});
+
 export default {
+  check_user_verified,
   create_update_lnaddress,
   get_account,
   get_user_public,

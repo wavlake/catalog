@@ -16,6 +16,7 @@ import {
   handleCompletedForward,
   handleCompletedWithdrawal,
 } from "@library/withdraw";
+import { IncomingInvoiceType } from "@library/common";
 
 const jsonParser = (jsonString?: string) => {
   if (!jsonString) return;
@@ -148,7 +149,7 @@ const processIncomingInvoice = asyncHandler<
 
   const [invoiceType, invoiceId] = internalId.split("-");
   const { success, message } = await updateInvoiceIfNeeded(
-    invoiceType,
+    invoiceType as IncomingInvoiceType,
     parseInt(invoiceId),
     req.body
   );

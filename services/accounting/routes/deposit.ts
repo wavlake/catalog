@@ -1,7 +1,8 @@
 import express from "express";
 import depositController from "../controllers/deposit";
-const { isAuthorized } = require("@middlewares/auth");
-const { isWalletVerified } = require("@middlewares/zbdChecks");
+import { isAuthorized } from "@middlewares/auth";
+import { isWalletVerified } from "@middlewares/zbdChecks";
+import { isAPITokenAuthorized } from "@middlewares/isAPITokenAuthorized";
 
 // Create router
 const router = express.Router();
@@ -14,6 +15,14 @@ router.post(
   isWalletVerified,
   depositController.createDeposit
 );
+
+router.post(
+  "/lnurl",
+  isAPITokenAuthorized,
+  isWalletVerified,
+  depositController.createDepositLNURL
+);
+
 router.get("/:id", isAuthorized, depositController.getDeposit);
 
 // Export router
