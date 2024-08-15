@@ -10,7 +10,14 @@ COPY ./ /app/
 WORKDIR /app/services/rss
 RUN npm install --unsafe-perm ||  ((if [ -f npm-debug.log ]; then cat npm-debug.log; fi) && false)
 
+# Generate Prisma client from repo root
+WORKDIR /app
+RUN npm install --unsafe-perm ||  ((if [ -f npm-debug.log ]; then cat npm-debug.log; fi) && false)
+RUN npx tsc
+RUN npx prisma generate
+
 # Copy node_modules to root
+WORKDIR /app/services/rss
 RUN cp -R node_modules /app/node_modules
 
 RUN npx tsc
