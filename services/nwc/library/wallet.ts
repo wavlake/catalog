@@ -53,6 +53,11 @@ const walletHasRemainingBudget = async (
 ) => {
   log.debug(`Getting budget remaining for NWC wallet: ${walletPubkey}`);
 
+  // if the max budget is 0 then the user has no budget, its unlimited
+  if (msatBudget === 0) {
+    return true;
+  }
+
   // Get total amp spend by user in last week to add to withdrawl spend
   return db
     .knex("nwc_wallet_transaction")
@@ -61,11 +66,6 @@ const walletHasRemainingBudget = async (
     .andWhere("created_at", ">", db.knex.raw("now() - interval '7 days'"))
     .first()
     .then((data) => {
-      // if the max budget is 0 then the user has no budget, its unlimited
-      if (msatBudget === 0) {
-        return true;
-      }
-
       // If there are no tx records then simply check if the budget is greater than the value
       if (data?.length === 0) {
         return parseInt(msatBudget) > parseInt(valueMsat);
