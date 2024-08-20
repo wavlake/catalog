@@ -502,6 +502,14 @@ const create_update_lnaddress = asyncHandler(async (req, res, next) => {
     return;
   }
 
+  if (lightningAddress.includes("wavlake.com")) {
+    res.status(400).json({
+      success: false,
+      error: "Autoforwarding to a Wavlake address is not allowed",
+    });
+    return;
+  }
+
   const isValidAddress = await validateLightningAddress(lightningAddress);
 
   if (!isValidAddress) {
@@ -526,6 +534,30 @@ const create_update_lnaddress = asyncHandler(async (req, res, next) => {
       success: true,
       data: { userId: userId, lightningAddress: lightningAddress },
     });
+  } catch (err) {
+    next(err);
+    return;
+  }
+});
+
+const delete_lnaddress = asyncHandler(async (req, res, next) => {
+  const userId = req["uid"];
+
+  try {
+    await prisma.user.update({
+      where: {
+        id: userId,
+      },
+      data: {
+        lightningAddress: null,
+      },
+    });
+
+    res.send({
+      success: true,
+      data: { userId: userId },
+    });
+    return;
   } catch (err) {
     next(err);
     return;
@@ -1025,6 +1057,7 @@ const check_user_verified = asyncHandler(async (req, res, next) => {
 export default {
   check_user_verified,
   create_update_lnaddress,
+  delete_lnaddress,
   get_account,
   get_user_public,
   create_account,

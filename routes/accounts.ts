@@ -81,6 +81,7 @@ router.post(
   isAuthorized,
   accountsController.create_update_lnaddress
 );
+router.delete("/ln-address", isAuthorized, accountsController.delete_lnaddress);
 
 router.post(
   "/pubkey",
