@@ -9,9 +9,21 @@ const createWithdraw = asyncHandler(async (req, res, next) => {
   const userId = req["uid"];
 
   // Validate invoice
-  const { valueMsat } = NLInvoice.decode(invoice);
+  let decodedInvoice;
+  try {
+    decodedInvoice = NLInvoice.decode(invoice);
+  } catch (err) {
+    log.error(`Error decoding invoice ${err}`);
+    res.status(400).send({
+      success: false,
+      error: "Invalid invoice",
+    });
+    return;
+  }
 
-  if (!valueMsat || valueMsat <= 0) {
+  const { valueMsat } = decodedInvoice;
+
+  if (!valueMsat || isNaN(valueMsat) || valueMsat <= 0) {
     res.status(400).send({
       success: false,
       error: "Invalid invoice",
