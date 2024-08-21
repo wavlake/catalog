@@ -146,74 +146,6 @@ const get_user_public = asyncHandler(async (req, res, next) => {
   res.send({ success: true, data: userProfileData });
 });
 
-const get_activity = asyncHandler(async (req, res, next) => {
-  const request = {
-    accountId: req["uid"],
-  };
-
-  const { page } = req.params;
-  const pageInt = parseInt(page);
-  if (!Number.isInteger(pageInt) || pageInt <= 0) {
-    res.status(400).json({
-      success: false,
-      error: "page must be a positive integer",
-    });
-    return;
-  }
-
-  // TODO: Add support for legacy amps
-  db.knex("amp")
-    .join("preamp", "preamp.tx_id", "=", "amp.tx_id")
-    .leftOuterJoin("user", "user.id", "=", "amp.user_id")
-    .leftOuterJoin("comment", "comment.tx_id", "=", "amp.tx_id")
-    .leftOuterJoin("track", "track.id", "=", "amp.track_id")
-    .leftOuterJoin("album", "album.id", "=", "amp.track_id")
-    .leftOuterJoin("artist", "artist.id", "=", "amp.track_id")
-    .leftOuterJoin("episode", "episode.id", "=", "amp.track_id")
-    .leftOuterJoin("podcast", "podcast.id", "=", "amp.track_id")
-    .select(
-      "amp.track_id as contentId",
-      "amp.msat_amount as msatAmount",
-      "amp.content_type as contentType",
-      "amp.user_id as userId",
-      "amp.created_at as createdAt",
-      "amp.tx_id as txId",
-      "amp.track_id as contentId",
-      "amp.type as ampType",
-      "preamp.msat_amount as totalMsatAmount",
-      "preamp.podcast as podcast",
-      "preamp.episode as episode",
-      "preamp.app_name as appName",
-      "comment.content as content",
-      "user.artwork_url as commenterArtworkUrl",
-      db.knex.raw(
-        `COALESCE("artist"."artist_url", "podcast"."podcast_url") as "contentUrl"`
-      ),
-      db.knex.raw('COALESCE("user"."name", "preamp"."sender_name") as name'),
-      db.knex.raw(
-        'COALESCE("track"."title", "album"."title", "artist"."name", "episode"."title") as title'
-      )
-    )
-    .where("amp.split_destination", "=", request.accountId)
-    .whereNotNull("amp.tx_id")
-    .orderBy("amp.created_at", "desc")
-    .paginate({
-      perPage: 50,
-      currentPage: pageInt,
-      isLengthAware: true,
-    })
-    .then((data) => {
-      res.send({
-        success: true,
-        data: { activities: data.data, pagination: data.pagination },
-      });
-    })
-    .catch((err) => {
-      next(err);
-      return;
-    });
-});
-
 const get_announcements = asyncHandler(async (req, res, next) => {
   const request = {
     accountId: req["uid"],
@@ -284,7 +216,6 @@ const get_notification = asyncHandler(async (req, res, next) => {
     .max("created_at")
     .first()
     .then((data) => {
-      console.log(data);
       if (!data?.max) return false;
 
       const latestDate =
@@ -333,66 +264,6 @@ const get_features = asyncHandler(async (req, res, next) => {
     res.send({
       success: true,
       data: flags.map((flag) => flag.featureFlag.name),
-    });
-  } catch (err) {
-    next(err);
-    return;
-  }
-});
-
-const get_history = asyncHandler(async (req, res, next) => {
-  const page = req.query.page || 1;
-  const userId = req["uid"];
-  try {
-    const internalAmps = db
-      .knex("amp")
-      .join("track", "track.id", "=", "amp.track_id")
-      .join("album", "album.id", "=", "track.album_id")
-      .join("artist", "artist.id", "=", "album.artist_id")
-      .select(
-        "amp.msat_amount as msatAmount",
-        "amp.created_at as createdAt",
-        "track.title as title",
-        "artist.name as name",
-        db.knex.raw("0 as fee"),
-        "amp.tx_id as txId"
-      )
-      .where("amp.user_id", "=", userId);
-
-    const externalAmps = db
-      .knex("external_payment")
-      .select(
-        "external_payment.msat_amount as msatAmount",
-        "external_payment.created_at as createdAt",
-        "external_payment.podcast as title",
-        "external_payment.name as name",
-        "external_payment.fee_msat as fee",
-        "external_payment.tx_id as txId"
-      )
-      .where("external_payment.user_id", "=", userId)
-      .andWhere("external_payment.is_settled", "=", true);
-
-    const combinedAmps = await internalAmps
-      .unionAll(externalAmps)
-      .as("combined")
-      .orderBy("createdAt", "desc")
-      .paginate({
-        perPage: 50,
-        currentPage: parseInt(page.toString()),
-        isLengthAware: true,
-      });
-
-    res.json({
-      success: true,
-      data: {
-        history: await groupSplitPayments(combinedAmps.data),
-        pagination: {
-          currentPage: combinedAmps.pagination.currentPage,
-          perPage: combinedAmps.pagination.perPage,
-          total: combinedAmps.pagination.total,
-          totalPages: combinedAmps.pagination.lastPage,
-        },
-      },
     });
   } catch (err) {
     next(err);
@@ -1045,12 +916,10 @@ export default {
   get_user_public,
   create_account,
   edit_account,
-  get_activity,
   get_announcements,
   get_notification,
   put_notification,
   get_features,
-  get_history,
   get_txs,
   get_check_region,
   post_log_identity,
