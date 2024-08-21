@@ -3,6 +3,8 @@ import {
   earnings,
   transactions,
   forwards,
+  getMaxAmpDate,
+  getMaxTransactionDate,
 } from "../library/queries/transactions";
 import asyncHandler from "express-async-handler";
 import prisma from "../prisma/client";
@@ -274,12 +276,13 @@ const get_notification = asyncHandler(async (req, res, next) => {
     });
 
   const notifyUser = await db
-    .knex("amp")
+    .knex(getMaxAmpDate(request.accountId))
+    .unionAll([getMaxTransactionDate(request.accountId)])
+    .groupBy("created_at")
     .max("created_at")
-    .where("split_destination", "=", request.accountId)
-    .groupBy("split_destination")
     .first()
     .then((data) => {
+      console.log(data);
       if (!data?.max) return false;
 
       const latestDate =

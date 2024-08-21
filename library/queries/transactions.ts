@@ -92,3 +92,18 @@ export function forwards(userId) {
     .groupBy("forward_detail.external_payment_id", "forward_detail.created_at")
     .where("forward.user_id", "=", userId);
 }
+
+export function getMaxTransactionDate(userId) {
+  return db
+    .knex("transaction")
+    .max("updated_at as created_at")
+    .where("user_id", "=", userId);
+}
+
+export function getMaxAmpDate(userId) {
+  return db
+    .knex("amp")
+    .max("created_at as created_at")
+    .where("split_destination", "=", userId)
+    .as("max_amp_date");
+}
