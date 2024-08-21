@@ -1,4 +1,9 @@
 import db from "../library/db";
+import {
+  earnings,
+  transactions,
+  forwards,
+} from "../library/queries/transactions";
 import asyncHandler from "express-async-handler";
 import prisma from "../prisma/client";
 import log from "loglevel";
@@ -405,7 +410,7 @@ const get_txs = asyncHandler(async (req, res, next) => {
 
   const txs = await db
     .knex(transactions(userId))
-    .unionAll([forwards(userId)])
+    .unionAll([forwards(userId), earnings(userId)])
     .orderBy("createDate", "desc")
     .paginate({
       perPage: 20,
@@ -413,12 +418,24 @@ const get_txs = asyncHandler(async (req, res, next) => {
       isLengthAware: true,
     });
 
-  const txsModified = txs.data.map((tx) => {
-    return {
+  const txsModified = {};
+  txs.data.forEach((tx) => {
+    // Group records by createDate YYYY-MM-DD
+    const createDate = new Date(tx.createDate);
+    const date = `${tx.createDate.toLocaleString("default", {
+      month: "long",
+    })} ${createDate.getDate()}`;
+
+    // Create date key if it doesn't exist and add tx to array
+    if (!txsModified[date]) {
+      txsModified[date] = [];
+    }
+    txsModified[date].push({
       ...tx,
-      feeMsat: tx.feemsat,
       isPending: tx.ispending,
-    };
+      feeMsat: tx.feemsat,
+      paymentId: tx.paymentid,
+    });
   });
 
   res.json({
@@ -677,54 +694,6 @@ const edit_account = asyncHandler(async (req, res, next) => {
     return;
   }
 });
-
-// QUERY FUNCTIONS
-
-function transactions(userId) {
-  return db
-    .knex("transaction")
-    .select(
-      "transaction.payment_request as paymentid",
-      "transaction.fee_msat as feemsat",
-      "transaction.success as success",
-      db.knex.raw(
-        "CASE WHEN is_lnurl=true THEN 'Zap' WHEN withdraw=true THEN 'Withdraw' ELSE 'Deposit' END AS type"
-      ),
-      "transaction.is_pending as ispending",
-      "transaction.lnurl_comment as comment",
-      "transaction.id as id",
-      "transaction.msat_amount as msatAmount",
-      "transaction.failure_reason as failureReason",
-      "transaction.created_at as createDate"
-    )
-    .where("transaction.user_id", "=", userId)
-    .as("transactions");
-}
-
-function forwards(userId) {
-  return db
-    .knex("forward_detail")
-    .join(
-      "forward",
-      "forward.external_payment_id",
-      "=",
-      "forward_detail.external_payment_id"
-    )
-    .select(
-      "forward_detail.external_payment_id as paymentid",
-      db.knex.raw("0 as feeMsat"),
-      db.knex.raw("bool_and(forward_detail.success) as success"),
-      db.knex.raw("'Autoforward' as type"),
-      db.knex.raw("false as ispending"),
-      db.knex.raw("'' as comment")
-    )
-    .min("forward_detail.id as id")
-    .min("forward_detail.msat_amount as msatAmount")
-    .min("forward_detail.error as failureReason")
-    .min("forward_detail.created_at as createDate")
-    .groupBy("forward_detail.external_payment_id", "forward_detail.created_at")
-    .where("forward.user_id", "=", userId);
-}
 
 // called by wavlake client to get zbd login url
 const get_zbd_redirect_info = asyncHandler(async (req, res, next) => {
