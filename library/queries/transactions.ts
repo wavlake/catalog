@@ -93,6 +93,54 @@ export function forwards(userId) {
     .where("forward.user_id", "=", userId);
 }
 
+export function internalAmps(userId) {
+  return db
+    .knex("preamp")
+    .join("amp", "amp.tx_id", "=", "preamp.tx_id")
+    .leftOuterJoin("track", "track.id", "=", "preamp.content_id")
+    .leftOuterJoin("album", "album.id", "=", "preamp.content_id")
+    .leftOuterJoin("artist", "artist.id", "=", "preamp.content_id")
+    .leftOuterJoin("episode", "episode.id", "=", "preamp.content_id")
+    .leftOuterJoin("podcast", "podcast.id", "=", "preamp.content_id")
+    .select(
+      db.knex.raw('CAST("preamp"."tx_id" as text) as paymentid'),
+      db.knex.raw("0 as feeMsat"),
+      db.knex.raw("true as success"),
+      db.knex.raw("'Zap Sent' as type"),
+      db.knex.raw(
+        'COALESCE("track"."title", "album"."title", "artist"."name", "episode"."title") as title'
+      ),
+      db.knex.raw("false as ispending"),
+      db.knex.raw("'' as comment"),
+      db.knex.raw("amp.id as id"),
+      "preamp.msat_amount as msatAmount",
+      db.knex.raw("'' as failureReason"),
+      "preamp.created_at as createDate"
+    )
+    .where("preamp.user_id", "=", userId)
+    .whereNotNull("preamp.created_at");
+}
+
+export function externalAmps(userId) {
+  return db
+    .knex("external_payment")
+    .select(
+      db.knex.raw('CAST("external_payment"."tx_id" as text) as paymentid'),
+      "external_payment.fee_msat as feemsat",
+      "external_payment.is_settled as success",
+      db.knex.raw("'Zap Sent' as type"),
+      "external_payment.podcast as title",
+      "external_payment.is_pending as ispending",
+      db.knex.raw("'' as comment"),
+      "external_payment.id as id",
+      "external_payment.msat_amount as msatAmount",
+      db.knex.raw("'' as failureReason"),
+      "external_payment.created_at as createDate"
+    )
+    .where("external_payment.user_id", "=", userId)
+    .andWhere("external_payment.is_settled", "=", true);
+}
+
 export function getMaxTransactionDate(userId) {
   return db
     .knex("transaction")

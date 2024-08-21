@@ -3,6 +3,8 @@ import {
   earnings,
   transactions,
   forwards,
+  internalAmps,
+  externalAmps,
   getMaxAmpDate,
   getMaxTransactionDate,
 } from "../library/queries/transactions";
@@ -411,10 +413,19 @@ const get_txs = asyncHandler(async (req, res, next) => {
     return;
   }
 
+  const sixMonthsAgo = new Date();
+  sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+
   const txs = await db
     .knex(transactions(userId))
-    .unionAll([forwards(userId), earnings(userId)])
+    .unionAll([
+      forwards(userId),
+      earnings(userId),
+      internalAmps(userId),
+      externalAmps(userId),
+    ])
     .orderBy("createDate", "desc")
+    .where("createDate", ">", sixMonthsAgo)
     .paginate({
       perPage: 20,
       currentPage: pageInt,
