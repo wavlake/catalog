@@ -5,6 +5,7 @@ import {
   forwards,
   internalAmps,
   externalAmps,
+  pendingForwards,
   getMaxAmpDate,
   getMaxTransactionDate,
 } from "../library/queries/transactions";
@@ -294,6 +295,7 @@ const get_txs = asyncHandler(async (req, res, next) => {
       earnings(userId),
       internalAmps(userId),
       externalAmps(userId),
+      pendingForwards(userId),
     ])
     .orderBy("createDate", "desc")
     .where("createDate", ">", sixMonthsAgo)

@@ -141,6 +141,28 @@ export function externalAmps(userId) {
     .andWhere("external_payment.is_settled", "=", true);
 }
 
+export function pendingForwards(userId) {
+  return db
+    .knex("forward")
+    .select(
+      db.knex.raw("'pending' as paymentid"),
+      db.knex.raw("0 as feemsat"),
+      db.knex.raw("false as success"),
+      db.knex.raw("'Autoforward' as type"),
+      db.knex.raw("'' as title"),
+      db.knex.raw("true as ispending"),
+      db.knex.raw("'' as comment"),
+      db.knex.raw("max(forward.id) as id"),
+      db.knex.raw("sum(forward.msat_amount) as msatAmount"),
+      db.knex.raw("'' as failureReason"),
+      db.knex.raw("max(forward.created_at) as createDate")
+    )
+    .where("forward.user_id", "=", userId)
+    .andWhere("forward.in_flight", "=", false)
+    .andWhere("forward.is_settled", "=", false)
+    .groupBy("forward.user_id");
+}
+
 export function getMaxTransactionDate(userId) {
   return db
     .knex("transaction")
