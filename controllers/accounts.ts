@@ -1,4 +1,13 @@
 import db from "../library/db";
+import {
+  earnings,
+  transactions,
+  forwards,
+  internalAmps,
+  externalAmps,
+  getMaxAmpDate,
+  getMaxTransactionDate,
+} from "../library/queries/transactions";
 import asyncHandler from "express-async-handler";
 import prisma from "../prisma/client";
 import log from "loglevel";
@@ -137,74 +146,6 @@ const get_user_public = asyncHandler(async (req, res, next) => {
   res.send({ success: true, data: userProfileData });
 });
 
-const get_activity = asyncHandler(async (req, res, next) => {
-  const request = {
-    accountId: req["uid"],
-  };
-
-  const { page } = req.params;
-  const pageInt = parseInt(page);
-  if (!Number.isInteger(pageInt) || pageInt <= 0) {
-    res.status(400).json({
-      success: false,
-      error: "page must be a positive integer",
-    });
-    return;
-  }
-
-  // TODO: Add support for legacy amps
-  db.knex("amp")
-    .join("preamp", "preamp.tx_id", "=", "amp.tx_id")
-    .leftOuterJoin("user", "user.id", "=", "amp.user_id")
-    .leftOuterJoin("comment", "comment.tx_id", "=", "amp.tx_id")
-    .leftOuterJoin("track", "track.id", "=", "amp.track_id")
-    .leftOuterJoin("album", "album.id", "=", "amp.track_id")
-    .leftOuterJoin("artist", "artist.id", "=", "amp.track_id")
-    .leftOuterJoin("episode", "episode.id", "=", "amp.track_id")
-    .leftOuterJoin("podcast", "podcast.id", "=", "amp.track_id")
-    .select(
-      "amp.track_id as contentId",
-      "amp.msat_amount as msatAmount",
-      "amp.content_type as contentType",
-      "amp.user_id as userId",
-      "amp.created_at as createdAt",
-      "amp.tx_id as txId",
-      "amp.track_id as contentId",
-      "amp.type as ampType",
-      "preamp.msat_amount as totalMsatAmount",
-      "preamp.podcast as podcast",
-      "preamp.episode as episode",
-      "preamp.app_name as appName",
-      "comment.content as content",
-      "user.artwork_url as commenterArtworkUrl",
-      db.knex.raw(
-        `COALESCE("artist"."artist_url", "podcast"."podcast_url") as "contentUrl"`
-      ),
-      db.knex.raw('COALESCE("user"."name", "preamp"."sender_name") as name'),
-      db.knex.raw(
-        'COALESCE("track"."title", "album"."title", "artist"."name", "episode"."title") as title'
-      )
-    )
-    .where("amp.split_destination", "=", request.accountId)
-    .whereNotNull("amp.tx_id")
-    .orderBy("amp.created_at", "desc")
-    .paginate({
-      perPage: 50,
-      currentPage: pageInt,
-      isLengthAware: true,
-    })
-    .then((data) => {
-      res.send({
-        success: true,
-        data: { activities: data.data, pagination: data.pagination },
-      });
-    })
-    .catch((err) => {
-      next(err);
-      return;
-    });
-});
-
 const get_announcements = asyncHandler(async (req, res, next) => {
   const request = {
     accountId: req["uid"],
@@ -269,10 +210,10 @@ const get_notification = asyncHandler(async (req, res, next) => {
     });
 
   const notifyUser = await db
-    .knex("amp")
+    .knex(getMaxAmpDate(request.accountId))
+    .unionAll([getMaxTransactionDate(request.accountId)])
+    .groupBy("created_at")
     .max("created_at")
-    .where("split_destination", "=", request.accountId)
-    .groupBy("split_destination")
     .first()
     .then((data) => {
       if (!data?.max) return false;
@@ -330,66 +271,6 @@ const get_features = asyncHandler(async (req, res, next) => {
   }
 });
 
-const get_history = asyncHandler(async (req, res, next) => {
-  const page = req.query.page || 1;
-  const userId = req["uid"];
-  try {
-    const internalAmps = db
-      .knex("amp")
-      .join("track", "track.id", "=", "amp.track_id")
-      .join("album", "album.id", "=", "track.album_id")
-      .join("artist", "artist.id", "=", "album.artist_id")
-      .select(
-        "amp.msat_amount as msatAmount",
-        "amp.created_at as createdAt",
-        "track.title as title",
-        "artist.name as name",
-        db.knex.raw("0 as fee"),
-        "amp.tx_id as txId"
-      )
-      .where("amp.user_id", "=", userId);
-
-    const externalAmps = db
-      .knex("external_payment")
-      .select(
-        "external_payment.msat_amount as msatAmount",
-        "external_payment.created_at as createdAt",
-        "external_payment.podcast as title",
-        "external_payment.name as name",
-        "external_payment.fee_msat as fee",
-        "external_payment.tx_id as txId"
-      )
-      .where("external_payment.user_id", "=", userId)
-      .andWhere("external_payment.is_settled", "=", true);
-
-    const combinedAmps = await internalAmps
-      .unionAll(externalAmps)
-      .as("combined")
-      .orderBy("createdAt", "desc")
-      .paginate({
-        perPage: 50,
-        currentPage: parseInt(page.toString()),
-        isLengthAware: true,
-      });
-
-    res.json({
-      success: true,
-      data: {
-        history: await groupSplitPayments(combinedAmps.data),
-        pagination: {
-          currentPage: combinedAmps.pagination.currentPage,
-          perPage: combinedAmps.pagination.perPage,
-          total: combinedAmps.pagination.total,
-          totalPages: combinedAmps.pagination.lastPage,
-        },
-      },
-    });
-  } catch (err) {
-    next(err);
-    return;
-  }
-});
-
 const get_txs = asyncHandler(async (req, res, next) => {
   const userId = req["uid"];
 
@@ -403,22 +284,43 @@ const get_txs = asyncHandler(async (req, res, next) => {
     return;
   }
 
+  const sixMonthsAgo = new Date();
+  sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+
   const txs = await db
     .knex(transactions(userId))
-    .unionAll([forwards(userId)])
+    .unionAll([
+      forwards(userId),
+      earnings(userId),
+      internalAmps(userId),
+      externalAmps(userId),
+    ])
     .orderBy("createDate", "desc")
+    .where("createDate", ">", sixMonthsAgo)
     .paginate({
       perPage: 20,
       currentPage: pageInt,
       isLengthAware: true,
     });
 
-  const txsModified = txs.data.map((tx) => {
-    return {
+  const txsModified = {};
+  txs.data.forEach((tx) => {
+    // Group records by createDate YYYY-MM-DD
+    const createDate = new Date(tx.createDate);
+    const date = `${tx.createDate.toLocaleString("default", {
+      month: "long",
+    })} ${createDate.getDate()}`;
+
+    // Create date key if it doesn't exist and add tx to array
+    if (!txsModified[date]) {
+      txsModified[date] = [];
+    }
+    txsModified[date].push({
       ...tx,
-      feeMsat: tx.feemsat,
       isPending: tx.ispending,
-    };
+      feeMsat: tx.feemsat,
+      paymentId: tx.paymentid,
+    });
   });
 
   res.json({
@@ -677,54 +579,6 @@ const edit_account = asyncHandler(async (req, res, next) => {
     return;
   }
 });
-
-// QUERY FUNCTIONS
-
-function transactions(userId) {
-  return db
-    .knex("transaction")
-    .select(
-      "transaction.payment_request as paymentid",
-      "transaction.fee_msat as feemsat",
-      "transaction.success as success",
-      db.knex.raw(
-        "CASE WHEN is_lnurl=true THEN 'Zap' WHEN withdraw=true THEN 'Withdraw' ELSE 'Deposit' END AS type"
-      ),
-      "transaction.is_pending as ispending",
-      "transaction.lnurl_comment as comment",
-      "transaction.id as id",
-      "transaction.msat_amount as msatAmount",
-      "transaction.failure_reason as failureReason",
-      "transaction.created_at as createDate"
-    )
-    .where("transaction.user_id", "=", userId)
-    .as("transactions");
-}
-
-function forwards(userId) {
-  return db
-    .knex("forward_detail")
-    .join(
-      "forward",
-      "forward.external_payment_id",
-      "=",
-      "forward_detail.external_payment_id"
-    )
-    .select(
-      "forward_detail.external_payment_id as paymentid",
-      db.knex.raw("0 as feeMsat"),
-      db.knex.raw("bool_and(forward_detail.success) as success"),
-      db.knex.raw("'Autoforward' as type"),
-      db.knex.raw("false as ispending"),
-      db.knex.raw("'' as comment")
-    )
-    .min("forward_detail.id as id")
-    .min("forward_detail.msat_amount as msatAmount")
-    .min("forward_detail.error as failureReason")
-    .min("forward_detail.created_at as createDate")
-    .groupBy("forward_detail.external_payment_id", "forward_detail.created_at")
-    .where("forward.user_id", "=", userId);
-}
 
 // called by wavlake client to get zbd login url
 const get_zbd_redirect_info = asyncHandler(async (req, res, next) => {
@@ -1062,12 +916,10 @@ export default {
   get_user_public,
   create_account,
   edit_account,
-  get_activity,
   get_announcements,
   get_notification,
   put_notification,
   get_features,
-  get_history,
   get_txs,
   get_check_region,
   post_log_identity,

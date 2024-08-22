@@ -47,12 +47,10 @@ router.get(
   isAuthorized,
   accountsController.get_announcements
 );
-router.get("/activity/:page", isAuthorized, accountsController.get_activity);
 router.get("/notification", isAuthorized, accountsController.get_notification);
 router.put("/notification", isAuthorized, accountsController.put_notification);
 router.get("/features", isAuthorized, accountsController.get_features);
 router.get("/connections", isAuthorized, connectionsController.get_connections);
-router.get("/history", isAuthorized, accountsController.get_history);
 router.get("/txs/:page", isAuthorized, accountsController.get_txs);
 router.delete(
   "/connections/:pubkey",
