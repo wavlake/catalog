@@ -9,7 +9,8 @@ import {
   MAX_INVOICE_AMOUNT,
   DEFAULT_EXPIRATION_SECONDS,
 } from "@library/constants";
-import nlInvoice from "@node-lightning/invoice";
+// nlInvoice is undefined when using import
+const nlInvoice = require("@node-lightning/invoice");
 import core from "express-serve-static-core";
 import { getContentFromEventId } from "@library/content";
 import crypto from "crypto";
