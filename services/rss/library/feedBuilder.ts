@@ -10,7 +10,7 @@ const {
   valueTimeSplit,
 } = require("./rssUtils");
 
-const OP3_PREFIX = "https://op3.dev/e/";
+const OP3_PREFIX = "https://op3.dev/e";
 
 const buildAlbumFeed = async (data) => {
   const [
@@ -363,7 +363,10 @@ const buildPodcastFeed = async (data) => {
           // lat: 33.417974, //optional latitude field for GeoRSS
           // long: -111.933231, //optional longitude field for GeoRSS
           enclosure: {
-            url: `${OP3_PREFIX}${liveUrl}`,
+            url: `${OP3_PREFIX},${v5(
+              feedPath("podcast", podcastId),
+              podcastNamespace
+            )}/${liveUrl}`,
             size: size,
             type: "audio/mpeg",
           },
