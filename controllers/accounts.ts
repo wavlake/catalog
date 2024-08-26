@@ -285,9 +285,6 @@ const get_txs = asyncHandler(async (req, res, next) => {
     return;
   }
 
-  const sixMonthsAgo = new Date();
-  sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
-
   const txs = await db
     .knex(transactions(userId))
     .unionAll([
@@ -298,7 +295,6 @@ const get_txs = asyncHandler(async (req, res, next) => {
       pendingForwards(userId),
     ])
     .orderBy("createDate", "desc")
-    .where("createDate", ">", sixMonthsAgo)
     .paginate({
       perPage: 20,
       currentPage: pageInt,

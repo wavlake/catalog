@@ -1,5 +1,11 @@
 import db from "../db";
 
+function getDateFilter() {
+  const filter = new Date();
+  filter.setMonth(filter.getMonth() - 6);
+  return filter.toISOString();
+}
+
 // QUERY FUNCTIONS
 
 export function earnings(userId) {
@@ -40,6 +46,7 @@ export function earnings(userId) {
       //   db.knex.raw('COALESCE("user"."name", "preamp"."sender_name") as name'),
     )
     .where("amp.split_destination", "=", userId)
+    .andWhere("amp.created_at", ">", getDateFilter())
     .whereNotNull("amp.tx_id");
 }
 
@@ -62,6 +69,7 @@ export function transactions(userId) {
       "transaction.created_at as createDate"
     )
     .where("transaction.user_id", "=", userId)
+    .andWhere("transaction.created_at", ">", getDateFilter())
     .as("transactions");
 }
 
@@ -90,7 +98,8 @@ export function forwards(userId) {
     .min("forward_detail.error as failureReason")
     .min("forward_detail.created_at as createDate")
     .groupBy("forward_detail.external_payment_id", "forward_detail.created_at")
-    .where("forward.user_id", "=", userId);
+    .where("forward.user_id", "=", userId)
+    .andWhere("forward_detail.created_at", ">", getDateFilter());
 }
 
 export function internalAmps(userId) {
@@ -118,6 +127,7 @@ export function internalAmps(userId) {
       "preamp.created_at as createDate"
     )
     .where("preamp.user_id", "=", userId)
+    .andWhere("preamp.created_at", ">", getDateFilter())
     .whereNotNull("preamp.created_at");
 }
 
@@ -138,6 +148,7 @@ export function externalAmps(userId) {
       "external_payment.created_at as createDate"
     )
     .where("external_payment.user_id", "=", userId)
+    .andWhere("external_payment.created_at", ">", getDateFilter())
     .andWhere("external_payment.is_settled", "=", true);
 }
 
