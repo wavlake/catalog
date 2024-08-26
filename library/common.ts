@@ -1,5 +1,14 @@
 import { Prisma } from "@prisma/client";
 
+export enum TransactionType {
+  DEPOSIT = "Deposit",
+  WITHDRAW = "Withdraw",
+  ZAP = "Zap",
+  ZAP_SEND = "Zap Sent",
+  AUTOFORWARD = "Autoforward",
+  EARNINGS = "Earnings",
+}
+
 export enum PaymentType {
   Boost = 1,
   BoostWithComment = 2, // Deprecated, could be used for something else

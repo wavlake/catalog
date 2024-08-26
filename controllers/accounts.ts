@@ -8,7 +8,9 @@ import {
   pendingForwards,
   getMaxAmpDate,
   getMaxTransactionDate,
+  getEarningsDetail,
 } from "../library/queries/transactions";
+import { TransactionType } from "../library/common";
 import asyncHandler from "express-async-handler";
 import prisma from "../prisma/client";
 import log from "loglevel";
@@ -276,7 +278,43 @@ const get_tx_id = asyncHandler(async (req, res, next) => {
   const userId = req["uid"];
   const { type, id } = req.params;
 
-  res.json({ success: true, data: { id: id } });
+  let data;
+  switch (type) {
+    case TransactionType.EARNINGS:
+      data = await getEarningsDetail(userId, id);
+      break;
+    case TransactionType.DEPOSIT:
+      data = { type: TransactionType.DEPOSIT };
+      break;
+    case TransactionType.WITHDRAW:
+      data = { type: TransactionType.WITHDRAW };
+      break;
+    case TransactionType.ZAP:
+      data = { type: TransactionType.ZAP };
+      break;
+    case TransactionType.AUTOFORWARD:
+      data = { type: TransactionType.AUTOFORWARD };
+      break;
+    case TransactionType.ZAP_SEND:
+      data = await db
+        .knex(externalAmps(userId))
+        .where("external_payment.id", "=", id)
+        .first();
+      break;
+    default:
+      res.status(400).json({
+        success: false,
+        error: "Invalid transaction type",
+      });
+      return;
+  }
+
+  const formatData = {
+    ...data,
+    feeMsat: data.feemsat,
+  };
+
+  res.json({ success: true, data: formatData });
 });
 
 const get_txs = asyncHandler(async (req, res, next) => {

@@ -1,4 +1,5 @@
 import db from "../db";
+import { TransactionType } from "../common";
 
 function getDateFilter() {
   const filter = new Date();
@@ -6,7 +7,46 @@ function getDateFilter() {
   return filter.toISOString();
 }
 
-// QUERY FUNCTIONS
+// DETAIL QUERIES
+
+export function getEarningsDetail(userId, paymentId) {
+  return db
+    .knex("amp")
+    .join("preamp", "preamp.tx_id", "=", "amp.tx_id")
+    .leftOuterJoin("user", "user.id", "=", "amp.user_id")
+    .leftOuterJoin("npub", "npub.public_hex", "=", "amp.user_id")
+    .leftOuterJoin("comment", "comment.tx_id", "=", "amp.tx_id")
+    .leftOuterJoin("track", "track.id", "=", "amp.track_id")
+    .leftOuterJoin("album", "album.id", "=", "amp.track_id")
+    .leftOuterJoin("artist", "artist.id", "=", "amp.track_id")
+    .leftOuterJoin("episode", "episode.id", "=", "amp.track_id")
+    .leftOuterJoin("podcast", "podcast.id", "=", "amp.track_id")
+    .select(
+      "amp.user_id as userId",
+      db.knex.raw('CAST("amp"."tx_id" as text) as id'),
+      "amp.fee_msat as feemsat",
+      db.knex.raw(`'${TransactionType.EARNINGS}' as type`),
+      db.knex.raw(
+        'COALESCE("track"."title", "album"."title", "artist"."name", "episode"."title") as title'
+      ),
+      "comment.content as comment",
+      "amp.created_at as createDate",
+      "preamp.msat_amount as msatAmount",
+      "amp.msat_amount as splitMsatAmount",
+      "preamp.podcast as podcast",
+      "preamp.episode as episode",
+      "preamp.app_name as appName",
+      "user.artwork_url as commenterArtworkUrl",
+      db.knex.raw(`COALESCE("user"."name", "preamp"."sender_name") as name`),
+      "npub.metadata as nostrMetadata"
+    )
+    .where("amp.split_destination", "=", userId)
+    .andWhere("amp.tx_id", "=", paymentId)
+    .whereNotNull("amp.tx_id")
+    .first();
+}
+
+// SUMMARY QUERIES
 
 export function earnings(userId) {
   return db
@@ -23,7 +63,7 @@ export function earnings(userId) {
       db.knex.raw('CAST("amp"."tx_id" as text) as paymentid'),
       "amp.fee_msat as feemsat",
       db.knex.raw("true as success"),
-      db.knex.raw("'Earnings' as type"),
+      db.knex.raw(`'${TransactionType.EARNINGS}' as type`),
       db.knex.raw(
         'COALESCE("track"."title", "album"."title", "artist"."name", "episode"."title") as title'
       ),
@@ -58,7 +98,7 @@ export function transactions(userId) {
       "transaction.fee_msat as feemsat",
       "transaction.success as success",
       db.knex.raw(
-        "CASE WHEN is_lnurl=true THEN 'Zap' WHEN withdraw=true THEN 'Withdraw' ELSE 'Deposit' END AS type"
+        `CASE WHEN is_lnurl=true THEN '${TransactionType.ZAP}' WHEN withdraw=true THEN '${TransactionType.WITHDRAW}' ELSE '${TransactionType.DEPOSIT}' END AS type`
       ),
       db.knex.raw("'' as title"),
       "transaction.is_pending as ispending",
@@ -88,7 +128,7 @@ export function forwards(userId) {
       ),
       db.knex.raw("0 as feeMsat"),
       db.knex.raw("bool_and(forward_detail.success) as success"),
-      db.knex.raw("'Autoforward' as type"),
+      db.knex.raw(`'${TransactionType.AUTOFORWARD}' as type`),
       db.knex.raw("'' as title"),
       db.knex.raw("false as ispending"),
       db.knex.raw("'' as comment")
@@ -115,7 +155,7 @@ export function internalAmps(userId) {
       db.knex.raw('CAST("preamp"."tx_id" as text) as paymentid'),
       db.knex.raw("0 as feeMsat"),
       db.knex.raw("true as success"),
-      db.knex.raw("'Zap Sent' as type"),
+      db.knex.raw(`'${TransactionType.ZAP_SEND}' as type`),
       db.knex.raw(
         'COALESCE("track"."title", "album"."title", "artist"."name", "episode"."title") as title'
       ),
@@ -138,7 +178,7 @@ export function externalAmps(userId) {
       db.knex.raw('CAST("external_payment"."tx_id" as text) as paymentid'),
       "external_payment.fee_msat as feemsat",
       "external_payment.is_settled as success",
-      db.knex.raw("'Zap Sent' as type"),
+      db.knex.raw(`'${TransactionType.ZAP_SEND}' as type`),
       "external_payment.podcast as title",
       "external_payment.is_pending as ispending",
       db.knex.raw("'' as comment"),
@@ -159,7 +199,7 @@ export function pendingForwards(userId) {
       db.knex.raw("'pending' as paymentid"),
       db.knex.raw("0 as feemsat"),
       db.knex.raw("false as success"),
-      db.knex.raw("'Autoforward' as type"),
+      db.knex.raw(`'${TransactionType.AUTOFORWARD}' as type`),
       db.knex.raw("'' as title"),
       db.knex.raw("true as ispending"),
       db.knex.raw("'' as comment"),
