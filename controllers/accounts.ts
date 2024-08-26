@@ -272,6 +272,13 @@ const get_features = asyncHandler(async (req, res, next) => {
   }
 });
 
+const get_tx_id = asyncHandler(async (req, res, next) => {
+  const userId = req["uid"];
+  const { type, id } = req.params;
+
+  res.json({ success: true, data: { id: id } });
+});
+
 const get_txs = asyncHandler(async (req, res, next) => {
   const userId = req["uid"];
 
@@ -918,6 +925,7 @@ export default {
   get_notification,
   put_notification,
   get_features,
+  get_tx_id,
   get_txs,
   get_check_region,
   post_log_identity,

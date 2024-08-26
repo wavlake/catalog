@@ -51,6 +51,7 @@ router.get("/notification", isAuthorized, accountsController.get_notification);
 router.put("/notification", isAuthorized, accountsController.put_notification);
 router.get("/features", isAuthorized, accountsController.get_features);
 router.get("/connections", isAuthorized, connectionsController.get_connections);
+router.get("/tx/:type/:id", isAuthorized, accountsController.get_tx_id);
 router.get("/txs/:page", isAuthorized, accountsController.get_txs);
 router.delete(
   "/connections/:pubkey",
