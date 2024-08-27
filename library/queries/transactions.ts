@@ -1,5 +1,6 @@
 import db from "../db";
 import { TransactionType } from "../common";
+import { validate } from "uuid";
 
 function getDateFilter() {
   const filter = new Date();
@@ -8,6 +9,66 @@ function getDateFilter() {
 }
 
 // DETAIL QUERIES
+export function getZapDetail(userId, paymentId) {
+  return db
+    .knex("transaction")
+    .select(
+      "transaction.fee_msat as feemsat",
+      "transaction.success as success",
+      db.knex.raw(`'${TransactionType.ZAP}' as type`),
+      db.knex.raw("'' as title"),
+      "transaction.is_pending as ispending",
+      "transaction.lnurl_comment as comment",
+      "transaction.id as id",
+      "transaction.msat_amount as msatAmount",
+      "transaction.failure_reason as failureReason",
+      "transaction.created_at as createDate"
+    )
+    .where("transaction.id", "=", paymentId)
+    .andWhere("transaction.user_id", "=", userId)
+    .first();
+}
+
+export function getDepositDetail(userId, paymentId) {
+  return db
+    .knex("transaction")
+    .select(
+      db.knex.raw('CAST("transaction"."id" as text) as paymentid'),
+      "transaction.fee_msat as feemsat",
+      "transaction.success as success",
+      db.knex.raw(`'${TransactionType.DEPOSIT}' as type`),
+      db.knex.raw("'' as title"),
+      "transaction.is_pending as ispending",
+      "transaction.lnurl_comment as comment",
+      "transaction.id as id",
+      "transaction.msat_amount as msatAmount",
+      "transaction.failure_reason as failureReason",
+      "transaction.created_at as createDate"
+    )
+    .where("transaction.user_id", "=", userId)
+    .andWhere("transaction.id", "=", paymentId)
+    .first();
+}
+
+export function getWithdrawDetail(userId, paymentId) {
+  return db
+    .knex("transaction")
+    .select(
+      db.knex.raw('CAST("transaction"."id" as text) as paymentid'),
+      "transaction.fee_msat as feemsat",
+      "transaction.success as success",
+      db.knex.raw(`'${TransactionType.WITHDRAW}' as type`),
+      db.knex.raw("'' as title"),
+      "transaction.is_pending as ispending",
+      "transaction.id as id",
+      "transaction.msat_amount as msatAmount",
+      "transaction.failure_reason as failureReason",
+      "transaction.created_at as createDate"
+    )
+    .where("transaction.user_id", "=", userId)
+    .andWhere("transaction.id", "=", paymentId)
+    .first();
+}
 
 export function getAutoforwardDetail(userId, paymentId) {
   return db
@@ -40,17 +101,18 @@ export function getAutoforwardDetail(userId, paymentId) {
 }
 
 export async function getZapSendDetail(userId, paymentId) {
-  const paymentIdInt = parseInt(paymentId);
-  if (isNaN(paymentIdInt)) {
+  const isUuid = validate(paymentId);
+  if (isUuid) {
     const amp = db
       .knex("amp")
+      .join("preamp", "preamp.tx_id", "=", "amp.tx_id")
       .leftOuterJoin("track", "track.id", "=", "amp.track_id")
       .leftOuterJoin("album", "album.id", "=", "amp.track_id")
       .leftOuterJoin("artist", "artist.id", "=", "amp.track_id")
       .leftOuterJoin("episode", "episode.id", "=", "amp.track_id")
       .leftOuterJoin("podcast", "podcast.id", "=", "amp.track_id")
       .select(
-        "amp.msat_amount as msatAmount",
+        "preamp.msat_amount as msatAmount",
         "amp.created_at as createDate",
         db.knex.raw(
           'COALESCE("track"."title", "album"."title", "artist"."name", "episode"."title", "podcast"."name") as title'
@@ -59,7 +121,7 @@ export async function getZapSendDetail(userId, paymentId) {
         "amp.tx_id as id",
         db.knex.raw(`'${TransactionType.ZAP_SEND}' as type`)
       )
-      .where("tx_id", paymentId)
+      .where("preamp.tx_id", paymentId)
       .andWhere("amp.user_id", userId);
 
     const externalPayment = db
@@ -85,7 +147,7 @@ export async function getZapSendDetail(userId, paymentId) {
         "id",
         db.knex.raw(`'${TransactionType.ZAP_SEND}' as type`)
       )
-      .where("id", paymentIdInt)
+      .where("id", paymentId)
       .first();
   }
 }

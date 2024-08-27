@@ -13,6 +13,9 @@ import {
   getSplitDetail,
   getZapSendDetail,
   getAutoforwardDetail,
+  getWithdrawDetail,
+  getDepositDetail,
+  getZapDetail,
 } from "../library/queries/transactions";
 import { TransactionType } from "../library/common";
 import asyncHandler from "express-async-handler";
@@ -319,13 +322,13 @@ const get_tx_id = asyncHandler(async (req, res, next) => {
       data = await getEarningsDetail(userId, id);
       break;
     case TransactionType.DEPOSIT:
-      data = { type: TransactionType.DEPOSIT };
+      data = await getDepositDetail(userId, id);
       break;
     case TransactionType.WITHDRAW:
-      data = { type: TransactionType.WITHDRAW };
+      data = await getWithdrawDetail(userId, id);
       break;
     case TransactionType.ZAP:
-      data = { type: TransactionType.ZAP };
+      data = await getZapDetail(userId, id);
       break;
     case TransactionType.AUTOFORWARD:
       data = await getAutoforwardDetail(userId, id);
