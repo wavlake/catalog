@@ -2,6 +2,7 @@ import db from "../library/db";
 import {
   earnings,
   transactions,
+  nwcTransactions,
   forwards,
   internalAmps,
   externalAmps,
@@ -10,6 +11,7 @@ import {
   getMaxTransactionDate,
   getEarningsDetail,
   getSplitDetail,
+  getZapSendDetail,
 } from "../library/queries/transactions";
 import { TransactionType } from "../library/common";
 import asyncHandler from "express-async-handler";
@@ -328,10 +330,7 @@ const get_tx_id = asyncHandler(async (req, res, next) => {
       data = { type: TransactionType.AUTOFORWARD };
       break;
     case TransactionType.ZAP_SEND:
-      data = await db
-        .knex(externalAmps(userId))
-        .where("external_payment.id", "=", id)
-        .first();
+      data = await getZapSendDetail(userId, id);
       break;
     default:
       res.status(400).json({
@@ -365,6 +364,7 @@ const get_txs = asyncHandler(async (req, res, next) => {
   const txs = await db
     .knex(transactions(userId))
     .unionAll([
+      nwcTransactions(userId),
       forwards(userId),
       earnings(userId),
       internalAmps(userId),

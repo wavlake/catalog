@@ -9,6 +9,54 @@ function getDateFilter() {
 
 // DETAIL QUERIES
 
+export async function getZapSendDetail(userId, paymentId) {
+  if (isNaN(paymentId)) {
+    const amp = db
+      .knex("amp")
+      .leftOuterJoin("track", "track.id", "=", "amp.track_id")
+      .leftOuterJoin("album", "album.id", "=", "amp.track_id")
+      .leftOuterJoin("artist", "artist.id", "=", "amp.track_id")
+      .leftOuterJoin("episode", "episode.id", "=", "amp.track_id")
+      .leftOuterJoin("podcast", "podcast.id", "=", "amp.track_id")
+      .select(
+        "amp.msat_amount as msatAmount",
+        "amp.created_at as createDate",
+        db.knex.raw(
+          'COALESCE("track"."title", "album"."title", "artist"."name", "episode"."title", "podcast"."name") as title'
+        ),
+        db.knex.raw("0 as feemsat"),
+        "amp.tx_id as id",
+        db.knex.raw(`'${TransactionType.ZAP_SEND}' as type`)
+      )
+      .where("tx_id", paymentId);
+
+    const externalPayment = db
+      .knex("external_payment")
+      .select(
+        "msat_amount as msatAmount",
+        "created_at as createDate",
+        "podcast as title",
+        "fee_msat as fee",
+        "tx_id as id",
+        db.knex.raw(`'${TransactionType.ZAP_SEND}' as type`)
+      )
+      .where("tx_id", paymentId);
+
+    return db.knex.union([amp, externalPayment]).as("zap_send").first();
+  } else {
+    return db
+      .knex("nwc_wallet_transaction")
+      .select(
+        "msat_amount as msatAmount",
+        "created_at as createDate",
+        "id",
+        db.knex.raw(`'${TransactionType.ZAP_SEND}' as type`)
+      )
+      .where("id", paymentId)
+      .first();
+  }
+}
+
 export function getEarningsDetail(userId, paymentId) {
   return db
     .knex("amp")
@@ -87,17 +135,6 @@ export function earnings(userId) {
       "amp.msat_amount as msatAmount",
       db.knex.raw("'' as failureReason"),
       "amp.created_at as createDate"
-      //   "amp.track_id as contentId",
-      //   "amp.type as ampType",
-      //   "preamp.msat_amount as totalMsatAmount",
-      //   "preamp.podcast as podcast",
-      //   "preamp.episode as episode",
-      //   "preamp.app_name as appName",
-      //   "user.artwork_url as commenterArtworkUrl",
-      //   db.knex.raw(
-      //     `COALESCE("artist"."artist_url", "podcast"."podcast_url") as "contentUrl"`
-      //   ),
-      //   db.knex.raw('COALESCE("user"."name", "preamp"."sender_name") as name'),
     )
     .where("amp.split_destination", "=", userId)
     .andWhere("amp.created_at", ">", getDateFilter())
@@ -125,6 +162,33 @@ export function transactions(userId) {
     .where("transaction.user_id", "=", userId)
     .andWhere("transaction.created_at", ">", getDateFilter())
     .as("transactions");
+}
+
+export function nwcTransactions(userId) {
+  return db
+    .knex("nwc_wallet_transaction")
+    .join(
+      "wallet_connection",
+      "nwc_wallet_transaction.pubkey",
+      "=",
+      "wallet_connection.pubkey"
+    )
+    .join("user", "user.id", "=", "wallet_connection.user_id")
+    .select(
+      db.knex.raw('CAST("nwc_wallet_transaction"."id" as text) as paymentid'),
+      db.knex.raw("0 as feeMsat"),
+      db.knex.raw("true as success"),
+      db.knex.raw(`'${TransactionType.ZAP_SEND}' as type`),
+      db.knex.raw("'NWC' as title"),
+      db.knex.raw("false as ispending"),
+      db.knex.raw("'' as comment"),
+      "nwc_wallet_transaction.id as id",
+      "nwc_wallet_transaction.msat_amount as msatAmount",
+      db.knex.raw("'' as failureReason"),
+      "nwc_wallet_transaction.created_at as createDate"
+    )
+    .where("wallet_connection.user_id", "=", userId)
+    .andWhere("nwc_wallet_transaction.created_at", ">", getDateFilter());
 }
 
 export function forwards(userId) {
