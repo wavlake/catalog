@@ -14,7 +14,7 @@ const {
   validateEventAndGetUser,
   broadcastEventResponse,
 } = require("./library/event");
-const { payInvoice, getBalance } = require("./library/method");
+import { payInvoice, getBalance, makeInvoice } from "./library/method";
 const { webcrypto } = require("node:crypto");
 globalThis.crypto = webcrypto;
 
@@ -145,6 +145,8 @@ const handleRequest = async (event) => {
       return payInvoice(event, decryptedContent, walletUser);
     case "get_balance":
       return getBalance(event, walletUser);
+    case "make_invoice":
+      return makeInvoice(event, walletUser);
     default:
       log.debug(`No method found for ${method}`);
   }

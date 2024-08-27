@@ -5,7 +5,7 @@ const nlInvoice = require("@node-lightning/invoice");
 import { processSplits } from "@library/amp";
 const { getZapPubkeyAndContent, publishZapReceipt } = require("@library/zap");
 const { updateWallet, walletHasRemainingBudget } = require("./wallet");
-const { initiatePayment, runPaymentChecks } = require("@library/payments");
+import { initiatePayment, runPaymentChecks } from "@library/payments";
 const { broadcastEventResponse } = require("./event");
 const { webcrypto } = require("node:crypto");
 globalThis.crypto = webcrypto;
@@ -63,11 +63,11 @@ const payInvoice = async (event, content, walletUser) => {
         result_type: "pay_invoice",
         error: {
           code:
-            passedChecks.error ==
+            passedChecks.error?.message ==
             "Insufficient funds to cover payment and transaction fees"
               ? "INSUFFICIENT_BALANCE"
               : "OTHER",
-          message: passedChecks.error,
+          message: passedChecks.error?.message || "Payment failed",
         },
       })
     );
@@ -302,7 +302,8 @@ const getWavlakeInvoice = async (paymentHash: string) => {
   };
 };
 
-module.exports = {
-  payInvoice,
-  getBalance,
+const makeInvoice = async (event, walletUser) => {
+  // TODO: Implement makeInvoice
 };
+
+export { payInvoice, getBalance, makeInvoice };
