@@ -12,6 +12,7 @@ import {
   getEarningsDetail,
   getSplitDetail,
   getZapSendDetail,
+  getAutoforwardDetail,
 } from "../library/queries/transactions";
 import { TransactionType } from "../library/common";
 import asyncHandler from "express-async-handler";
@@ -327,7 +328,7 @@ const get_tx_id = asyncHandler(async (req, res, next) => {
       data = { type: TransactionType.ZAP };
       break;
     case TransactionType.AUTOFORWARD:
-      data = { type: TransactionType.AUTOFORWARD };
+      data = await getAutoforwardDetail(userId, id);
       break;
     case TransactionType.ZAP_SEND:
       data = await getZapSendDetail(userId, id);
@@ -342,7 +343,10 @@ const get_tx_id = asyncHandler(async (req, res, next) => {
 
   const formatData = {
     ...data,
-    feeMsat: data.feemsat,
+    feeMsat: data.feemsat ? data.feemsat : data.feeMsat,
+    createDate: data.createdate ? data.createdate : data.createDate,
+    paymentId: data.paymentid ? data.paymentid : data.paymentId,
+    msatAmount: data.msatamount ? data.msatamount : data.msatAmount,
   };
 
   res.json({ success: true, data: formatData });

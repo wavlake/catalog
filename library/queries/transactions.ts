@@ -9,8 +9,39 @@ function getDateFilter() {
 
 // DETAIL QUERIES
 
+export function getAutoforwardDetail(userId, paymentId) {
+  return db
+    .knex("forward_detail")
+    .join(
+      "forward",
+      "forward.external_payment_id",
+      "=",
+      "forward_detail.external_payment_id"
+    )
+    .select(
+      db.knex.raw(
+        'CAST("forward_detail"."external_payment_id" as text) as paymentid'
+      ),
+      db.knex.raw("max(forward_detail.fee_msat) as feeMsat"),
+      db.knex.raw("bool_and(forward_detail.success) as success"),
+      db.knex.raw(`'${TransactionType.AUTOFORWARD}' as type`),
+      db.knex.raw("max(forward.lightning_address) as title"),
+      db.knex.raw("false as ispending"),
+      db.knex.raw("'' as comment"),
+      db.knex.raw("max(forward.external_payment_id) as id"),
+      db.knex.raw("max(forward_detail.msat_amount) as msatAmount"),
+      db.knex.raw("max(forward_detail.error) as failureReason"),
+      db.knex.raw("max(forward_detail.created_at) as createDate")
+    )
+    .where("forward.user_id", "=", userId)
+    .andWhere("forward_detail.external_payment_id", "=", paymentId)
+    .groupBy("forward_detail.external_payment_id")
+    .first();
+}
+
 export async function getZapSendDetail(userId, paymentId) {
-  if (isNaN(paymentId)) {
+  const paymentIdInt = parseInt(paymentId);
+  if (isNaN(paymentIdInt)) {
     const amp = db
       .knex("amp")
       .leftOuterJoin("track", "track.id", "=", "amp.track_id")
@@ -28,7 +59,8 @@ export async function getZapSendDetail(userId, paymentId) {
         "amp.tx_id as id",
         db.knex.raw(`'${TransactionType.ZAP_SEND}' as type`)
       )
-      .where("tx_id", paymentId);
+      .where("tx_id", paymentId)
+      .andWhere("amp.user_id", userId);
 
     const externalPayment = db
       .knex("external_payment")
@@ -40,7 +72,8 @@ export async function getZapSendDetail(userId, paymentId) {
         "tx_id as id",
         db.knex.raw(`'${TransactionType.ZAP_SEND}' as type`)
       )
-      .where("tx_id", paymentId);
+      .where("tx_id", paymentId)
+      .andWhere("user_id", userId);
 
     return db.knex.union([amp, externalPayment]).as("zap_send").first();
   } else {
@@ -52,7 +85,7 @@ export async function getZapSendDetail(userId, paymentId) {
         "id",
         db.knex.raw(`'${TransactionType.ZAP_SEND}' as type`)
       )
-      .where("id", paymentId)
+      .where("id", paymentIdInt)
       .first();
   }
 }
