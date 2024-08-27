@@ -219,17 +219,20 @@ const get_notification = asyncHandler(async (req, res, next) => {
       return data.max;
     });
 
-  const notifyUser = await db
-    .knex(getMaxAmpDate(request.accountId))
-    .unionAll([getMaxTransactionDate(request.accountId)])
-    .groupBy("created_at")
-    .max("created_at")
+  const notifyUser = await db.knex
+    .unionAll([
+      getMaxAmpDate(request.accountId),
+      getMaxTransactionDate(request.accountId),
+    ])
+    .orderBy("created_at", "desc")
     .first()
     .then((data) => {
-      if (!data?.max) return false;
+      if (!data?.created_at) return false;
 
       const latestDate =
-        latestAnnouncement > data.max ? latestAnnouncement : data.max;
+        latestAnnouncement > data.created_at
+          ? latestAnnouncement
+          : data.created_at;
       return latestDate > lastActivityCheckAt;
     });
 

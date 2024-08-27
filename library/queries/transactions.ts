@@ -398,6 +398,5 @@ export function getMaxAmpDate(userId) {
   return db
     .knex("amp")
     .max("created_at as created_at")
-    .where("split_destination", "=", userId)
-    .as("max_amp_date");
+    .where("split_destination", "=", userId);
 }
