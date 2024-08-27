@@ -353,6 +353,7 @@ const get_tx_id = asyncHandler(async (req, res, next) => {
     createDate: data.createdate ? data.createdate : data.createDate,
     paymentId: data.paymentid ? data.paymentid : data.paymentId,
     msatAmount: data.msatamount ? data.msatamount : data.msatAmount,
+    failureReason: data.failurereason ? data.failurereason : data.failureReason,
   };
 
   res.json({ success: true, data: formatData });

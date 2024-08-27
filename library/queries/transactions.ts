@@ -117,6 +117,7 @@ export async function getZapSendDetail(userId, paymentId) {
         db.knex.raw(
           'COALESCE("track"."title", "album"."title", "artist"."name", "episode"."title", "podcast"."name") as title'
         ),
+        db.knex.raw("true as success"),
         db.knex.raw("0 as feemsat"),
         "amp.tx_id as id",
         db.knex.raw(`'${TransactionType.ZAP_SEND}' as type`)
@@ -130,6 +131,7 @@ export async function getZapSendDetail(userId, paymentId) {
         "msat_amount as msatAmount",
         "created_at as createDate",
         "podcast as title",
+        "is_settled as success",
         "fee_msat as fee",
         "tx_id as id",
         db.knex.raw(`'${TransactionType.ZAP_SEND}' as type`)
