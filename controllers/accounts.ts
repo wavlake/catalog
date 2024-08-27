@@ -9,6 +9,7 @@ import {
   getMaxAmpDate,
   getMaxTransactionDate,
   getEarningsDetail,
+  getSplitDetail,
 } from "../library/queries/transactions";
 import { TransactionType } from "../library/common";
 import asyncHandler from "express-async-handler";
@@ -272,6 +273,37 @@ const get_features = asyncHandler(async (req, res, next) => {
     next(err);
     return;
   }
+});
+
+const get_splits = asyncHandler(async (req, res, next) => {
+  const userId = req["uid"];
+  const { id } = req.params;
+
+  const splits = await getSplitDetail(id);
+
+  if (!splits || splits.length === 0) {
+    res.status(404).json({
+      success: false,
+      error: "No splits with that id",
+    });
+    return;
+  }
+
+  // check if user is part of the split
+  const userSplit = splits.find((split) => split.userId === userId);
+
+  if (!userSplit) {
+    res.status(403).json({
+      success: false,
+      error: "Unauthorized",
+    });
+    return;
+  }
+
+  res.send({
+    success: true,
+    data: splits,
+  });
 });
 
 const get_tx_id = asyncHandler(async (req, res, next) => {
@@ -963,6 +995,7 @@ export default {
   get_notification,
   put_notification,
   get_features,
+  get_splits,
   get_tx_id,
   get_txs,
   get_check_region,

@@ -46,6 +46,20 @@ export function getEarningsDetail(userId, paymentId) {
     .first();
 }
 
+export function getSplitDetail(paymentId) {
+  return db
+    .knex("amp")
+    .join("user", "user.id", "=", "amp.split_destination")
+    .select(
+      "msat_amount as msatAmount",
+      "fee_msat as feeMsat",
+      "user.name",
+      "user.id as userId"
+    )
+    .where("tx_id", "=", paymentId)
+    .andWhere("tx_id", "=", paymentId);
+}
+
 // SUMMARY QUERIES
 
 export function earnings(userId) {
