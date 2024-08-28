@@ -24,6 +24,7 @@ const buildAlbumFeed = async (data) => {
       genre,
       subgenre,
       isExplicit,
+      description,
     },
   ] = data;
 
@@ -41,7 +42,7 @@ const buildAlbumFeed = async (data) => {
   const feed = new Podcast({
     generator: "Wavlake",
     title: albumTitle,
-    // description: 'description',
+    description: `${description ? description : ""}`,
     feedUrl: `https://${feedPath("album", albumId)}`,
     siteUrl: `https://wavlake.com/${artistUrl}`,
     // imageUrl: artwork,
