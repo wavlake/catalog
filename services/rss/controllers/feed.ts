@@ -82,6 +82,7 @@ exports.getMusicFeed = handleErrorAsync(async (req, res, next) => {
       "album.id as albumId",
       "album.title as albumTitle",
       "album.artwork_url as artwork",
+      "album.description as description",
       "track.id as trackId",
       "track.title as trackTitle",
       "artist.name as artist",
