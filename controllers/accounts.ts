@@ -60,22 +60,6 @@ async function checkName(name): Promise<string> {
   return newUserName;
 }
 
-async function groupSplitPayments(combinedAmps) {
-  // Group records by txId
-  const grouped = combinedAmps.reduce((acc, curr) => {
-    // User createdAt as identifier for legacy amps
-    const identifier = curr.txId ? curr.txId : curr.createdAt;
-    if (!acc[identifier]) {
-      acc[identifier] = [];
-    }
-    acc[identifier].push(curr);
-    return acc;
-  }, {});
-
-  // convert grouped to array
-  return Object.keys(grouped).map((key) => grouped[key]);
-}
-
 const get_account = asyncHandler(async (req, res, next) => {
   const request = {
     accountId: req["uid"],
