@@ -41,7 +41,7 @@ function makeRandomName() {
   }); // example: big-red-donkey
 }
 
-async function checkName(name?: string): Promise<string> {
+async function checkName(name?: string): Promise<string | undefined> {
   if (name && name.trim().length > 0) {
     return name.trim();
   }
@@ -50,7 +50,7 @@ async function checkName(name?: string): Promise<string> {
   // generate a random name until we find one that doesn't exist
   const MAX_ATTEMPTS = 10;
   let attempts = 0;
-  while (userExists || (!newUserName && attempts < MAX_ATTEMPTS)) {
+  while (!newUserName && attempts < MAX_ATTEMPTS) {
     newUserName = makeRandomName();
     userExists = await prisma.user.findUnique({
       where: {
@@ -58,8 +58,11 @@ async function checkName(name?: string): Promise<string> {
       },
     });
     attempts++;
+    if (!userExists) {
+      return newUserName;
+    }
   }
-  return newUserName;
+  return undefined;
 }
 
 const get_account = asyncHandler(async (req, res, next) => {
