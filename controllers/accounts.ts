@@ -41,20 +41,23 @@ function makeRandomName() {
   }); // example: big-red-donkey
 }
 
-async function checkName(name): Promise<string> {
-  if (name && name.length > 0) {
-    return name;
+async function checkName(name?: string): Promise<string> {
+  if (name && name.trim().length > 0) {
+    return name.trim();
   }
   let newUserName: string;
   let userExists;
   // generate a random name until we find one that doesn't exist
-  while (userExists || !newUserName) {
+  const MAX_ATTEMPTS = 10;
+  let attempts = 0;
+  while (userExists || (!newUserName && attempts < MAX_ATTEMPTS)) {
     newUserName = makeRandomName();
     userExists = await prisma.user.findUnique({
       where: {
         name: newUserName,
       },
     });
+    attempts++;
   }
   return newUserName;
 }
