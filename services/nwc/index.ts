@@ -10,11 +10,16 @@ const {
 } = require("nostr-tools");
 import { hexToBytes } from "@noble/hashes/utils"; // already an installed dependency
 useWebSocketImplementation(require("ws"));
-const {
+import {
   validateEventAndGetUser,
   broadcastEventResponse,
-} = require("./library/event");
-import { payInvoice, getBalance, makeInvoice } from "./library/method";
+} from "./library/event";
+import {
+  payInvoice,
+  getBalance,
+  makeInvoice,
+  lookupInvoice,
+} from "./library/method";
 const { webcrypto } = require("node:crypto");
 globalThis.crypto = webcrypto;
 
@@ -85,70 +90,69 @@ const monitorForNWCRequests = async () => {
 const handleRequest = async (event) => {
   log.debug(`Received event: ${event.id}, authenticating...`);
 
-  const walletUser = await validateEventAndGetUser(event);
-
-  const decryptedContent = await nip04.decrypt(
-    walletSk, // receiver secret
-    event.pubkey, // sender pubkey
-    event.content
-  );
-  // Choose action based on method
-  let method;
   try {
-    method = JSON.parse(decryptedContent).method;
+    const walletUser = await validateEventAndGetUser(event);
+    const decryptedContent = await nip04.decrypt(
+      walletSk, // receiver secret
+      event.pubkey, // sender pubkey
+      event.content
+    );
+    const { method, params } = JSON.parse(decryptedContent);
+
+    // If no user found, return
+    if (!walletUser) {
+      log.debug(`No user found for wallet connection ${event.pubkey}`);
+      const content = JSON.stringify({
+        result_type: method,
+        error: {
+          code: "UNAUTHORIZED",
+          message: "No user found for pubkey",
+        },
+      });
+      broadcastEventResponse(event.pubkey, event.id, content);
+      return;
+    }
+
+    switch (method) {
+      case "pay_invoice":
+        // Apply rate limit
+        const rateLimited = await Promise.race([
+          applyRateLimit(event.pubkey),
+          // If rate limit is exceeded, applyRateLimit will never resolve
+          // so we need to add a sibling timeout promise to resolve the parent function
+          new Promise((resolve, reject) => {
+            setTimeout(() => {
+              resolve(true);
+            }, 500); // 500ms timeout
+          }),
+        ]);
+        if (!rateLimited) {
+          log.debug(`Rate limit check for ${event.pubkey} passed`);
+        } else {
+          log.debug(`Rate limit check for ${event.pubkey} failed`);
+          const content = JSON.stringify({
+            result_type: method,
+            error: {
+              code: "RATE_LIMITED",
+              message: "Too many requests",
+            },
+          });
+          broadcastEventResponse(event.pubkey, event.id, content);
+          return;
+        }
+        return payInvoice(event, decryptedContent, walletUser);
+      case "get_balance":
+        return getBalance(event, walletUser);
+      // case "make_invoice":
+      //   return makeInvoice(event, walletUser);
+      case "lookup_invoice":
+        return lookupInvoice(event, params, walletUser);
+      default:
+        log.debug(`No method found for ${method}`);
+    }
   } catch (err) {
-    log.debug(`Error parsing decrypted content ${err}`);
+    log.debug(`Error handling request ${err}`);
     return;
-  }
-
-  // If no user found, return
-  if (!walletUser) {
-    log.debug(`No user found for wallet connection ${event.pubkey}`);
-    const content = JSON.stringify({
-      result_type: method,
-      error: {
-        code: "UNAUTHORIZED",
-        message: "No user found for pubkey",
-      },
-    });
-    broadcastEventResponse(event.pubkey, event.id, content);
-    return;
-  }
-
-  switch (method) {
-    case "pay_invoice":
-      // Apply rate limit
-      const rateLimited = await Promise.race([
-        applyRateLimit(event.pubkey),
-        // If rate limit is exceeded, applyRateLimit will never resolve
-        // so we need to add a sibling timeout promise to resolve the parent function
-        new Promise((resolve, reject) => {
-          setTimeout(() => {
-            resolve(true);
-          }, 500); // 500ms timeout
-        }),
-      ]);
-      if (!rateLimited) {
-        log.debug(`Rate limit check for ${event.pubkey} passed`);
-      } else {
-        log.debug(`Rate limit check for ${event.pubkey} failed`);
-        const content = JSON.stringify({
-          result_type: method,
-          error: {
-            code: "RATE_LIMITED",
-            message: "Too many requests",
-          },
-        });
-        broadcastEventResponse(event.pubkey, event.id, content);
-        return;
-      }
-      return payInvoice(event, decryptedContent, walletUser);
-    case "get_balance":
-      return getBalance(event, walletUser);
-    case "make_invoice":
-      return makeInvoice(event, walletUser);
-    default:
-      log.debug(`No method found for ${method}`);
   }
 };
 

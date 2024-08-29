@@ -8,13 +8,13 @@ import {
 import { hexToBytes } from "@noble/hashes/utils"; // already an installed dependency
 const log = require("loglevel");
 log.setLevel(process.env.LOGLEVEL);
-const { getWalletUser } = require("./wallet");
+import { getWalletUser } from "./wallet";
 
 const relayUrl = process.env.WAVLAKE_RELAY;
 const walletSk = hexToBytes(process.env.WALLET_SERVICE_SECRET);
 const walletServicePubkey = getPublicKey(walletSk);
 
-const validateEventAndGetUser = async (event) => {
+export const validateEventAndGetUser = async (event) => {
   const isValid = verifyEvent(event);
   if (!isValid) return;
 
@@ -26,7 +26,7 @@ const validateEventAndGetUser = async (event) => {
 };
 
 // Broadcast event response
-const broadcastEventResponse = async (
+export const broadcastEventResponse = async (
   requesterPubkey,
   requestEventId,
   content
@@ -56,9 +56,4 @@ const broadcastEventResponse = async (
   await relay.publish(signedEvent);
   log.debug(`Published event response, id: ${signedEvent.id}`);
   return;
-};
-
-module.exports = {
-  validateEventAndGetUser,
-  broadcastEventResponse,
 };
