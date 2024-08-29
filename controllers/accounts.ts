@@ -43,7 +43,6 @@ function makeRandomName() {
 
 async function checkName(name): Promise<string> {
   if (name && name.length > 0) {
-    console.log("found name???");
     return name;
   }
   let newUserName: string;
