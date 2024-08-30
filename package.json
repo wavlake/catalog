@@ -49,6 +49,7 @@
     "pg": "^8.7.1",
     "podcast-index-api": "^1.1.10",
     "sanitize-html": "^2.11.0",
+    "unique-names-generator": "^4.7.1",
     "uuid": "^9.0.1",
     "ws": "^8.17.0"
   },

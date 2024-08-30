@@ -2,12 +2,22 @@ import db from "../library/db";
 import {
   earnings,
   transactions,
+  nwcTransactions,
   forwards,
   internalAmps,
   externalAmps,
+  pendingForwards,
   getMaxAmpDate,
   getMaxTransactionDate,
+  getEarningsDetail,
+  getSplitDetail,
+  getZapSendDetail,
+  getAutoforwardDetail,
+  getWithdrawDetail,
+  getDepositDetail,
+  getZapDetail,
 } from "../library/queries/transactions";
+import { TransactionType } from "../library/common";
 import asyncHandler from "express-async-handler";
 import prisma from "../prisma/client";
 import log from "loglevel";
@@ -17,21 +27,42 @@ import { urlFriendly } from "../library/format";
 import { upload_image } from "../library/artwork";
 import { getZBDRedirectInfo, getZBDUserInfo } from "../library/zbd/login";
 import { updateNpubMetadata } from "../library/nostr/nostr";
+import {
+  uniqueNamesGenerator,
+  adjectives,
+  colors,
+  animals,
+} from "unique-names-generator";
 
-async function groupSplitPayments(combinedAmps) {
-  // Group records by txId
-  const grouped = combinedAmps.reduce((acc, curr) => {
-    // User createdAt as identifier for legacy amps
-    const identifier = curr.txId ? curr.txId : curr.createdAt;
-    if (!acc[identifier]) {
-      acc[identifier] = [];
+function makeRandomName() {
+  return uniqueNamesGenerator({
+    dictionaries: [adjectives, colors, animals],
+    separator: "-", // word separator
+  }); // example: big-red-donkey
+}
+
+async function checkName(name?: string): Promise<string | undefined> {
+  if (name && name.trim().length > 0) {
+    return name.trim();
+  }
+  let newUserName: string;
+  let userExists;
+  // generate a random name until we find one that doesn't exist
+  const MAX_ATTEMPTS = 10;
+  let attempts = 0;
+  while (!newUserName && attempts < MAX_ATTEMPTS) {
+    newUserName = makeRandomName();
+    userExists = await prisma.user.findUnique({
+      where: {
+        name: newUserName,
+      },
+    });
+    attempts++;
+    if (!userExists) {
+      return newUserName;
     }
-    acc[identifier].push(curr);
-    return acc;
-  }, {});
-
-  // convert grouped to array
-  return Object.keys(grouped).map((key) => grouped[key]);
+  }
+  return undefined;
 }
 
 const get_account = asyncHandler(async (req, res, next) => {
@@ -209,17 +240,20 @@ const get_notification = asyncHandler(async (req, res, next) => {
       return data.max;
     });
 
-  const notifyUser = await db
-    .knex(getMaxAmpDate(request.accountId))
-    .unionAll([getMaxTransactionDate(request.accountId)])
-    .groupBy("created_at")
-    .max("created_at")
+  const notifyUser = await db.knex
+    .unionAll([
+      getMaxAmpDate(request.accountId),
+      getMaxTransactionDate(request.accountId),
+    ])
+    .orderBy("created_at", "desc")
     .first()
     .then((data) => {
-      if (!data?.max) return false;
+      if (!data?.created_at) return false;
 
       const latestDate =
-        latestAnnouncement > data.max ? latestAnnouncement : data.max;
+        latestAnnouncement > data.created_at
+          ? latestAnnouncement
+          : data.created_at;
       return latestDate > lastActivityCheckAt;
     });
 
@@ -271,6 +305,81 @@ const get_features = asyncHandler(async (req, res, next) => {
   }
 });
 
+const get_splits = asyncHandler(async (req, res, next) => {
+  const userId = req["uid"];
+  const { id } = req.params;
+
+  const splits = await getSplitDetail(id);
+
+  if (!splits || splits.length === 0) {
+    res.status(404).json({
+      success: false,
+      error: "No splits with that id",
+    });
+    return;
+  }
+
+  // check if user is part of the split
+  const userSplit = splits.find((split) => split.userId === userId);
+
+  if (!userSplit) {
+    res.status(403).json({
+      success: false,
+      error: "Unauthorized",
+    });
+    return;
+  }
+
+  res.send({
+    success: true,
+    data: splits,
+  });
+});
+
+const get_tx_id = asyncHandler(async (req, res, next) => {
+  const userId = req["uid"];
+  const { type, id } = req.params;
+
+  let data;
+  switch (type) {
+    case TransactionType.EARNINGS:
+      data = await getEarningsDetail(userId, id);
+      break;
+    case TransactionType.DEPOSIT:
+      data = await getDepositDetail(userId, id);
+      break;
+    case TransactionType.WITHDRAW:
+      data = await getWithdrawDetail(userId, id);
+      break;
+    case TransactionType.ZAP:
+      data = await getZapDetail(userId, id);
+      break;
+    case TransactionType.AUTOFORWARD:
+      data = await getAutoforwardDetail(userId, id);
+      break;
+    case TransactionType.ZAP_SEND:
+      data = await getZapSendDetail(userId, id);
+      break;
+    default:
+      res.status(400).json({
+        success: false,
+        error: "Invalid transaction type",
+      });
+      return;
+  }
+
+  const formatData = {
+    ...data,
+    feeMsat: data.feemsat ? data.feemsat : data.feeMsat,
+    createDate: data.createdate ? data.createdate : data.createDate,
+    paymentId: data.paymentid ? data.paymentid : data.paymentId,
+    msatAmount: data.msatamount ? data.msatamount : data.msatAmount,
+    failureReason: data.failurereason ? data.failurereason : data.failureReason,
+  };
+
+  res.json({ success: true, data: formatData });
+});
+
 const get_txs = asyncHandler(async (req, res, next) => {
   const userId = req["uid"];
 
@@ -284,19 +393,17 @@ const get_txs = asyncHandler(async (req, res, next) => {
     return;
   }
 
-  const sixMonthsAgo = new Date();
-  sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
-
   const txs = await db
     .knex(transactions(userId))
     .unionAll([
+      nwcTransactions(userId),
       forwards(userId),
       earnings(userId),
       internalAmps(userId),
       externalAmps(userId),
+      pendingForwards(userId),
     ])
     .orderBy("createDate", "desc")
-    .where("createDate", ">", sixMonthsAgo)
     .paginate({
       perPage: 20,
       currentPage: pageInt,
@@ -469,19 +576,21 @@ const delete_lnaddress = asyncHandler(async (req, res, next) => {
 const create_account = asyncHandler(async (req, res, next) => {
   const { name, userId } = req.body;
 
-  if (!name || !userId) {
+  if (!userId) {
     res.status(400).json({
       success: false,
-      error: "Name and userId are required",
+      error: "userId is required",
     });
     return;
   }
 
+  const newUserName = await checkName(name);
+
   try {
-    const profileUrl = urlFriendly(name);
+    const profileUrl = urlFriendly(newUserName);
     const existingUser = await prisma.user.findUnique({
       where: {
-        name: name,
+        name: newUserName,
       },
     });
     if (existingUser) {
@@ -494,7 +603,7 @@ const create_account = asyncHandler(async (req, res, next) => {
     const newUser = await prisma.user.create({
       data: {
         id: userId,
-        name: name,
+        name: newUserName,
         profileUrl,
       },
     });
@@ -920,6 +1029,8 @@ export default {
   get_notification,
   put_notification,
   get_features,
+  get_splits,
+  get_tx_id,
   get_txs,
   get_check_region,
   post_log_identity,
