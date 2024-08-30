@@ -25,6 +25,7 @@ type InvoiceResult = {
   fees_paid: number;
   created_at: string;
   expires_at?: string;
+  settled_at?: string;
   metadata: Record<string, unknown>;
 };
 interface WalletUser {
@@ -154,6 +155,7 @@ export const payInvoice = async (
 export const getBalance = async (event: Event, walletUser: WalletUser) => {
   log.debug(`Processing get_balance event ${event.id}`);
   const { msatBalance } = walletUser;
+  console.log(msatBalance);
   broadcastEventResponse(
     event.pubkey,
     event.id,
@@ -363,6 +365,9 @@ export const lookupInvoice = async (
     expires_at: new Date(
       invoiceData.createdAt.getTime() + 60 * 60 * 1000
     ).toISOString(),
+    settled_at: invoiceData.success
+      ? invoiceData.updatedAt.toISOString()
+      : undefined,
     metadata: {
       is_lnurl: invoiceData.isLnurl,
       comment: invoiceData.lnurlComment,

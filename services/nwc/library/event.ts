@@ -6,8 +6,8 @@ import {
   Relay,
 } from "nostr-tools";
 import { hexToBytes } from "@noble/hashes/utils"; // already an installed dependency
-const log = require("loglevel");
-log.setLevel(process.env.LOGLEVEL);
+import log, { LogLevelDesc } from "loglevel";
+log.setLevel(process.env.LOGLEVEL as LogLevelDesc);
 import { getWalletUser } from "./wallet";
 
 const relayUrl = process.env.WAVLAKE_RELAY;
