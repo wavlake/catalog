@@ -155,7 +155,6 @@ export const payInvoice = async (
 export const getBalance = async (event: Event, walletUser: WalletUser) => {
   log.debug(`Processing get_balance event ${event.id}`);
   const { msatBalance } = walletUser;
-  console.log(msatBalance);
   broadcastEventResponse(
     event.pubkey,
     event.id,
