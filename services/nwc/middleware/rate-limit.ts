@@ -11,13 +11,16 @@ function createMiddlewareWrapper(middleware) {
   return async (npub: string): Promise<void> => {
     return new Promise<void>((resolve, reject) => {
       const fakeReq = {
+        // Populate with relevant data from the Nostr event
         npub: npub,
+        // Add other properties that your middleware might expect
       };
 
       const fakeRes = {
         setHeader: () => {},
         status: (code) => ({ json: (data) => {} }),
         json: (data) => {},
+        // Add other response methods as needed
       };
 
       const next = (err) => {
