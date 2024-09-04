@@ -115,7 +115,14 @@ const buildAlbumFeed = async (data) => {
       date: track.createDate, // any format that js Date can parse.
       // lat: 33.417974, //optional latitude field for GeoRSS
       // long: -111.933231, //optional longitude field for GeoRSS
-      enclosure: { url: track.liveUrl, size: track.size, type: "audio/mpeg" },
+      enclosure: {
+        url: `${OP3_PREFIX},${v5(
+          feedPath("album", albumId),
+          podcastNamespace
+        )}/${track.liveUrl}`,
+        size: track.size,
+        type: "audio/mpeg",
+      },
       // itunesAuthor: '',
       // itunesExplicit: false,
       // itunesSubtitle: '',
