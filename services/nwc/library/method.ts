@@ -4,16 +4,42 @@ log.setLevel(process.env.LOGLEVEL);
 const nlInvoice = require("@node-lightning/invoice");
 import { processSplits } from "@library/amp";
 const { getZapPubkeyAndContent, publishZapReceipt } = require("@library/zap");
-const { updateWallet, walletHasRemainingBudget } = require("./wallet");
-const { initiatePayment, runPaymentChecks } = require("@library/payments");
+import { updateWallet, walletHasRemainingBudget } from "./wallet";
+import { initiatePayment, runPaymentChecks } from "@library/payments";
 const { broadcastEventResponse } = require("./event");
 const { webcrypto } = require("node:crypto");
 globalThis.crypto = webcrypto;
 import { FEE_BUFFER } from "@library/constants";
 import { randomUUID } from "crypto";
 import { IncomingInvoiceType } from "@library/common";
+import { Event } from "nostr-tools";
 
-const payInvoice = async (event, content, walletUser) => {
+type InvoiceResult = {
+  type: "incoming" | "outgoing";
+  invoice?: string;
+  description?: string;
+  description_hash?: string;
+  preimage?: string; // optional for lookup_invoice
+  payment_hash: string;
+  amount: number;
+  fees_paid: number;
+  created_at: string;
+  expires_at?: string;
+  settled_at?: string;
+  metadata: Record<string, unknown>;
+};
+interface WalletUser {
+  userId: string;
+  msatBudget: number;
+  maxMsatPaymentAmount: string;
+  msatBalance: string;
+}
+
+export const payInvoice = async (
+  event: Event,
+  content,
+  walletUser: WalletUser
+) => {
   log.debug(`Processing pay_invoice event ${event.id}`);
   const { params } = JSON.parse(content);
   const { invoice } = params;
@@ -32,16 +58,11 @@ const payInvoice = async (event, content, walletUser) => {
   // Check if payment amount exceeds max payment amount
   if (parseInt(valueMsat) > parseInt(maxMsatPaymentAmount)) {
     log.debug(`Transaction for ${userId} exceeds max payment amount.`);
-    broadcastEventResponse(
-      event.pubkey,
-      event.id,
-      JSON.stringify({
-        result_type: "pay_invoice",
-        error: {
-          code: "QUOTA_EXCEEDED",
-          message: "Transaction exceeds max payment amount",
-        },
-      })
+    sendErrorResponse(
+      event,
+      "pay_invoice",
+      "QUOTA_EXCEEDED",
+      "Transaction exceeds max payment amount"
     );
     return;
   }
@@ -56,20 +77,14 @@ const payInvoice = async (event, content, walletUser) => {
 
   if (!passedChecks.success) {
     log.debug(`Transaction for ${userId} failed payment checks.`);
-    broadcastEventResponse(
-      event.pubkey,
-      event.id,
-      JSON.stringify({
-        result_type: "pay_invoice",
-        error: {
-          code:
-            passedChecks.error ==
-            "Insufficient funds to cover payment and transaction fees"
-              ? "INSUFFICIENT_BALANCE"
-              : "OTHER",
-          message: passedChecks.error,
-        },
-      })
+    sendErrorResponse(
+      event,
+      "pay_invoice",
+      passedChecks.error?.message ===
+        "Insufficient funds to cover payment and transaction fees"
+        ? "INSUFFICIENT_BALANCE"
+        : "OTHER",
+      passedChecks.error?.message || "Payment failed"
     );
     return;
   }
@@ -83,16 +98,11 @@ const payInvoice = async (event, content, walletUser) => {
   log.debug(`Remaining budget for ${userId} is ${hasRemainingBudget}`);
   if (!hasRemainingBudget) {
     log.debug(`Transaction for ${userId} exceeds budget.`);
-    broadcastEventResponse(
-      event.pubkey,
-      event.id,
-      JSON.stringify({
-        result_type: "pay_invoice",
-        error: {
-          code: "QUOTA_EXCEEDED",
-          message: "Transaction exceeds budget",
-        },
-      })
+    sendErrorResponse(
+      event,
+      "pay_invoice",
+      "QUOTA_EXCEEDED",
+      "Transaction exceeds budget"
     );
     return;
   }
@@ -142,7 +152,7 @@ const payInvoice = async (event, content, walletUser) => {
   return;
 };
 
-const getBalance = async (event, walletUser) => {
+export const getBalance = async (event: Event, walletUser: WalletUser) => {
   log.debug(`Processing get_balance event ${event.id}`);
   const { msatBalance } = walletUser;
   broadcastEventResponse(
@@ -197,18 +207,7 @@ const createExternalPayment = async (
     );
   } else {
     log.debug(`External payment failed`);
-
-    broadcastEventResponse(
-      event.pubkey,
-      event.id,
-      JSON.stringify({
-        result_type: "pay_invoice",
-        error: {
-          code: "PAYMENT_FAILED",
-          message: "Payment failed",
-        },
-      })
-    );
+    sendErrorResponse(event, "pay_invoice", "PAYMENT_FAILED", "Payment failed");
   }
   return;
 };
@@ -302,7 +301,95 @@ const getWavlakeInvoice = async (paymentHash: string) => {
   };
 };
 
-module.exports = {
-  payInvoice,
-  getBalance,
+export const makeInvoice = async (event: Event, walletUser: WalletUser) => {
+  // TODO: Implement makeInvoice
+};
+
+export const lookupInvoice = async (
+  event: Event,
+  params:
+    | {
+        invoice: string;
+        payment_hash?: string;
+      }
+    | {
+        payment_hash: string;
+        invoice?: string;
+      },
+  walletUser: WalletUser
+) => {
+  const { invoice, payment_hash } = params;
+
+  if (!invoice && !payment_hash) {
+    return sendErrorResponse(
+      event,
+      "lookup_invoice",
+      "OTHER",
+      "Missing both invoice and payment_hash"
+    );
+  }
+
+  const invoiceData = await prisma.transaction.findFirst({
+    where: invoice
+      ? { paymentRequest: invoice }
+      : { paymentHash: payment_hash },
+  });
+
+  if (!invoiceData) {
+    return sendErrorResponse(
+      event,
+      "lookup_invoice",
+      "NOT_FOUND",
+      "Invoice not found"
+    );
+  }
+
+  if (invoiceData.userId !== walletUser.userId) {
+    return sendErrorResponse(
+      event,
+      "lookup_invoice",
+      "UNAUTHORIZED",
+      "User not authorized to view invoice"
+    );
+  }
+
+  const result: InvoiceResult = {
+    type: invoiceData.withdraw ? "outgoing" : "incoming",
+    invoice: invoiceData.paymentRequest,
+    preimage: invoiceData.success ? invoiceData.preimage : undefined,
+    payment_hash: invoiceData.paymentHash,
+    amount: parseInt(invoiceData.msatAmount.toString()),
+    fees_paid: invoiceData.feeMsat,
+    created_at: invoiceData.createdAt.toISOString(),
+    expires_at: new Date(
+      invoiceData.createdAt.getTime() + 60 * 60 * 1000
+    ).toISOString(),
+    settled_at: invoiceData.success
+      ? invoiceData.updatedAt.toISOString()
+      : undefined,
+    metadata: {
+      is_lnurl: invoiceData.isLnurl,
+      comment: invoiceData.lnurlComment,
+      success: invoiceData.success,
+      failure_reason: invoiceData.failureReason,
+    },
+  };
+
+  sendResponse(event, { result_type: "lookup_invoice", result });
+};
+
+const sendErrorResponse = (
+  event: Event,
+  method: string,
+  code: string,
+  message: string
+) => {
+  sendResponse(event, {
+    result_type: "lookup_invoice",
+    error: { code, message },
+  });
+};
+
+const sendResponse = (event: Event, response: any) => {
+  broadcastEventResponse(event.pubkey, event.id, JSON.stringify(response));
 };

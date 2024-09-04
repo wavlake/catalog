@@ -27,21 +27,42 @@ import { urlFriendly } from "../library/format";
 import { upload_image } from "../library/artwork";
 import { getZBDRedirectInfo, getZBDUserInfo } from "../library/zbd/login";
 import { updateNpubMetadata } from "../library/nostr/nostr";
+import {
+  uniqueNamesGenerator,
+  adjectives,
+  colors,
+  animals,
+} from "unique-names-generator";
 
-async function groupSplitPayments(combinedAmps) {
-  // Group records by txId
-  const grouped = combinedAmps.reduce((acc, curr) => {
-    // User createdAt as identifier for legacy amps
-    const identifier = curr.txId ? curr.txId : curr.createdAt;
-    if (!acc[identifier]) {
-      acc[identifier] = [];
+function makeRandomName() {
+  return uniqueNamesGenerator({
+    dictionaries: [adjectives, colors, animals],
+    separator: "-", // word separator
+  }); // example: big-red-donkey
+}
+
+async function checkName(name?: string): Promise<string | undefined> {
+  if (name && name.trim().length > 0) {
+    return name.trim();
+  }
+  let newUserName: string;
+  let userExists;
+  // generate a random name until we find one that doesn't exist
+  const MAX_ATTEMPTS = 10;
+  let attempts = 0;
+  while (!newUserName && attempts < MAX_ATTEMPTS) {
+    newUserName = makeRandomName();
+    userExists = await prisma.user.findUnique({
+      where: {
+        name: newUserName,
+      },
+    });
+    attempts++;
+    if (!userExists) {
+      return newUserName;
     }
-    acc[identifier].push(curr);
-    return acc;
-  }, {});
-
-  // convert grouped to array
-  return Object.keys(grouped).map((key) => grouped[key]);
+  }
+  return undefined;
 }
 
 const get_account = asyncHandler(async (req, res, next) => {
@@ -555,19 +576,21 @@ const delete_lnaddress = asyncHandler(async (req, res, next) => {
 const create_account = asyncHandler(async (req, res, next) => {
   const { name, userId } = req.body;
 
-  if (!name || !userId) {
+  if (!userId) {
     res.status(400).json({
       success: false,
-      error: "Name and userId are required",
+      error: "userId is required",
     });
     return;
   }
 
+  const newUserName = await checkName(name);
+
   try {
-    const profileUrl = urlFriendly(name);
+    const profileUrl = urlFriendly(newUserName);
     const existingUser = await prisma.user.findUnique({
       where: {
-        name: name,
+        name: newUserName,
       },
     });
     if (existingUser) {
@@ -580,7 +603,7 @@ const create_account = asyncHandler(async (req, res, next) => {
     const newUser = await prisma.user.create({
       data: {
         id: userId,
-        name: name,
+        name: newUserName,
         profileUrl,
       },
     });
