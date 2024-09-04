@@ -43,7 +43,10 @@ const createWithdraw = asyncHandler(async (req, res, next) => {
       success: false,
       error: "Error running user checks",
     });
-    return;
+    return {
+      success: false,
+      error: e,
+    };
   });
 
   if (!paymentChecks.success) {
