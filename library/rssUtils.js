@@ -1,4 +1,4 @@
-const { getParentContentTypeAndId } = require("@library/content");
+const { getParentContentTypeAndId } = require("./content");
 const { v5 } = require("uuid");
 
 const podcastNamespace = "ead4c236-bf58-58c6-a2c6-a6b28d128cb6";
