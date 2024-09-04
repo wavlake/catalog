@@ -2,7 +2,7 @@
 // https://github.com/nostr-protocol/nips/blob/master/47.md#events
 
 // This event is replaceable and should be replaced whenever the wallet service commands are modified
-const { Relay, finalizeEvent } = require("nostr-tools");
+import { Relay, finalizeEvent } from "nostr-tools";
 import { hexToBytes } from "@noble/hashes/utils"; // already an installed dependency
 require("dotenv").config();
 require("websocket-polyfill");

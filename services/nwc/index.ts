@@ -1,54 +1,86 @@
 require("dotenv").config();
-const log = require("loglevel");
-log.setLevel(process.env.LOGLEVEL);
-const { rateLimit } = require("express-rate-limit");
-const {
+import log, { LogLevelDesc } from "loglevel";
+log.setLevel(process.env.LOGLEVEL as LogLevelDesc);
+import {
   getPublicKey,
   Relay,
   nip04,
   useWebSocketImplementation,
-} = require("nostr-tools");
+} from "nostr-tools";
 import { hexToBytes } from "@noble/hashes/utils"; // already an installed dependency
 useWebSocketImplementation(require("ws"));
-const {
+import {
   validateEventAndGetUser,
   broadcastEventResponse,
-} = require("./library/event");
-const { payInvoice, getBalance } = require("./library/method");
+} from "./library/event";
+import {
+  payInvoice,
+  getBalance,
+  makeInvoice,
+  lookupInvoice,
+} from "./library/method";
 const { webcrypto } = require("node:crypto");
 globalThis.crypto = webcrypto;
 
 const relayUrl = process.env.WAVLAKE_RELAY;
 const walletSk = process.env.WALLET_SERVICE_SECRET;
-const walletSkHex = hexToBytes(process.env.WALLET_SERVICE_SECRET);
+
+const walletSkHex = hexToBytes(walletSk);
 const walletServicePubkey = getPublicKey(walletSkHex);
 
-// Define rate limiter
-const limiter = rateLimit({
-  windowMs: 30 * 1000, // 30 seconds
-  max: 1, // Limit each npub to 1 requests per `window` (here, per 30 seconds)
-  legacyHeaders: false, // Disable the `X-RateLimit-*` headers,
-  keyGenerator: (req, res) => req["npub"],
-});
+// Configurable constants for rate limiting and backoff
+const INITIAL_WINDOW_MS = 60 * 1000; // 60 seconds
+const MAX_REQUESTS_PER_WINDOW = 12;
+const BACKOFF_FACTOR = 2;
+const MAX_BACKOFF_MS = 30 * 1000; // 30 seconds
+const BASE_DELAY_MS = 1000; // 1 second base delay for rate-limited requests
 
-// Adaptation of rate limiter for express middleware
-const applyRateLimit = async (npub) => {
-  // Mock request and response objects
-  const request = {
-    npub: npub,
-  };
-  const response = {
-    status: () => {},
-    send: () => {},
-  };
-  return new Promise((resolve, reject) => {
-    // limiter runs the callback as if it were the next middleware
-    // but this promise will never resolve if the rate limit is exceeded
-    // https://github.com/express-rate-limit/express-rate-limit/blob/1a7f98642d4c0c6c418f73e96e72297b5961ad01/source/lib.ts#L422
-    limiter(request, response, (result) => {
-      result instanceof Error ? reject(true) : resolve(false);
-    });
-  });
+// Store for tracking rate limit windows and backoff times
+const rateLimitStore = new Map();
+
+const calculateDelay = (npub) => {
+  const now = Date.now();
+  let store = rateLimitStore.get(npub);
+
+  if (!store || now - store.windowStart > store.windowMs) {
+    // Reset or initialize the store for this npub
+    store = {
+      windowStart: now,
+      windowMs: INITIAL_WINDOW_MS,
+      count: 0,
+    };
+  }
+
+  store.count++;
+
+  if (store.count > MAX_REQUESTS_PER_WINDOW) {
+    // Calculate delay based on how much the limit is exceeded
+    const excessFactor =
+      (store.count - MAX_REQUESTS_PER_WINDOW) / MAX_REQUESTS_PER_WINDOW;
+    const delay = Math.min(
+      BASE_DELAY_MS * Math.pow(BACKOFF_FACTOR, excessFactor),
+      MAX_BACKOFF_MS
+    );
+
+    // Increase the window size for the next cycle
+    store.windowMs = Math.min(store.windowMs * BACKOFF_FACTOR, MAX_BACKOFF_MS);
+
+    rateLimitStore.set(npub, store);
+    return delay;
+  }
+
+  rateLimitStore.set(npub, store);
+  return 0; // No delay if within rate limit
+};
+
+// Soft rate limiter function
+const applySoftRateLimit = async (npub) => {
+  const delay = calculateDelay(npub);
+  if (delay > 0) {
+    log.debug(`Applying soft rate limit for ${npub}. Delaying by ${delay}ms`);
+    await new Promise((resolve) => setTimeout(resolve, delay));
+  }
+  return delay;
 };
 
 // Main process
@@ -85,68 +117,58 @@ const monitorForNWCRequests = async () => {
 const handleRequest = async (event) => {
   log.debug(`Received event: ${event.id}, authenticating...`);
 
-  const walletUser = await validateEventAndGetUser(event);
-
-  const decryptedContent = await nip04.decrypt(
-    walletSk, // receiver secret
-    event.pubkey, // sender pubkey
-    event.content
-  );
-  // Choose action based on method
-  let method;
   try {
-    method = JSON.parse(decryptedContent).method;
+    // Apply soft rate limit
+    const delay = await applySoftRateLimit(event.pubkey);
+    if (delay > 0) {
+      log.debug(
+        `Request for ${event.pubkey} delayed by ${delay}ms due to rate limiting`
+      );
+      const content = JSON.stringify({
+        result_type: "RATE_LIMITED",
+        message: `Request delayed by ${delay}ms due to rate limiting`,
+      });
+      broadcastEventResponse(event.pubkey, event.id, content);
+    }
+
+    const walletUser = await validateEventAndGetUser(event);
+
+    const decryptedContent = await nip04.decrypt(
+      walletSk, // receiver secret
+      event.pubkey, // sender pubkey
+      event.content
+    );
+    const { method, params } = JSON.parse(decryptedContent);
+
+    // If no user found, return
+    if (!walletUser) {
+      log.debug(`No user found for wallet connection ${event.pubkey}`);
+      const content = JSON.stringify({
+        result_type: method,
+        error: {
+          code: "UNAUTHORIZED",
+          message: "No user found for pubkey",
+        },
+      });
+      broadcastEventResponse(event.pubkey, event.id, content);
+      return;
+    }
+
+    switch (method) {
+      case "pay_invoice":
+        return payInvoice(event, decryptedContent, walletUser);
+      case "get_balance":
+        return getBalance(event, walletUser);
+      // case "make_invoice":
+      //   return makeInvoice(event, walletUser);
+      case "lookup_invoice":
+        return lookupInvoice(event, params, walletUser);
+      default:
+        log.debug(`No method found for ${method}`);
+    }
   } catch (err) {
-    log.debug(`Error parsing decrypted content ${err}`);
+    log.debug(`Error handling request ${err}`);
     return;
-  }
-
-  // If no user found, return
-  if (!walletUser) {
-    log.debug(`No user found for wallet connection ${event.pubkey}`);
-    const content = JSON.stringify({
-      result_type: method,
-      error: {
-        code: "UNAUTHORIZED",
-        message: "No user found for pubkey",
-      },
-    });
-    broadcastEventResponse(event.pubkey, event.id, content);
-    return;
-  }
-
-  switch (method) {
-    case "pay_invoice":
-      // Apply rate limit
-      const rateLimited = await Promise.race([
-        applyRateLimit(event.pubkey),
-        // If rate limit is exceeded, applyRateLimit will never resolve
-        // so we need to add a sibling timeout promise to resolve the parent function
-        new Promise((resolve, reject) => {
-          setTimeout(() => {
-            resolve(true);
-          }, 500); // 500ms timeout
-        }),
-      ]);
-      if (!rateLimited) {
-        log.debug(`Rate limit check for ${event.pubkey} passed`);
-      } else {
-        log.debug(`Rate limit check for ${event.pubkey} failed`);
-        const content = JSON.stringify({
-          result_type: method,
-          error: {
-            code: "RATE_LIMITED",
-            message: "Too many requests",
-          },
-        });
-        broadcastEventResponse(event.pubkey, event.id, content);
-        return;
-      }
-      return payInvoice(event, decryptedContent, walletUser);
-    case "get_balance":
-      return getBalance(event, walletUser);
-    default:
-      log.debug(`No method found for ${method}`);
   }
 };
 

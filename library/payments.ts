@@ -191,7 +191,10 @@ export const runPaymentChecks = async (
   invoice: string,
   msatAmount: number,
   msatMaxFee: number
-): Promise<any> => {
+): Promise<{
+  success: boolean;
+  error?: { message: string };
+}> => {
   const userHasPending = await checkUserHasPendingTx(userId);
   if (userHasPending) {
     log.info(

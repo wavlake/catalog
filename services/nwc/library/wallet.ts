@@ -2,7 +2,7 @@ import db from "@library/db";
 const log = require("loglevel");
 log.setLevel(process.env.LOGLEVEL);
 
-async function getWalletUser(pubkey) {
+export async function getWalletUser(pubkey) {
   // log.debug(weeklySpend);
 
   return db
@@ -28,7 +28,7 @@ async function getWalletUser(pubkey) {
     });
 }
 
-async function updateWallet(pubkey, msatAmount: number) {
+export async function updateWallet(pubkey, msatAmount: number) {
   const trx = await db.knex.transaction();
   return trx("wallet_connection")
     .where("pubkey", "=", pubkey)
@@ -46,7 +46,7 @@ async function updateWallet(pubkey, msatAmount: number) {
     });
 }
 
-const walletHasRemainingBudget = async (
+export const walletHasRemainingBudget = async (
   walletPubkey,
   msatBudget,
   valueMsat
@@ -75,10 +75,4 @@ const walletHasRemainingBudget = async (
     .catch((err) => {
       log.error(`Error getting NWC wallet remaining budget ${err}`);
     });
-};
-
-module.exports = {
-  getWalletUser,
-  walletHasRemainingBudget,
-  updateWallet,
 };
