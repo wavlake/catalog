@@ -116,7 +116,7 @@ const buildAlbumFeed = async (data) => {
       // lat: 33.417974, //optional latitude field for GeoRSS
       // long: -111.933231, //optional longitude field for GeoRSS
       enclosure: {
-        url: `${OP3_PREFIX},${v5(
+        url: `${OP3_PREFIX},pg=${v5(
           feedPath("album", albumId),
           podcastNamespace
         )}/${track.liveUrl}`,
@@ -371,7 +371,7 @@ const buildPodcastFeed = async (data) => {
           // lat: 33.417974, //optional latitude field for GeoRSS
           // long: -111.933231, //optional longitude field for GeoRSS
           enclosure: {
-            url: `${OP3_PREFIX},${v5(
+            url: `${OP3_PREFIX},pg=${v5(
               feedPath("podcast", podcastId),
               podcastNamespace
             )}/${liveUrl}`,
