@@ -8,7 +8,7 @@ const {
   podcastNamespace,
   valueRecipient,
   valueTimeSplit,
-} = require("./rssUtils");
+} = require("@library/rssUtils");
 
 const OP3_PREFIX = "https://op3.dev/e";
 
