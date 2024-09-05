@@ -68,8 +68,7 @@ const main = async () => {
               since: latestRunTimestamp + 1,
             }
           : {}),
-        ...(isHistoricalRun ? { since: startTimestamp } : {}),
-        ...(isHistoricalRun ? { until: startTimestamp + 86400 } : {}),
+        ...(isHistoricalRun ? { since: startTimestamp, until: startTimestamp + 86400  } : {}),
         // since: 1721105864,
         // until: 1721192264,
       },
