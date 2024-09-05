@@ -39,11 +39,12 @@ const createWithdraw = asyncHandler(async (req, res, next) => {
     FEE_BUFFER * parseInt(valueMsat)
   ).catch((e) => {
     log.error(`Error running payment checks: ${e}`);
-    res.status(500).send({
+    return {
       success: false,
-      error: "Error running user checks",
-    });
-    return;
+      error: {
+        message: "Error running user checks",
+      },
+    };
   });
 
   if (!paymentChecks.success) {

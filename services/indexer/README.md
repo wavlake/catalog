@@ -4,7 +4,18 @@ This service listens to a pool of relays for Wavlake content in events that are 
 
 It then publishes a reference event with the event id and proper tagging.
 
+#### Historical
+
+To run on a previous day, pass in the Unix timestamp as an arg.
+
+Example:
+`npm start -- -t 1725486157`
+
 #### Development
+
+The service depends on a sqlite3 database to log the timestamp of the last published event.
+
+To initialize the db, run `knex migrate:latest` from the `db` folder.
 
 Run (from service root):
 
