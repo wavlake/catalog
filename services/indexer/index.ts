@@ -68,24 +68,29 @@ const main = async () => {
               since: latestRunTimestamp + 1,
             }
           : {}),
-        ...(isHistoricalRun ? { since: startTimestamp, until: startTimestamp + 86400  } : {}),
-        // since: 1721105864,
-        // until: 1721192264,
+        ...(isHistoricalRun
+          ? { since: startTimestamp, until: startTimestamp + 21600 }
+          : {}),
       },
     ],
     {
       onevent: (event: any) => {
-        // log.debug("Received event");
-        // log.debug(`Received event: ${JSON.stringify(event)}`);
-        // this will only be called once the first time the event is received
         checkEvent(event);
       },
       oneose: () => {
         log.debug("One or more subscriptions have ended");
-        // sub.close();
+        // Wait 30 seconds, then exit
+        if (isHistoricalRun) {
+          setTimeout(() => {
+            process.exit(0);
+          }, 30000);
+          return;
+        }
+        return;
       },
     }
   );
+  return;
 };
 
 const getLatestRunTimestamp = async () => {
@@ -143,10 +148,12 @@ const publishLabelEvent = async (
   log.debug(`Constructing label event for content id: ${contentId}`);
   const namespace = await generateNamespace(contentType);
   const itemLabel = await generateIdentifier(contentId, contentType);
-  const parentItemLabel = await generateIdentifier(
-    parentContentData.parentId,
-    parentContentData.contentType
-  );
+  const parentItemLabel = parentContentData
+    ? await generateIdentifier(
+        parentContentData.parentId,
+        parentContentData.contentType
+      )
+    : null;
 
   const eventTemplate: UnsignedEvent = {
     kind: 1985,
