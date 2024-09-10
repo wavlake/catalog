@@ -3,6 +3,7 @@ import { Event } from "nostr-tools";
 import prisma from "../prisma/client";
 import { formatError } from "../library/errors";
 import db from "../library/db";
+import { addOP3URLPrefix } from "../library/op3";
 
 const get_user_library = ({
   artists = false,
@@ -98,6 +99,14 @@ const get_user_library = ({
               "library.user_id": pubkey,
             })
         : [];
+
+      // Add OP3 prefix to track URLs
+      libraryTracks.forEach((track) => {
+        track.liveUrl = addOP3URLPrefix({
+          url: track.liveUrl,
+          albumId: track.albumId,
+        });
+      });
 
       const PLAYLIST_TRACKS = db
         .knex("playlist_track")

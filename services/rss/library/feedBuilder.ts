@@ -8,9 +8,8 @@ const {
   podcastNamespace,
   valueRecipient,
   valueTimeSplit,
+  OP3_PREFIX,
 } = require("@library/rssUtils");
-
-const OP3_PREFIX = "https://op3.dev/e";
 
 const buildAlbumFeed = async (data) => {
   const [
