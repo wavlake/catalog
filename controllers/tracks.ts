@@ -34,14 +34,6 @@ const get_track = asyncHandler(async (req, res, next) => {
     return;
   }
 
-  if (!validate(trackId)) {
-    res.status(400).json({
-      success: false,
-      error: "Invalid trackId",
-    });
-    return;
-  }
-
   prisma.trackInfo
     .findFirstOrThrow({
       where: { id: trackId },
