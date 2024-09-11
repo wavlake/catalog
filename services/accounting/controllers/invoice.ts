@@ -70,6 +70,8 @@ const createZapInvoice = asyncHandler<
 
   const eTag = zapRequestEvent.tags.find((x) => x[0] === "e");
   const aTag = zapRequestEvent.tags.find((x) => x[0] === "a");
+  const [referrerTag, referrer] =
+    zapRequestEvent.tags.find((x) => x[0] === "referrer") ?? [];
 
   let zappedContent = null;
 
@@ -109,6 +111,7 @@ const createZapInvoice = asyncHandler<
       trackId: zappedContent.id,
       paymentTypeCode: 7, // Zap code
       isPending: true,
+      referrerAppId: referrer ?? null,
     },
   });
 

@@ -128,7 +128,7 @@ model externalReceive {
   isPending       Boolean?  @default(false) @map("is_pending")
   paymentTypeCode Int?      @map("payment_type_code") @db.SmallInt
   errorMessage    String?   @map("error_message")
-  referrer_app_id String?   @db.VarChar(21)
+  referrerAppId   String?   @db.VarChar(21) @map("referrer_app_id")
 
   @@map("external_receive")
 }

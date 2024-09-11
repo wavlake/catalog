@@ -45,6 +45,7 @@ export const processSplits = async ({
   rHashStr = null,
   comment = null,
   settleIndex = 0,
+  referrerAppId = null,
   ///////// TEMPORARY - REMOVE AFTER 240728 /////////
   isConferenceZap = false,
 }: /////////
@@ -63,6 +64,7 @@ export const processSplits = async ({
   rHashStr?: string;
   comment?: string;
   settleIndex?: number;
+  referrerAppId?: string;
   ///////// TEMPORARY - REMOVE AFTER 240728 /////////
   isConferenceZap?: boolean;
   /////////
@@ -294,6 +296,9 @@ export const processSplits = async ({
       is_nostr: isNostr,
     });
   }
+
+  // Add referrer app transaction if present
+  /// TODO ///
 
   return trx
     .commit()
