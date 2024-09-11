@@ -128,6 +128,7 @@ model externalReceive {
   isPending       Boolean?  @default(false) @map("is_pending")
   paymentTypeCode Int?      @map("payment_type_code") @db.SmallInt
   errorMessage    String?   @map("error_message")
+  referrer_app_id String?   @db.VarChar(21)
 
   @@map("external_receive")
 }
@@ -263,6 +264,7 @@ model User {
   artist              Artist[]
   external_payment    ExternalPayment[]
   podcast             Podcast[]
+  referrer_app        ReferrerApp[]
   split_recipient     SplitRecipient[]
   subscriber          Subscriber?
   transaction         Transaction[]
@@ -628,6 +630,19 @@ model UserPubkey {
 
   @@index([userId], map: "idx_user_pubkey_user_id")
   @@map("user_pubkey")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model ReferrerApp {
+  id         String    @id @unique(map: "referrer_app_id_unique") @db.VarChar(21)
+  name       String
+  userId     String    @db.VarChar(64) @map("user_id")
+  share      Int       @default(0) @db.SmallInt
+  createdAt DateTime? @default(now()) @db.Timestamptz(6) @map("created_at")
+  user       User      @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "referrer_app_user_id_foreign")
+
+  @@index([userId], map: "idx_app_user_id")
+  @@map("referrer_app")
 }
 
 view TrackInfo {
