@@ -7,9 +7,16 @@ import s3Client from "../library/s3Client";
 import asyncHandler from "express-async-handler";
 import { isEpisodeOwner, isPodcastOwner } from "../library/userHelper";
 import { AWS_S3_EPISODE_PREFIX, AWS_S3_RAW_PREFIX } from "../library/constants";
+import { addOP3URLPrefix } from "../library/op3";
 
 const s3BucketName = `${process.env.AWS_S3_BUCKET_NAME}`;
 const cdnDomain = `${process.env.AWS_CDN_DOMAIN}`;
+
+interface Episode {
+  liveUrl: string;
+  podcastId: string;
+  // other fields
+}
 
 export const get_episode = asyncHandler(async (req, res, next) => {
   const { episodeId } = req.params;
@@ -27,6 +34,12 @@ export const get_episode = asyncHandler(async (req, res, next) => {
         },
       },
     },
+  });
+
+  // Add op3 url prefix to live url
+  episode.liveUrl = addOP3URLPrefix({
+    url: episode.liveUrl,
+    podcastId: episode.podcast.id,
   });
 
   res.json({ success: true, data: episode });
@@ -70,6 +83,13 @@ export const get_episodes_by_podcast_id = asyncHandler(
       orderBy: { order: "desc" },
     });
 
+    // Add op3 url prefix to live url
+    episodes.forEach((episode) => {
+      episode.liveUrl = addOP3URLPrefix({
+        url: episode.liveUrl,
+        podcastId,
+      });
+    });
     res.json({ success: true, data: episodes });
   }
 );
@@ -331,7 +351,7 @@ export const update_episode = asyncHandler(async (req, res, next) => {
 export const get_new_episodes = asyncHandler(async (req, res, next) => {
   // all episodes that are not deleted and have a publishedAt less than or equal to now (lte)
   try {
-    const episodes = await prisma.$queryRaw`
+    const episodes = (await prisma.$queryRaw`
     SELECT 
       JSON_BUILD_OBJECT(
         'artworkUrl', p.artwork_url,
@@ -383,7 +403,16 @@ export const get_new_episodes = asyncHandler(async (req, res, next) => {
       p."published_at" <= ${new Date()}
     ORDER BY
       e."published_at" DESC
-  `;
+  `) as Episode[];
+
+    // Add op3 url prefix to live url
+    episodes.forEach((episode) => {
+      episode.liveUrl = addOP3URLPrefix({
+        url: episode.liveUrl,
+        podcastId: episode.podcastId,
+      });
+    });
+
     res.json({
       success: true,
       data: episodes,
@@ -398,7 +427,7 @@ export const get_new_episodes = asyncHandler(async (req, res, next) => {
 // to be a featured podcast, edit the is_featured field in the podcast table
 export const get_featured_episodes = asyncHandler(async (req, res, next) => {
   try {
-    const episodes = await prisma.$queryRaw`
+    const episodes = (await prisma.$queryRaw`
     SELECT 
       JSON_BUILD_OBJECT(
         'artworkUrl', p.artwork_url,
@@ -452,7 +481,15 @@ export const get_featured_episodes = asyncHandler(async (req, res, next) => {
       p."is_featured" = true
     ORDER BY
       e."published_at" DESC
-  `;
+  `) as Episode[];
+
+    // Add op3 url prefix to live url
+    episodes.forEach((episode) => {
+      episode.liveUrl = addOP3URLPrefix({
+        url: episode.liveUrl,
+        podcastId: episode.podcastId,
+      });
+    });
     res.json({
       success: true,
       data: episodes,

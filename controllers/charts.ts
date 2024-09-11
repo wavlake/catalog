@@ -3,6 +3,7 @@ import db from "../library/db";
 const log = require("loglevel");
 const asyncHandler = require("express-async-handler");
 import { isValidDateString } from "../library/validation";
+import { addOP3URLPrefix } from "../library/op3";
 
 // Top 40
 const TOP_40_LIMIT = 40;
@@ -27,12 +28,28 @@ const get_top_forty = asyncHandler(async (req, res, next) => {
       orderBy: { msatTotal1Days: "desc" },
       take: limit,
     });
+
+    // Add OP3 URL prefix to liveUrl
+    tracks.forEach((track) => {
+      track.liveUrl = addOP3URLPrefix({
+        url: track.liveUrl,
+        albumId: track.albumId,
+      });
+    });
     res.json({ success: true, data: tracks });
   } else if (phase === "month") {
     const tracks = await prisma.trackInfo.findMany({
       where: { msatTotal30Days: { gt: 0 } },
       orderBy: { msatTotal30Days: "desc" },
       take: limit,
+    });
+
+    // Add OP3 URL prefix to liveUrl
+    tracks.forEach((track) => {
+      track.liveUrl = addOP3URLPrefix({
+        url: track.liveUrl,
+        albumId: track.albumId,
+      });
     });
     res.json({ success: true, data: tracks });
   } else if (phase === "week") {
@@ -73,6 +90,15 @@ const get_top_forty = asyncHandler(async (req, res, next) => {
       .where("msat_total_7_days", ">", 0)
       .orderBy("msatTotal7Days", "desc")
       .limit(limit);
+
+    // Add OP3 URL prefix to liveUrl
+    tracks.forEach((track) => {
+      track.liveUrl = addOP3URLPrefix({
+        url: track.liveUrl,
+        albumId: track.albumId,
+      });
+    });
+
     res.json({ success: true, data: tracks });
   }
 });
@@ -187,8 +213,8 @@ const get_custom_chart = asyncHandler(async (req, res, next) => {
         .join("amp", "track_info.id", "amp.track_id")
         .select(
           "track_info.id as id",
-          db.knex.raw("min(track_info.album_id::text) as albumId"),
-          db.knex.raw("min(track_info.artist_id::text) as artistId")
+          db.knex.raw(`min(track_info.album_id::text) as "albumId"`),
+          db.knex.raw(`min(track_info.artist_id::text) as "artistId"`)
         )
         .min("track_info.title as title")
         .min("track_info.artist as artist")
@@ -210,8 +236,8 @@ const get_custom_chart = asyncHandler(async (req, res, next) => {
         .join("music_genre", "track_info.genre_id", "music_genre.id")
         .select(
           "track_info.id as id",
-          db.knex.raw("min(track_info.album_id::text) as albumId"),
-          db.knex.raw("min(track_info.artist_id::text) as artistId")
+          db.knex.raw(`min(track_info.album_id::text) as "albumId"`),
+          db.knex.raw(`min(track_info.artist_id::text) as "artistId"`)
         )
         .min("track_info.title as title")
         .min("track_info.artist as artist")
@@ -228,6 +254,14 @@ const get_custom_chart = asyncHandler(async (req, res, next) => {
         .groupBy("track_info.id")
         .orderBy("msatTotal", "desc")
         .limit(parseInt(limit));
+
+  // Add OP3 URL prefix to liveUrl
+  tracks.forEach((track) => {
+    track.liveUrl = addOP3URLPrefix({
+      url: track.liveUrl,
+      albumId: track.albumId,
+    });
+  });
 
   res.json({ success: true, data: tracks });
 });

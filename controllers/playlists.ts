@@ -6,6 +6,7 @@ import { Event } from "nostr-tools";
 import db from "../library/db";
 import { isValidDateString } from "../library/validation";
 import { getUserIds, userOwnsContent } from "../library/userHelper";
+import { addOP3URLPrefix } from "../library/op3";
 
 const MAX_PLAYLIST_LENGTH = 300;
 export const addTrackToPlaylist = asyncHandler(async (req, res, next) => {
@@ -235,6 +236,14 @@ export const getPlaylist = async (req, res, next) => {
       return bTotal - aTotal;
     });
   }
+
+  // Add OP3 URL prefix to artwork URLs
+  trackInfo.forEach((track) => {
+    track.liveUrl = addOP3URLPrefix({
+      url: track.liveUrl,
+      albumId: track.albumId,
+    });
+  });
 
   res.json({
     success: true,
