@@ -9,6 +9,7 @@ import { validate } from "uuid";
 import asyncHandler from "express-async-handler";
 import { parseLimit } from "../library/helpers";
 import { AWS_S3_RAW_PREFIX, AWS_S3_TRACK_PREFIX } from "../library/constants";
+import { addOP3URLPrefix } from "../library/op3";
 
 const randomSampleSize = process.env.RANDOM_SAMPLE_SIZE;
 
@@ -39,6 +40,11 @@ const get_track = asyncHandler(async (req, res, next) => {
       where: { id: trackId },
     })
     .then((track) => {
+      // Add OP3 URL prefix to liveUrl
+      track.liveUrl = addOP3URLPrefix({
+        url: track.liveUrl,
+        albumId: track.albumId,
+      });
       res.json({ success: true, data: track });
     })
     .catch((err) => {
@@ -101,6 +107,14 @@ const get_tracks_by_album_id = asyncHandler(async (req, res, next) => {
     orderBy: { order: "asc" },
   });
 
+  // Add OP3 URL prefix to liveUrl
+  tracks.forEach((track) => {
+    track.liveUrl = addOP3URLPrefix({
+      url: track.liveUrl,
+      albumId: track.albumId,
+    });
+  });
+
   res.json({ success: true, data: tracks });
 });
 
@@ -141,6 +155,13 @@ const get_tracks_by_new = asyncHandler(async (req, res, next) => {
     .where("ranking", "=", 1)
     .limit(limit)
     .then((data) => {
+      // Add OP3 URL prefix to liveUrl
+      data.forEach((track) => {
+        track.liveUrl = addOP3URLPrefix({
+          url: track.liveUrl,
+          albumId: track.albumId,
+        });
+      });
       // Shuffle the data to get a random order
       const shuffledData = shuffle(data);
       res.send({ success: true, data: shuffledData });
@@ -194,6 +215,13 @@ const get_tracks_by_random = asyncHandler(async (req, res, next) => {
     .andWhere("track.duration", "is not", null)
     .limit(trackLimit)
     .then((data) => {
+      // Add OP3 URL prefix to liveUrl
+      data.forEach((track) => {
+        track.liveUrl = addOP3URLPrefix({
+          url: track.liveUrl,
+          albumId: track.albumId,
+        });
+      });
       const shuffledData = shuffle(data);
       res.status(200).json({ success: true, data: shuffledData });
     })
@@ -227,6 +255,14 @@ const get_tracks_by_artist_id = asyncHandler(async (req, res, next) => {
     },
     orderBy: { msatTotal: "desc" },
     take: limit,
+  });
+
+  // Add OP3 URL prefix to liveUrl
+  tracks.forEach((track) => {
+    track.liveUrl = addOP3URLPrefix({
+      url: track.liveUrl,
+      albumId: track.albumId,
+    });
   });
 
   res.json({ success: true, data: tracks });
@@ -289,6 +325,13 @@ const get_random_tracks_by_genre_id = asyncHandler(async (req, res, next) => {
     )
     .limit(100)
     .then((data) => {
+      // Add OP3 URL prefix to liveUrl
+      data.forEach((track) => {
+        track.liveUrl = addOP3URLPrefix({
+          url: track.liveUrl,
+          albumId: track.albumId,
+        });
+      });
       res.send(shuffle(data));
     })
     .catch((err) => {
@@ -510,6 +553,14 @@ const search_tracks = asyncHandler(async (req, res, next) => {
       publishedAt: { lte: new Date() },
     },
     take: 50,
+  });
+
+  // Add OP3 URL prefix to liveUrl
+  tracks.forEach((track) => {
+    track.liveUrl = addOP3URLPrefix({
+      url: track.liveUrl,
+      albumId: track.albumId,
+    });
   });
 
   res.json({ success: true, data: tracks });

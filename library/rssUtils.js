@@ -4,6 +4,7 @@ const { v5 } = require("uuid");
 const podcastNamespace = "ead4c236-bf58-58c6-a2c6-a6b28d128cb6";
 const receivingPublicKey = `${process.env.RECEIVING_PUBLIC_KEY}`;
 const BASE_URL = "wavlake.com/feed";
+const OP3_PREFIX = "https://op3.dev/e";
 
 const feedPath = (contentType, id) => {
   if (contentType === "podcast") {
@@ -73,6 +74,7 @@ const valueTimeSplit = async ({
 };
 
 module.exports = {
+  OP3_PREFIX,
   feedPath,
   podcastNamespace,
   receivingPublicKey,
