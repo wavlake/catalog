@@ -10,9 +10,27 @@ exports.up = function (knex) {
     })
     .alterTable("external_receive", function (table) {
       table.string("referrer_app_id", 21);
+    })
+    .alterTable("preamp", function (table) {
+      table.string("referrer_app_id", 21);
+    })
+    .alterTable("forward", function (table) {
+      table.string("referrer_app_id", 21);
+      table.text("tx_id");
     });
 };
 
 exports.down = function (knex) {
-  return knex.schema.dropTable("referrer_app");
+  return knex.schema
+    .alterTable("external_receive", function (table) {
+      table.dropColumn("referrer_app_id");
+    })
+    .alterTable("preamp", function (table) {
+      table.dropColumn("referrer_app_id");
+    })
+    .alterTable("forward", function (table) {
+      table.dropColumn("referrer_app_id");
+      table.dropColumn("tx_id");
+    })
+    .dropTableIfExists("referrer_app");
 };

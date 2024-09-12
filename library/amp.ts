@@ -8,8 +8,17 @@ import {
 } from "./split";
 import { getType } from "./content";
 import log from "loglevel";
+import { get } from "http";
 
 const AMP_FEE = 0.1; // 10% fee
+
+interface Referrer {
+  id: string;
+  share: number;
+  userId: string;
+  lightningAddress: string;
+  verifiedUserId: string;
+}
 
 // Payment Types:
 // 1: Standard boost
@@ -119,6 +128,9 @@ export const processSplits = async ({
 
   log.info(`AMP attempt: ${msatAmount} msat by ${userIdForDb} to ${contentId}`);
 
+  // Lookup referrer app if present
+  const referrer: Referrer = await getReferrer(referrerAppId);
+
   const trx = await db.knex.transaction();
   const ampTx = await trx("preamp").insert({
     tx_id: externalTxId,
@@ -134,6 +146,7 @@ export const processSplits = async ({
     app_name: boostData?.app_name,
     sender_name: boostData?.sender_name,
     created_at: db.knex.fn.now(),
+    referrer_app_id: referrer?.id ?? null,
   });
 
   // Increment balances for recipients without lightning addresses
@@ -162,6 +175,7 @@ export const processSplits = async ({
             msatAmount * recipient.splitPercentage * (1 - AMP_FEE)
           ),
           lightning_address: recipient.lightningAddress,
+          tx_id: externalTxId,
         });
       }
     })
@@ -298,7 +312,29 @@ export const processSplits = async ({
   }
 
   // Add referrer app transaction if present
-  /// TODO ///
+  if (referrer?.id) {
+    const payoutAmount: number = Math.floor(
+      msatAmount * AMP_FEE * referrer.share
+    );
+    // If referrer has a lightning address, add a forward record
+    // Else, increment the referrer's balance
+    if (referrer.lightningAddress && referrer.lightningAddress !== "") {
+      await trx("forward").insert({
+        user_id: referrer.userId,
+        msat_amount: payoutAmount,
+        lightning_address: referrer.lightningAddress,
+        tx_id: externalTxId,
+        referrer_app_id: referrer?.id ?? null,
+      });
+    } else {
+      await trx("user")
+        .where({ id: referrer.userId })
+        .increment({
+          msat_balance: payoutAmount,
+        })
+        .update({ updated_at: db.knex.fn.now() });
+    }
+  }
 
   return trx
     .commit()
@@ -318,4 +354,32 @@ export const processSplits = async ({
       // This is mainly so the external keysend function can use this function
       return false;
     });
+};
+
+const getReferrer = async (referrerAppId: string) => {
+  if (!referrerAppId) {
+    return null;
+  }
+  const referrer = await db
+    .knex("referrer_app")
+    .join("user", "referrer_app.user_id", "user.id")
+    .leftOuterJoin("user_verification", "user.id", "user_verification.user_id")
+    .where("referrer_app.id", "=", referrerAppId.toUpperCase())
+    .select(
+      "referrer_app.id",
+      "referrer_app.share",
+      "referrer_app.user_id as userId",
+      "user.lightning_address as lightningAddress",
+      "user_verification.user_id as verifiedUserId"
+    )
+    .first();
+
+  if (!referrer) {
+    log.error(`Referrer app id is invalid`);
+    return;
+  }
+
+  // Convert share to a decimal
+  referrer.share = referrer.share / 100;
+  return referrer;
 };

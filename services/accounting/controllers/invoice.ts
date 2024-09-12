@@ -93,6 +93,21 @@ const createZapInvoice = asyncHandler<
     return;
   }
 
+  // Validate referrer if present
+  if (referrer) {
+    const referrerApp = await prisma.referrerApp.findUnique({
+      where: { id: referrer.toUpperCase() },
+    });
+
+    if (!referrerApp) {
+      res.status(400).send({
+        success: false,
+        error: `Referrer app id is invalid`,
+      });
+      return;
+    }
+  }
+
   // Amount check
   const [amountTag, amountTagValue] =
     zapRequestEvent.tags.find((x) => x[0] === "amount") ?? [];
