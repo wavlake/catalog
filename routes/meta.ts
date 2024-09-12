@@ -15,6 +15,7 @@ router.get(
   "/podcast/subcategories/:categoryId",
   metaController.get_podcast_subcategory_list
 );
+router.get("/content", metaController.get_meta_content_by_guids);
 
 // Export router
 export default router;
