@@ -8,7 +8,6 @@ import {
 } from "./split";
 import { getType } from "./content";
 import log from "loglevel";
-import { get } from "http";
 
 const AMP_FEE = 0.1; // 10% fee
 
