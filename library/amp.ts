@@ -17,6 +17,7 @@ interface Referrer {
   userId: string;
   lightningAddress: string;
   verifiedUserId: string;
+  shareDecimal?: number;
 }
 
 // Payment Types:
@@ -146,6 +147,7 @@ export const processSplits = async ({
     sender_name: boostData?.sender_name,
     created_at: db.knex.fn.now(),
     referrer_app_id: referrer?.id ?? null,
+    referrer_share: referrer?.share ?? null,
   });
 
   // Increment balances for recipients without lightning addresses
@@ -313,7 +315,7 @@ export const processSplits = async ({
   // Add referrer app transaction if present
   if (referrer?.id) {
     const payoutAmount: number = Math.floor(
-      msatAmount * AMP_FEE * referrer.share
+      msatAmount * AMP_FEE * referrer.shareDecimal
     );
     // If referrer has a lightning address, add a forward record
     // Else, increment the referrer's balance
@@ -379,6 +381,6 @@ const getReferrer = async (referrerAppId: string) => {
   }
 
   // Convert share to a decimal
-  referrer.share = referrer.share / 100;
+  referrer.shareDecimal = referrer.share / 100;
   return referrer;
 };

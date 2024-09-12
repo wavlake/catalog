@@ -88,11 +88,22 @@ describe("Referrer integration tests", () => {
       .first()
       .then((forward) => forward);
 
+    const preampShare = await db
+      .knex("preamp")
+      .where({
+        content_id: seeds.testerOneTrackId,
+        referrer_app_id: seeds.testerThreeAppId,
+      })
+      .select("referrer_share")
+      .first()
+      .then((amp) => amp.referrer_share);
+
     expect(testerOneBalance).toBe("11800");
     expect(testerThreeBalance).toBe("0");
     expect(trackBalance).toBe("2000");
     expect(forwardRecord.msat_amount).toBe(30);
     expect(forwardRecord.lightning_address).toBe(seeds.THREE_LN_ADDRESS);
     expect(forwardRecord.user_id).toBe(seeds.testerThreeId);
+    expect(preampShare).toBe(30);
   });
 });

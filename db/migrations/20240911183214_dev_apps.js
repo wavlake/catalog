@@ -13,6 +13,7 @@ exports.up = function (knex) {
     })
     .alterTable("preamp", function (table) {
       table.string("referrer_app_id", 21);
+      table.smallint("referrer_share");
     })
     .alterTable("forward", function (table) {
       table.string("referrer_app_id", 21);
