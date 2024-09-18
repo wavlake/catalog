@@ -128,6 +128,7 @@ model externalReceive {
   isPending       Boolean?  @default(false) @map("is_pending")
   paymentTypeCode Int?      @map("payment_type_code") @db.SmallInt
   errorMessage    String?   @map("error_message")
+  referrerAppId   String?   @map("referrer_app_id") @db.VarChar(21)
 
   @@map("external_receive")
 }
@@ -263,6 +264,7 @@ model User {
   artist              Artist[]
   external_payment    ExternalPayment[]
   podcast             Podcast[]
+  referrer_app        ReferrerApp[]
   split_recipient     SplitRecipient[]
   subscriber          Subscriber?
   transaction         Transaction[]
@@ -434,19 +436,20 @@ model library {
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 model Preamp {
-  txId       String    @id @map("tx_id") @db.Uuid
-  msatAmount Int       @map("msat_amount")
-  guid       String?
-  podcast    String?
-  feedId     Int?      @map("feed_id")
-  episode    String?
-  itemId     Int?      @map("item_id")
-  ts         Int?
-  appName    String?   @map("app_name")
-  senderName String?   @map("sender_name")
-  userId     String    @map("user_id")
-  contentId  String    @map("content_id") @db.Uuid
-  createdAt  DateTime? @map("created_at") @db.Timestamptz(6)
+  txId            String    @id @map("tx_id") @db.Uuid
+  msatAmount      Int       @map("msat_amount")
+  guid            String?
+  podcast         String?
+  feedId          Int?      @map("feed_id")
+  episode         String?
+  itemId          Int?      @map("item_id")
+  ts              Int?
+  appName         String?   @map("app_name")
+  senderName      String?   @map("sender_name")
+  userId          String    @map("user_id")
+  contentId       String    @map("content_id") @db.Uuid
+  createdAt       DateTime? @map("created_at") @db.Timestamptz(6)
+  referrerAppId   String?   @db.VarChar(21) @map("referrer_app_id")
 
   @@map("preamp")
 }
@@ -574,6 +577,8 @@ model Forward {
   attemptCount      Int       @default(0) @map("attempt_count")
   remainderId       String?   @map("remainder_id")
   error             String?
+  referrerAppId     String?   @db.VarChar(21) @map("referrer_app_id")
+  txId              String?   @map("tx_id")
 
   @@index([userId], map: "idx_forward_user_id")
   @@map("forward")
@@ -628,6 +633,19 @@ model UserPubkey {
 
   @@index([userId], map: "idx_user_pubkey_user_id")
   @@map("user_pubkey")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model ReferrerApp {
+  id        String    @id @unique(map: "referrer_app_id_unique") @db.VarChar(21)
+  name      String
+  userId    String    @map("user_id") @db.VarChar(64)
+  share     Int       @default(0) @db.SmallInt
+  createdAt DateTime? @default(now()) @map("created_at") @db.Timestamptz(6)
+  user      User      @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "referrer_app_user_id_foreign")
+
+  @@index([userId], map: "idx_app_user_id")
+  @@map("referrer_app")
 }
 
 view TrackInfo {
