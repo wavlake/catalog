@@ -272,6 +272,11 @@ export const initiatePayment = async (
     }-${paymentRecordId.toString()}`,
   });
 
+  if (!paymentResponse.data) {
+    log.error(`Error sending payment: ${paymentResponse.message}`);
+    await handleFailedPayment(res, userId, paymentRecordId, paymentResponse);
+    return;
+  }
   // Wrap in a try/catch to handle timeouts
   try {
     // Payment failed
