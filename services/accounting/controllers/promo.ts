@@ -29,7 +29,7 @@ const createPromoReward = asyncHandler<core.ParamsDictionary, any, any>(
       return;
     }
     // Promo exists, is active, and has budget
-    const promoIsActive = await isPromoActive(promoId);
+    const promoIsActive = await isPromoActive(parseInt(promoId));
 
     if (!promoIsActive) {
       res.status(400).json({ success: false, message: "Promo not active" });
@@ -94,7 +94,7 @@ const updatePromoReward = asyncHandler<core.ParamsDictionary, any, any>(
     }
 
     // Validate promo
-    const promoIsActive = await isPromoActive(promoReward.promo_id);
+    const promoIsActive = await isPromoActive(parseInt(promoReward.promo_id));
     if (!promoIsActive) {
       res.status(400).json({ success: false, message: "Promo not active" });
       return;

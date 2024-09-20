@@ -1,5 +1,5 @@
 import express from "express";
-import { getActivePromos } from "../controllers/promos";
+import { getActivePromos, getPromoByContent } from "../controllers/promos";
 
 // Create router
 const router = express.Router();
@@ -8,6 +8,7 @@ const router = express.Router();
 
 // queries
 router.get("/active", getActivePromos);
+router.get("/content/:contentId", getPromoByContent);
 
 // Export router
 export default router;

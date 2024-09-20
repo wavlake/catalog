@@ -1,7 +1,7 @@
 import log, { LogLevelDesc } from "loglevel";
 log.setLevel((process.env.LOG_LEVEL as LogLevelDesc) || "info");
 import db from "./db";
-import { get } from "http";
+import prisma from "../prisma/client";
 
 const MAX_DAILY_USER_REWARDS = 200000;
 
@@ -38,13 +38,13 @@ export const identifyActivePromosWithBudgetRemaining = async (): Promise<
   return promosWithBudget;
 };
 
-async function deactivatePromo(promoId: string) {
+async function deactivatePromo(promoId: number) {
   const promo = await db.knex("promo").where("id", promoId).first();
   if (!promo) {
     return;
   }
 
-  const totalSettledRewards = await getTotalSettledRewards(parseInt(promoId));
+  const totalSettledRewards = await getTotalSettledRewards(promoId);
 
   if (
     // Deactivate promo if settled rewards exceed budget
@@ -120,7 +120,7 @@ export const isRewardActive = async (
   return true;
 };
 
-export const isPromoActive = async (promoId: string): Promise<boolean> => {
+export const isPromoActive = async (promoId: number): Promise<boolean> => {
   const promo = await db
     .knex("promo")
     .where("id", promoId)
@@ -132,9 +132,9 @@ export const isPromoActive = async (promoId: string): Promise<boolean> => {
     return false;
   }
 
-  const totalSettledRewards = await getTotalSettledRewards(parseInt(promoId));
+  const totalSettledRewards = await getTotalSettledRewards(promoId);
 
-  const totalPendingRewards = await getTotalPendingRewards(parseInt(promoId));
+  const totalPendingRewards = await getTotalPendingRewards(promoId);
 
   if (totalSettledRewards + totalPendingRewards >= promo.msat_budget) {
     // Deactivate promo if settled rewards exceed budget
@@ -228,4 +228,34 @@ export const isUserEligibleForReward = async (
     log.error(error);
     return false;
   }
+};
+
+export const getPromoByContentId = async (contentId: string): Promise<any> => {
+  const promo = await prisma.promo.findFirst({
+    select: {
+      id: true,
+      msatBudget: true,
+      msatPayoutAmount: true,
+      contentId: true,
+      contentType: true,
+    },
+    where: {
+      contentId: contentId,
+      isActive: true,
+      isPending: false,
+      isPaid: true,
+    },
+  });
+
+  if (!promo) {
+    return null;
+  }
+
+  const isActive = await isPromoActive(promo.id);
+
+  if (!isActive) {
+    return null;
+  }
+
+  return promo;
 };
