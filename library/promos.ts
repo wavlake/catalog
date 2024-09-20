@@ -69,6 +69,9 @@ const getTotalSettledRewards = async (promoId: number): Promise<number> => {
     .andWhere("is_pending", false)
     .first();
 
+  if (!query.total) {
+    return 0;
+  }
   return parseInt(query.total);
 };
 
@@ -82,6 +85,9 @@ const getTotalPendingRewards = async (promoId: number): Promise<number> => {
     .andWhere("created_at", ">", dateFilter)
     .first();
 
+  if (!query.total) {
+    return 0;
+  }
   return parseInt(query.total);
 };
 
