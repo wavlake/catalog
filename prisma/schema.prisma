@@ -436,21 +436,21 @@ model library {
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 model Preamp {
-  txId           String    @id @map("tx_id") @db.Uuid
-  msatAmount     Int       @map("msat_amount")
-  guid           String?
-  podcast        String?
-  feedId         Int?      @map("feed_id")
-  episode        String?
-  itemId         Int?      @map("item_id")
-  ts             Int?
-  appName        String?   @map("app_name")
-  senderName     String?   @map("sender_name")
-  userId         String    @map("user_id")
-  contentId      String    @map("content_id") @db.Uuid
-  createdAt      DateTime? @map("created_at") @db.Timestamptz(6)
-  referrerAppId  String?   @map("referrer_app_id") @db.VarChar(21)
-  referrer_share Int?      @db.SmallInt
+  txId          String    @id @map("tx_id") @db.Uuid
+  msatAmount    Int       @map("msat_amount")
+  guid          String?
+  podcast       String?
+  feedId        Int?      @map("feed_id")
+  episode       String?
+  itemId        Int?      @map("item_id")
+  ts            Int?
+  appName       String?   @map("app_name")
+  senderName    String?   @map("sender_name")
+  userId        String    @map("user_id")
+  contentId     String    @map("content_id") @db.Uuid
+  createdAt     DateTime? @map("created_at") @db.Timestamptz(6)
+  referrerAppId String?   @map("referrer_app_id") @db.VarChar(21)
+  referrerShare Int?      @map("referrer_share") @db.SmallInt
 
   @@map("preamp")
 }
