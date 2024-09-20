@@ -4,152 +4,11 @@ import asyncHandler from "express-async-handler";
 import prisma from "@prismalocal/client";
 import db from "@library/db";
 import core from "express-serve-static-core";
-
-const MAX_DAILY_USER_REWARDS = 200000;
-
-async function isRewardActive(promoRewardId: string): Promise<boolean> {
-  // Set filters to 65 seconds ago and 55 seconds ago
-  const startDate = new Date(Date.now() - 65000);
-  const endDate = new Date(Date.now() - 55000);
-  const promoReward = await db
-    .knex("promo_reward")
-    .where("id", promoRewardId)
-    .andWhere("is_pending", true)
-    .andWhere("created_at", ">", startDate)
-    .andWhere("created_at", "<", endDate)
-    .first();
-
-  if (!promoReward) {
-    return false;
-  }
-  return true;
-}
-
-async function isPromoActive(promoId: string): Promise<boolean> {
-  const promo = await db
-    .knex("promo")
-    .where("id", promoId)
-    .andWhere("is_active", true)
-    .andWhere("is_pending", false)
-    .andWhere("is_paid", true)
-    .first();
-  if (!promo) {
-    return false;
-  }
-
-  // Set filter to 90 seconds ago
-  const dateFilter = new Date(Date.now() - 90000);
-  const totalSettledRewards = await db
-    .knex("promo_reward")
-    .sum("msat_amount as total")
-    .where("promo_id", promoId)
-    .andWhere("is_pending", false)
-    .first();
-
-  const totalPendingRewards = await db
-    .knex("promo_reward")
-    .sum("msat_amount as total")
-    .where("promo_id", promoId)
-    .andWhere("created_at", ">", dateFilter)
-    .first();
-
-  if (
-    parseInt(totalSettledRewards.total) + parseInt(totalPendingRewards.total) >=
-    promo.msat_budget
-  ) {
-    return false;
-  }
-
-  return true;
-}
-
-async function isUserEligibleForReward(
-  userId: string,
-  promoId: string
-): Promise<boolean> {
-  // Set datetime to 59 seconds ago
-  const now = new Date(Date.now() - 59000);
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  try {
-    // User has not been rewarded in the last minute
-    const userLastReward = await db
-      .knex("promo_reward")
-      .select("user_id")
-      .max("created_at as last_reward_created_at")
-      .where("user_id", userId)
-      .groupBy("user_id")
-      .first();
-
-    if (userLastReward && userLastReward.last_reward_created_at > now) {
-      log.debug("User has been rewarded in the last minute");
-      return false;
-    }
-
-    // User has not reached the daily reward limit
-    const userDailyTotalRewards = await db
-      .knex("promo_reward")
-      .where("user_id", userId)
-      .sum("msat_amount as total")
-      .andWhere("created_at", ">", today)
-      .andWhere("is_pending", false)
-      .groupBy("user_id")
-      .first();
-
-    if (
-      userDailyTotalRewards &&
-      userDailyTotalRewards.total >= MAX_DAILY_USER_REWARDS
-    ) {
-      log.debug("User has reached the daily reward limit");
-      return false;
-    }
-
-    // User has not reached the daily content reward limit
-    const userDailyContentRewards = await db
-      .knex("promo_reward")
-      .join("promo", "promo_reward.promo_id", "promo.id")
-      .select(
-        "promo.id",
-        "promo.msat_payout_amount as msat_payout_amount",
-        "promo.content_type as content_type",
-        "promo.content_id as content_id"
-      )
-      .sum("msat_amount as total")
-      .where("promo.id", promoId)
-      .andWhere("promo_reward.user_id", userId)
-      .andWhere("promo_reward.created_at", ">", today)
-      .andWhere("promo_reward.is_pending", false)
-      .groupBy("promo.id", "promo.msat_payout_amount", "promo.content_type")
-      .first();
-
-    // In case the user has not been rewarded for any content today
-    if (!userDailyContentRewards) {
-      return true;
-    }
-
-    const contentDuration = await db
-      .knex(userDailyContentRewards.content_type)
-      .select("duration")
-      .where("id", userDailyContentRewards.content_id)
-      .first();
-
-    if (
-      userDailyContentRewards &&
-      parseInt(userDailyContentRewards.total) >=
-        (userDailyContentRewards.msat_payout_amount *
-          contentDuration.duration) /
-          60
-    ) {
-      log.debug("User has reached the daily content reward limit");
-      return false;
-    }
-
-    return true;
-  } catch (error) {
-    log.error(error);
-    return false;
-  }
-}
+import {
+  isPromoActive,
+  isRewardActive,
+  isUserEligibleForReward,
+} from "@library/promos";
 
 const createPromoReward = asyncHandler<core.ParamsDictionary, any, any>(
   async (req, res, next) => {
@@ -230,7 +89,7 @@ const updatePromoReward = asyncHandler<core.ParamsDictionary, any, any>(
     if (!rewardIsActive) {
       res
         .status(400)
-        .json({ success: false, message: "Reward is not active or expired" });
+        .json({ success: false, message: "Reward is invalid or expired" });
       return;
     }
 
