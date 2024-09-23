@@ -590,7 +590,7 @@ const create_account = asyncHandler(async (req, res, next) => {
     const profileUrl = urlFriendly(newUserName);
     const existingUser = await prisma.user.findUnique({
       where: {
-        name: newUserName,
+        profileUrl: profileUrl,
       },
     });
     if (existingUser) {
@@ -639,11 +639,13 @@ const edit_account = asyncHandler(async (req, res, next) => {
     }
 
     let profileUrl;
-    // if updating name,  check if it's available
+    // if updating name, check if it's available
     if (name) {
+      // generate profile url
+      profileUrl = urlFriendly(name);
       const existingUser = await prisma.user.findUnique({
         where: {
-          name: name,
+          profileUrl: profileUrl,
         },
       });
       if (existingUser && existingUser.id !== userId) {
@@ -652,11 +654,6 @@ const edit_account = asyncHandler(async (req, res, next) => {
           error: "Name is already taken",
         });
         return;
-      }
-      // generate profile url
-      profileUrl = urlFriendly(name);
-      if (profileUrl === "-") {
-        profileUrl = "user-" + userId.slice(-5, -1);
       }
     }
 
