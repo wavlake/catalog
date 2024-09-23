@@ -116,16 +116,17 @@ const updatePromoReward = asyncHandler<core.ParamsDictionary, any, any>(
       .update({ updated_at: db.knex.fn.now() })
       .where("id", userId);
 
-    await trx.commit().catch((error) => {
+    return trx.commit()
+      .then(() => {
+          res.status(200).json({ success: true, message: "Promo reward updated" });
+      })
+      .catch((error) => {
       log.error(error);
       trx.rollback();
       res
         .status(500)
         .json({ success: false, message: "Error updating promo reward" });
-      return;
     });
-
-    res.status(200).json({ success: true, message: "Promo reward updated" });
   }
 );
 
