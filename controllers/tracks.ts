@@ -11,9 +11,13 @@ import asyncHandler from "express-async-handler";
 import { parseLimit } from "../library/helpers";
 import { AWS_S3_RAW_PREFIX, AWS_S3_TRACK_PREFIX } from "../library/constants";
 import { addOP3URLPrefix } from "../library/op3";
-import { FEATURED_PLAYLIST_ID } from "../library/constants";
+import {
+  FEATURED_PLAYLIST_ID,
+  DEFAULT_FOR_YOU_PLAYLIST_ID,
+} from "../library/constants";
 import { getPlaylistTracks } from "../library/playlist";
 import { getWeeklyTop40 } from "../library/chart";
+import { getUserRecentTracks } from "../library/track";
 
 const randomSampleSize = process.env.RANDOM_SAMPLE_SIZE;
 const s3BucketName = `${process.env.AWS_S3_BUCKET_NAME}`;
@@ -28,11 +32,20 @@ const get_featured_tracks = asyncHandler(async (req, res, next) => {
   let forYouTracks;
   if (pubkey) {
     log.debug(`Nostr pubkey: ${pubkey}`);
+    forYouTracks = await getUserRecentTracks(pubkey);
+    if (forYouTracks.length < 3) {
+      forYouTracks = await getPlaylistTracks(DEFAULT_FOR_YOU_PLAYLIST_ID);
+    }
   } else {
+    forYouTracks = await getPlaylistTracks(DEFAULT_FOR_YOU_PLAYLIST_ID);
   }
   res.send({
     success: true,
-    data: { featured: featuredTracks, trending: trendingTracks },
+    data: {
+      featured: featuredTracks,
+      trending: trendingTracks,
+      forYou: forYouTracks,
+    },
   });
 });
 
