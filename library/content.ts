@@ -2,6 +2,33 @@ import db from "./db";
 const { validate } = require("uuid");
 const log = require("loglevel");
 import { SplitContentTypes } from "./userHelper";
+import prisma from "../prisma/client";
+import { addOP3URLPrefix } from "./op3";
+
+export async function getContentInfoFromId(contentId: string): Promise<any> {
+  const type = await getType(contentId);
+
+  if (type != "track") {
+    log.debug("TODO: This function currently only supports track info.");
+    return null;
+  }
+
+  const contentInfo = await prisma.trackInfo.findUnique({
+    where: { id: contentId },
+  });
+
+  if (!contentInfo) {
+    log.debug("No content info found for track: ", contentId);
+    return null;
+  }
+
+  contentInfo.liveUrl = addOP3URLPrefix({
+    url: contentInfo.liveUrl,
+    albumId: contentInfo.albumId,
+  });
+
+  return contentInfo;
+}
 
 export async function getType(
   contentId: string

@@ -24,68 +24,83 @@ SELECT
   album.genre_id,
   album.subgenre_id,
   track.compressor_error,
-  artist.npub AS artist_npub
+  artist.npub AS artist_npub,
+  promo.is_active AS has_promo
 FROM
   (
     (
       (
         (
           (
-            track FULL
+            (
+              track FULL
+              JOIN (
+                SELECT
+                  amp.track_id,
+                  sum(amp.msat_amount) AS msat_total_30_days
+                FROM
+                  amp
+                WHERE
+                  (
+                    (
+                      amp.created_at > date_trunc('day' :: text, (NOW() - '30 days' :: INTERVAL))
+                    )
+                    AND (amp.created_at < date_trunc('day' :: text, NOW()))
+                  )
+                GROUP BY
+                  amp.track_id
+              ) thirty ON ((thirty.track_id = track.id))
+            ) FULL
             JOIN (
               SELECT
                 amp.track_id,
-                sum(amp.msat_amount) AS msat_total_30_days
+                sum(amp.msat_amount) AS msat_total_7_days
               FROM
                 amp
               WHERE
                 (
                   (
-                    amp.created_at > date_trunc('day' :: text, (NOW() - '30 days' :: INTERVAL))
+                    amp.created_at > date_trunc('day' :: text, (NOW() - '7 days' :: INTERVAL))
                   )
                   AND (amp.created_at < date_trunc('day' :: text, NOW()))
                 )
               GROUP BY
                 amp.track_id
-            ) thirty ON ((thirty.track_id = track.id))
+            ) seven ON ((seven.track_id = track.id))
           ) FULL
           JOIN (
             SELECT
               amp.track_id,
-              sum(amp.msat_amount) AS msat_total_7_days
+              sum(amp.msat_amount) AS msat_total_1_days
             FROM
               amp
             WHERE
               (
                 (
-                  amp.created_at > date_trunc('day' :: text, (NOW() - '7 days' :: INTERVAL))
+                  amp.created_at > date_trunc('day' :: text, (NOW() - '1 day' :: INTERVAL))
                 )
                 AND (amp.created_at < date_trunc('day' :: text, NOW()))
               )
             GROUP BY
               amp.track_id
-          ) seven ON ((seven.track_id = track.id))
-        ) FULL
-        JOIN (
-          SELECT
-            amp.track_id,
-            sum(amp.msat_amount) AS msat_total_1_days
-          FROM
-            amp
-          WHERE
-            (
-              (
-                amp.created_at > date_trunc('day' :: text, (NOW() - '1 day' :: INTERVAL))
-              )
-              AND (amp.created_at < date_trunc('day' :: text, NOW()))
-            )
-          GROUP BY
-            amp.track_id
-        ) one ON ((one.track_id = track.id))
+          ) one ON ((one.track_id = track.id))
+        )
+        JOIN album ON ((album.id = track.album_id))
       )
-      JOIN album ON ((album.id = track.album_id))
-    )
-    JOIN artist ON ((artist.id = track.artist_id))
+      JOIN artist ON ((artist.id = track.artist_id))
+    ) FULL
+    JOIN (
+      SELECT
+        promo_1.content_id,
+        promo_1.is_active
+      FROM
+        promo promo_1
+      WHERE
+        (
+          ((promo_1.content_type) :: text = 'track' :: text)
+          AND (promo_1.is_active = TRUE)
+        )
+    ) promo ON ((promo.content_id = track.id))
   )
 WHERE
   (track.deleted = false);
