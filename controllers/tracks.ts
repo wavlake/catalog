@@ -17,7 +17,7 @@ import {
 } from "../library/constants";
 import { getPlaylistTracks } from "../library/playlist";
 import { getWeeklyTop40 } from "../library/chart";
-import { getUserRecentTracks } from "../library/track";
+import { getUserRecentTracks, getNewTracks } from "../library/track";
 
 const randomSampleSize = process.env.RANDOM_SAMPLE_SIZE;
 const s3BucketName = `${process.env.AWS_S3_BUCKET_NAME}`;
@@ -29,6 +29,7 @@ const get_featured_tracks = asyncHandler(async (req, res, next) => {
 
   const featuredTracks = await getPlaylistTracks(FEATURED_PLAYLIST_ID);
   const trendingTracks = await getWeeklyTop40();
+  const newTracks = await getNewTracks();
   let forYouTracks;
   if (pubkey) {
     log.debug(`Nostr pubkey: ${pubkey}`);
@@ -43,8 +44,9 @@ const get_featured_tracks = asyncHandler(async (req, res, next) => {
     success: true,
     data: {
       featured: featuredTracks,
-      trending: trendingTracks,
       forYou: forYouTracks,
+      trending: trendingTracks,
+      new: newTracks,
     },
   });
 });
@@ -154,55 +156,10 @@ const get_tracks_by_album_id = asyncHandler(async (req, res, next) => {
 const get_tracks_by_new = asyncHandler(async (req, res, next) => {
   const limit = parseLimit(req.query.limit, 50);
 
-  const albumTracks = db.knex
-    .select(
-      "track.id as id",
-      "track.album_id as albumId",
-      "artist.id as artistId"
-    )
-    .join("artist", "track.artist_id", "=", "artist.id")
-    .join("album", "album.id", "=", "track.album_id")
-    .rank("ranking", "track.id", "track.album_id")
-    .min("track.title as title")
-    .min("artist.name as artist")
-    .min("artist.artist_url as artistUrl")
-    .min("artist.artwork_url as avatarUrl")
-    .min("album.artwork_url as artworkUrl")
-    .min("album.title as albumTitle")
-    .min("track.live_url as liveUrl")
-    .min("track.duration as duration")
-    .min("track.created_at as createdAt")
-    .andWhere("track.published_at", "<", new Date())
-    .andWhere("track.is_draft", "=", false)
-    .andWhere("album.published_at", "<", new Date())
-    .andWhere("album.is_draft", "=", false)
-    .andWhere("track.deleted", "=", false)
-    .andWhere("track.order", "=", 1)
-    .andWhere("track.duration", "is not", null)
-    .from("track")
-    .groupBy("track.album_id", "track.id", "artist.id")
-    .as("a");
-
-  db.knex(albumTracks)
-    .orderBy("createdAt", "desc")
-    .where("ranking", "=", 1)
-    .limit(limit)
-    .then((data) => {
-      // Add OP3 URL prefix to liveUrl
-      data.forEach((track) => {
-        track.liveUrl = addOP3URLPrefix({
-          url: track.liveUrl,
-          albumId: track.albumId,
-        });
-      });
-      // Shuffle the data to get a random order
-      const shuffledData = shuffle(data);
-      res.send({ success: true, data: shuffledData });
-    })
-    .catch((err) => {
-      log.debug(`Error querying track table for New: ${err}`);
-      next(err);
-    });
+  const tracks = await getNewTracks(limit);
+  // Shuffle the data to get a random order
+  const shuffledData = shuffle(tracks);
+  res.send({ success: true, data: shuffledData });
 });
 
 const get_tracks_by_random = asyncHandler(async (req, res, next) => {
