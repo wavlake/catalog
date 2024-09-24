@@ -46,7 +46,7 @@ const get_featured_tracks = asyncHandler(async (req, res, next) => {
       featured: featuredTracks,
       forYou: forYouTracks,
       trending: trendingTracks,
-      new: newTracks,
+      newTracks: newTracks,
     },
   });
 });
