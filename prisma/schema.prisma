@@ -436,20 +436,21 @@ model library {
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 model Preamp {
-  txId            String    @id @map("tx_id") @db.Uuid
-  msatAmount      Int       @map("msat_amount")
-  guid            String?
-  podcast         String?
-  feedId          Int?      @map("feed_id")
-  episode         String?
-  itemId          Int?      @map("item_id")
-  ts              Int?
-  appName         String?   @map("app_name")
-  senderName      String?   @map("sender_name")
-  userId          String    @map("user_id")
-  contentId       String    @map("content_id") @db.Uuid
-  createdAt       DateTime? @map("created_at") @db.Timestamptz(6)
-  referrerAppId   String?   @db.VarChar(21) @map("referrer_app_id")
+  txId           String    @id @map("tx_id") @db.Uuid
+  msatAmount     Int       @map("msat_amount")
+  guid           String?
+  podcast        String?
+  feedId         Int?      @map("feed_id")
+  episode        String?
+  itemId         Int?      @map("item_id")
+  ts             Int?
+  appName        String?   @map("app_name")
+  senderName     String?   @map("sender_name")
+  userId         String    @map("user_id")
+  contentId      String    @map("content_id") @db.Uuid
+  createdAt      DateTime? @map("created_at") @db.Timestamptz(6)
+  referrerAppId  String?   @map("referrer_app_id") @db.VarChar(21)
+  referrer_share Int?      @db.SmallInt
 
   @@map("preamp")
 }
@@ -577,7 +578,7 @@ model Forward {
   attemptCount      Int       @default(0) @map("attempt_count")
   remainderId       String?   @map("remainder_id")
   error             String?
-  referrerAppId     String?   @db.VarChar(21) @map("referrer_app_id")
+  referrerAppId     String?   @map("referrer_app_id") @db.VarChar(21)
   txId              String?   @map("tx_id")
 
   @@index([userId], map: "idx_forward_user_id")
@@ -648,6 +649,39 @@ model ReferrerApp {
   @@map("referrer_app")
 }
 
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model promo {
+  id                      Int       @id @default(autoincrement())
+  content_id              String    @db.Uuid
+  content_type            String    @db.VarChar(16)
+  external_transaction_id String
+  payment_request         String
+  msat_budget             Int
+  msat_payout_amount      Int
+  is_active               Boolean   @default(false)
+  is_paid                 Boolean   @default(false)
+  is_pending              Boolean   @default(true)
+  created_at              DateTime? @default(now()) @db.Timestamptz(6)
+  updated_at              DateTime? @default(now()) @db.Timestamptz(6)
+
+  @@index([content_id], map: "idx_promo_content_id")
+  @@index([content_type], map: "idx_promo_content_type")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model promo_reward {
+  id          Int       @id @default(autoincrement())
+  user_id     String    @db.VarChar(64)
+  promo_id    Int
+  msat_amount Int
+  is_pending  Boolean   @default(true)
+  created_at  DateTime? @default(now()) @db.Timestamptz(6)
+  updated_at  DateTime? @default(now()) @db.Timestamptz(6)
+
+  @@index([promo_id], map: "idx_promo_reward_promo_id")
+  @@index([user_id], map: "idx_promo_reward_user_id")
+}
+
 view TrackInfo {
   id              String    @unique @db.Uuid
   title           String?   @db.VarChar(255)
@@ -675,6 +709,7 @@ view TrackInfo {
   subgenreId      Int?      @map("subgenre_id")
   compressorError Boolean?  @map("compressor_error")
   artistNpub      String?   @map("artist_npub") @db.VarChar(64)
+  hasPromo        Boolean?  @map("has_promo")
 
   @@map("track_info")
 }
