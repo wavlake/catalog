@@ -6,10 +6,26 @@ import {
 import { getContentInfoFromId } from "../library/content";
 
 export const getActivePromos = asyncHandler(async (req, res, next) => {
-  const activePromos = await identifyActivePromosWithBudgetRemaining();
+  const request = {
+    accountId: req["uid"],
+  };
+  const { accountId } = request;
+
+  if (!accountId) {
+    res.status(400).send({
+      success: false,
+      error: "Missing accountId",
+    });
+    return;
+  }
+
+  const activePromos = await identifyActivePromosWithBudgetRemaining(accountId);
 
   const activePromosWithContentMetadata = await Promise.all(
     activePromos.map(async (promo) => {
+      if (!promo) {
+        return;
+      }
       const contentMetadata = await getContentInfoFromId(promo.contentId);
       if (!contentMetadata) {
         return;

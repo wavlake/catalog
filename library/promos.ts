@@ -5,9 +5,9 @@ import prisma from "../prisma/client";
 
 const MAX_DAILY_USER_REWARDS = 200000;
 
-export const identifyActivePromosWithBudgetRemaining = async (): Promise<
-  any[]
-> => {
+export const identifyActivePromosWithBudgetRemaining = async (
+  userId: string
+): Promise<any[]> => {
   const activePromos = await db
     .knex("promo")
     .select(
@@ -35,7 +35,21 @@ export const identifyActivePromosWithBudgetRemaining = async (): Promise<
     return promo.msatBudget > totalSettledRewards + totalPendingRewards;
   });
 
-  return promosWithBudget;
+  if (promosWithBudget.length === 0) {
+    return [];
+  }
+
+  const userEligiblePromos = await Promise.all(
+    promosWithBudget.map(async (promo) => {
+      const isEligible = await isUserEligibleForPromo(userId, promo.id);
+      if (!isEligible) {
+        return;
+      }
+      return promo;
+    })
+  );
+
+  return userEligiblePromos;
 };
 
 async function deactivatePromo(promoId: number) {
@@ -151,6 +165,55 @@ export const isPromoActive = async (promoId: number): Promise<boolean> => {
   return true;
 };
 
+const isUserEligibleForPromo = async (userId: string, promoId: string) => {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const userDailyContentRewards = await db
+    .knex("promo_reward")
+    .join("promo", "promo_reward.promo_id", "promo.id")
+    .select(
+      "promo.id",
+      "promo.msat_payout_amount as msat_payout_amount",
+      "promo.content_type as content_type",
+      "promo.content_id as content_id",
+      "promo_reward.user_id as user_id"
+    )
+    .sum("msat_amount as total")
+    .where({ "promo.id": promoId, "promo_reward.user_id": userId })
+    .andWhere("promo_reward.created_at", ">", today)
+    .andWhere("promo_reward.is_pending", false)
+    .groupBy(
+      "promo.id",
+      "promo.msat_payout_amount",
+      "promo.content_type",
+      "promo.content_id",
+      "promo_reward.user_id"
+    )
+    .first();
+
+  // In case the user has not been rewarded for any content today
+  if (!userDailyContentRewards) {
+    return true;
+  }
+
+  const contentDuration = await getContentDuration(
+    userDailyContentRewards.content_type,
+    userDailyContentRewards.content_id
+  );
+
+  const durationRounded = Math.floor(contentDuration / 60);
+
+  if (
+    userDailyContentRewards &&
+    parseInt(userDailyContentRewards.total) >=
+      userDailyContentRewards.msat_payout_amount * durationRounded
+  ) {
+    log.debug("User has reached the daily content reward limit");
+    return false;
+  }
+  return true;
+};
+
 export const isUserEligibleForReward = async (
   userId: string,
   promoId: string
@@ -193,38 +256,12 @@ export const isUserEligibleForReward = async (
     }
 
     // User has not reached the daily content reward limit
-    const userDailyContentRewards = await db
-      .knex("promo_reward")
-      .join("promo", "promo_reward.promo_id", "promo.id")
-      .select(
-        "promo.id",
-        "promo.msat_payout_amount as msat_payout_amount",
-        "promo.content_type as content_type",
-        "promo.content_id as content_id"
-      )
-      .sum("msat_amount as total")
-      .where("promo.id", promoId)
-      .andWhere("promo_reward.user_id", userId)
-      .andWhere("promo_reward.created_at", ">", today)
-      .andWhere("promo_reward.is_pending", false)
-      .groupBy("promo.id", "promo.msat_payout_amount", "promo.content_type")
-      .first();
-
-    // In case the user has not been rewarded for any content today
-    if (!userDailyContentRewards) {
-      return true;
-    }
-
-    const contentDuration = await getContentDuration(
-      userDailyContentRewards.content_type,
-      userDailyContentRewards.content_id
+    const userIsEligibleForPromo = await isUserEligibleForPromo(
+      userId,
+      promoId
     );
 
-    if (
-      userDailyContentRewards &&
-      parseInt(userDailyContentRewards.total) >=
-        (userDailyContentRewards.msat_payout_amount * contentDuration) / 60
-    ) {
+    if (!userIsEligibleForPromo) {
       log.debug("User has reached the daily content reward limit");
       return false;
     }
