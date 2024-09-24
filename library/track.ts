@@ -98,6 +98,5 @@ export const getUserRecentTracks = async (pubkey: string): Promise<any[]> => {
     });
   });
 
-  // Destructure the trackInfo object with orderInt
   return tracks;
 };
