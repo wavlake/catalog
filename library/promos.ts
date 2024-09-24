@@ -49,7 +49,8 @@ export const identifyActivePromosWithBudgetRemaining = async (
     })
   );
 
-  return userEligiblePromos;
+  // Filter out undefined values
+  return userEligiblePromos.filter((promo) => promo);
 };
 
 async function deactivatePromo(promoId: number) {

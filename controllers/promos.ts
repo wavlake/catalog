@@ -20,12 +20,8 @@ export const getActivePromos = asyncHandler(async (req, res, next) => {
   }
 
   const activePromos = await identifyActivePromosWithBudgetRemaining(accountId);
-
   const activePromosWithContentMetadata = await Promise.all(
     activePromos.map(async (promo) => {
-      if (!promo) {
-        return;
-      }
       const contentMetadata = await getContentInfoFromId(promo.contentId);
       if (!contentMetadata) {
         return;
