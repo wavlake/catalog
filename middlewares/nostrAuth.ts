@@ -56,3 +56,13 @@ export const isNostrAuthorized = asyncHandler(async (req, res, next) => {
 
   next();
 });
+
+export const isNostrAuthorizedOptional = asyncHandler(
+  async (req, res, next) => {
+    await validateNostrEvent(req, res).catch((err) => {
+      log.debug("Nostr auth failed on optional route, continuing without auth");
+    });
+
+    next();
+  }
+);

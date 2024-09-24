@@ -181,6 +181,7 @@ model PlaylistTrack {
 
   @@index([playlistId], map: "idx_playlist_track_playlist_id")
   @@map("playlist_track")
+  trackInfo TrackInfo @relation(fields: [trackId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "playlist_track_track_id_foreign")
 }
 
 model RankingForty {
@@ -677,6 +678,7 @@ view TrackInfo {
   artistNpub      String?   @map("artist_npub") @db.VarChar(64)
 
   @@map("track_info")
+  playlistTrack PlaylistTrack[]
 }
 
 view EpisodeInfo {

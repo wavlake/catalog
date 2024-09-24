@@ -1,6 +1,7 @@
 import prisma from "../prisma/client";
 import db from "../library/db";
 import log from "loglevel";
+import { Event } from "nostr-tools";
 import { randomUUID } from "crypto";
 import { invalidateCdn } from "../library/cloudfrontClient";
 import s3Client from "../library/s3Client";
@@ -10,11 +11,30 @@ import asyncHandler from "express-async-handler";
 import { parseLimit } from "../library/helpers";
 import { AWS_S3_RAW_PREFIX, AWS_S3_TRACK_PREFIX } from "../library/constants";
 import { addOP3URLPrefix } from "../library/op3";
+import { FEATURED_PLAYLIST_ID } from "../library/constants";
+import { getPlaylistTracks } from "../library/playlist";
+import { getWeeklyTop40 } from "../library/chart";
 
 const randomSampleSize = process.env.RANDOM_SAMPLE_SIZE;
-
 const s3BucketName = `${process.env.AWS_S3_BUCKET_NAME}`;
 const cdnDomain = `${process.env.AWS_CDN_DOMAIN}`;
+
+const get_featured_tracks = asyncHandler(async (req, res, next) => {
+  let pubkey;
+  pubkey = res?.locals?.authEvent as Event;
+
+  const featuredTracks = await getPlaylistTracks(FEATURED_PLAYLIST_ID);
+  const trendingTracks = await getWeeklyTop40();
+  let forYouTracks;
+  if (pubkey) {
+    log.debug(`Nostr pubkey: ${pubkey}`);
+  } else {
+  }
+  res.send({
+    success: true,
+    data: { featured: featuredTracks, trending: trendingTracks },
+  });
+});
 
 const get_track = asyncHandler(async (req, res, next) => {
   const { trackId } = req.params;
@@ -724,6 +744,7 @@ function shuffle(array) {
 }
 
 export default {
+  get_featured_tracks,
   get_track,
   get_tracks_by_account,
   get_tracks_by_new,

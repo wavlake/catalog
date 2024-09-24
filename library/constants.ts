@@ -5,3 +5,4 @@ export const AWS_S3_RAW_PREFIX = "raw";
 export const DEFAULT_EXPIRATION_SECONDS = 3600; // 1 hour
 export const MAX_INVOICE_AMOUNT = 100000 * 1000; // 100k sats
 export const FEE_BUFFER = 0.015; // 1.5% buffer
+export const FEATURED_PLAYLIST_ID = "fe6cfdb3-9582-42a2-8c89-b5bca8fa7eae";
