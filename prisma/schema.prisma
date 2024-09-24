@@ -178,6 +178,7 @@ model PlaylistTrack {
   createdAt  DateTime? @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt  DateTime? @default(now()) @map("updated_at") @db.Timestamptz(6)
   orderInt   Int?      @default(0) @map("order_int")
+  trackInfo  TrackInfo @relation(fields: [trackId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "playlist_track_track_id_foreign")
 
   @@index([playlistId], map: "idx_playlist_track_playlist_id")
   @@map("playlist_track")
@@ -283,6 +284,7 @@ model MusicGenre {
   createdAt     DateTime?       @default(now()) @map("created_at") @db.Timestamptz(6)
   album         Album[]
   musicSubgenre MusicSubgenre[]
+  trackInfo     TrackInfo[]
 
   @@index([name], map: "idx_music_genre_name")
   @@map("music_genre")
@@ -685,33 +687,35 @@ model PromoReward {
 }
 
 view TrackInfo {
-  id              String    @unique @db.Uuid
-  title           String?   @db.VarChar(255)
-  artist          String?   @db.VarChar(255)
-  artistUrl       String?   @map("artist_url") @db.VarChar(255)
-  avatarUrl       String?   @map("avatar_url") @db.VarChar(255)
-  userId          String?   @map("user_id") @db.VarChar(255)
-  artworkUrl      String?   @map("artwork_url") @db.VarChar(255)
-  msatTotal30Days BigInt?   @map("msat_total_30_days")
-  msatTotal7Days  BigInt?   @map("msat_total_7_days")
-  msatTotal1Days  BigInt?   @map("msat_total_1_days")
-  albumTitle      String?   @map("album_title") @db.VarChar(255)
-  liveUrl         String?   @map("live_url") @db.VarChar(255)
+  id              String          @unique @db.Uuid
+  title           String?         @db.VarChar(255)
+  artist          String?         @db.VarChar(255)
+  artistUrl       String?         @map("artist_url") @db.VarChar(255)
+  avatarUrl       String?         @map("avatar_url") @db.VarChar(255)
+  userId          String?         @map("user_id") @db.VarChar(255)
+  artworkUrl      String?         @map("artwork_url") @db.VarChar(255)
+  msatTotal30Days BigInt?         @map("msat_total_30_days")
+  msatTotal7Days  BigInt?         @map("msat_total_7_days")
+  msatTotal1Days  BigInt?         @map("msat_total_1_days")
+  albumTitle      String?         @map("album_title") @db.VarChar(255)
+  liveUrl         String?         @map("live_url") @db.VarChar(255)
   duration        Int?
-  createdAt       DateTime? @map("created_at") @db.Timestamptz(6)
-  albumId         String?   @map("album_id") @db.Uuid
-  artistId        String?   @map("artist_id") @db.Uuid
+  createdAt       DateTime?       @map("created_at") @db.Timestamptz(6)
+  albumId         String?         @map("album_id") @db.Uuid
+  artistId        String?         @map("artist_id") @db.Uuid
   order           Int?
-  isProcessing    Boolean?  @map("is_processing")
-  msatTotal       BigInt?   @map("msat_total")
-  publishedAt     DateTime? @map("published_at") @db.Timestamptz(6)
-  isDraft         Boolean?  @map("is_draft")
+  isProcessing    Boolean?        @map("is_processing")
+  msatTotal       BigInt?         @map("msat_total")
+  publishedAt     DateTime?       @map("published_at") @db.Timestamptz(6)
+  isDraft         Boolean?        @map("is_draft")
   is_explicit     Boolean?
-  genreId         Int?      @map("genre_id")
-  subgenreId      Int?      @map("subgenre_id")
-  compressorError Boolean?  @map("compressor_error")
-  artistNpub      String?   @map("artist_npub") @db.VarChar(64)
-  hasPromo        Boolean?  @map("has_promo")
+  genreId         Int?            @map("genre_id")
+  subgenreId      Int?            @map("subgenre_id")
+  compressorError Boolean?        @map("compressor_error")
+  artistNpub      String?         @map("artist_npub") @db.VarChar(64)
+  hasPromo        Boolean?        @map("has_promo")
+  genre           MusicGenre?     @relation(fields: [genreId], references: [id])
+  playlistTrack   PlaylistTrack[]
 
   @@map("track_info")
 }

@@ -6,7 +6,7 @@ import { Event } from "nostr-tools";
 import db from "../library/db";
 import { isValidDateString } from "../library/validation";
 import { getUserIds, userOwnsContent } from "../library/userHelper";
-import { addOP3URLPrefix } from "../library/op3";
+import { getPlaylistTracks } from "../library/playlist";
 
 const MAX_PLAYLIST_LENGTH = 300;
 export const addTrackToPlaylist = asyncHandler(async (req, res, next) => {
@@ -160,24 +160,8 @@ export const getPlaylist = async (req, res, next) => {
     return;
   }
 
-  const trackInfo = await db
-    .knex("track_info")
-    .join("playlist_track", "track_info.id", "playlist_track.track_id")
-    .select(
-      "track_info.id",
-      "title",
-      "duration",
-      "artist",
-      "artwork_url as artworkUrl",
-      "artist_url as artistUrl",
-      "live_url as liveUrl",
-      "album_title as albumTitle",
-      "album_id as albumId",
-      "artist_id as artistId",
-      "playlist_track.order_int as order"
-    )
-    .where("playlist_track.playlist_id", id)
-    .orderBy("order", "asc");
+  const trackInfo: { id: string; msatTotal: string }[] =
+    await getPlaylistTracks(id);
 
   if (sort === SORT_BY_SATS) {
     if (!startDate || !endDate) {
@@ -236,14 +220,6 @@ export const getPlaylist = async (req, res, next) => {
       return bTotal - aTotal;
     });
   }
-
-  // Add OP3 URL prefix to artwork URLs
-  trackInfo.forEach((track) => {
-    track.liveUrl = addOP3URLPrefix({
-      url: track.liveUrl,
-      albumId: track.albumId,
-    });
-  });
 
   res.json({
     success: true,

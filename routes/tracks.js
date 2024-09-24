@@ -1,5 +1,6 @@
 const express = require("express");
 const { isAuthorized } = require("../middlewares/auth");
+const { isNostrAuthorizedOptional } = require("../middlewares/nostrAuth");
 
 // Import controllers
 import tracksController from "../controllers/tracks";
@@ -13,6 +14,11 @@ const router = express.Router();
 router.get("/account", isAuthorized, tracksController.get_tracks_by_account);
 router.get("/new", tracksController.get_tracks_by_new);
 router.get("/random", tracksController.get_tracks_by_random);
+router.get(
+  "/featured",
+  isNostrAuthorizedOptional,
+  tracksController.get_featured_tracks
+);
 router.get(
   "/random/:genreId/genre",
   tracksController.get_random_tracks_by_genre_id
