@@ -19,6 +19,7 @@ export const getPlaylistTracks = async (playlistId: string): Promise<any[]> => {
           albumTitle: true,
           albumId: true,
           artistId: true,
+          genre: true,
         },
       },
     },
