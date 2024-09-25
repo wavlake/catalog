@@ -24,8 +24,7 @@ const s3BucketName = `${process.env.AWS_S3_BUCKET_NAME}`;
 const cdnDomain = `${process.env.AWS_CDN_DOMAIN}`;
 
 const get_featured_tracks = asyncHandler(async (req, res, next) => {
-  let pubkey;
-  pubkey = res?.locals?.authEvent as Event;
+  const pubkey = (res.locals?.authEvent as Event)?.pubkey;
 
   const featuredTracks = await getPlaylistTracks(FEATURED_PLAYLIST_ID);
   const trendingTracks = await getWeeklyTop40();
