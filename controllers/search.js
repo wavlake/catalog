@@ -1,6 +1,7 @@
 import prisma from "../prisma/client";
 const asyncHandler = require("express-async-handler");
 import { formatError } from "../library/errors";
+import { addOP3URLPrefix } from "../library/op3";
 
 const get_all_by_term = asyncHandler(async (req, res, next) => {
   const term = String(req.query.term);
@@ -100,7 +101,7 @@ function combineResults(artists, albums, tracks) {
       name: track.title,
       url: track.url,
       artworkUrl: track.artworkUrl,
-      liveUrl: track.liveUrl,
+      liveUrl: addOP3URLPrefix({ url: track.liveUrl, albumId: track.albumId }),
       duration: track.duration,
       albumId: track.albumId,
       albumTitle: track.albumTitle,
