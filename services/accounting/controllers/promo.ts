@@ -51,7 +51,7 @@ const createPromoReward = asyncHandler<core.ParamsDictionary, any, any>(
     // Create promo reward record and increment user balance
     const trx = await db.knex.transaction();
     // Lock user row while updating to prevent miscalculations on balance
-    // More: https://www.postgresql.org/docs/9.0/sql-select.html#SQL-FOR-UPDATE-SHARE
+    // More: https://www.postgresql.org/docs/current/explicit-locking.html#LOCKING-ROWS
     trx.raw(`"SELECT * FROM user WHERE id = ${userId} FOR UPDATE"`);
 
     await trx("promo_reward")
