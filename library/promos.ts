@@ -121,43 +121,15 @@ const getContentDuration = async (
   return content.duration;
 };
 
-export const isRewardActive = async (
-  promoRewardId: string
+export const isPromoActive = async (
+  promoId: number,
+  msatBudget: number
 ): Promise<boolean> => {
-  // Set filters to 65 seconds ago and 55 seconds ago
-  const startDate = new Date(Date.now() - 65000);
-  const endDate = new Date(Date.now() - 55000);
-  const promoReward = await db
-    .knex("promo_reward")
-    .where("id", promoRewardId)
-    .andWhere("is_pending", true)
-    .andWhere("created_at", ">", startDate)
-    .andWhere("created_at", "<", endDate)
-    .first();
-
-  if (!promoReward) {
-    return false;
-  }
-  return true;
-};
-
-export const isPromoActive = async (promoId: number): Promise<boolean> => {
-  const promo = await db
-    .knex("promo")
-    .where("id", promoId)
-    .andWhere("is_active", true)
-    .andWhere("is_pending", false)
-    .andWhere("is_paid", true)
-    .first();
-  if (!promo) {
-    return false;
-  }
-
   const totalSettledRewards = await getTotalSettledRewards(promoId);
 
   const totalPendingRewards = await getTotalPendingRewards(promoId);
 
-  if (totalSettledRewards + totalPendingRewards >= promo.msat_budget) {
+  if (totalSettledRewards + totalPendingRewards >= msatBudget) {
     // Deactivate promo if settled rewards exceed budget
     await deactivatePromo(promoId);
     return false;
@@ -217,10 +189,11 @@ const isUserEligibleForPromo = async (userId: string, promoId: string) => {
 
 export const isUserEligibleForReward = async (
   userId: string,
-  promoId: string
+  promoId: string,
+  ignoreTime = false
 ): Promise<boolean> => {
-  // Set datetime to 59 seconds ago
-  const now = new Date(Date.now() - 59000);
+  // Set datetime to 58 seconds ago
+  const now = new Date(Date.now() - 58000);
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   try {
@@ -233,7 +206,11 @@ export const isUserEligibleForReward = async (
       .groupBy("user_id")
       .first();
 
-    if (userLastReward && userLastReward.last_reward_created_at > now) {
+    if (
+      !ignoreTime &&
+      userLastReward &&
+      userLastReward.last_reward_created_at > now
+    ) {
       log.debug("User has been rewarded in the last minute");
       return false;
     }
@@ -295,7 +272,7 @@ export const getPromoByContentId = async (contentId: string): Promise<any> => {
     return null;
   }
 
-  const isActive = await isPromoActive(promo.id);
+  const isActive = await isPromoActive(promo.id, promo.msatBudget);
 
   if (!isActive) {
     return null;
