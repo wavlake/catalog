@@ -2,6 +2,7 @@ import asyncHandler from "express-async-handler";
 import {
   identifyActivePromosWithBudgetRemaining,
   getPromoByContentId,
+  isUserEligibleForPromo,
 } from "../library/promos";
 import { getContentInfoFromId } from "../library/content";
 
@@ -37,6 +38,10 @@ export const getActivePromos = asyncHandler(async (req, res, next) => {
 });
 
 export const getPromoByContent = asyncHandler(async (req, res, next) => {
+  const request = {
+    accountId: req["uid"],
+  };
+  const { accountId } = request;
   const { contentId } = req.params;
 
   if (!contentId) {
@@ -49,6 +54,8 @@ export const getPromoByContent = asyncHandler(async (req, res, next) => {
 
   const activePromo = await getPromoByContentId(contentId);
 
+  const isEligible = await isUserEligibleForPromo(accountId, activePromo.id);
+
   if (!activePromo) {
     res.json({
       success: true,
@@ -59,7 +66,7 @@ export const getPromoByContent = asyncHandler(async (req, res, next) => {
 
   res.json({
     success: true,
-    data: activePromo,
+    data: { ...activePromo, rewardsRemaining: isEligible },
   });
   return;
 });

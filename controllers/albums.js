@@ -124,14 +124,13 @@ const get_album_by_id = asyncHandler(async (req, res, next) => {
     return;
   }
 
-  const albumTrackIds = await prisma.track.findMany({
+  const albumTrackIds = await prisma.trackInfo.findMany({
     where: {
       albumId: request.albumId,
       isDraft: false,
-      deleted: false,
       publishedAt: { lte: new Date() },
     },
-    select: { id: true },
+    select: { id: true, hasPromo: true },
   });
 
   const comments = await getAllComments(
@@ -143,6 +142,7 @@ const get_album_by_id = asyncHandler(async (req, res, next) => {
     success: true,
     data: {
       ...album,
+      tracks: albumTrackIds,
       topMessages: comments,
     },
   });
