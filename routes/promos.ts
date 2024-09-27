@@ -9,7 +9,7 @@ const router = express.Router();
 
 // queries
 router.get("/active", isAuthorized, getActivePromos);
-router.get("/content/:contentId", getPromoByContent);
+router.get("/content/:contentId", isAuthorized, getPromoByContent);
 
 // Export router
 export default router;

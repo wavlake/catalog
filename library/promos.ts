@@ -138,7 +138,10 @@ export const isPromoActive = async (
   return true;
 };
 
-const isUserEligibleForPromo = async (userId: string, promoId: string) => {
+export const isUserEligibleForPromo = async (
+  userId: string,
+  promoId: string
+) => {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const userDailyContentRewards = await db
