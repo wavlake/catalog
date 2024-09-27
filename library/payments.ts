@@ -11,6 +11,7 @@ async function checkUserHasPendingTx(userId: string): Promise<boolean> {
     .knex("transaction")
     .select("transaction.id as id", "transaction.is_pending as isPending")
     .where("transaction.user_id", "=", userId)
+    .andWhere("transaction.withdraw", "=", true) // Only check withdraws
     .andWhere("transaction.is_pending", "=", true)
     .then((data) => {
       if (data.length > 0) {
@@ -271,6 +272,11 @@ export const initiatePayment = async (
     }-${paymentRecordId.toString()}`,
   });
 
+  if (!paymentResponse.data) {
+    log.error(`Error sending payment: ${paymentResponse.message}`);
+    await handleFailedPayment(res, userId, paymentRecordId, paymentResponse);
+    return;
+  }
   // Wrap in a try/catch to handle timeouts
   try {
     // Payment failed

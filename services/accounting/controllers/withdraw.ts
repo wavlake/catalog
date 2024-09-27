@@ -2,7 +2,7 @@ const log = require("loglevel");
 import asyncHandler from "express-async-handler";
 import { initiatePayment, runPaymentChecks } from "@library/payments";
 const NLInvoice = require("@node-lightning/invoice");
-import { FEE_BUFFER } from "@library/constants";
+import { FEE_BUFFER, MAX_INVOICE_AMOUNT } from "@library/constants";
 
 const createWithdraw = asyncHandler(async (req, res, next) => {
   const { description, invoice, msatMaxFee } = req.body;
@@ -27,6 +27,16 @@ const createWithdraw = asyncHandler(async (req, res, next) => {
     res.status(400).send({
       success: false,
       error: "Invalid invoice",
+    });
+    return;
+  }
+
+  if (valueMsat > MAX_INVOICE_AMOUNT) {
+    res.status(400).send({
+      success: false,
+      error: `Amount must be less than or equal to ${
+        MAX_INVOICE_AMOUNT / 1000
+      } sats`,
     });
     return;
   }
