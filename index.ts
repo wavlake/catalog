@@ -90,7 +90,9 @@ import library from "./routes/library";
 import feeds from "./routes/feeds";
 import playlists from "./routes/playlists";
 import publish from "./routes/publish";
+import refer from "./routes/refer";
 import social from "./routes/social";
+import promos from "./routes/promos";
 
 app.use(cors(corsOptions));
 
@@ -111,7 +113,9 @@ app.use("/v1/library", library);
 app.use("/v1/feeds", feeds);
 app.use("/v1/playlists", playlists);
 app.use("/v1/publish", publish);
+app.use("/v1/refer", refer);
 app.use("/v1/social", social);
+app.use("/v1/promos", promos);
 
 // The error handler must be registered before any other error middleware and after all controllers
 app.use(Sentry.Handlers.errorHandler());

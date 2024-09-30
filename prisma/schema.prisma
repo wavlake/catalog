@@ -128,6 +128,7 @@ model externalReceive {
   isPending       Boolean?  @default(false) @map("is_pending")
   paymentTypeCode Int?      @map("payment_type_code") @db.SmallInt
   errorMessage    String?   @map("error_message")
+  referrerAppId   String?   @map("referrer_app_id") @db.VarChar(21)
 
   @@map("external_receive")
 }
@@ -177,6 +178,7 @@ model PlaylistTrack {
   createdAt  DateTime? @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt  DateTime? @default(now()) @map("updated_at") @db.Timestamptz(6)
   orderInt   Int?      @default(0) @map("order_int")
+  trackInfo  TrackInfo @relation(fields: [trackId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "playlist_track_track_id_foreign")
 
   @@index([playlistId], map: "idx_playlist_track_playlist_id")
   @@map("playlist_track")
@@ -263,6 +265,7 @@ model User {
   artist              Artist[]
   external_payment    ExternalPayment[]
   podcast             Podcast[]
+  referrer_app        ReferrerApp[]
   split_recipient     SplitRecipient[]
   subscriber          Subscriber?
   transaction         Transaction[]
@@ -281,6 +284,7 @@ model MusicGenre {
   createdAt     DateTime?       @default(now()) @map("created_at") @db.Timestamptz(6)
   album         Album[]
   musicSubgenre MusicSubgenre[]
+  trackInfo     TrackInfo[]
 
   @@index([name], map: "idx_music_genre_name")
   @@map("music_genre")
@@ -434,19 +438,21 @@ model library {
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 model Preamp {
-  txId       String    @id @map("tx_id") @db.Uuid
-  msatAmount Int       @map("msat_amount")
-  guid       String?
-  podcast    String?
-  feedId     Int?      @map("feed_id")
-  episode    String?
-  itemId     Int?      @map("item_id")
-  ts         Int?
-  appName    String?   @map("app_name")
-  senderName String?   @map("sender_name")
-  userId     String    @map("user_id")
-  contentId  String    @map("content_id") @db.Uuid
-  createdAt  DateTime? @map("created_at") @db.Timestamptz(6)
+  txId          String    @id @map("tx_id") @db.Uuid
+  msatAmount    Int       @map("msat_amount")
+  guid          String?
+  podcast       String?
+  feedId        Int?      @map("feed_id")
+  episode       String?
+  itemId        Int?      @map("item_id")
+  ts            Int?
+  appName       String?   @map("app_name")
+  senderName    String?   @map("sender_name")
+  userId        String    @map("user_id")
+  contentId     String    @map("content_id") @db.Uuid
+  createdAt     DateTime? @map("created_at") @db.Timestamptz(6)
+  referrerAppId String?   @map("referrer_app_id") @db.VarChar(21)
+  referrerShare Int?      @map("referrer_share") @db.SmallInt
 
   @@map("preamp")
 }
@@ -574,6 +580,8 @@ model Forward {
   attemptCount      Int       @default(0) @map("attempt_count")
   remainderId       String?   @map("remainder_id")
   error             String?
+  referrerAppId     String?   @map("referrer_app_id") @db.VarChar(21)
+  txId              String?   @map("tx_id")
 
   @@index([userId], map: "idx_forward_user_id")
   @@map("forward")
@@ -630,33 +638,84 @@ model UserPubkey {
   @@map("user_pubkey")
 }
 
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model ReferrerApp {
+  id        String    @id @unique(map: "referrer_app_id_unique") @db.VarChar(21)
+  name      String
+  userId    String    @map("user_id") @db.VarChar(64)
+  share     Int       @default(0) @db.SmallInt
+  createdAt DateTime? @default(now()) @map("created_at") @db.Timestamptz(6)
+  user      User      @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "referrer_app_user_id_foreign")
+
+  @@index([userId], map: "idx_app_user_id")
+  @@map("referrer_app")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model Promo {
+  id                    Int       @id @default(autoincrement())
+  contentId             String    @map("content_id") @db.Uuid
+  contentType           String    @map("content_type") @db.VarChar(16)
+  externalTransactionId String    @map("external_transaction_id")
+  paymentRequest        String    @map("payment_request")
+  msatBudget            Int       @map("msat_budget")
+  msatPayoutAmount      Int       @map("msat_payout_amount")
+  isActive              Boolean   @default(false) @map("is_active")
+  isPaid                Boolean   @default(false) @map("is_paid")
+  isPending             Boolean   @default(true) @map("is_pending")
+  createdAt             DateTime? @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt             DateTime? @default(now()) @map("updated_at") @db.Timestamptz(6)
+
+  @@index([contentId], map: "idx_promo_content_id")
+  @@index([contentType], map: "idx_promo_content_type")
+  @@map("promo")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model PromoReward {
+  id         Int       @id @default(autoincrement())
+  userId     String    @map("user_id") @db.VarChar(64)
+  promoId    Int       @map("promo_id")
+  msatAmount Int       @map("msat_amount")
+  isPending  Boolean   @default(true) @map("is_pending")
+  createdAt  DateTime? @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt  DateTime? @default(now()) @map("updated_at") @db.Timestamptz(6)
+
+  @@index([promoId], map: "idx_promo_reward_promo_id")
+  @@index([userId], map: "idx_promo_reward_user_id")
+  @@map("promo_reward")
+}
+
 view TrackInfo {
-  id              String    @unique @db.Uuid
-  title           String?   @db.VarChar(255)
-  artist          String?   @db.VarChar(255)
-  artistUrl       String?   @map("artist_url") @db.VarChar(255)
-  avatarUrl       String?   @map("avatar_url") @db.VarChar(255)
-  userId          String?   @map("user_id") @db.VarChar(255)
-  artworkUrl      String?   @map("artwork_url") @db.VarChar(255)
-  msatTotal30Days BigInt?   @map("msat_total_30_days")
-  msatTotal7Days  BigInt?   @map("msat_total_7_days")
-  msatTotal1Days  BigInt?   @map("msat_total_1_days")
-  albumTitle      String?   @map("album_title") @db.VarChar(255)
-  liveUrl         String?   @map("live_url") @db.VarChar(255)
+  id              String          @unique @db.Uuid
+  title           String?         @db.VarChar(255)
+  artist          String?         @db.VarChar(255)
+  artistUrl       String?         @map("artist_url") @db.VarChar(255)
+  avatarUrl       String?         @map("avatar_url") @db.VarChar(255)
+  userId          String?         @map("user_id") @db.VarChar(255)
+  artworkUrl      String?         @map("artwork_url") @db.VarChar(255)
+  msatTotal30Days BigInt?         @map("msat_total_30_days")
+  msatTotal7Days  BigInt?         @map("msat_total_7_days")
+  msatTotal1Days  BigInt?         @map("msat_total_1_days")
+  albumTitle      String?         @map("album_title") @db.VarChar(255)
+  liveUrl         String?         @map("live_url") @db.VarChar(255)
   duration        Int?
-  createdAt       DateTime? @map("created_at") @db.Timestamptz(6)
-  albumId         String?   @map("album_id") @db.Uuid
-  artistId        String?   @map("artist_id") @db.Uuid
+  createdAt       DateTime?       @map("created_at") @db.Timestamptz(6)
+  albumId         String?         @map("album_id") @db.Uuid
+  artistId        String?         @map("artist_id") @db.Uuid
   order           Int?
-  isProcessing    Boolean?  @map("is_processing")
-  msatTotal       BigInt?   @map("msat_total")
-  publishedAt     DateTime? @map("published_at") @db.Timestamptz(6)
-  isDraft         Boolean?  @map("is_draft")
+  isProcessing    Boolean?        @map("is_processing")
+  msatTotal       BigInt?         @map("msat_total")
+  publishedAt     DateTime?       @map("published_at") @db.Timestamptz(6)
+  isDraft         Boolean?        @map("is_draft")
   is_explicit     Boolean?
-  genreId         Int?      @map("genre_id")
-  subgenreId      Int?      @map("subgenre_id")
-  compressorError Boolean?  @map("compressor_error")
-  artistNpub      String?   @map("artist_npub") @db.VarChar(64)
+  genreId         Int?            @map("genre_id")
+  subgenreId      Int?            @map("subgenre_id")
+  compressorError Boolean?        @map("compressor_error")
+  artistNpub      String?         @map("artist_npub") @db.VarChar(64)
+  hasPromo        Boolean?        @map("has_promo")
+  genre           MusicGenre?     @relation(fields: [genreId], references: [id])
+  playlistTrack   PlaylistTrack[]
 
   @@map("track_info")
 }

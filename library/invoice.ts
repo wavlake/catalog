@@ -123,6 +123,7 @@ async function handleCompletedAmpInvoice(
 ) {
   // Look up invoice type
   const paymentTypeCode = await getInvoicePaymentTypeCode(invoiceId);
+  const referrerAppId = await getReferrerAppIdForInvoice(invoiceId);
 
   let zapRequest, pubkey, content, timestamp;
 
@@ -167,6 +168,7 @@ async function handleCompletedAmpInvoice(
     comment: content ? content : null,
     isNostr: paymentTypeCode === PaymentType.Zap,
     externalTxId: externalId,
+    referrerAppId: referrerAppId,
     ///////// TEMPORARY - REMOVE AFTER 240728 /////////
     isConferenceZap: isConferenceZap,
     /////////
@@ -336,6 +338,20 @@ async function handleFailedOrExpiredInvoice(
         `Error in handleFailedOrExpiredInvoice: ${invoiceType} invoice ${internalId}: ${err}`
       );
     });
+}
+
+async function getReferrerAppIdForInvoice(invoiceId: number) {
+  const invoice = await db
+    .knex("external_receive")
+    .select("referrer_app_id")
+    .where("id", "=", invoiceId)
+    .first()
+    .catch((err) => {
+      log.error(
+        `Error getting referrer id from invoice id ${invoiceId}: ${err}`
+      );
+    });
+  return invoice.referrer_app_id;
 }
 
 export const logZapRequest = async (

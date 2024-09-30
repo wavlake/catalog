@@ -121,7 +121,7 @@ const get_custom_chart = asyncHandler(async (req, res, next) => {
   }
 
   if ((!!daysInt && !!startDate) || (!!daysInt && !!endDate)) {
-    res.json({
+    res.status(400).json({
       success: false,
       error: "Cannot use days and date values together",
     });
@@ -129,7 +129,7 @@ const get_custom_chart = asyncHandler(async (req, res, next) => {
   }
 
   if (!validSorts.includes(sort)) {
-    res.json({
+    res.status(400).json({
       success: false,
       error: "Invalid sort, must be one of: sats",
     });
@@ -137,7 +137,7 @@ const get_custom_chart = asyncHandler(async (req, res, next) => {
   }
 
   if (!daysInt && !startDate && !endDate) {
-    res.json({
+    res.status(400).json({
       success: false,
       error: "startDate and endDate is required",
     });
@@ -176,7 +176,7 @@ const get_custom_chart = asyncHandler(async (req, res, next) => {
   if (daysWindow < 0 || daysWindow > 90) {
     res.status(400).json({
       success: false,
-      error: "Date range must be between 0 and 90 days",
+      error: "Date range must be between 1 and 90 days",
     });
     return;
   }

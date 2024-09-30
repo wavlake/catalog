@@ -1,6 +1,7 @@
 import prisma from "../prisma/client";
 import db from "../library/db";
 import log from "loglevel";
+import { Event } from "nostr-tools";
 import { randomUUID } from "crypto";
 import { invalidateCdn } from "../library/cloudfrontClient";
 import s3Client from "../library/s3Client";
@@ -10,11 +11,44 @@ import asyncHandler from "express-async-handler";
 import { parseLimit } from "../library/helpers";
 import { AWS_S3_RAW_PREFIX, AWS_S3_TRACK_PREFIX } from "../library/constants";
 import { addOP3URLPrefix } from "../library/op3";
+import {
+  FEATURED_PLAYLIST_ID,
+  DEFAULT_FOR_YOU_PLAYLIST_ID,
+} from "../library/constants";
+import { getPlaylistTracks } from "../library/playlist";
+import { getWeeklyTop40 } from "../library/chart";
+import { getUserRecentTracks, getNewTracks } from "../library/track";
 
 const randomSampleSize = process.env.RANDOM_SAMPLE_SIZE;
-
 const s3BucketName = `${process.env.AWS_S3_BUCKET_NAME}`;
 const cdnDomain = `${process.env.AWS_CDN_DOMAIN}`;
+
+const get_featured_tracks = asyncHandler(async (req, res, next) => {
+  const pubkey = (res.locals?.authEvent as Event)?.pubkey;
+
+  const featuredTracks = await getPlaylistTracks(FEATURED_PLAYLIST_ID);
+  const trendingTracks = await getWeeklyTop40();
+  const newTracks = await getNewTracks();
+  let forYouTracks;
+  if (pubkey) {
+    log.debug(`Nostr pubkey: ${pubkey}`);
+    forYouTracks = await getUserRecentTracks(pubkey);
+    if (forYouTracks.length < 3) {
+      forYouTracks = await getPlaylistTracks(DEFAULT_FOR_YOU_PLAYLIST_ID);
+    }
+  } else {
+    forYouTracks = await getPlaylistTracks(DEFAULT_FOR_YOU_PLAYLIST_ID);
+  }
+  res.send({
+    success: true,
+    data: {
+      featured: featuredTracks,
+      forYou: forYouTracks,
+      trending: trendingTracks,
+      newTracks: newTracks,
+    },
+  });
+});
 
 const get_track = asyncHandler(async (req, res, next) => {
   const { trackId } = req.params;
@@ -23,14 +57,6 @@ const get_track = asyncHandler(async (req, res, next) => {
     res.status(400).json({
       success: false,
       error: "trackId is required",
-    });
-    return;
-  }
-
-  if (!validate(trackId)) {
-    res.status(400).json({
-      success: false,
-      error: "Invalid trackId",
     });
     return;
   }
@@ -129,55 +155,10 @@ const get_tracks_by_album_id = asyncHandler(async (req, res, next) => {
 const get_tracks_by_new = asyncHandler(async (req, res, next) => {
   const limit = parseLimit(req.query.limit, 50);
 
-  const albumTracks = db.knex
-    .select(
-      "track.id as id",
-      "track.album_id as albumId",
-      "artist.id as artistId"
-    )
-    .join("artist", "track.artist_id", "=", "artist.id")
-    .join("album", "album.id", "=", "track.album_id")
-    .rank("ranking", "track.id", "track.album_id")
-    .min("track.title as title")
-    .min("artist.name as artist")
-    .min("artist.artist_url as artistUrl")
-    .min("artist.artwork_url as avatarUrl")
-    .min("album.artwork_url as artworkUrl")
-    .min("album.title as albumTitle")
-    .min("track.live_url as liveUrl")
-    .min("track.duration as duration")
-    .min("track.created_at as createdAt")
-    .andWhere("track.published_at", "<", new Date())
-    .andWhere("track.is_draft", "=", false)
-    .andWhere("album.published_at", "<", new Date())
-    .andWhere("album.is_draft", "=", false)
-    .andWhere("track.deleted", "=", false)
-    .andWhere("track.order", "=", 1)
-    .andWhere("track.duration", "is not", null)
-    .from("track")
-    .groupBy("track.album_id", "track.id", "artist.id")
-    .as("a");
-
-  db.knex(albumTracks)
-    .orderBy("createdAt", "desc")
-    .where("ranking", "=", 1)
-    .limit(limit)
-    .then((data) => {
-      // Add OP3 URL prefix to liveUrl
-      data.forEach((track) => {
-        track.liveUrl = addOP3URLPrefix({
-          url: track.liveUrl,
-          albumId: track.albumId,
-        });
-      });
-      // Shuffle the data to get a random order
-      const shuffledData = shuffle(data);
-      res.send({ success: true, data: shuffledData });
-    })
-    .catch((err) => {
-      log.debug(`Error querying track table for New: ${err}`);
-      next(err);
-    });
+  const tracks = await getNewTracks(limit);
+  // Shuffle the data to get a random order
+  const shuffledData = shuffle(tracks);
+  res.send({ success: true, data: shuffledData });
 });
 
 const get_tracks_by_random = asyncHandler(async (req, res, next) => {
@@ -732,6 +713,7 @@ function shuffle(array) {
 }
 
 export default {
+  get_featured_tracks,
   get_track,
   get_tracks_by_account,
   get_tracks_by_new,

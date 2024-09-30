@@ -70,6 +70,8 @@ const createZapInvoice = asyncHandler<
 
   const eTag = zapRequestEvent.tags.find((x) => x[0] === "e");
   const aTag = zapRequestEvent.tags.find((x) => x[0] === "a");
+  const [referrerTag, referrer] =
+    zapRequestEvent.tags.find((x) => x[0] === "referrer") ?? [];
 
   let zappedContent = null;
 
@@ -91,6 +93,21 @@ const createZapInvoice = asyncHandler<
     return;
   }
 
+  // Validate referrer if present
+  if (referrer) {
+    const referrerApp = await prisma.referrerApp.findUnique({
+      where: { id: referrer.toUpperCase() },
+    });
+
+    if (!referrerApp) {
+      res.status(400).send({
+        success: false,
+        error: `Referrer app id is invalid`,
+      });
+      return;
+    }
+  }
+
   // Amount check
   const [amountTag, amountTagValue] =
     zapRequestEvent.tags.find((x) => x[0] === "amount") ?? [];
@@ -109,6 +126,7 @@ const createZapInvoice = asyncHandler<
       trackId: zappedContent.id,
       paymentTypeCode: 7, // Zap code
       isPending: true,
+      referrerAppId: referrer ?? null,
     },
   });
 
