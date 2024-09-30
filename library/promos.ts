@@ -3,7 +3,7 @@ log.setLevel((process.env.LOG_LEVEL as LogLevelDesc) || "info");
 import db from "./db";
 import prisma from "../prisma/client";
 
-const MAX_DAILY_USER_REWARDS = 200000;
+const MAX_DAILY_USER_REWARDS = 500000;
 
 export const identifyActivePromosWithBudgetRemaining = async (
   userId: string
