@@ -7,6 +7,7 @@ import {
   internalAmps,
   externalAmps,
   pendingForwards,
+  promoEarnings,
   getMaxAmpDate,
   getMaxTransactionDate,
   getEarningsDetail,
@@ -402,6 +403,7 @@ const get_txs = asyncHandler(async (req, res, next) => {
       internalAmps(userId),
       externalAmps(userId),
       pendingForwards(userId),
+      promoEarnings(userId),
     ])
     .orderBy("createDate", "desc")
     .paginate({

@@ -207,6 +207,28 @@ export function getSplitDetail(paymentId) {
 
 // SUMMARY QUERIES
 
+export function promoEarnings(userId) {
+  return db
+    .knex("promo_reward")
+    .select(
+      db.knex.raw(`'top-up' as "paymentId"`),
+      db.knex.raw(`0 as "feeMsat"`),
+      db.knex.raw("true as success"),
+      db.knex.raw(`'${TransactionType.TOPUP}' as type`),
+      db.knex.raw("NULL as title"),
+      db.knex.raw(`false as "isPending"`),
+      db.knex.raw("NULL as comment"),
+      db.knex.raw("NULL as id"),
+      db.knex.raw(`sum("msat_amount") as "msatAmount"`),
+      db.knex.raw("NULL as failureReason"),
+      db.knex.raw(`max("created_at") as "createDate"`)
+    )
+    .where("user_id", "=", userId)
+    .andWhere("is_pending", "=", false)
+    .andWhere("created_at", ">", getDateFilter())
+    .groupBy("user_id", db.knex.raw(`date_trunc('day', "created_at")`));
+}
+
 export function earnings(userId) {
   return db
     .knex("amp")
