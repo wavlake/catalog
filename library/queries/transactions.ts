@@ -9,6 +9,33 @@ function getDateFilter() {
 }
 
 // DETAIL QUERIES
+export function getTopUpDetail(userId, paymentId) {
+  return db
+    .knex("promo_reward")
+    .join("promo", "promo.id", "=", "promo_reward.promo_id")
+    .join("track", "track.id", "=", "promo.content_id")
+    .select(
+      db.knex.raw(
+        `CAST(max("promo_reward"."created_at") as text) as "paymentId"`
+      ),
+      db.knex.raw("0 as feemsat"),
+      db.knex.raw("true as success"),
+      db.knex.raw(`'${TransactionType.TOPUP}' as type`),
+      db.knex.raw(`ARRAY_AGG(DISTINCT("track"."title")) as title`),
+      db.knex.raw(`false as isPending`),
+      db.knex.raw("NULL as comment"),
+      db.knex.raw("NULL as id"),
+      db.knex.raw(`sum("msat_amount") as "msatAmount"`),
+      db.knex.raw("NULL as failureReason"),
+      db.knex.raw(`DATE("promo_reward"."created_at") as "createDate"`)
+    )
+    .where("user_id", "=", userId)
+    .andWhere("promo_reward.is_pending", "=", false)
+    .andWhere(db.knex.raw(`DATE("promo_reward"."created_at")`), "=", paymentId)
+    .groupBy("user_id", db.knex.raw(`DATE("promo_reward"."created_at")`))
+    .first();
+}
+
 export function getZapDetail(userId, paymentId) {
   return db
     .knex("transaction")
@@ -206,6 +233,28 @@ export function getSplitDetail(paymentId) {
 }
 
 // SUMMARY QUERIES
+
+export function promoEarnings(userId) {
+  return db
+    .knex("promo_reward")
+    .select(
+      db.knex.raw(`CAST(max(DATE("created_at")) as text) as "paymentId"`),
+      db.knex.raw(`0 as "feeMsat"`),
+      db.knex.raw("true as success"),
+      db.knex.raw(`'${TransactionType.TOPUP}' as type`),
+      db.knex.raw("NULL as title"),
+      db.knex.raw(`false as "isPending"`),
+      db.knex.raw("NULL as comment"),
+      db.knex.raw("NULL as id"),
+      db.knex.raw(`sum("msat_amount") as "msatAmount"`),
+      db.knex.raw("NULL as failureReason"),
+      db.knex.raw(`max("created_at") as "createDate"`)
+    )
+    .where("user_id", "=", userId)
+    .andWhere("is_pending", "=", false)
+    .andWhere("created_at", ">", getDateFilter())
+    .groupBy("user_id", db.knex.raw(`DATE("created_at")`));
+}
 
 export function earnings(userId) {
   return db

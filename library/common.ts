@@ -7,6 +7,7 @@ export enum TransactionType {
   ZAP_SEND = "Zap Sent",
   AUTOFORWARD = "Autoforward",
   EARNINGS = "Earnings",
+  TOPUP = "Top Up",
 }
 
 export enum PaymentType {

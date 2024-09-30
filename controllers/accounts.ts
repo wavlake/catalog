@@ -7,6 +7,7 @@ import {
   internalAmps,
   externalAmps,
   pendingForwards,
+  promoEarnings,
   getMaxAmpDate,
   getMaxTransactionDate,
   getEarningsDetail,
@@ -16,6 +17,7 @@ import {
   getWithdrawDetail,
   getDepositDetail,
   getZapDetail,
+  getTopUpDetail,
 } from "../library/queries/transactions";
 import { TransactionType } from "../library/common";
 import asyncHandler from "express-async-handler";
@@ -360,6 +362,9 @@ const get_tx_id = asyncHandler(async (req, res, next) => {
     case TransactionType.ZAP_SEND:
       data = await getZapSendDetail(userId, id);
       break;
+    case TransactionType.TOPUP:
+      data = await getTopUpDetail(userId, id);
+      break;
     default:
       res.status(400).json({
         success: false,
@@ -402,6 +407,7 @@ const get_txs = asyncHandler(async (req, res, next) => {
       internalAmps(userId),
       externalAmps(userId),
       pendingForwards(userId),
+      promoEarnings(userId),
     ])
     .orderBy("createDate", "desc")
     .paginate({
