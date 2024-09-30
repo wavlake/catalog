@@ -5,6 +5,12 @@ import db from "./db";
 
 export const getNewTracks = async (limit?: number): Promise<any[]> => {
   limit = parseLimit(limit, 50);
+  const activePromos = db
+    .knex("promo")
+    .where("promo.is_active", "=", true)
+    .andWhere("promo.is_paid", "=", true)
+    .as("promos");
+
   const albumTracks = db.knex
     .select(
       "track.id as id",
@@ -13,7 +19,13 @@ export const getNewTracks = async (limit?: number): Promise<any[]> => {
     )
     .join("artist", "track.artist_id", "=", "artist.id")
     .join("album", "album.id", "=", "track.album_id")
+    .leftOuterJoin(activePromos, "promos.content_id", "=", "track.id")
     .rank("ranking", "track.id", "track.album_id")
+    .select(
+      db.knex.raw(
+        `CASE WHEN promos.id IS NOT NULL then true ELSE false END as "hasPromo"`
+      )
+    )
     .min("track.title as title")
     .min("artist.name as artist")
     .min("artist.artist_url as artistUrl")
@@ -31,7 +43,7 @@ export const getNewTracks = async (limit?: number): Promise<any[]> => {
     .andWhere("track.order", "=", 1)
     .andWhere("track.duration", "is not", null)
     .from("track")
-    .groupBy("track.album_id", "track.id", "artist.id")
+    .groupBy("track.album_id", "track.id", "artist.id", "promos.id")
     .as("a");
 
   const tracks = await db
