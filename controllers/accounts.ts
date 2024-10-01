@@ -1020,6 +1020,109 @@ const check_user_verified = asyncHandler(async (req, res, next) => {
   });
 });
 
+const create_new_user = asyncHandler<
+  {},
+  {},
+  {
+    email: string;
+    password: string;
+    username?: string;
+    firstName?: string;
+    lastName?: string;
+  }
+>(async (req, res, next) => {
+  const { email, password, username, firstName, lastName } = req.body;
+
+  if (!email || !password) {
+    res.status(400).json({
+      success: false,
+      error: "Email and password are required",
+    });
+    return;
+  }
+
+  try {
+    // Check for username collision if provided
+    if (username) {
+      const existingUser = await prisma.user.findFirst({
+        where: {
+          name: username,
+        },
+      });
+
+      if (existingUser) {
+        res.status(400).json({
+          success: false,
+          error: "Username is already taken",
+        });
+        return;
+      }
+    }
+
+    // Validate email with regex
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      res.status(400).json({
+        success: false,
+        error: "Invalid email format",
+      });
+      return;
+    }
+
+    // Create new Firebase user
+    const firebaseUser = await auth().createUser({
+      email,
+      password,
+    });
+
+    // Generate a username if not provided
+    const finalUsername = username || `user_${firebaseUser.uid.slice(0, 8)}`;
+
+    // Create user in the database
+    const newUser = await prisma.user.create({
+      data: {
+        id: firebaseUser.uid,
+        name: finalUsername,
+        profileUrl: urlFriendly(finalUsername),
+      },
+    });
+
+    if (firstName && lastName) {
+      // save identity verification data
+      await prisma.userVerification.upsert({
+        where: {
+          userId: firebaseUser.uid,
+        },
+        update: {
+          firstName: firstName,
+          lastName: lastName,
+          ip: req.ip,
+        },
+        create: {
+          userId: firebaseUser.uid,
+          firstName: firstName,
+          lastName: lastName,
+          ip: req.ip,
+        },
+      });
+    }
+
+    res.send({
+      success: true,
+      data: {
+        uid: firebaseUser.uid,
+        email: firebaseUser.email,
+        username: newUser.name,
+        profileUrl: newUser.profileUrl,
+      },
+    });
+  } catch (err) {
+    log.debug("Error creating new user", req.body);
+    log.debug(err);
+    next(err);
+  }
+});
+
 export default {
   check_user_verified,
   create_update_lnaddress,
@@ -1043,4 +1146,5 @@ export default {
   delete_pubkey_from_account,
   get_pubkey_metadata,
   update_metadata,
+  create_new_user,
 };
