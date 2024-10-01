@@ -1088,40 +1088,56 @@ const create_new_user = asyncHandler<
       email,
       password,
     });
-
+    log.debug("Created new Firebase user", firebaseUser.uid);
     // Generate a username if not provided
     const finalUsername = username || `user_${firebaseUser.uid.slice(0, 8)}`;
+    log.debug("username", finalUsername);
 
-    const [userPubkey, newUser, userVerification] = await Promise.all([
-      pubkey
-        ? prisma.userPubkey.create({
-            data: {
-              userId: firebaseUser.uid,
-              pubkey: pubkey,
-              createdAt: new Date(),
-            },
-          })
-        : null,
-      prisma.user.create({
-        data: {
-          id: firebaseUser.uid,
-          name: finalUsername,
-          profileUrl: urlFriendly(finalUsername),
-        },
-      }),
-      firstName && lastName
-        ? prisma.userVerification.create({
-            data: {
-              userId: firebaseUser.uid,
-              firstName: firstName,
-              lastName: lastName,
-              ip: req.ip,
-            },
-          })
-        : null,
-    ]);
+    // create the new user record
+    const newUser = await prisma.user.create({
+      data: {
+        id: firebaseUser.uid,
+        name: finalUsername,
+        profileUrl: urlFriendly(finalUsername),
+      },
+    });
 
-    const loginToken = await auth().createCustomToken(firebaseUser.uid);
+    // Create user pubkey and verification records that reference the new user record
+    const [userPubkey, userVerification, loginToken] = await Promise.allSettled(
+      [
+        pubkey
+          ? prisma.userPubkey.create({
+              data: {
+                userId: firebaseUser.uid,
+                pubkey: pubkey,
+                createdAt: new Date(),
+              },
+            })
+          : null,
+
+        firstName && lastName
+          ? prisma.userVerification.create({
+              data: {
+                userId: firebaseUser.uid,
+                firstName: firstName,
+                lastName: lastName,
+                ip: req.ip,
+              },
+            })
+          : null,
+        auth().createCustomToken(firebaseUser.uid),
+      ]
+    );
+
+    if (userPubkey.status === "rejected") {
+      log.error("Error creating user pubkey", userPubkey.reason);
+    }
+    if (userVerification.status === "rejected") {
+      log.error("Error creating user verification", userVerification.reason);
+    }
+    if (loginToken.status === "rejected") {
+      log.error("Error creating login token", loginToken.reason);
+    }
 
     res.status(201).json({
       success: true,
@@ -1130,8 +1146,12 @@ const create_new_user = asyncHandler<
         email: firebaseUser.email,
         username: newUser.name,
         profileUrl: newUser.profileUrl,
-        pubkey: userPubkey?.pubkey,
-        loginToken,
+        pubkey:
+          userPubkey.status === "fulfilled"
+            ? userPubkey.value.pubkey
+            : undefined,
+        loginToken:
+          loginToken.status === "fulfilled" ? loginToken.value : undefined,
       },
     });
     return;
