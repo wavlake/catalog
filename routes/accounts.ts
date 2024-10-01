@@ -64,12 +64,7 @@ router.post(
   isAuthorized,
   connectionsController.create_connection
 );
-router.get(
-  "/check-region",
-  isAuthorized,
-  isZbdRegion,
-  accountsController.get_check_region
-);
+router.get("/check-region", isZbdRegion, accountsController.get_check_region);
 router.post(
   "/log-identity",
   isAuthorized,
