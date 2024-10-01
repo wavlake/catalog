@@ -65,6 +65,7 @@ async function checkName(name?: string): Promise<string | undefined> {
       return newUserName;
     }
   }
+  log.debug("Failed to generate a username");
   return undefined;
 }
 
@@ -1089,8 +1090,18 @@ const create_new_user = asyncHandler<
       password,
     });
     log.debug("Created new Firebase user", firebaseUser.uid);
-    // Generate a username if not provided
-    const finalUsername = username || `user_${firebaseUser.uid.slice(0, 8)}`;
+
+    // Generate a random username if not provided
+    const finalUsername = await checkName(username);
+
+    if (!finalUsername) {
+      res.status(400).json({
+        success: false,
+        error: "Failed to generate a username",
+      });
+      return;
+    }
+
     log.debug("username", finalUsername);
 
     // create the new user record
