@@ -1089,16 +1089,8 @@ const create_new_user = asyncHandler<
 
     if (firstName && lastName) {
       // save identity verification data
-      await prisma.userVerification.upsert({
-        where: {
-          userId: firebaseUser.uid,
-        },
-        update: {
-          firstName: firstName,
-          lastName: lastName,
-          ip: req.ip,
-        },
-        create: {
+      await prisma.userVerification.create({
+        data: {
           userId: firebaseUser.uid,
           firstName: firstName,
           lastName: lastName,
