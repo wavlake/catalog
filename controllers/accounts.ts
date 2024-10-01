@@ -35,6 +35,7 @@ import {
   colors,
   animals,
 } from "unique-names-generator";
+import { ResponseObject } from "../types/catalogApi";
 
 function makeRandomName() {
   return uniqueNamesGenerator({
@@ -1022,16 +1023,23 @@ const check_user_verified = asyncHandler(async (req, res, next) => {
 
 const create_new_user = asyncHandler<
   {},
-  {},
+  ResponseObject<{
+    uid: string;
+    email: string;
+    username: string;
+    profileUrl: string;
+    pubkey: string;
+  }>,
   {
     email: string;
     password: string;
     username?: string;
     firstName?: string;
     lastName?: string;
+    pubkey?: string;
   }
 >(async (req, res, next) => {
-  const { email, password, username, firstName, lastName } = req.body;
+  const { email, password, username, firstName, lastName, pubkey } = req.body;
 
   if (!email || !password) {
     res.status(400).json({
@@ -1043,20 +1051,25 @@ const create_new_user = asyncHandler<
 
   try {
     // Check for username collision if provided
-    if (username) {
-      const existingUser = await prisma.user.findFirst({
-        where: {
-          name: username,
-        },
-      });
+    const [existingUser, existingPubkey] = await Promise.all([
+      username ? prisma.user.findFirst({ where: { name: username } }) : null,
+      pubkey ? prisma.userPubkey.findFirst({ where: { pubkey } }) : null,
+    ]);
 
-      if (existingUser) {
-        res.status(400).json({
-          success: false,
-          error: "Username is already taken",
-        });
-        return;
-      }
+    if (existingUser) {
+      res.status(400).json({
+        success: false,
+        error: "Username is already taken",
+      });
+      return;
+    }
+
+    if (existingPubkey) {
+      res.status(400).json({
+        success: false,
+        error: "Pubkey is registered to another account",
+      });
+      return;
     }
 
     // Validate email with regex
@@ -1078,36 +1091,46 @@ const create_new_user = asyncHandler<
     // Generate a username if not provided
     const finalUsername = username || `user_${firebaseUser.uid.slice(0, 8)}`;
 
-    // Create user in the database
-    const newUser = await prisma.user.create({
-      data: {
-        id: firebaseUser.uid,
-        name: finalUsername,
-        profileUrl: urlFriendly(finalUsername),
-      },
-    });
-
-    if (firstName && lastName) {
-      // save identity verification data
-      await prisma.userVerification.create({
+    const [userPubkey, newUser, userVerification] = await Promise.all([
+      pubkey
+        ? prisma.userPubkey.create({
+            data: {
+              userId: firebaseUser.uid,
+              pubkey: pubkey,
+              createdAt: new Date(),
+            },
+          })
+        : null,
+      prisma.user.create({
         data: {
-          userId: firebaseUser.uid,
-          firstName: firstName,
-          lastName: lastName,
-          ip: req.ip,
+          id: firebaseUser.uid,
+          name: finalUsername,
+          profileUrl: urlFriendly(finalUsername),
         },
-      });
-    }
+      }),
+      firstName && lastName
+        ? prisma.userVerification.create({
+            data: {
+              userId: firebaseUser.uid,
+              firstName: firstName,
+              lastName: lastName,
+              ip: req.ip,
+            },
+          })
+        : null,
+    ]);
 
-    res.send({
+    res.status(201).json({
       success: true,
       data: {
         uid: firebaseUser.uid,
         email: firebaseUser.email,
         username: newUser.name,
         profileUrl: newUser.profileUrl,
+        pubkey: userPubkey?.pubkey,
       },
     });
+    return;
   } catch (err) {
     log.debug("Error creating new user", req.body);
     log.debug(err);
