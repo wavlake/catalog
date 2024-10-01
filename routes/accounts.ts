@@ -19,14 +19,27 @@ import connectionsController from "../controllers/connections";
 import { isAuthorized } from "../middlewares/auth";
 import { isNostrAuthorized } from "../middlewares/nostrAuth";
 import { isAPITokenAuthorized } from "../middlewares/isAPITokenAuthorized";
+import rateLimit from "express-rate-limit";
 
 // Create router
 const router = express.Router();
+
+const limiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minute
+  max: 10, // Limit each IP to 10 requests per windowMs
+  standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
+  legacyHeaders: false, // Disable the `X-RateLimit-*` headers
+  message: "Too many requests from this IP, please try again later",
+  keyGenerator: (req) => {
+    return req.ip; // Use the IP address as the key
+  },
+});
 
 //////// ROUTES ////////
 
 // USER
 router.post("/", accountsController.create_account);
+router.post("/user", limiter, accountsController.create_new_user);
 router.get("/", isAuthorized, accountsController.get_account);
 router.get(
   "/public/verified/:userProfileUrl",
