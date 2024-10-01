@@ -30,10 +30,12 @@ export const getPlaylistTracks = async (playlistId: string): Promise<any[]> => {
 
   // Add OP3 URL prefix to artwork URLs
   tracks.forEach((track) => {
-    track.trackInfo.liveUrl = addOP3URLPrefix({
-      url: track.trackInfo.liveUrl,
-      albumId: track.trackInfo.albumId,
-    });
+    if (track.trackInfo) {
+      track.trackInfo.liveUrl = addOP3URLPrefix({
+        url: track.trackInfo.liveUrl,
+        albumId: track.trackInfo.albumId,
+      });
+    }
   });
 
   // Destructure the trackInfo object with orderInt
