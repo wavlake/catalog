@@ -1029,6 +1029,7 @@ const create_new_user = asyncHandler<
     username: string;
     profileUrl: string;
     pubkey: string;
+    loginToken: string;
   }>,
   {
     email: string;
@@ -1120,6 +1121,8 @@ const create_new_user = asyncHandler<
         : null,
     ]);
 
+    const loginToken = await auth().createCustomToken(firebaseUser.uid);
+
     res.status(201).json({
       success: true,
       data: {
@@ -1128,6 +1131,7 @@ const create_new_user = asyncHandler<
         username: newUser.name,
         profileUrl: newUser.profileUrl,
         pubkey: userPubkey?.pubkey,
+        loginToken,
       },
     });
     return;
