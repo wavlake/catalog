@@ -32,7 +32,7 @@ async function uploadS3(sourcePath, key, type) {
     Bucket: s3BucketName,
     Key: key,
     Body: fs.readFileSync(sourcePath),
-    ContentType: "image/*",
+    ContentType: "image/jpeg",
   };
 
   return s3
