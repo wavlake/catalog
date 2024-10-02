@@ -1,12 +1,12 @@
 import log from "loglevel";
 import { NextFunction, Response, Request } from "express";
-import { PrismaClientKnownRequestError } from "@prisma/client/runtime";
+import { Prisma } from "@prisma/client";
 import { FirebaseError } from "firebase-admin";
 import Sentry from "@sentry/node";
 
 // https://www.prisma.io/docs/reference/api-reference/error-reference
 export const errorHandler = (
-  error: PrismaClientKnownRequestError | FirebaseError | any,
+  error: Prisma.PrismaClientKnownRequestError | FirebaseError | any,
   req: Request,
   res: Response,
   next: NextFunction

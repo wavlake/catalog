@@ -193,6 +193,8 @@ const create_album = asyncHandler(async (req, res, next) => {
 
   const cdnImageUrl = await upload_image(request.artwork, newAlbumId, "album");
 
+  console.log("getting here?");
+  console.log(cdnImageUrl);
   return db
     .knex("album")
     .insert(

@@ -1,4 +1,4 @@
-import Jimp from "jimp";
+const { Jimp, JimpMime } = require("jimp");
 import fs from "fs";
 import { AWS_S3_IMAGE_PREFIX } from "../library/constants";
 import s3Client from "../library/s3Client";
@@ -50,9 +50,8 @@ const upload_image = async (
     const { width, height, quality } = TYPE_SETTINGS[type];
     await Jimp.read(uploadPath).then((img) => {
       return img
-        .resize(width, height) // Resize
-        .quality(quality) // Set JPEG quality
-        .writeAsync(convertPath); // Save
+        .resize({ w: width, h: height }) // Resize
+        .write(convertPath, JimpMime.jpeg, { quality: quality }); // Save
     });
 
     // Upload to S3, this returns the URL but we dont use it
