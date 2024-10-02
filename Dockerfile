@@ -1,5 +1,5 @@
 # Custom build image for running application, invoked in app.yaml runtime config
-FROM node:20.17.0-slim
+FROM node:20.17.0
 
 WORKDIR /app
 
