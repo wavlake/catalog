@@ -14,22 +14,22 @@ const TYPE_SETTINGS = {
   artist: {
     width: 1875,
     height: Jimp.AUTO,
-    quality: 60,
+    quality: 70,
   },
   album: {
-    width: 500,
+    width: 1400,
     height: Jimp.AUTO,
-    quality: 60,
+    quality: 70,
   },
   podcast: {
-    width: 1875,
+    width: 1400,
     height: Jimp.AUTO,
-    quality: 60,
+    quality: 70,
   },
   user: {
     width: 500,
     height: Jimp.AUTO,
-    quality: 60,
+    quality: 70,
   },
 };
 
