@@ -55,11 +55,15 @@ async function checkName(name?: string): Promise<string | undefined> {
   let attempts = 0;
   while (!newUserName && attempts < MAX_ATTEMPTS) {
     newUserName = makeRandomName();
-    userExists = await prisma.user.findUnique({
+    const profileUrl = urlFriendly(newUserName);
+
+    // username matches or profileUrl
+    userExists = await prisma.user.findFirst({
       where: {
-        name: newUserName,
+        OR: [{ name: newUserName }, { profileUrl }],
       },
     });
+
     attempts++;
     if (!userExists) {
       return newUserName;
@@ -596,11 +600,12 @@ const create_account = asyncHandler(async (req, res, next) => {
 
   try {
     const profileUrl = urlFriendly(newUserName);
-    const existingUser = await prisma.user.findUnique({
+    const existingUser = await prisma.user.findFirst({
       where: {
-        profileUrl: profileUrl,
+        OR: [{ name: newUserName }, { profileUrl }],
       },
     });
+
     if (existingUser) {
       res.status(400).json({
         success: false,
