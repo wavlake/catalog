@@ -178,7 +178,7 @@ model PlaylistTrack {
   createdAt  DateTime? @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt  DateTime? @default(now()) @map("updated_at") @db.Timestamptz(6)
   orderInt   Int?      @default(0) @map("order_int")
-  trackInfo  TrackInfo @relation(fields: [trackId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "playlist_track_track_id_foreign")
+  trackInfo  TrackInfo? @relation(fields: [trackId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "playlist_track_track_id_foreign")
 
   @@index([playlistId], map: "idx_playlist_track_playlist_id")
   @@map("playlist_track")
