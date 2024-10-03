@@ -28,8 +28,15 @@ export const getPlaylistTracks = async (playlistId: string): Promise<any[]> => {
     },
   });
 
+  // Filter out tracks from playlist that don't have a trackInfo object
+  const filteredTracks = tracks
+    .map((track) => {
+      return track.trackInfo?.id ? track : null;
+    })
+    .filter((track) => track);
+
   // Add OP3 URL prefix to artwork URLs
-  tracks.forEach((track) => {
+  filteredTracks.forEach((track) => {
     track.trackInfo.liveUrl = addOP3URLPrefix({
       url: track.trackInfo.liveUrl,
       albumId: track.trackInfo.albumId,
@@ -37,7 +44,7 @@ export const getPlaylistTracks = async (playlistId: string): Promise<any[]> => {
   });
 
   // Destructure the trackInfo object with orderInt
-  return tracks.map(({ trackInfo, orderInt }) => ({
+  return filteredTracks.map(({ trackInfo, orderInt }) => ({
     ...trackInfo,
     order: orderInt,
   }));
