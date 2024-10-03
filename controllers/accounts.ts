@@ -7,6 +7,7 @@ import {
   internalAmps,
   externalAmps,
   pendingForwards,
+  promoEarnings,
   getMaxAmpDate,
   getMaxTransactionDate,
   getEarningsDetail,
@@ -16,6 +17,7 @@ import {
   getWithdrawDetail,
   getDepositDetail,
   getZapDetail,
+  getTopUpDetail,
 } from "../library/queries/transactions";
 import { TransactionType } from "../library/common";
 import asyncHandler from "express-async-handler";
@@ -33,6 +35,7 @@ import {
   colors,
   animals,
 } from "unique-names-generator";
+import { ResponseObject } from "../types/catalogApi";
 
 function makeRandomName() {
   return uniqueNamesGenerator({
@@ -52,16 +55,21 @@ async function checkName(name?: string): Promise<string | undefined> {
   let attempts = 0;
   while (!newUserName && attempts < MAX_ATTEMPTS) {
     newUserName = makeRandomName();
-    userExists = await prisma.user.findUnique({
+    const profileUrl = urlFriendly(newUserName);
+
+    // username matches or profileUrl
+    userExists = await prisma.user.findFirst({
       where: {
-        name: newUserName,
+        OR: [{ name: newUserName }, { profileUrl }],
       },
     });
+
     attempts++;
     if (!userExists) {
       return newUserName;
     }
   }
+  log.debug("Failed to generate a username");
   return undefined;
 }
 
@@ -360,6 +368,9 @@ const get_tx_id = asyncHandler(async (req, res, next) => {
     case TransactionType.ZAP_SEND:
       data = await getZapSendDetail(userId, id);
       break;
+    case TransactionType.TOPUP:
+      data = await getTopUpDetail(userId, id);
+      break;
     default:
       res.status(400).json({
         success: false,
@@ -402,6 +413,7 @@ const get_txs = asyncHandler(async (req, res, next) => {
       internalAmps(userId),
       externalAmps(userId),
       pendingForwards(userId),
+      promoEarnings(userId),
     ])
     .orderBy("createDate", "desc")
     .paginate({
@@ -588,11 +600,12 @@ const create_account = asyncHandler(async (req, res, next) => {
 
   try {
     const profileUrl = urlFriendly(newUserName);
-    const existingUser = await prisma.user.findUnique({
+    const existingUser = await prisma.user.findFirst({
       where: {
-        profileUrl: profileUrl,
+        OR: [{ name: newUserName }, { profileUrl }],
       },
     });
+
     if (existingUser) {
       res.status(400).json({
         success: false,
@@ -844,7 +857,15 @@ const add_pubkey_to_account = asyncHandler(async (req, res, next) => {
     if (existingPubkey) {
       if (existingPubkey.userId === user.uid) {
         // pubkey is already associated with this user
-        // no need to do anything
+        // update the created at timestamp for the row, so it is treated as the most recent pubkey
+        await prisma.userPubkey.update({
+          where: {
+            pubkey: pubkey,
+          },
+          data: {
+            createdAt: new Date(),
+          },
+        });
         res.status(200).json({
           success: true,
         });
@@ -1014,6 +1035,120 @@ const check_user_verified = asyncHandler(async (req, res, next) => {
   });
 });
 
+const create_new_user = asyncHandler<
+  {},
+  ResponseObject<{
+    uid: string;
+    username: string;
+    profileUrl: string;
+    pubkey: string;
+  }>,
+  {
+    username?: string;
+    firstName?: string;
+    lastName?: string;
+    pubkey?: string;
+  }
+>(async (req, res, next) => {
+  const userId = req["uid"];
+  const { username, firstName, lastName, pubkey } = req.body;
+
+  try {
+    // Check for username collision if provided
+    const [existingUser, existingPubkey] = await Promise.all([
+      username ? prisma.user.findFirst({ where: { name: username } }) : null,
+      pubkey ? prisma.userPubkey.findFirst({ where: { pubkey } }) : null,
+    ]);
+
+    if (existingUser) {
+      res.status(400).json({
+        success: false,
+        error: "Username is already taken",
+      });
+      return;
+    }
+
+    if (existingPubkey) {
+      res.status(400).json({
+        success: false,
+        error: "Pubkey is registered to another account",
+      });
+      return;
+    }
+
+    // Generate a random username if not provided
+    const finalUsername = await checkName(username);
+
+    if (!finalUsername) {
+      res.status(400).json({
+        success: false,
+        error: "Failed to generate a username",
+      });
+      return;
+    }
+
+    log.debug("username", finalUsername);
+
+    // create the new user record
+    const newUser = await prisma.user.create({
+      data: {
+        id: userId,
+        name: finalUsername,
+        profileUrl: urlFriendly(finalUsername),
+      },
+    });
+
+    // Create user pubkey and verification records that reference the new user record
+    const [userPubkey, userVerification] = await Promise.allSettled([
+      pubkey
+        ? prisma.userPubkey.create({
+            data: {
+              userId: userId,
+              pubkey: pubkey,
+              createdAt: new Date(),
+            },
+          })
+        : null,
+
+      firstName && lastName
+        ? prisma.userVerification.create({
+            data: {
+              userId: userId,
+              firstName: firstName,
+              lastName: lastName,
+              ip: req.ip,
+            },
+          })
+        : null,
+    ]);
+
+    if (userPubkey.status === "rejected") {
+      log.error("Error creating user pubkey", userPubkey.reason);
+    }
+    if (userVerification.status === "rejected") {
+      log.error("Error creating user verification", userVerification.reason);
+    }
+
+    res.status(201).json({
+      success: true,
+      data: {
+        uid: userId,
+        username: newUser.name,
+        profileUrl: newUser.profileUrl,
+        pubkey:
+          userPubkey.status === "fulfilled"
+            ? userPubkey.value.pubkey
+            : undefined,
+      },
+    });
+    return;
+  } catch (err) {
+    log.debug("Error creating new user", req.body);
+    log.debug(err);
+    next(err);
+  }
+});
+
 export default {
   check_user_verified,
   create_update_lnaddress,
@@ -1037,4 +1172,5 @@ export default {
   delete_pubkey_from_account,
   get_pubkey_metadata,
   update_metadata,
+  create_new_user,
 };
