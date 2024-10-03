@@ -1,13 +1,13 @@
 steps:
-  - name: node:16.20.0
+  - name: node:20.17.0
     id: install
     entrypoint: npm
     args: ["install"]
-  - name: node:16.20.0
+  - name: node:20.17.0
     id: build
     entrypoint: npm
     args: ["run", "build"]
-  - name: node:16.20.0
+  - name: node:20.17.0
     id: create env
     entrypoint: npm
     args: ["run", "create-env"]
@@ -44,7 +44,7 @@ steps:
         "ZBD_API_KEY",
         "ZBD_OAUTH_CLIENT_SECRET",
       ]
-  - name: node:16.20.0
+  - name: node:20.17.0
     id: migrate db
     entrypoint: npm
     args: ["run", "migrate"]
@@ -55,7 +55,7 @@ steps:
       - "PG_DATABASE=${_PG_DATABASE}"
       - "PG_USER=${_PG_USER}"
     secretEnv: ["PG_PASSWORD"]
-  - name: node:16.20.0
+  - name: node:20.17.0
     id: generate prisma
     entrypoint: npm
     args: ["run", "generate"]
