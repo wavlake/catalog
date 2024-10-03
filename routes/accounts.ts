@@ -39,7 +39,7 @@ const limiter = rateLimit({
 
 // USER
 router.post("/", accountsController.create_account);
-router.post("/user", limiter, accountsController.create_new_user);
+router.post("/user", isAuthorized, accountsController.create_new_user);
 router.get("/", isAuthorized, accountsController.get_account);
 router.get(
   "/public/verified/:userProfileUrl",

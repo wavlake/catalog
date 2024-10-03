@@ -857,7 +857,15 @@ const add_pubkey_to_account = asyncHandler(async (req, res, next) => {
     if (existingPubkey) {
       if (existingPubkey.userId === user.uid) {
         // pubkey is already associated with this user
-        // no need to do anything
+        // update the created at timestamp for the row, so it is treated as the most recent pubkey
+        await prisma.userPubkey.update({
+          where: {
+            pubkey: pubkey,
+          },
+          data: {
+            createdAt: new Date(),
+          },
+        });
         res.status(200).json({
           success: true,
         });
@@ -1031,30 +1039,19 @@ const create_new_user = asyncHandler<
   {},
   ResponseObject<{
     uid: string;
-    email: string;
     username: string;
     profileUrl: string;
     pubkey: string;
-    loginToken: string;
   }>,
   {
-    email: string;
-    password: string;
     username?: string;
     firstName?: string;
     lastName?: string;
     pubkey?: string;
   }
 >(async (req, res, next) => {
-  const { email, password, username, firstName, lastName, pubkey } = req.body;
-
-  if (!email || !password) {
-    res.status(400).json({
-      success: false,
-      error: "Email and password are required",
-    });
-    return;
-  }
+  const userId = req["uid"];
+  const { username, firstName, lastName, pubkey } = req.body;
 
   try {
     // Check for username collision if provided
@@ -1079,23 +1076,6 @@ const create_new_user = asyncHandler<
       return;
     }
 
-    // Validate email with regex
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
-      res.status(400).json({
-        success: false,
-        error: "Invalid email format",
-      });
-      return;
-    }
-
-    // Create new Firebase user
-    const firebaseUser = await auth().createUser({
-      email,
-      password,
-    });
-    log.debug("Created new Firebase user", firebaseUser.uid);
-
     // Generate a random username if not provided
     const finalUsername = await checkName(username);
 
@@ -1112,38 +1092,35 @@ const create_new_user = asyncHandler<
     // create the new user record
     const newUser = await prisma.user.create({
       data: {
-        id: firebaseUser.uid,
+        id: userId,
         name: finalUsername,
         profileUrl: urlFriendly(finalUsername),
       },
     });
 
     // Create user pubkey and verification records that reference the new user record
-    const [userPubkey, userVerification, loginToken] = await Promise.allSettled(
-      [
-        pubkey
-          ? prisma.userPubkey.create({
-              data: {
-                userId: firebaseUser.uid,
-                pubkey: pubkey,
-                createdAt: new Date(),
-              },
-            })
-          : null,
+    const [userPubkey, userVerification] = await Promise.allSettled([
+      pubkey
+        ? prisma.userPubkey.create({
+            data: {
+              userId: userId,
+              pubkey: pubkey,
+              createdAt: new Date(),
+            },
+          })
+        : null,
 
-        firstName && lastName
-          ? prisma.userVerification.create({
-              data: {
-                userId: firebaseUser.uid,
-                firstName: firstName,
-                lastName: lastName,
-                ip: req.ip,
-              },
-            })
-          : null,
-        auth().createCustomToken(firebaseUser.uid),
-      ]
-    );
+      firstName && lastName
+        ? prisma.userVerification.create({
+            data: {
+              userId: userId,
+              firstName: firstName,
+              lastName: lastName,
+              ip: req.ip,
+            },
+          })
+        : null,
+    ]);
 
     if (userPubkey.status === "rejected") {
       log.error("Error creating user pubkey", userPubkey.reason);
@@ -1151,23 +1128,17 @@ const create_new_user = asyncHandler<
     if (userVerification.status === "rejected") {
       log.error("Error creating user verification", userVerification.reason);
     }
-    if (loginToken.status === "rejected") {
-      log.error("Error creating login token", loginToken.reason);
-    }
 
     res.status(201).json({
       success: true,
       data: {
-        uid: firebaseUser.uid,
-        email: firebaseUser.email,
+        uid: userId,
         username: newUser.name,
         profileUrl: newUser.profileUrl,
         pubkey:
           userPubkey.status === "fulfilled"
             ? userPubkey.value.pubkey
             : undefined,
-        loginToken:
-          loginToken.status === "fulfilled" ? loginToken.value : undefined,
       },
     });
     return;
