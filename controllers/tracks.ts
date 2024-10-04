@@ -39,10 +39,12 @@ const get_featured_tracks = asyncHandler(async (req, res, next) => {
   } else {
     forYouTracks = await getPlaylistTracks(DEFAULT_FOR_YOU_PLAYLIST_ID);
   }
+
+  const shuffledFeaturedTracks = shuffle(featuredTracks);
   res.send({
     success: true,
     data: {
-      featured: featuredTracks,
+      featured: shuffledFeaturedTracks,
       forYou: forYouTracks,
       trending: trendingTracks,
       newTracks: newTracks,
