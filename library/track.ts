@@ -97,9 +97,6 @@ export const getUserRecentTracks = async (pubkey: string): Promise<any[]> => {
       artistId: true,
       genre: true,
     },
-    orderBy: {
-      order: "asc",
-    },
   });
 
   // Add OP3 URL prefix to artwork URLs
@@ -110,5 +107,10 @@ export const getUserRecentTracks = async (pubkey: string): Promise<any[]> => {
     });
   });
 
-  return tracks;
+  // // order by amp createdAt desc
+  const orderedTracks = userTracks.map((userTrack) =>
+    tracks.find((track) => track.id === userTrack.trackId)
+  );
+
+  return orderedTracks;
 };
