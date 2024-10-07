@@ -304,3 +304,32 @@ export const getTotalPromoEarnedByUser = async (
     ? Number(userTotalMsatEarned.total_msat_earned)
     : 0;
 };
+
+// TODO - This uses UTC time, need to convert to local time
+export const getTotalPromoEarnedByUserToday = async (
+  userId: string,
+  promoId: string
+): Promise<number> => {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0); // Set to start of day
+
+  const userTotalMsatEarned = await db
+    .knex("promo_reward")
+    .join("promo", "promo_reward.promo_id", "promo.id")
+    .where({
+      "promo.id": promoId,
+      "promo_reward.user_id": userId,
+    })
+    .andWhere("promo_reward.is_pending", false)
+    .andWhere("promo_reward.created_at", ">=", today)
+    .sum(
+      db.knex.raw(
+        "promo.msat_payout_amount * promo_reward.msat_amount as total_msat_earned"
+      )
+    )
+    .first();
+
+  return userTotalMsatEarned
+    ? Number(userTotalMsatEarned.total_msat_earned)
+    : 0;
+};

@@ -4,6 +4,7 @@ import {
   getPromoByContentId,
   isUserEligibleForPromo,
   getTotalPromoEarnedByUser,
+  getTotalPromoEarnedByUserToday,
 } from "../library/promos";
 import { getContentInfoFromId } from "../library/content";
 
@@ -26,10 +27,15 @@ export const getActivePromos = asyncHandler(async (req, res, next) => {
     activePromos.map(async (promo) => {
       const contentMetadata = await getContentInfoFromId(promo.contentId);
       const totalEarned = await getTotalPromoEarnedByUser(accountId, promo.id);
+      const totalEarnedToday = await getTotalPromoEarnedByUserToday(
+        accountId,
+        promo.id
+      );
+
       if (!contentMetadata) {
         return;
       }
-      return { ...promo, contentMetadata, totalEarned };
+      return { ...promo, contentMetadata, totalEarned, totalEarnedToday };
     })
   );
   res.json({
@@ -63,6 +69,11 @@ export const getPromoByContent = asyncHandler(async (req, res, next) => {
     activePromo.id
   );
 
+  const totalEarnedToday = await getTotalPromoEarnedByUserToday(
+    accountId,
+    activePromo.id
+  );
+
   if (!activePromo) {
     res.json({
       success: true,
@@ -73,7 +84,12 @@ export const getPromoByContent = asyncHandler(async (req, res, next) => {
 
   res.json({
     success: true,
-    data: { ...activePromo, rewardsRemaining: isEligible, totalEarned },
+    data: {
+      ...activePromo,
+      rewardsRemaining: isEligible,
+      totalEarned,
+      totalEarnedToday,
+    },
   });
   return;
 });
