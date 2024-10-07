@@ -25,10 +25,11 @@ export const getActivePromos = asyncHandler(async (req, res, next) => {
   const activePromosWithContentMetadata = await Promise.all(
     activePromos.map(async (promo) => {
       const contentMetadata = await getContentInfoFromId(promo.contentId);
+      const totalEarned = await getTotalPromoEarnedByUser(accountId, promo.id);
       if (!contentMetadata) {
         return;
       }
-      return { ...promo, contentMetadata };
+      return { ...promo, contentMetadata, totalEarned };
     })
   );
   res.json({
