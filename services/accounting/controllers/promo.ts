@@ -3,7 +3,13 @@ log.setLevel((process.env.LOG_LEVEL as LogLevelDesc) || "info");
 import asyncHandler from "express-async-handler";
 import db from "@library/db";
 import core from "express-serve-static-core";
-import { isPromoActive, isUserEligibleForReward } from "@library/promos";
+import {
+  EARNING_INTERVAL,
+  getTotalPromoEarnedByUserToday,
+  isPromoActive,
+  isUserEligibleForReward,
+} from "@library/promos";
+import { getContentInfoFromId } from "@library/content";
 
 const createPromoReward = asyncHandler<core.ParamsDictionary, any, any>(
   async (req, res, next) => {
@@ -84,10 +90,26 @@ const createPromoReward = asyncHandler<core.ParamsDictionary, any, any>(
         promoId,
         true
       );
+      const totalEarnedToday = await getTotalPromoEarnedByUserToday(
+        userId,
+        promo.id
+      );
+      const contentMetadata = await getContentInfoFromId(promo.contentId);
+
+      const wholeEarningPeriods = Math.floor(
+        contentMetadata.duration / EARNING_INTERVAL
+      );
+      const dailyAvailableEarnings =
+        wholeEarningPeriods * promo.msatPayoutAmount;
+
       res.status(200).json({
         success: true,
         message: "Promo reward created",
-        data: { rewardsRemaining: userStillEligible },
+        data: {
+          rewardsRemaining: userStillEligible,
+          totalEarnedToday,
+          dailyAvailableEarnings,
+        },
       });
       return;
     }

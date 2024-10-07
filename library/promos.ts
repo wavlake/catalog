@@ -4,6 +4,7 @@ import db from "./db";
 import prisma from "../prisma/client";
 
 const MAX_DAILY_USER_REWARDS = 500000;
+export const EARNING_INTERVAL = 60; // seconds;
 
 export const identifyActivePromosWithBudgetRemaining = async (
   userId: string

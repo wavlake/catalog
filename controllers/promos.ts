@@ -5,10 +5,10 @@ import {
   isUserEligibleForPromo,
   getTotalPromoEarnedByUser,
   getTotalPromoEarnedByUserToday,
+  EARNING_INTERVAL,
 } from "../library/promos";
 import { getContentInfoFromId } from "../library/content";
 
-const EARNING_INTERVAL = 60; // seconds;
 export const getActivePromos = asyncHandler(async (req, res, next) => {
   const request = {
     accountId: req["uid"],
