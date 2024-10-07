@@ -26,7 +26,7 @@ export const identifyActivePromosWithBudgetRemaining = async (
     return [];
   }
 
-  const promosWithBudget = activePromos.filter(async (promo) => {
+  return activePromos.filter(async (promo) => {
     const totalSettledRewards = await getTotalSettledRewards(
       parseInt(promo.id)
     );
@@ -35,23 +35,6 @@ export const identifyActivePromosWithBudgetRemaining = async (
     );
     return promo.msatBudget > totalSettledRewards + totalPendingRewards;
   });
-
-  if (promosWithBudget.length === 0) {
-    return [];
-  }
-
-  const userEligiblePromos = await Promise.all(
-    promosWithBudget.map(async (promo) => {
-      const isEligible = await isUserEligibleForPromo(userId, promo.id);
-      if (!isEligible) {
-        return;
-      }
-      return promo;
-    })
-  );
-
-  // Filter out undefined values
-  return userEligiblePromos.filter((promo) => promo);
 };
 
 async function deactivatePromo(promoId: number) {
