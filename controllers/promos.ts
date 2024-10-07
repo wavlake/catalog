@@ -3,6 +3,7 @@ import {
   identifyActivePromosWithBudgetRemaining,
   getPromoByContentId,
   isUserEligibleForPromo,
+  getTotalPromoEarnedByUser,
 } from "../library/promos";
 import { getContentInfoFromId } from "../library/content";
 
@@ -56,6 +57,11 @@ export const getPromoByContent = asyncHandler(async (req, res, next) => {
 
   const isEligible = await isUserEligibleForPromo(accountId, activePromo.id);
 
+  const totalEarned = await getTotalPromoEarnedByUser(
+    accountId,
+    activePromo.id
+  );
+
   if (!activePromo) {
     res.json({
       success: true,
@@ -66,7 +72,7 @@ export const getPromoByContent = asyncHandler(async (req, res, next) => {
 
   res.json({
     success: true,
-    data: { ...activePromo, rewardsRemaining: isEligible },
+    data: { ...activePromo, rewardsRemaining: isEligible, totalEarned },
   });
   return;
 });
