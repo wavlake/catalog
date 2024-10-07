@@ -40,15 +40,14 @@ export const getActivePromos = asyncHandler(async (req, res, next) => {
       const wholeEarningPeriods = Math.floor(
         contentMetadata.duration / EARNING_INTERVAL
       );
-      const dailyAvailableEarnings =
-        wholeEarningPeriods * promo.msatPayoutAmount;
+      const availableEarnings = wholeEarningPeriods * promo.msatPayoutAmount;
 
       return {
         ...promo,
         contentMetadata,
         totalEarned,
         totalEarnedToday,
-        dailyAvailableEarnings,
+        availableEarnings,
       };
     })
   );
@@ -91,8 +90,7 @@ export const getPromoByContent = asyncHandler(async (req, res, next) => {
   const wholeEarningPeriods = Math.floor(
     contentMetadata.duration / EARNING_INTERVAL
   );
-  const dailyAvailableEarnings =
-    wholeEarningPeriods * activePromo.msatPayoutAmount;
+  const availableEarnings = wholeEarningPeriods * activePromo.msatPayoutAmount;
 
   if (!activePromo) {
     res.json({
@@ -109,7 +107,7 @@ export const getPromoByContent = asyncHandler(async (req, res, next) => {
       rewardsRemaining: isEligible,
       totalEarned,
       totalEarnedToday,
-      dailyAvailableEarnings,
+      availableEarnings,
     },
   });
   return;

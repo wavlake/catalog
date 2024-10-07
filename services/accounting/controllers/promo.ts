@@ -99,8 +99,7 @@ const createPromoReward = asyncHandler<core.ParamsDictionary, any, any>(
       const wholeEarningPeriods = Math.floor(
         contentMetadata.duration / EARNING_INTERVAL
       );
-      const dailyAvailableEarnings =
-        wholeEarningPeriods * promo.msatPayoutAmount;
+      const availableEarnings = wholeEarningPeriods * promo.msatPayoutAmount;
 
       res.status(200).json({
         success: true,
@@ -108,7 +107,7 @@ const createPromoReward = asyncHandler<core.ParamsDictionary, any, any>(
         data: {
           rewardsRemaining: userStillEligible,
           totalEarnedToday,
-          dailyAvailableEarnings,
+          availableEarnings,
         },
       });
       return;
