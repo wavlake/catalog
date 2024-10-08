@@ -277,11 +277,8 @@ export const getTotalPromoEarnedByUser = async (
     .join("promo", "promo_reward.promo_id", "promo.id")
     .where({ "promo.id": promoId, "promo_reward.user_id": userId })
     .andWhere("promo_reward.is_pending", false)
-    .sum(
-      db.knex.raw(
-        "promo.msat_payout_amount * promo_reward.msat_amount as total_msat_earned"
-      )
-    )
+    .sum("promo.msat_payout_amount as total_msat_earned")
+    .groupBy("promo.msat_payout_amount")
     .first();
 
   return userTotalMsatEarned
@@ -306,11 +303,8 @@ export const getTotalPromoEarnedByUserToday = async (
     })
     .andWhere("promo_reward.is_pending", false)
     .andWhere("promo_reward.created_at", ">=", today)
-    .sum(
-      db.knex.raw(
-        "promo.msat_payout_amount * promo_reward.msat_amount as total_msat_earned"
-      )
-    )
+    .sum("promo.msat_payout_amount as total_msat_earned")
+    .groupBy("promo.msat_payout_amount")
     .first();
 
   return userTotalMsatEarned
