@@ -27,15 +27,15 @@ export const getActivePromos = asyncHandler(async (req, res, next) => {
   const activePromosWithContentMetadata = await Promise.all(
     activePromos.map(async (promo) => {
       const contentMetadata = await getContentInfoFromId(promo.contentId);
+      if (!contentMetadata) {
+        return;
+      }
+
       const totalEarned = await getTotalPromoEarnedByUser(accountId, promo.id);
       const totalEarnedToday = await getTotalPromoEarnedByUserToday(
         accountId,
         promo.id
       );
-
-      if (!contentMetadata) {
-        return;
-      }
 
       const wholeEarningPeriods = Math.floor(
         contentMetadata.duration / EARNING_INTERVAL
