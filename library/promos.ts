@@ -190,7 +190,7 @@ export const isUserEligibleForPromo = async (
     userDailyContentRewards.content_id
   );
 
-  const durationRounded = Math.floor(contentDuration / 60);
+  const durationRounded = Math.floor(contentDuration / EARNING_INTERVAL);
 
   if (
     userDailyContentRewards &&
