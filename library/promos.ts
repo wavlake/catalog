@@ -6,9 +6,9 @@ import prisma from "../prisma/client";
 const MAX_DAILY_USER_REWARDS = 500000;
 export const EARNING_INTERVAL = 60; // seconds;
 
-export const identifyActivePromosWithBudgetRemaining = async (
-  userId: string
-): Promise<any[]> => {
+export const identifyActivePromosWithBudgetRemaining = async (): Promise<
+  any[]
+> => {
   const activePromos = await db
     .knex("promo")
     .select(
@@ -35,6 +35,35 @@ export const identifyActivePromosWithBudgetRemaining = async (
     );
     return promo.msatBudget > totalSettledRewards + totalPendingRewards;
   });
+};
+
+export const identifyPromosWhereUserEarnedToday = async (
+  accountId: string
+): Promise<any[]> => {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0); // Set to start of day
+
+  const userPromos = await db
+    .knex("promo_reward")
+    .join("promo", "promo_reward.promo_id", "promo.id")
+    .select(
+      "promo.id as id",
+      "promo.msat_budget as msatBudget",
+      "promo.msat_payout_amount as msatPayoutAmount",
+      "promo.content_id as contentId",
+      "promo.content_type as contentType"
+    )
+    .where("promo_reward.user_id", accountId)
+    .andWhere("promo_reward.created_at", ">=", today)
+    .andWhere("promo_reward.is_pending", false)
+    .groupBy(
+      "promo.id",
+      "promo.msat_payout_amount",
+      "promo.content_id",
+      "promo.content_type"
+    );
+
+  return userPromos;
 };
 
 async function deactivatePromo(promoId: number) {
@@ -249,7 +278,6 @@ export const getPromoByContentId = async (contentId: string): Promise<any> => {
     },
     where: {
       contentId: contentId,
-      isActive: true,
       isPending: false,
       isPaid: true,
     },
@@ -261,11 +289,7 @@ export const getPromoByContentId = async (contentId: string): Promise<any> => {
 
   const isActive = await isPromoActive(promo.id, promo.msatBudget);
 
-  if (!isActive) {
-    return null;
-  }
-
-  return promo;
+  return { ...promo, isPromoActive: isActive };
 };
 
 export const getTotalPromoEarnedByUser = async (
@@ -277,7 +301,7 @@ export const getTotalPromoEarnedByUser = async (
     .join("promo", "promo_reward.promo_id", "promo.id")
     .where({ "promo.id": promoId, "promo_reward.user_id": userId })
     .andWhere("promo_reward.is_pending", false)
-    .sum("promo.msat_payout_amount as total_msat_earned")
+    .sum("promo_reward.msat_amount as total_msat_earned")
     .groupBy("promo.msat_payout_amount")
     .first();
 
@@ -303,7 +327,7 @@ export const getTotalPromoEarnedByUserToday = async (
     })
     .andWhere("promo_reward.is_pending", false)
     .andWhere("promo_reward.created_at", ">=", today)
-    .sum("promo.msat_payout_amount as total_msat_earned")
+    .sum("promo_reward.msat_amount as total_msat_earned")
     .groupBy("promo.msat_payout_amount")
     .first();
 

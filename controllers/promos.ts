@@ -1,6 +1,7 @@
 import asyncHandler from "express-async-handler";
 import {
   identifyActivePromosWithBudgetRemaining,
+  identifyPromosWhereUserEarnedToday,
   getPromoByContentId,
   isUserEligibleForPromo,
   getTotalPromoEarnedByUser,
@@ -23,9 +24,18 @@ export const getActivePromos = asyncHandler(async (req, res, next) => {
     return;
   }
 
-  const activePromos = await identifyActivePromosWithBudgetRemaining(accountId);
+  const activePromos = await identifyActivePromosWithBudgetRemaining();
+  const userPromos = await identifyPromosWhereUserEarnedToday(accountId);
+  // Combine and remove duplicates
+  const allPromos = [...activePromos, ...userPromos].filter(
+    (promo, index, self) =>
+      index ===
+      self.findIndex(
+        (t) => t.id === promo.id && t.contentId === promo.contentId
+      )
+  );
   const activePromosWithContentMetadata = await Promise.all(
-    activePromos.map(async (promo) => {
+    allPromos.map(async (promo) => {
       const contentMetadata = await getContentInfoFromId(promo.contentId);
       if (!contentMetadata) {
         return;
@@ -93,7 +103,7 @@ export const getPromoByContent = asyncHandler(async (req, res, next) => {
   );
   const availableEarnings = wholeEarningPeriods * activePromo.msatPayoutAmount;
 
-  if (!activePromo) {
+  if (!activePromo && totalEarnedToday != 0) {
     res.json({
       success: true,
       data: null,
