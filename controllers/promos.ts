@@ -3,6 +3,9 @@ import {
   identifyActivePromosWithBudgetRemaining,
   getPromoByContentId,
   isUserEligibleForPromo,
+  getTotalPromoEarnedByUser,
+  getTotalPromoEarnedByUserToday,
+  EARNING_INTERVAL,
 } from "../library/promos";
 import { getContentInfoFromId } from "../library/content";
 
@@ -27,7 +30,26 @@ export const getActivePromos = asyncHandler(async (req, res, next) => {
       if (!contentMetadata) {
         return;
       }
-      return { ...promo, contentMetadata };
+
+      const totalEarned = await getTotalPromoEarnedByUser(accountId, promo.id);
+      const totalEarnedToday = await getTotalPromoEarnedByUserToday(
+        accountId,
+        promo.id
+      );
+
+      const wholeEarningPeriods = Math.floor(
+        contentMetadata.duration / EARNING_INTERVAL
+      );
+      const availableEarnings = wholeEarningPeriods * promo.msatPayoutAmount;
+
+      return {
+        ...promo,
+        contentMetadata,
+        totalEarned,
+        totalEarnedToday,
+        availableEarnings,
+        rewardsRemaining: totalEarned < availableEarnings,
+      };
     })
   );
   res.json({
@@ -51,10 +73,25 @@ export const getPromoByContent = asyncHandler(async (req, res, next) => {
     });
     return;
   }
-
   const activePromo = await getPromoByContentId(contentId);
+  const contentMetadata = await getContentInfoFromId(contentId);
 
   const isEligible = await isUserEligibleForPromo(accountId, activePromo.id);
+
+  const totalEarned = await getTotalPromoEarnedByUser(
+    accountId,
+    activePromo.id
+  );
+
+  const totalEarnedToday = await getTotalPromoEarnedByUserToday(
+    accountId,
+    activePromo.id
+  );
+
+  const wholeEarningPeriods = Math.floor(
+    contentMetadata.duration / EARNING_INTERVAL
+  );
+  const availableEarnings = wholeEarningPeriods * activePromo.msatPayoutAmount;
 
   if (!activePromo) {
     res.json({
@@ -66,7 +103,13 @@ export const getPromoByContent = asyncHandler(async (req, res, next) => {
 
   res.json({
     success: true,
-    data: { ...activePromo, rewardsRemaining: isEligible },
+    data: {
+      ...activePromo,
+      rewardsRemaining: isEligible,
+      totalEarned,
+      totalEarnedToday,
+      availableEarnings,
+    },
   });
   return;
 });

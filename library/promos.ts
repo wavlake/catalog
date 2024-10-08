@@ -4,6 +4,7 @@ import db from "./db";
 import prisma from "../prisma/client";
 
 const MAX_DAILY_USER_REWARDS = 500000;
+export const EARNING_INTERVAL = 60; // seconds;
 
 export const identifyActivePromosWithBudgetRemaining = async (
   userId: string
@@ -25,7 +26,7 @@ export const identifyActivePromosWithBudgetRemaining = async (
     return [];
   }
 
-  const promosWithBudget = activePromos.filter(async (promo) => {
+  return activePromos.filter(async (promo) => {
     const totalSettledRewards = await getTotalSettledRewards(
       parseInt(promo.id)
     );
@@ -34,23 +35,6 @@ export const identifyActivePromosWithBudgetRemaining = async (
     );
     return promo.msatBudget > totalSettledRewards + totalPendingRewards;
   });
-
-  if (promosWithBudget.length === 0) {
-    return [];
-  }
-
-  const userEligiblePromos = await Promise.all(
-    promosWithBudget.map(async (promo) => {
-      const isEligible = await isUserEligibleForPromo(userId, promo.id);
-      if (!isEligible) {
-        return;
-      }
-      return promo;
-    })
-  );
-
-  // Filter out undefined values
-  return userEligiblePromos.filter((promo) => promo);
 };
 
 async function deactivatePromo(promoId: number) {
@@ -282,4 +266,48 @@ export const getPromoByContentId = async (contentId: string): Promise<any> => {
   }
 
   return promo;
+};
+
+export const getTotalPromoEarnedByUser = async (
+  userId: string,
+  promoId: string
+): Promise<number> => {
+  const userTotalMsatEarned = await db
+    .knex("promo_reward")
+    .join("promo", "promo_reward.promo_id", "promo.id")
+    .where({ "promo.id": promoId, "promo_reward.user_id": userId })
+    .andWhere("promo_reward.is_pending", false)
+    .sum("promo.msat_payout_amount as total_msat_earned")
+    .groupBy("promo.msat_payout_amount")
+    .first();
+
+  return userTotalMsatEarned
+    ? Number(userTotalMsatEarned.total_msat_earned)
+    : 0;
+};
+
+// TODO - This uses UTC time, need to convert to local time
+export const getTotalPromoEarnedByUserToday = async (
+  userId: string,
+  promoId: string
+): Promise<number> => {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0); // Set to start of day
+
+  const userTotalMsatEarned = await db
+    .knex("promo_reward")
+    .join("promo", "promo_reward.promo_id", "promo.id")
+    .where({
+      "promo.id": promoId,
+      "promo_reward.user_id": userId,
+    })
+    .andWhere("promo_reward.is_pending", false)
+    .andWhere("promo_reward.created_at", ">=", today)
+    .sum("promo.msat_payout_amount as total_msat_earned")
+    .groupBy("promo.msat_payout_amount")
+    .first();
+
+  return userTotalMsatEarned
+    ? Number(userTotalMsatEarned.total_msat_earned)
+    : 0;
 };

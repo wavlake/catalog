@@ -5,7 +5,7 @@ import { SplitContentTypes } from "./userHelper";
 import prisma from "../prisma/client";
 import { addOP3URLPrefix } from "./op3";
 
-export async function getContentInfoFromId(contentId: string): Promise<any> {
+export async function getContentInfoFromId(contentId: string) {
   const type = await getType(contentId);
 
   if (type != "track") {
