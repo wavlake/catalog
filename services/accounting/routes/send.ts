@@ -13,7 +13,7 @@ const router = express.Router();
 // Rate limit
 const limiter = rateLimit({
   windowMs: rateTimeWindow,
-  max: 1, // Limit each user to 1 requests per `window` (here, per 1 minute)
+  max: 1, // Limit each user to 1 requests per `window` (here, per 5 seconds)
   standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
   legacyHeaders: false, // Disable the `X-RateLimit-*` headers,
   keyGenerator: (req, res) => req["uid"],
@@ -28,7 +28,7 @@ router.post(
   isWalletVerified,
   sendController.sendKeysend
 );
-router.post("/", isAuthorized, sendController.createSend);
+router.post("/", isAuthorized, limiter, sendController.createSend);
 
 // Export router
 export default router;
