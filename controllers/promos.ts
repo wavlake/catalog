@@ -48,7 +48,7 @@ export const getActivePromos = asyncHandler(async (req, res, next) => {
         totalEarned,
         totalEarnedToday,
         availableEarnings,
-        rewardsRemaining: totalEarned < availableEarnings,
+        rewardsRemaining: totalEarnedToday < availableEarnings,
       };
     })
   );
