@@ -7,7 +7,6 @@ import {
 import { PaymentStatus } from "@library/zbd/constants";
 import { handleCompletedForward } from "@library/withdraw";
 import axios from "axios";
-import { ZBDSendPaymentResponse } from "@library/zbd/responseInterfaces";
 const log = require("loglevel");
 log.setLevel(process.env.LOGLEVEL);
 
