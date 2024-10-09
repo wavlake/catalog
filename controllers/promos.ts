@@ -9,135 +9,127 @@ import {
 } from "../library/promos";
 import { getContentInfoFromId } from "../library/content";
 import { PromoResponseData } from "../library/common";
-import { Response } from "express";
+import { ResponseObject } from "../types/catalogApi";
 
-interface PromoResponse extends Response {
-  data?: PromoResponseData;
-}
+export const getActivePromos = asyncHandler<
+  {},
+  ResponseObject<PromoResponseData[]>,
+  {}
+>(async (req, res, next) => {
+  const request = {
+    accountId: req["uid"],
+  };
+  const { accountId } = request;
 
-interface PromoResponseList extends Response {
-  data: PromoResponseData[];
-}
-
-export const getActivePromos = asyncHandler(
-  async (req, res: PromoResponseList, next) => {
-    const request = {
-      accountId: req["uid"],
-    };
-    const { accountId } = request;
-
-    if (!accountId) {
-      res.status(400).send({
-        success: false,
-        error: "Missing accountId",
-      });
-      return;
-    }
-
-    const activePromos = await identifyActivePromosWithBudgetRemaining();
-    const userPromos = await identifyPromosWhereUserEarnedToday(accountId);
-    // Combine and remove duplicates
-    const allPromos = [...activePromos, ...userPromos].filter(
-      (promo, index, self) =>
-        index ===
-        self.findIndex(
-          (t) => t.id === promo.id && t.contentId === promo.contentId
-        )
-    );
-    const activePromosWithContentMetadata = await Promise.all(
-      allPromos.map(async (promo) => {
-        const contentMetadata = await getContentInfoFromId(promo.contentId);
-        if (!contentMetadata) {
-          return;
-        }
-
-        const totalEarned = await getTotalPromoEarnedByUser(
-          accountId,
-          promo.id
-        );
-        const totalEarnedToday = await getTotalPromoEarnedByUserToday(
-          accountId,
-          promo.id
-        );
-
-        const totalPossibleEarningsForUser =
-          await getTotalPossibleEarningsForPromoForUser(
-            contentMetadata.duration,
-            promo.msatPayoutAmount
-          );
-
-        return {
-          ...promo,
-          contentMetadata,
-          promoUser: {
-            lifetimeEarnings: totalEarned,
-            totalEarnedToday: totalEarnedToday,
-            availableEarnings: totalPossibleEarningsForUser,
-            canEarnToday: totalEarnedToday < totalPossibleEarningsForUser,
-          },
-        };
-      })
-    );
-    res.json({
-      success: true,
-      data: activePromosWithContentMetadata,
+  if (!accountId) {
+    res.status(400).send({
+      success: false,
+      error: "Missing accountId",
     });
     return;
   }
-);
 
-export const getPromoByContent = asyncHandler(
-  async (req, res: PromoResponse, next) => {
-    const request = {
-      accountId: req["uid"],
-    };
-    const { accountId } = request;
-    const { contentId } = req.params;
+  const activePromos = await identifyActivePromosWithBudgetRemaining();
+  const userPromos = await identifyPromosWhereUserEarnedToday(accountId);
+  // Combine and remove duplicates
+  const allPromos = [...activePromos, ...userPromos].filter(
+    (promo, index, self) =>
+      index ===
+      self.findIndex(
+        (t) => t.id === promo.id && t.contentId === promo.contentId
+      )
+  );
+  const activePromosWithContentMetadata = await Promise.all(
+    allPromos.map(async (promo) => {
+      const contentMetadata = await getContentInfoFromId(promo.contentId);
+      if (!contentMetadata) {
+        return;
+      }
 
-    if (!contentId) {
-      res.status(400).send({
-        success: false,
-        error: "Missing contentId",
-      });
-      return;
-    }
-    const promo = await getPromoByContentId(contentId);
-
-    if (!promo.isActive) {
-      res.json({
-        success: true,
-        data: null,
-      });
-      return;
-    }
-
-    const contentMetadata = await getContentInfoFromId(contentId);
-
-    const totalEarned = await getTotalPromoEarnedByUser(accountId, promo.id);
-
-    const totalEarnedToday = await getTotalPromoEarnedByUserToday(
-      accountId,
-      promo.id
-    );
-
-    const totalPossibleEarningsForUser =
-      await getTotalPossibleEarningsForPromoForUser(
-        contentMetadata.duration,
-        promo.msatPayoutAmount
+      const totalEarned = await getTotalPromoEarnedByUser(accountId, promo.id);
+      const totalEarnedToday = await getTotalPromoEarnedByUserToday(
+        accountId,
+        promo.id
       );
 
-    res.json({
-      success: true,
-      data: {
+      const totalPossibleEarningsForUser =
+        await getTotalPossibleEarningsForPromoForUser(
+          contentMetadata.duration,
+          promo.msatPayoutAmount
+        );
+
+      return {
         ...promo,
+        contentMetadata,
         promoUser: {
           lifetimeEarnings: totalEarned,
-          totalEarnedToday: totalEarnedToday,
-          availableEarnings: totalPossibleEarningsForUser,
+          earnedToday: totalEarnedToday,
+          earnableToday: totalPossibleEarningsForUser,
           canEarnToday: totalEarnedToday < totalPossibleEarningsForUser,
         },
-      },
+      };
+    })
+  );
+  res.json({
+    success: true,
+    data: activePromosWithContentMetadata,
+  });
+  return;
+});
+
+export const getPromoByContent = asyncHandler<
+  { contentId: string },
+  ResponseObject<PromoResponseData>
+>(async (req, res, next) => {
+  const request = {
+    accountId: req["uid"],
+  };
+  const { accountId } = request;
+  const { contentId } = req.params;
+
+  if (!contentId) {
+    res.status(400).send({
+      success: false,
+      error: "Missing contentId",
     });
     return;
   }
-);
+  const promo = await getPromoByContentId(contentId);
+
+  if (!promo.isActive) {
+    res.json({
+      success: true,
+      data: null,
+    });
+    return;
+  }
+
+  const contentMetadata = await getContentInfoFromId(contentId);
+
+  const totalEarned = await getTotalPromoEarnedByUser(accountId, promo.id);
+
+  const totalEarnedToday = await getTotalPromoEarnedByUserToday(
+    accountId,
+    promo.id
+  );
+
+  const totalPossibleEarningsForUser =
+    await getTotalPossibleEarningsForPromoForUser(
+      contentMetadata.duration,
+      promo.msatPayoutAmount
+    );
+
+  res.json({
+    success: true,
+    data: {
+      ...promo,
+      promoUser: {
+        lifetimeEarnings: totalEarned,
+        earnedToday: totalEarnedToday,
+        earnableToday: totalPossibleEarningsForUser,
+        canEarnToday: totalEarnedToday < totalPossibleEarningsForUser,
+      },
+    },
+  });
+  return;
+});

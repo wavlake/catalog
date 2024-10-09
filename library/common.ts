@@ -52,19 +52,19 @@ export const IncomingInvoiceTableMap: Record<
   [IncomingInvoiceType.LNURL]: "transaction",
 };
 
-export interface PromoResponseData {
-  user: PromoResponseUser;
+export type PromoResponseData = {
+  promoUser: PromoResponseUser;
   id: number;
   msatBudget: number;
   msatPayoutAmount: number;
   contentId: string;
   contentType: string;
   contentMetadata?: TrackInfo;
-}
+};
 
-export interface PromoResponseUser {
+export type PromoResponseUser = {
   canEarnToday: boolean;
   lifetimeEarnings: number;
   earnedToday: number;
   earnableToday: number;
-}
+};

@@ -153,7 +153,7 @@ export const isPromoActive = async (
 
 export const isUserEligibleForPromo = async (
   userId: string,
-  promoId: string
+  promoId: number
 ) => {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -205,7 +205,7 @@ export const isUserEligibleForPromo = async (
 
 export const isUserEligibleForReward = async (
   userId: string,
-  promoId: string,
+  promoId: number,
   ignoreTime = false
 ): Promise<boolean> => {
   // Set datetime to 58 seconds ago
