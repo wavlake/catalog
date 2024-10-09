@@ -153,7 +153,8 @@ const handlePayments = async (groupedForwards: groupedForwards) => {
       // If successful, update the forward record with the external transaction id
       if (
         !axios.isAxiosError(response) &&
-        (response as ZBDSendPaymentResponse).success
+        "success" in response &&
+        response.success
       ) {
         // Update the forward record with the external transaction id
         await prisma.forward.updateMany({
@@ -161,7 +162,7 @@ const handlePayments = async (groupedForwards: groupedForwards) => {
             id: { in: ids },
           },
           data: {
-            externalPaymentId: (response as ZBDSendPaymentResponse).data.id,
+            externalPaymentId: response.data.id,
           },
         });
         // If there is a remainder, create a new forward record for the remainder
