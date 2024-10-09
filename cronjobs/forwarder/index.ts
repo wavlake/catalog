@@ -150,7 +150,11 @@ const handlePayments = async (groupedForwards: groupedForwards) => {
 
       const response = await payToLightningAddress(request);
       // If successful, update the forward record with the external transaction id
-      if (!axios.isAxiosError(response) && response.success) {
+      if (
+        !axios.isAxiosError(response) &&
+        "success" in response &&
+        response.success
+      ) {
         // Update the forward record with the external transaction id
         await prisma.forward.updateMany({
           where: {
