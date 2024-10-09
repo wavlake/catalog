@@ -14,7 +14,7 @@ import { getContentInfoFromId } from "@library/content";
 const createPromoReward = asyncHandler<core.ParamsDictionary, any, any>(
   async (req, res, next) => {
     const { promoId } = req.body;
-    const userId = req["uid"];
+    const userId = "cXrkeXNZCSfzVGp0VBXV3GcbWSX2"; //req["uid"];
 
     // Validate
     if (!promoId) {
@@ -98,13 +98,13 @@ const createPromoReward = asyncHandler<core.ParamsDictionary, any, any>(
       const wholeEarningPeriods = Math.floor(
         contentMetadata.duration / EARNING_INTERVAL
       );
-      const availableEarnings = wholeEarningPeriods * promo.msatPayoutAmount;
+      const availableEarnings = wholeEarningPeriods * promo.msat_payout_amount;
 
       res.status(200).json({
         success: true,
         message: "Promo reward created",
         data: {
-          rewardsRemaining: userStillEligible,
+          rewardsRemaining: totalEarnedToday < availableEarnings,
           totalEarnedToday,
           availableEarnings,
         },
