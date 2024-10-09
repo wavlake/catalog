@@ -174,7 +174,7 @@ const handlePayments = async (groupedForwards: groupedForwards) => {
               msatAmount: remainderMsats,
               lightningAddress: lightningAddress,
               attemptCount: 0,
-              remainderId: (response as ZBDSendPaymentResponse).data.id,
+              remainderId: response.data.id,
             },
           });
         }
