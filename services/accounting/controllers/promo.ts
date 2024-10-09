@@ -14,7 +14,7 @@ import { getContentInfoFromId } from "@library/content";
 const createPromoReward = asyncHandler<core.ParamsDictionary, any, any>(
   async (req, res, next) => {
     const { promoId } = req.body;
-    const userId = "cXrkeXNZCSfzVGp0VBXV3GcbWSX2"; //req["uid"];
+    const userId = req["uid"];
 
     // Validate
     if (!promoId) {
