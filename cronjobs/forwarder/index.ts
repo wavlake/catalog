@@ -7,6 +7,7 @@ import {
 import { PaymentStatus } from "@library/zbd/constants";
 import { handleCompletedForward } from "@library/withdraw";
 import axios from "axios";
+import { ZBDSendPaymentResponse } from "@library/zbd/responseInterfaces";
 const log = require("loglevel");
 log.setLevel(process.env.LOGLEVEL);
 
@@ -150,14 +151,17 @@ const handlePayments = async (groupedForwards: groupedForwards) => {
 
       const response = await payToLightningAddress(request);
       // If successful, update the forward record with the external transaction id
-      if (!axios.isAxiosError(response) && response.success) {
+      if (
+        !axios.isAxiosError(response) &&
+        (response as ZBDSendPaymentResponse).success
+      ) {
         // Update the forward record with the external transaction id
         await prisma.forward.updateMany({
           where: {
             id: { in: ids },
           },
           data: {
-            externalPaymentId: response.data.id,
+            externalPaymentId: (response as ZBDSendPaymentResponse).data.id,
           },
         });
         // If there is a remainder, create a new forward record for the remainder
@@ -169,7 +173,7 @@ const handlePayments = async (groupedForwards: groupedForwards) => {
               msatAmount: remainderMsats,
               lightningAddress: lightningAddress,
               attemptCount: 0,
-              remainderId: response.data.id,
+              remainderId: (response as ZBDSendPaymentResponse).data.id,
             },
           });
         }
