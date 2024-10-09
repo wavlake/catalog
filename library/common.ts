@@ -50,3 +50,19 @@ export const IncomingInvoiceTableMap: Record<
   [IncomingInvoiceType.LNURL_Zap]: "transaction",
   [IncomingInvoiceType.LNURL]: "transaction",
 };
+
+export interface Promo {
+  user: PromoUser;
+  id: number;
+  msatBudget: number;
+  msatPayoutAmount: number;
+  contentId: string;
+  contentType: string;
+}
+
+export interface PromoUser {
+  canEarnToday: boolean;
+  lifetimeEarnings: number;
+  earnedToday: number;
+  earnableToday: number;
+}
