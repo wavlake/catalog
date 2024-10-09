@@ -1,4 +1,5 @@
 import { Prisma } from "@prisma/client";
+import { TrackInfo } from "@prisma/client";
 
 export enum TransactionType {
   DEPOSIT = "Deposit",
@@ -51,16 +52,17 @@ export const IncomingInvoiceTableMap: Record<
   [IncomingInvoiceType.LNURL]: "transaction",
 };
 
-export interface Promo {
-  user: PromoUser;
+export interface PromoResponseData {
+  user: PromoResponseUser;
   id: number;
   msatBudget: number;
   msatPayoutAmount: number;
   contentId: string;
   contentType: string;
+  contentMetadata?: TrackInfo;
 }
 
-export interface PromoUser {
+export interface PromoResponseUser {
   canEarnToday: boolean;
   lifetimeEarnings: number;
   earnedToday: number;
