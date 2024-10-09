@@ -350,6 +350,7 @@ export const update_episode = asyncHandler(async (req, res, next) => {
 
 export const get_new_episodes = asyncHandler(async (req, res, next) => {
   // all episodes that are not deleted and have a publishedAt less than or equal to now (lte)
+  // TODO: query is naive, should be rewritten to get latest episodes regardless of podcast creation date
   try {
     const episodes = (await prisma.$queryRaw`
     SELECT 
@@ -382,7 +383,7 @@ export const get_new_episodes = asyncHandler(async (req, res, next) => {
     (SELECT * FROM "podcast" 
        WHERE "is_draft" = false AND 
              "published_at" <= ${new Date()} 
-       LIMIT 50) as p
+       LIMIT 100) as p
       INNER JOIN "episode" as e ON p.id = e."podcast_id"
       INNER JOIN (
         SELECT
