@@ -94,8 +94,7 @@ const createPromoReward = asyncHandler<core.ParamsDictionary, any, any>(
         userId,
         promo.id
       );
-      const contentMetadata = await getContentInfoFromId(promo.contentId);
-
+      const contentMetadata = await getContentInfoFromId(promo.content_id);
       const wholeEarningPeriods = Math.floor(
         contentMetadata.duration / EARNING_INTERVAL
       );
