@@ -3,14 +3,19 @@ import {
   identifyActivePromosWithBudgetRemaining,
   identifyPromosWhereUserEarnedToday,
   getPromoByContentId,
-  isUserEligibleForPromo,
   getTotalPromoEarnedByUser,
   getTotalPromoEarnedByUserToday,
-  EARNING_INTERVAL,
+  getTotalPossibleEarningsForPromoForUser,
 } from "../library/promos";
 import { getContentInfoFromId } from "../library/content";
+import { PromoResponseData } from "../library/common";
+import { ResponseObject } from "../types/catalogApi";
 
-export const getActivePromos = asyncHandler(async (req, res, next) => {
+export const getActivePromos = asyncHandler<
+  {},
+  ResponseObject<PromoResponseData[]>,
+  {}
+>(async (req, res, next) => {
   const request = {
     accountId: req["uid"],
   };
@@ -47,18 +52,21 @@ export const getActivePromos = asyncHandler(async (req, res, next) => {
         promo.id
       );
 
-      const wholeEarningPeriods = Math.floor(
-        contentMetadata.duration / EARNING_INTERVAL
-      );
-      const availableEarnings = wholeEarningPeriods * promo.msatPayoutAmount;
+      const totalPossibleEarningsForUser =
+        await getTotalPossibleEarningsForPromoForUser(
+          contentMetadata.duration,
+          promo.msatPayoutAmount
+        );
 
       return {
         ...promo,
         contentMetadata,
-        totalEarned,
-        totalEarnedToday,
-        availableEarnings,
-        rewardsRemaining: totalEarnedToday < availableEarnings,
+        promoUser: {
+          lifetimeEarnings: totalEarned,
+          earnedToday: totalEarnedToday,
+          earnableToday: totalPossibleEarningsForUser,
+          canEarnToday: totalEarnedToday < totalPossibleEarningsForUser,
+        },
       };
     })
   );
@@ -69,7 +77,10 @@ export const getActivePromos = asyncHandler(async (req, res, next) => {
   return;
 });
 
-export const getPromoByContent = asyncHandler(async (req, res, next) => {
+export const getPromoByContent = asyncHandler<
+  { contentId: string },
+  ResponseObject<PromoResponseData>
+>(async (req, res, next) => {
   const request = {
     accountId: req["uid"],
   };
@@ -83,27 +94,9 @@ export const getPromoByContent = asyncHandler(async (req, res, next) => {
     });
     return;
   }
-  const activePromo = await getPromoByContentId(contentId);
-  const contentMetadata = await getContentInfoFromId(contentId);
+  const promo = await getPromoByContentId(contentId);
 
-  const isEligible = await isUserEligibleForPromo(accountId, activePromo.id);
-
-  const totalEarned = await getTotalPromoEarnedByUser(
-    accountId,
-    activePromo.id
-  );
-
-  const totalEarnedToday = await getTotalPromoEarnedByUserToday(
-    accountId,
-    activePromo.id
-  );
-
-  const wholeEarningPeriods = Math.floor(
-    contentMetadata.duration / EARNING_INTERVAL
-  );
-  const availableEarnings = wholeEarningPeriods * activePromo.msatPayoutAmount;
-
-  if (!activePromo && totalEarnedToday != 0) {
+  if (!promo.isActive) {
     res.json({
       success: true,
       data: null,
@@ -111,14 +104,31 @@ export const getPromoByContent = asyncHandler(async (req, res, next) => {
     return;
   }
 
+  const contentMetadata = await getContentInfoFromId(contentId);
+
+  const totalEarned = await getTotalPromoEarnedByUser(accountId, promo.id);
+
+  const totalEarnedToday = await getTotalPromoEarnedByUserToday(
+    accountId,
+    promo.id
+  );
+
+  const totalPossibleEarningsForUser =
+    await getTotalPossibleEarningsForPromoForUser(
+      contentMetadata.duration,
+      promo.msatPayoutAmount
+    );
+
   res.json({
     success: true,
     data: {
-      ...activePromo,
-      rewardsRemaining: isEligible,
-      totalEarned,
-      totalEarnedToday,
-      availableEarnings,
+      ...promo,
+      promoUser: {
+        lifetimeEarnings: totalEarned,
+        earnedToday: totalEarnedToday,
+        earnableToday: totalPossibleEarningsForUser,
+        canEarnToday: totalEarnedToday < totalPossibleEarningsForUser,
+      },
     },
   });
   return;
