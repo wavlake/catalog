@@ -21,7 +21,7 @@ steps:
       [
         "run",
         "deploy",
-        "accounting-staging",
+        "catalog-staging",
         "--image",
         "us-central1-docker.pkg.dev/$PROJECT_ID/services/catalog:latest",
         "--region",
