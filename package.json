@@ -1,7 +1,7 @@
 {
   "name": "catalog",
-  "version": "1.0.0",
-  "description": "Express API for managing and accessing the Wavlake catalog",
+  "version": "1.1.0",
+  "description": "API for managing and accessing the Wavlake catalog",
   "main": "index.js",
   "engines": {
     "node": ">=20.17.0 <21"
