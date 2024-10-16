@@ -19,7 +19,7 @@ const get_artist_by_url = asyncHandler(async (req, res, next) => {
 
   const artist = await prisma.artist
     .findFirstOrThrow({
-      where: { artistUrl: request.artistUrl },
+      where: { artistUrl: request.artistUrl, deleted: false },
     })
     .catch((e) => {
       res.status(404).json({
@@ -48,7 +48,7 @@ const get_artist_by_id = asyncHandler(async (req, res, next) => {
   }
 
   const artist = await prisma.artist.findFirstOrThrow({
-    where: { id: artistId },
+    where: { id: artistId, deleted: false },
   });
 
   const albums = await prisma.album.findMany({
