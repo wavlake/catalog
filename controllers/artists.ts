@@ -255,6 +255,19 @@ const update_artist = asyncHandler(async (req, res, next) => {
     return;
   }
 
+  const artistExists = await prisma.artist.findFirst({
+    where: { artistUrl: urlFriendly(request.name) },
+  });
+
+  if (artistExists) {
+    const error = formatError(
+      403,
+      "Artist name already exists, please choose another name."
+    );
+    next(error);
+    return;
+  }
+
   const cdnImageUrl = artwork
     ? await upload_image(artwork, request.artistId, "artist")
     : undefined;
