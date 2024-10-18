@@ -122,6 +122,19 @@ const create_artist = asyncHandler(async (req, res, next) => {
     return;
   }
 
+  const artistExists = await prisma.artist.findFirst({
+    where: { artistUrl: urlFriendly(request.name) },
+  });
+
+  if (artistExists) {
+    const error = formatError(
+      403,
+      "Artist name already exists, please choose another name."
+    );
+    next(error);
+    return;
+  }
+
   const cdnImageUrl = await upload_image(
     request.artwork,
     newArtistId,
@@ -238,6 +251,19 @@ const update_artist = asyncHandler(async (req, res, next) => {
 
   if (!isOwner) {
     const error = formatError(403, "User does not own this artist");
+    next(error);
+    return;
+  }
+
+  const artistExists = await prisma.artist.findFirst({
+    where: { artistUrl: urlFriendly(request.name) },
+  });
+
+  if (artistExists) {
+    const error = formatError(
+      403,
+      "Artist name already exists, please choose another name."
+    );
     next(error);
     return;
   }
