@@ -31,6 +31,7 @@ export const getNewTracks = async (limit?: number): Promise<any[]> => {
     .min("artist.artist_url as artistUrl")
     .min("artist.artwork_url as avatarUrl")
     .min("album.artwork_url as artworkUrl")
+    .min("album.color_info as colorInfo")
     .min("album.title as albumTitle")
     .min("track.live_url as liveUrl")
     .min("track.duration as duration")
@@ -96,6 +97,7 @@ export const getUserRecentTracks = async (pubkey: string): Promise<any[]> => {
       albumId: true,
       artistId: true,
       genre: true,
+      colorInfo: true,
     },
   });
 
