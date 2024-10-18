@@ -187,6 +187,7 @@ const get_tracks_by_random = asyncHandler(async (req, res, next) => {
       "artist.user_id as ownerId",
       "album.id as albumId",
       "album.artwork_url as artworkUrl",
+      "album.color_info as colorInfo",
       "album.title as albumTitle",
       "track.live_url as liveUrl",
       "track.duration as duration"
@@ -309,6 +310,7 @@ const get_random_tracks_by_genre_id = asyncHandler(async (req, res, next) => {
       "artist.artwork_url as avatarUrl",
       "track.album_id as albumId",
       "album.artwork_url as artworkUrl",
+      "album.color_info as colorInfo",
       "album.title as albumTitle",
       "track.live_url as liveUrl",
       "track.duration as duration",

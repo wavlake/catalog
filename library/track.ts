@@ -31,6 +31,11 @@ export const getNewTracks = async (limit?: number): Promise<any[]> => {
     .min("artist.artist_url as artistUrl")
     .min("artist.artwork_url as avatarUrl")
     .min("album.artwork_url as artworkUrl")
+    .select(
+      db.knex.raw(
+        `COALESCE((ARRAY_AGG(album.color_info) FILTER (WHERE album.color_info IS NOT NULL))[1], NULL) as "colorInfo"`
+      )
+    )
     .min("album.title as albumTitle")
     .min("track.live_url as liveUrl")
     .min("track.duration as duration")
@@ -96,6 +101,7 @@ export const getUserRecentTracks = async (pubkey: string): Promise<any[]> => {
       albumId: true,
       artistId: true,
       genre: true,
+      colorInfo: true,
     },
   });
 
