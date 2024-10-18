@@ -10,6 +10,7 @@ import { formatError } from "../library/errors";
 import { getStatus } from "../library/helpers";
 import { getAllComments } from "../library/comments";
 import { upload_image } from "../library/artwork";
+import { get_color_palette } from "../library/colorAnalyzer";
 
 const get_albums_by_account = asyncHandler(async (req, res, next) => {
   const request = {
@@ -192,6 +193,7 @@ const create_album = asyncHandler(async (req, res, next) => {
   }
 
   const cdnImageUrl = await upload_image(request.artwork, newAlbumId, "album");
+  const colorPalette = await get_color_palette(cdnImageUrl);
 
   return db
     .knex("album")
@@ -207,6 +209,7 @@ const create_album = asyncHandler(async (req, res, next) => {
         // all newly created content starts a draft, user must publish after creation
         is_draft: true,
         is_single: Boolean(request.isSingle),
+        color_info: colorPalette,
       },
       ["*"]
     )
@@ -295,8 +298,13 @@ const update_album = asyncHandler(async (req, res, next) => {
     next(error);
     return;
   }
+
   const cdnImageUrl = artwork
     ? await upload_image(artwork, request.albumId, "album")
+    : undefined;
+
+  const colorPalette = cdnImageUrl
+    ? await get_color_palette(cdnImageUrl)
     : undefined;
 
   log.debug(`Editing album ${request.albumId}`);
@@ -312,6 +320,7 @@ const update_album = asyncHandler(async (req, res, next) => {
       subgenreId: newSubgenreId,
       isSingle: Boolean(request.isSingle),
       ...(cdnImageUrl ? { artworkUrl: cdnImageUrl } : {}),
+      ...(colorPalette ? { colorInfo: colorPalette } : {}),
     },
   });
   res.json({
