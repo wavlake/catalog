@@ -25,7 +25,8 @@ SELECT
   album.subgenre_id,
   track.compressor_error,
   artist.npub AS artist_npub,
-  promo.is_active AS has_promo
+  promo.is_active AS has_promo,
+  album.color_info
 FROM
   (
     (

@@ -23,6 +23,7 @@ model Album {
   publishedAt   DateTime?      @default(now()) @map("published_at") @db.Timestamptz(6)
   msatTotal     BigInt         @default(0) @map("msat_total")
   isSingle      Boolean?       @default(false) @map("is_single")
+  colorInfo     Json?          @map("color_info")
   artist        Artist         @relation(fields: [artistId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "album_artist_id_foreign")
   musicGenre    MusicGenre?    @relation(fields: [genreId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "album_genre_id_foreign")
   musicSubgenre MusicSubgenre? @relation(fields: [subgenreId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "album_subgenre_id_foreign")
@@ -714,6 +715,7 @@ view TrackInfo {
   compressorError Boolean?        @map("compressor_error")
   artistNpub      String?         @map("artist_npub") @db.VarChar(64)
   hasPromo        Boolean?        @map("has_promo")
+  colorInfo       Json?           @map("color_info")
   genre           MusicGenre?     @relation(fields: [genreId], references: [id])
   playlistTrack   PlaylistTrack[]
 
