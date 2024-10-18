@@ -1,6 +1,7 @@
 import Vibrant from "node-vibrant";
 import axios from "axios";
 import prisma from "../prisma/client";
+import db from "./db";
 
 async function get_color_palette(imageUrl) {
   try {
@@ -26,17 +27,17 @@ async function get_color_palette(imageUrl) {
 
 // script that goes through all tracks with undefined colorInfo columns and updates them with the color palette
 async function get_artwork_colors() {
-  // get tracks with undefined colorInfo columns
-  const albums = await prisma.album.findMany({
-    where: {
-      colorInfo: null,
-    },
-    take: 10,
-  });
+  const albums = await db
+    .knex("album")
+    .whereNull("color_info")
+    .select("id", "artwork_url");
+
+  console.log(`Found ${albums.length} albums with null colorInfo columns`);
 
   // go through each track, extract the color palette, and update the colorInfo column in the database
   for (const album of albums) {
-    const palette = await get_color_palette(album.artworkUrl);
+    console.log("processing album:", album.id);
+    const palette = await get_color_palette(album.artwork_url);
     await prisma.album.update({
       where: {
         id: album.id,
