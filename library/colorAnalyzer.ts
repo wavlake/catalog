@@ -38,6 +38,10 @@ async function get_artwork_colors() {
   for (const album of albums) {
     console.log("processing album:", album.id);
     const palette = await get_color_palette(album.artwork_url);
+    if (!palette) {
+      console.log("Error extracting color palette for album:", album.id);
+      continue;
+    }
     await prisma.album.update({
       where: {
         id: album.id,
