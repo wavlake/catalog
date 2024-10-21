@@ -19,7 +19,7 @@ const get_artist_by_url = asyncHandler(async (req, res, next) => {
 
   const artist = await prisma.artist
     .findFirstOrThrow({
-      where: { artistUrl: request.artistUrl },
+      where: { artistUrl: request.artistUrl, deleted: false },
     })
     .catch((e) => {
       res.status(404).json({
@@ -48,7 +48,7 @@ const get_artist_by_id = asyncHandler(async (req, res, next) => {
   }
 
   const artist = await prisma.artist.findFirstOrThrow({
-    where: { id: artistId },
+    where: { id: artistId, deleted: false },
   });
 
   const albums = await prisma.album.findMany({
@@ -118,6 +118,19 @@ const create_artist = asyncHandler(async (req, res, next) => {
 
   if (!request.name) {
     const error = formatError(403, "Artist name is required");
+    next(error);
+    return;
+  }
+
+  const artistExists = await prisma.artist.findFirst({
+    where: { artistUrl: urlFriendly(request.name) },
+  });
+
+  if (artistExists) {
+    const error = formatError(
+      403,
+      "Artist name already exists, please choose another name."
+    );
     next(error);
     return;
   }
@@ -238,6 +251,19 @@ const update_artist = asyncHandler(async (req, res, next) => {
 
   if (!isOwner) {
     const error = formatError(403, "User does not own this artist");
+    next(error);
+    return;
+  }
+
+  const artistExists = await prisma.artist.findFirst({
+    where: { artistUrl: urlFriendly(request.name) },
+  });
+
+  if (artistExists) {
+    const error = formatError(
+      403,
+      "Artist name already exists, please choose another name."
+    );
     next(error);
     return;
   }
