@@ -10,6 +10,7 @@ import {
 import { getContentInfoFromId } from "../library/content";
 import { PromoResponseData } from "../library/common";
 import { ResponseObject } from "../types/catalogApi";
+import { shuffle } from "../library/helpers";
 
 export const getActivePromos = asyncHandler<
   {},
@@ -72,7 +73,7 @@ export const getActivePromos = asyncHandler<
   );
   res.json({
     success: true,
-    data: activePromosWithContentMetadata,
+    data: shuffle(activePromosWithContentMetadata),
   });
   return;
 });
