@@ -73,6 +73,9 @@ export const handleCompletedForward = async ({
 };
 
 async function checkWithdrawalStatus(transactionId: number) {
+  // Add delay to prevent checking status before it is intially updated
+  await new Promise((resolve) => setTimeout(resolve, 3000));
+
   return db
     .knex("transaction")
     .select("is_pending")
