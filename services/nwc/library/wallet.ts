@@ -8,7 +8,6 @@ export async function getWalletUser(pubkey) {
   return db
     .knex("wallet_connection")
     .join("user", "wallet_connection.user_id", "=", "user.id")
-    .join("transaction", "user.id", "=", "transaction.user_id")
     .select(
       "user.id as userId",
       "user.msat_balance as msatBalance",
@@ -17,12 +16,7 @@ export async function getWalletUser(pubkey) {
     )
     .where("wallet_connection.pubkey", "=", pubkey)
     .first()
-    .then((data) => {
-      if (data?.length === 0) {
-        return null;
-      }
-      return data;
-    })
+    .then((data) => data || null)
     .catch((err) => {
       log.error(`Error finding user from pubkey ${err}`);
     });
