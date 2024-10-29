@@ -39,9 +39,9 @@ import { ResponseObject } from "../types/catalogApi";
 
 function makeRandomName() {
   return uniqueNamesGenerator({
-    dictionaries: [adjectives, colors, animals],
+    dictionaries: [colors, animals],
     separator: "-", // word separator
-  }); // example: big-red-donkey
+  }); // example: red-donkey
 }
 
 async function checkName(name?: string): Promise<string | undefined> {
