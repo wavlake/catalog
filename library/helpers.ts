@@ -27,10 +27,10 @@ export const getStatus = (isDraft: boolean, isPublished: Date): Status => {
 
 // Durstenfeld Shuffle, via: https://stackoverflow.com/a/12646864
 export const shuffle = (trackList) => {
-  const array = trackList as any[];
-  for (let i = array.length - 1; i > 0; i--) {
+  const newArray = trackList as any[];
+  for (let i = newArray.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
-    [array[i], array[j]] = [array[j], array[i]];
+    [newArray[i], newArray[j]] = [newArray[j], newArray[i]];
   }
-  return array;
+  return newArray;
 };
