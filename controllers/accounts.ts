@@ -596,54 +596,6 @@ const delete_lnaddress = asyncHandler(async (req, res, next) => {
   }
 });
 
-const create_account = asyncHandler(async (req, res, next) => {
-  const { name, userId } = req.body;
-
-  if (!userId) {
-    res.status(400).json({
-      success: false,
-      error: "userId is required",
-    });
-    return;
-  }
-
-  const newUserName = await makeRandomName();
-
-  try {
-    const profileUrl = urlFriendly(newUserName);
-    const existingUser = await prisma.user.findFirst({
-      where: {
-        OR: [{ name: newUserName }, { profileUrl }],
-      },
-    });
-
-    if (existingUser) {
-      res.status(400).json({
-        success: false,
-        error: "Name is already taken",
-      });
-      return;
-    }
-    const newUser = await prisma.user.create({
-      data: {
-        id: userId,
-        name: newUserName,
-        profileUrl,
-      },
-    });
-
-    res.send({
-      success: true,
-      data: newUser,
-    });
-  } catch (err) {
-    log.debug("error creating account", req.body);
-    log.debug(err);
-    next(err);
-    return;
-  }
-});
-
 const edit_account = asyncHandler(async (req, res, next) => {
   const userId = req["uid"];
   const { name, ampMsat } = req.body;
@@ -784,7 +736,7 @@ const get_login_token_for_zbd_user = asyncHandler(async (req, res, next) => {
       // if the username is already taken, generate a new one, otherwise use the incoming username
       const username =
         existingUsername?.id || !incomingUsername
-          ? `zbduser_${user.uid.split("").slice(0, 7).join("")}`
+          ? await getRandomName()
           : incomingUsername;
 
       // create the new user record in the user table
@@ -1211,7 +1163,6 @@ export default {
   delete_lnaddress,
   get_account,
   get_user_public,
-  create_account,
   edit_account,
   get_announcements,
   get_notification,
