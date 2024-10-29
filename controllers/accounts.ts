@@ -29,13 +29,10 @@ import { urlFriendly } from "../library/format";
 import { upload_image } from "../library/artwork";
 import { getZBDRedirectInfo, getZBDUserInfo } from "../library/zbd/login";
 import { updateNpubMetadata } from "../library/nostr/nostr";
-import {
-  uniqueNamesGenerator,
-  adjectives,
-  colors,
-  animals,
-} from "unique-names-generator";
+import { uniqueNamesGenerator, colors, animals } from "unique-names-generator";
 import { ResponseObject } from "../types/catalogApi";
+import { toPng } from "jdenticon";
+import fs from "fs";
 
 function makeRandomName() {
   return uniqueNamesGenerator({
@@ -44,10 +41,25 @@ function makeRandomName() {
   }); // example: red-donkey
 }
 
-async function checkName(name?: string): Promise<string | undefined> {
-  if (name && name.trim().length > 0) {
-    return name.trim();
-  }
+async function validateUsername(username: string): Promise<boolean> {
+  // Name should only contain letters, numbers, underscores, and hyphens
+  return /^[A-Za-z0-9_-]+$/.test(username);
+}
+
+async function usernameIsAvailable(name: string): Promise<boolean> {
+  const profileUrl = urlFriendly(name);
+
+  // username or profileUrl matches
+  const userExists = await prisma.user.findFirst({
+    where: {
+      OR: [{ name: name }, { profileUrl }],
+    },
+  });
+
+  return userExists ? false : true;
+}
+
+async function getRandomName(): Promise<string> {
   let newUserName: string;
   let userExists;
   // generate a random name until we find one that doesn't exist
@@ -68,9 +80,8 @@ async function checkName(name?: string): Promise<string | undefined> {
     if (!userExists) {
       return newUserName;
     }
+    return null;
   }
-  log.debug("Failed to generate a username");
-  return undefined;
 }
 
 const get_account = asyncHandler(async (req, res, next) => {
@@ -596,7 +607,7 @@ const create_account = asyncHandler(async (req, res, next) => {
     return;
   }
 
-  const newUserName = await checkName(name);
+  const newUserName = await makeRandomName();
 
   try {
     const profileUrl = urlFriendly(newUserName);
@@ -672,7 +683,7 @@ const edit_account = asyncHandler(async (req, res, next) => {
 
     let cdnImageUrl;
     if (artwork) {
-      cdnImageUrl = await upload_image(artwork, userId, "artist");
+      cdnImageUrl = await upload_image(artwork, userId, "user");
     }
 
     await prisma.user.update({
@@ -1035,6 +1046,54 @@ const check_user_verified = asyncHandler(async (req, res, next) => {
   });
 });
 
+const get_check_username = asyncHandler(async (req, res, next) => {
+  const { username } = req.params;
+
+  if (!username) {
+    res.status(400).json({
+      success: false,
+      error: "username is required",
+    });
+    return;
+  }
+
+  const usernameOK = await usernameIsAvailable(username);
+
+  if (!usernameOK) {
+    res.status(400).json({
+      success: false,
+      error: "username is already taken",
+    });
+    return;
+  }
+
+  res.send({
+    success: true,
+    data: {
+      username,
+    },
+  });
+});
+
+const get_random_username = asyncHandler(async (req, res, next) => {
+  const newUserName = await getRandomName();
+
+  if (!newUserName) {
+    res.status(500).json({
+      success: false,
+      error: "Error generating random username",
+    });
+    return;
+  }
+
+  res.send({
+    success: true,
+    data: {
+      username: newUserName,
+    },
+  });
+});
+
 const create_new_user = asyncHandler<
   {},
   ResponseObject<{
@@ -1044,7 +1103,7 @@ const create_new_user = asyncHandler<
     pubkey: string;
   }>,
   {
-    username?: string;
+    username: string;
     firstName?: string;
     lastName?: string;
     pubkey?: string;
@@ -1053,48 +1112,51 @@ const create_new_user = asyncHandler<
   const userId = req["uid"];
   const { username, firstName, lastName, pubkey } = req.body;
 
+  // Validations
+  if (!username) {
+    res.status(400).json({
+      success: false,
+      error: "username is required",
+    });
+    return;
+  }
+
+  const validUsername = await validateUsername(username);
+
+  if (!validUsername) {
+    res.status(400).json({
+      success: false,
+      error:
+        "Name should only contain letters, numbers, underscores, and hyphens",
+    });
+    return;
+  }
+
+  const usernameOK = await usernameIsAvailable(username);
+
+  if (!usernameOK) {
+    res.status(400).json({
+      success: false,
+      error: "Username is already taken",
+    });
+    return;
+  }
+
   try {
-    // Check for username collision if provided
-    const [existingUser, existingPubkey] = await Promise.all([
-      username ? prisma.user.findFirst({ where: { name: username } }) : null,
-      pubkey ? prisma.userPubkey.findFirst({ where: { pubkey } }) : null,
-    ]);
-
-    if (existingUser) {
-      res.status(400).json({
-        success: false,
-        error: "Username is already taken",
-      });
-      return;
+    // generate avatar
+    const avatar = toPng(username, 300);
+    fs.writeFileSync(`/tmp/${userId}.png`, avatar);
+    const avatarFile = fs.createReadStream(`/tmp/${userId}.png`);
+    let cdnImageUrl;
+    if (avatar) {
+      cdnImageUrl = await upload_image(avatarFile, userId, "user");
     }
-
-    if (existingPubkey) {
-      res.status(400).json({
-        success: false,
-        error: "Pubkey is registered to another account",
-      });
-      return;
-    }
-
-    // Generate a random username if not provided
-    const finalUsername = await checkName(username);
-
-    if (!finalUsername) {
-      res.status(400).json({
-        success: false,
-        error: "Failed to generate a username",
-      });
-      return;
-    }
-
-    log.debug("username", finalUsername);
-
     // create the new user record
     const newUser = await prisma.user.create({
       data: {
         id: userId,
-        name: finalUsername,
-        profileUrl: urlFriendly(finalUsername),
+        name: username,
+        profileUrl: urlFriendly(username),
       },
     });
 
@@ -1172,5 +1234,7 @@ export default {
   delete_pubkey_from_account,
   get_pubkey_metadata,
   update_metadata,
+  get_check_username,
   create_new_user,
+  get_random_username,
 };

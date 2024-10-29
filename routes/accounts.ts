@@ -38,8 +38,13 @@ const limiter = rateLimit({
 //////// ROUTES ////////
 
 // USER
-router.post("/", accountsController.create_account);
+router.post("/", accountsController.create_account); // Deprecated
 router.post("/user", isAuthorized, accountsController.create_new_user);
+router.get(
+  "/user/check-username/:username",
+  accountsController.get_check_username
+);
+router.get("/user/random-username", accountsController.get_random_username);
 router.get("/", isAuthorized, accountsController.get_account);
 router.get(
   "/public/verified/:userProfileUrl",
