@@ -1011,10 +1011,21 @@ const get_check_username = asyncHandler(async (req, res, next) => {
 
   const usernameOK = await usernameIsAvailable(username);
 
+  const validUsername = await validateUsername(username);
+
   if (!usernameOK) {
     res.status(400).json({
       success: false,
       error: "username is already taken",
+    });
+    return;
+  }
+
+  if (!validUsername) {
+    res.status(400).json({
+      success: false,
+      error:
+        "Name should only contain letters, numbers, underscores, and hyphens",
     });
     return;
   }
