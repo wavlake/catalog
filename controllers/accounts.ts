@@ -1103,7 +1103,7 @@ const create_new_user = asyncHandler<
     pubkey: string;
   }>,
   {
-    username: string;
+    username?: string;
     firstName?: string;
     lastName?: string;
     pubkey?: string;
@@ -1113,15 +1113,14 @@ const create_new_user = asyncHandler<
   const { username, firstName, lastName, pubkey } = req.body;
 
   // Validations
+  let newUsername;
   if (!username) {
-    res.status(400).json({
-      success: false,
-      error: "username is required",
-    });
-    return;
+    newUsername = await getRandomName();
+  } else {
+    newUsername = username;
   }
 
-  const validUsername = await validateUsername(username);
+  const validUsername = await validateUsername(newUsername);
 
   if (!validUsername) {
     res.status(400).json({
@@ -1132,7 +1131,7 @@ const create_new_user = asyncHandler<
     return;
   }
 
-  const usernameOK = await usernameIsAvailable(username);
+  const usernameOK = await usernameIsAvailable(newUsername);
 
   if (!usernameOK) {
     res.status(400).json({
@@ -1144,7 +1143,7 @@ const create_new_user = asyncHandler<
 
   try {
     // generate avatar
-    const avatar = toPng(username, 300);
+    const avatar = toPng(newUsername, 300);
     fs.writeFileSync(`/tmp/${userId}.png`, avatar);
     const avatarFile = fs.createReadStream(`/tmp/${userId}.png`);
     let cdnImageUrl;
@@ -1155,40 +1154,38 @@ const create_new_user = asyncHandler<
     const newUser = await prisma.user.create({
       data: {
         id: userId,
-        name: username,
-        profileUrl: urlFriendly(username),
+        name: newUsername,
+        profileUrl: urlFriendly(newUsername),
+        artworkUrl: cdnImageUrl,
       },
     });
 
     // Create user pubkey and verification records that reference the new user record
-    const [userPubkey, userVerification] = await Promise.allSettled([
-      pubkey
-        ? prisma.userPubkey.create({
-            data: {
-              userId: userId,
-              pubkey: pubkey,
-              createdAt: new Date(),
-            },
-          })
-        : null,
-
-      firstName && lastName
-        ? prisma.userVerification.create({
-            data: {
-              userId: userId,
-              firstName: firstName,
-              lastName: lastName,
-              ip: req.ip,
-            },
-          })
-        : null,
-    ]);
-
-    if (userPubkey.status === "rejected") {
-      log.error("Error creating user pubkey", userPubkey.reason);
+    let userPubkey;
+    let userVerification;
+    if (!pubkey) {
+      userPubkey = null;
+    } else {
+      userPubkey = await prisma.userPubkey.create({
+        data: {
+          userId: userId,
+          pubkey: pubkey,
+          createdAt: new Date(),
+        },
+      });
     }
-    if (userVerification.status === "rejected") {
-      log.error("Error creating user verification", userVerification.reason);
+
+    if (!firstName || !lastName) {
+      userVerification = null;
+    } else {
+      userVerification = await prisma.userVerification.create({
+        data: {
+          userId: userId,
+          firstName: firstName,
+          lastName: lastName,
+          ip: req.ip,
+        },
+      });
     }
 
     res.status(201).json({
@@ -1197,10 +1194,7 @@ const create_new_user = asyncHandler<
         uid: userId,
         username: newUser.name,
         profileUrl: newUser.profileUrl,
-        pubkey:
-          userPubkey.status === "fulfilled"
-            ? userPubkey.value.pubkey
-            : undefined,
+        pubkey: userPubkey ? userPubkey.pubkey : undefined,
       },
     });
     return;
