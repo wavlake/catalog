@@ -34,7 +34,7 @@ const TYPE_SETTINGS = {
 };
 
 const upload_image = async (
-  artworkFile: Express.Multer.File,
+  artworkFile: Express.Multer.File | fs.ReadStream,
   contentId: string,
   type: CONTENT_TYPE
 ) => {
