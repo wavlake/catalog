@@ -18,13 +18,14 @@ import {
 import { getPlaylistTracks } from "../library/playlist";
 import { getWeeklyTop40 } from "../library/chart";
 import { getUserRecentTracks, getNewTracks } from "../library/track";
+import { shuffle } from "../library/helpers";
 
 const randomSampleSize = process.env.RANDOM_SAMPLE_SIZE;
 const s3BucketName = `${process.env.AWS_S3_BUCKET_NAME}`;
 const cdnDomain = `${process.env.AWS_CDN_DOMAIN}`;
 
 const get_featured_tracks = asyncHandler(async (req, res, next) => {
-  const pubkey = (res.locals?.authEvent as Event)?.pubkey;
+  const { pubkey } = req.params;
 
   const featuredTracks = await getPlaylistTracks(FEATURED_PLAYLIST_ID);
   const trendingTracks = await getWeeklyTop40();
@@ -706,15 +707,6 @@ const get_track_ranking_count = asyncHandler(async (req, res, next) => {
   const count = parseInt(ranking?.[0]?.count ?? 0);
   res.json({ success: true, data: count });
 });
-
-// Durstenfeld Shuffle, via: https://stackoverflow.com/a/12646864
-function shuffle(array) {
-  for (let i = array.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [array[i], array[j]] = [array[j], array[i]];
-  }
-  return array;
-}
 
 export default {
   get_featured_tracks,
