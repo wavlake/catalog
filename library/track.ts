@@ -105,18 +105,26 @@ export const getUserRecentTracks = async (pubkey: string): Promise<any[]> => {
     },
   });
 
-  // Add OP3 URL prefix to artwork URLs
-  tracks.forEach((track) => {
-    track.liveUrl = addOP3URLPrefix({
-      url: track.liveUrl,
-      albumId: track.albumId,
-    });
-  });
-
-  // // order by amp createdAt desc
-  const orderedTracks = userTracks.map((userTrack) =>
-    tracks.find((track) => track.id === userTrack.trackId)
+  // Create a track ID map for efficient ordering later
+  const trackIdToOrder = new Map(
+    userTracks.map((track, index) => [track.trackId, index])
   );
-
-  return orderedTracks;
+  return (
+    tracks
+      // Add OP3 URL prefix to artwork URLs
+      .map((track) => ({
+        ...track,
+        liveUrl: addOP3URLPrefix({
+          url: track.liveUrl,
+          albumId: track.albumId,
+        }),
+      }))
+      // order by amp createdAt desc
+      .sort(
+        (a, b) =>
+          (trackIdToOrder.get(a.id) ?? 0) - (trackIdToOrder.get(b.id) ?? 0)
+      )
+      // filter out tracks that aren't defined
+      .filter((track) => Boolean(track))
+  );
 };
