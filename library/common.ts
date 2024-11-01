@@ -67,4 +67,5 @@ export type PromoResponseUser = {
   lifetimeEarnings: number;
   earnedToday: number;
   earnableToday: number;
+  cumulativeEarnedToday: number;
 };
