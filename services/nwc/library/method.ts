@@ -31,7 +31,7 @@ type InvoiceResult = {
 interface WalletUser {
   userId: string;
   msatBudget: number;
-  maxMsatPaymentAmount: string;
+  maxMsatPaymentAmount: number;
   msatBalance: string;
 }
 
@@ -56,7 +56,7 @@ export const payInvoice = async (
   log.debug(`Decoded invoice ${invoice}`);
 
   // Check if payment amount exceeds max payment amount
-  if (parseInt(valueMsat) > parseInt(maxMsatPaymentAmount)) {
+  if (parseInt(valueMsat) > maxMsatPaymentAmount) {
     log.debug(`Transaction for ${userId} exceeds max payment amount.`);
     sendErrorResponse(
       event,
@@ -154,7 +154,7 @@ export const payInvoice = async (
 
 export const getBalance = async (event: Event, walletUser: WalletUser) => {
   log.debug(`Processing get_balance event ${event.id}`);
-  const { msatBalance } = walletUser;
+  const { msatBalance, maxMsatPaymentAmount, msatBudget } = walletUser;
   broadcastEventResponse(
     event.pubkey,
     event.id,
@@ -162,6 +162,8 @@ export const getBalance = async (event: Event, walletUser: WalletUser) => {
       result_type: "get_balance",
       result: {
         balance: parseInt(msatBalance),
+        max_payment: maxMsatPaymentAmount,
+        budget: msatBudget,
       },
     })
   );
