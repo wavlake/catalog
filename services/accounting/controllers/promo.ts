@@ -9,6 +9,7 @@ import {
   isUserEligibleForReward,
   getTotalPossibleEarningsForPromoForUser,
   getTotalPromoEarnedByUser,
+  getTotalDailyRewardsForUser,
 } from "@library/promos";
 import { getContentInfoFromId } from "@library/content";
 import { PromoResponseData } from "@library/common";
@@ -107,6 +108,7 @@ const createPromoReward = asyncHandler<
         promo.msatPayoutAmount
       );
 
+    const todaysRewards = await getTotalDailyRewardsForUser(userId);
     res.status(200).json({
       success: true,
       data: {
@@ -114,6 +116,7 @@ const createPromoReward = asyncHandler<
         promoUser: {
           lifetimeEarnings: totalEarned,
           earnedToday: totalEarnedToday,
+          cumulativeEarnedToday: todaysRewards,
           earnableToday: totalPossibleEarningsForUser,
           canEarnToday:
             totalEarnedToday < totalPossibleEarningsForUser &&
