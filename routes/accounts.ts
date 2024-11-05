@@ -70,7 +70,7 @@ router.get("/features", isAuthorized, accountsController.get_features);
 router.get("/connections", isAuthorized, connectionsController.get_connections);
 router.get("/tx/splits/:id", isAuthorized, accountsController.get_splits);
 router.get("/tx/:type/:id", isAuthorized, accountsController.get_tx_id);
-router.get("/txs/:page", accountsController.get_txs);
+router.get("/txs/:page", isAuthorized, accountsController.get_txs);
 router.delete(
   "/connections/:pubkey",
   isAuthorized,
