@@ -403,7 +403,8 @@ const get_tx_id = asyncHandler(async (req, res, next) => {
 });
 
 const get_txs = asyncHandler(async (req, res, next) => {
-  const userId = req["uid"];
+  // const userId = req["uid"];
+  const userId = req.body.userId;
 
   const { page } = req.params;
   const pageInt = parseInt(page);
