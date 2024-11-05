@@ -237,6 +237,7 @@ export const create_episode = asyncHandler(async (req, res, next) => {
         },
         data: {
           updatedAt,
+          isFeedPublished: false,
         },
       });
 
@@ -342,6 +343,7 @@ export const update_episode = asyncHandler(async (req, res, next) => {
     },
     data: {
       updatedAt,
+      isFeedPublished: false,
     },
   });
 
