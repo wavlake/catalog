@@ -488,7 +488,7 @@ const create_track = asyncHandler(async (req, res, next) => {
       // update the album's updatedAt field
       await prisma.album.update({
         where: { id: request.albumId },
-        data: { updatedAt },
+        data: { updatedAt, isFeedPublished: false },
       });
 
       res.send({
@@ -648,7 +648,7 @@ const update_track = asyncHandler(async (req, res, next) => {
     // update the album's updatedAt field
     await prisma.album.update({
       where: { id: updatedTrack.albumId },
-      data: { updatedAt },
+      data: { updatedAt, isFeedPublished: false },
     });
 
     res.json({ success: true, data: updatedTrack });

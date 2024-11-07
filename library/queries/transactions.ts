@@ -381,15 +381,16 @@ export function internalAmps(userId) {
       db.knex.raw("true as success"),
       db.knex.raw(`'${TransactionType.ZAP_SEND}' as type`),
       db.knex.raw(
-        'COALESCE("track"."title", "album"."title", "artist"."name", "episode"."title") as title'
+        'MIN(COALESCE("track"."title", "album"."title", "artist"."name", "episode"."title")) as title'
       ),
       db.knex.raw("false as ispending"),
       db.knex.raw("'' as comment"),
-      db.knex.raw("amp.id as id"),
+      db.knex.raw("MIN(amp.id) as id"),
       "preamp.msat_amount as msatAmount",
       db.knex.raw("'' as failureReason"),
       "preamp.created_at as createDate"
     )
+    .groupBy("preamp.tx_id")
     .where("preamp.user_id", "=", userId)
     .andWhere("preamp.created_at", ">", getDateFilter())
     .whereNotNull("preamp.created_at");
