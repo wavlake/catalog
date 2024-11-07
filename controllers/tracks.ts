@@ -99,18 +99,13 @@ const get_tracks_by_account = asyncHandler(async (req, res, next) => {
     userId: req["uid"],
   };
 
-  const tracks = await prisma.user.findMany({
-    where: { id: request.userId },
-    include: {
-      artist: {
-        include: {
-          album: {
-            where: { deleted: false },
-            include: { track: { where: { deleted: false } } },
-          },
-        },
-      },
+  const tracks = await prisma.trackInfo.findMany({
+    where: {
+      userId: request.userId,
+      isDraft: false,
+      isProcessing: false,
     },
+    orderBy: [{ publishedAt: "desc" }],
   });
 
   res.json({ success: true, data: tracks });
