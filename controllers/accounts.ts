@@ -1201,6 +1201,7 @@ const get_track_promos = asyncHandler(async (req, res, next) => {
         isPending: true,
         createdAt: true,
         updatedAt: true,
+        contentType: true,
       },
       orderBy: {
         createdAt: "desc",
