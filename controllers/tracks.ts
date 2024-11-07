@@ -99,40 +99,13 @@ const get_tracks_by_account = asyncHandler(async (req, res, next) => {
     userId: req["uid"],
   };
 
-  const tracks = await prisma.track.findMany({
+  const tracks = await prisma.trackInfo.findMany({
     where: {
-      AND: [
-        { deleted: false },
-        { album: { deleted: false } },
-        {
-          artistId: {
-            in: await prisma.artist
-              .findMany({
-                where: { userId: request.userId },
-                select: { id: true },
-              })
-              .then((artists) => artists.map((a) => a.id)),
-          },
-        },
-      ],
+      userId: request.userId,
+      isDraft: false,
+      isProcessing: false,
     },
-    include: {
-      album: {
-        select: {
-          title: true,
-        },
-      },
-      artist: {
-        select: {
-          name: true,
-        },
-      },
-    },
-    orderBy: [
-      { artist: { name: "asc" } },
-      { album: { title: "asc" } },
-      { title: "asc" },
-    ],
+    orderBy: [{ publishedAt: "desc" }],
   });
 
   res.json({ success: true, data: tracks });
