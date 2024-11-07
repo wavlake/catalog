@@ -387,7 +387,7 @@ const sendErrorResponse = (
   message: string
 ) => {
   sendResponse(event, {
-    result_type: "lookup_invoice",
+    result_type: method,
     error: { code, message },
   });
 };
