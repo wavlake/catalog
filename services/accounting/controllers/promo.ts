@@ -10,7 +10,7 @@ import {
   getTotalPromoEarnedByUser,
   getTotalDailyRewardsForUser,
 } from "@library/promos";
-import { getContentInfoFromId } from "@library/content";
+import { getContentInfoFromId, getType } from "@library/content";
 import { IncomingInvoiceType, PromoResponseData } from "@library/common";
 import prisma from "@prismalocal/client";
 import { ResponseObject } from "@typescatalog/catalogApi";
@@ -142,18 +142,9 @@ const createPromo = asyncHandler<
     contentId: string;
     msatBudget: number;
     msatPayoutAmount: number;
-    contentType: string;
   }
 >(async (req, res, next) => {
-  const { contentId, msatBudget, msatPayoutAmount, contentType } = req.body;
-
-  if (contentType !== "track") {
-    res.status(400).json({
-      success: false,
-      error: "Invalid content type. Only tracks are supported at this time.",
-    });
-    return;
-  }
+  const { contentId, msatBudget, msatPayoutAmount } = req.body;
 
   if (!contentId || !msatBudget || !msatPayoutAmount) {
     res.status(400).json({
@@ -191,6 +182,15 @@ const createPromo = asyncHandler<
     res.status(400).json({
       success: false,
       error: "Invalid contentId",
+    });
+    return;
+  }
+
+  const contentType = await getType(contentId);
+  if (!contentType || contentType !== "track") {
+    res.status(400).json({
+      success: false,
+      error: "Only tracks are supported for promos",
     });
     return;
   }
