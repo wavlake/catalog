@@ -113,5 +113,7 @@ router.post(
   accountsController.get_login_token_for_zbd_user
 );
 
+router.get("/promos", isAuthorized, accountsController.get_track_promos);
+
 // Export router
 export default router;

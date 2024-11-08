@@ -1168,6 +1168,57 @@ const create_new_user = asyncHandler<
   }
 });
 
+const get_track_promos = asyncHandler(async (req, res, next) => {
+  const userId = req["uid"];
+
+  try {
+    const userTrackIds = await prisma.track.findMany({
+      where: {
+        artist: {
+          userId: userId,
+        },
+      },
+      select: {
+        id: true,
+      },
+    });
+
+    // Get all promos for tracks owned by the user
+    const userPromos = await prisma.promo.findMany({
+      where: {
+        contentType: "track",
+        contentId: {
+          in: userTrackIds.map((t) => t.id),
+        },
+      },
+      select: {
+        id: true,
+        contentId: true,
+        msatBudget: true,
+        msatPayoutAmount: true,
+        isActive: true,
+        isPaid: true,
+        isPending: true,
+        createdAt: true,
+        updatedAt: true,
+        contentType: true,
+      },
+      orderBy: {
+        createdAt: "desc",
+      },
+    });
+
+    res.send({
+      success: true,
+      data: userPromos,
+    });
+  } catch (err) {
+    log.debug("Error fetching track promos", err);
+    next(err);
+    return;
+  }
+});
+
 export default {
   check_user_verified,
   create_update_lnaddress,
@@ -1193,4 +1244,5 @@ export default {
   get_check_username,
   create_new_user,
   get_random_username,
+  get_track_promos,
 };
