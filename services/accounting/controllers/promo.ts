@@ -1,3 +1,4 @@
+import { isContentOwner } from "./../../../library/userHelper";
 import log, { LogLevelDesc } from "loglevel";
 log.setLevel((process.env.LOG_LEVEL as LogLevelDesc) || "info");
 import asyncHandler from "express-async-handler";
@@ -145,6 +146,7 @@ const createPromo = asyncHandler<
   }
 >(async (req, res, next) => {
   const { contentId, msatBudget, msatPayoutAmount } = req.body;
+  const userId = req["uid"];
 
   if (!contentId || !msatBudget || !msatPayoutAmount) {
     res.status(400).json({
@@ -204,6 +206,16 @@ const createPromo = asyncHandler<
 
   if (!content) {
     res.status(400).json({ success: false, error: "Content not found" });
+    return;
+  }
+
+  const isOwner = await isContentOwner(userId, contentId, contentType);
+
+  if (!isOwner) {
+    res.status(403).json({
+      success: false,
+      error: "You must be the owner of the track to create a promo",
+    });
     return;
   }
 
