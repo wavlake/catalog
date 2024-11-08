@@ -186,7 +186,7 @@ const createPromo = asyncHandler<
     return;
   }
 
-  //validate contentId
+  // validate contentId
   if (!validate(contentId)) {
     res.status(400).json({
       success: false,
