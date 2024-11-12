@@ -29,6 +29,7 @@ const createPromoReward = asyncHandler<
 >(async (req, res, next) => {
   const { promoId } = req.body;
   const userId = req["uid"];
+  const ipAddress = req.ip;
 
   // Validate
   if (!promoId) {
@@ -50,6 +51,29 @@ const createPromoReward = asyncHandler<
     res.status(400).json({ success: false, error: "Promo not found" });
     return;
   }
+
+  // Check if ip has been used in the last minute
+  const lastReward = await db
+    .knex("promo_reward")
+    .select("created_at")
+    .where("ip", ipAddress)
+    .orderBy("created_at", "desc")
+    .first();
+
+  if (lastReward) {
+    const lastRewardDate = new Date(lastReward.created_at);
+    const now = new Date();
+    const diff = now.getTime() - lastRewardDate.getTime();
+    if (diff < 58000) {
+      res.status(400).json({
+        success: false,
+        error: "You can only earn a reward once per minute",
+      });
+      return;
+    }
+  }
+
+  // Check if user is eligible for reward
 
   const userIsEligible = await isUserEligibleForReward(userId, promoId);
   if (!userIsEligible) {
@@ -79,6 +103,7 @@ const createPromoReward = asyncHandler<
       updated_at: db.knex.fn.now(),
       promo_id: promoId,
       msat_amount: promo.msatPayoutAmount,
+      ip: ipAddress,
     })
     .where("promo_id", promoId);
 
