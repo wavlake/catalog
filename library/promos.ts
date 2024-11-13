@@ -195,7 +195,7 @@ export const isUserEligibleForPromo = async (
           "promo.msat_payout_amount as msat_payout_amount",
           "promo.content_type as content_type",
           "promo.content_id as content_id",
-          "promo_reward.user_id as user_id"
+          "promo_reward.ip as ip"
         )
         .sum("msat_amount as total")
         .where({ "promo.id": promoId, "promo_reward.ip": ip })
