@@ -38,7 +38,13 @@ const limiter = rateLimit({
 //////// ROUTES ////////
 
 // USER
-router.post("/user", isAuthorized, accountsController.create_new_user);
+router.post("/user", isAuthorized, accountsController.create_user);
+router.post(
+  "/user/verified",
+  isAuthorized,
+  isZbdRegion,
+  accountsController.create_user_verified
+);
 router.get(
   "/user/check-username/:username",
   accountsController.get_check_username

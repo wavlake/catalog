@@ -29,60 +29,16 @@ import { urlFriendly } from "../library/format";
 import { upload_image } from "../library/artwork";
 import { getZBDRedirectInfo, getZBDUserInfo } from "../library/zbd/login";
 import { updateNpubMetadata } from "../library/nostr/nostr";
-import { uniqueNamesGenerator, colors, animals } from "unique-names-generator";
 import { ResponseObject } from "../types/catalogApi";
-import { toPng } from "jdenticon";
-import fs from "fs";
-
-function makeRandomName() {
-  return uniqueNamesGenerator({
-    dictionaries: [colors, animals],
-    separator: "-", // word separator
-  }); // example: red-donkey
-}
-
-async function validateUsername(username: string): Promise<boolean> {
-  // Name should only contain letters, numbers, underscores, and hyphens
-  return /^[A-Za-z0-9_-]+$/.test(username);
-}
-
-async function usernameIsAvailable(name: string): Promise<boolean> {
-  const profileUrl = urlFriendly(name);
-
-  // username or profileUrl matches
-  const userExists = await prisma.user.findFirst({
-    where: {
-      OR: [{ name: name }, { profileUrl }],
-    },
-  });
-
-  return userExists ? false : true;
-}
-
-async function getRandomName(): Promise<string> {
-  let newUserName: string;
-  let userExists;
-  // generate a random name until we find one that doesn't exist
-  const MAX_ATTEMPTS = 10;
-  let attempts = 0;
-  while (!newUserName && attempts < MAX_ATTEMPTS) {
-    newUserName = makeRandomName();
-    const profileUrl = urlFriendly(newUserName);
-
-    // username matches or profileUrl
-    userExists = await prisma.user.findFirst({
-      where: {
-        OR: [{ name: newUserName }, { profileUrl }],
-      },
-    });
-
-    attempts++;
-    if (!userExists) {
-      return newUserName;
-    }
-    return null;
-  }
-}
+import {
+  createUserPubkey,
+  createUserVerification,
+  createUserWithAvatar,
+  getRandomName,
+  usernameIsAvailable,
+  validateAndGenerateUsername,
+  validateUsername,
+} from "../library/userHelper";
 
 const get_account = asyncHandler(async (req, res, next) => {
   const request = {
@@ -1057,99 +1013,97 @@ const get_random_username = asyncHandler(async (req, res, next) => {
   });
 });
 
-const create_new_user = asyncHandler<
+// Common types
+type UserResponse = ResponseObject<{
+  uid: string;
+  username: string;
+  profileUrl: string;
+  pubkey: string;
+}>;
+
+type UserCreateRequest = {
+  username?: string;
+  pubkey?: string;
+};
+
+type UserVerifiedRequest = UserCreateRequest & {
+  firstName?: string;
+  lastName?: string;
+};
+
+const create_user = asyncHandler<{}, UserResponse, UserCreateRequest>(
+  async (req, res, next) => {
+    try {
+      const userId = req["uid"];
+      const { username: providedUsername, pubkey } = req.body;
+
+      // Validate username
+      const username = await validateAndGenerateUsername(providedUsername);
+      if (!username) {
+        res.status(400).json({
+          success: false,
+          error:
+            "Invalid username. Should only contain letters, numbers, underscores, and hyphens, and must be available.",
+        });
+        return;
+      }
+
+      // Create user with avatar
+      const newUser = await createUserWithAvatar(userId, username);
+
+      // Create pubkey if provided
+      const userPubkey = await createUserPubkey(userId, pubkey);
+
+      res.status(201).json({
+        success: true,
+        data: {
+          uid: userId,
+          username: newUser.name,
+          profileUrl: newUser.profileUrl,
+          pubkey: userPubkey?.pubkey,
+        },
+      });
+    } catch (err) {
+      log.debug("Error creating new user", req.body);
+      log.debug(err);
+      next(err);
+    }
+  }
+);
+
+const create_user_verified = asyncHandler<
   {},
-  ResponseObject<{
-    uid: string;
-    username: string;
-    profileUrl: string;
-    pubkey: string;
-  }>,
-  {
-    username?: string;
-    firstName?: string;
-    lastName?: string;
-    pubkey?: string;
-  }
+  UserResponse,
+  UserVerifiedRequest
 >(async (req, res, next) => {
-  const userId = req["uid"];
-  const { username, firstName, lastName, pubkey } = req.body;
-
-  // Validations
-  let newUsername;
-  if (!username) {
-    newUsername = await getRandomName();
-  } else {
-    newUsername = username;
-  }
-
-  const validUsername = await validateUsername(newUsername);
-
-  if (!validUsername) {
-    res.status(400).json({
-      success: false,
-      error:
-        "Name should only contain letters, numbers, underscores, and hyphens",
-    });
-    return;
-  }
-
-  const usernameOK = await usernameIsAvailable(newUsername);
-
-  if (!usernameOK) {
-    res.status(400).json({
-      success: false,
-      error: "Username is already taken",
-    });
-    return;
-  }
-
   try {
-    // generate avatar
-    const avatar = toPng(newUsername, 300);
-    fs.writeFileSync(`/tmp/${userId}.png`, avatar);
-    const avatarFile = fs.createReadStream(`/tmp/${userId}.png`);
-    let cdnImageUrl;
-    if (avatar) {
-      cdnImageUrl = await upload_image(avatarFile, userId, "user");
-    }
-    // create the new user record
-    const newUser = await prisma.user.create({
-      data: {
-        id: userId,
-        name: newUsername,
-        profileUrl: urlFriendly(newUsername),
-        artworkUrl: cdnImageUrl,
-      },
-    });
+    const userId = req["uid"];
+    const {
+      username: providedUsername,
+      firstName,
+      lastName,
+      pubkey,
+    } = req.body;
 
-    // Create user pubkey and verification records that reference the new user record
-    let userPubkey;
-    let userVerification;
-    if (!pubkey) {
-      userPubkey = null;
-    } else {
-      userPubkey = await prisma.userPubkey.create({
-        data: {
-          userId: userId,
-          pubkey: pubkey,
-          createdAt: new Date(),
-        },
+    // Validate username
+    const username = await validateAndGenerateUsername(providedUsername);
+    if (!username) {
+      res.status(400).json({
+        success: false,
+        error:
+          "Invalid username. Should only contain letters, numbers, underscores, and hyphens, and must be available.",
       });
+      return;
     }
 
-    if (!firstName || !lastName) {
-      userVerification = null;
-    } else {
-      userVerification = await prisma.userVerification.create({
-        data: {
-          userId: userId,
-          firstName: firstName,
-          lastName: lastName,
-          ip: req.ip,
-        },
-      });
-    }
+    // Create user with avatar
+    const newUser = await createUserWithAvatar(userId, username);
+
+    // Create pubkey if provided
+    const userPubkey = await createUserPubkey(userId, pubkey);
+
+    // Create verification record
+    await createUserVerification(userId, firstName, lastName, req.ip);
 
     res.status(201).json({
       success: true,
@@ -1157,12 +1111,11 @@ const create_new_user = asyncHandler<
         uid: userId,
         username: newUser.name,
         profileUrl: newUser.profileUrl,
-        pubkey: userPubkey ? userPubkey.pubkey : undefined,
+        pubkey: userPubkey?.pubkey,
       },
     });
-    return;
   } catch (err) {
-    log.debug("Error creating new user", req.body);
+    log.debug("Error creating new verified user", req.body);
     log.debug(err);
     next(err);
   }
@@ -1242,7 +1195,8 @@ export default {
   get_pubkey_metadata,
   update_metadata,
   get_check_username,
-  create_new_user,
   get_random_username,
   get_track_promos,
+  create_user,
+  create_user_verified,
 };
