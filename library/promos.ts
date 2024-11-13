@@ -344,3 +344,57 @@ export const getTotalPossibleEarningsForPromoForUser = async (
   const wholeEarningPeriods = Math.floor(contentDuration / EARNING_INTERVAL);
   return wholeEarningPeriods * msatPayoutAmount;
 };
+
+export const getTotalRewardsForUser = async (
+  userId: string,
+  options: {
+    startDate?: Date;
+    endDate?: Date;
+    includePending?: boolean;
+  } = {}
+): Promise<number> => {
+  try {
+    const { startDate, endDate = new Date(), includePending = false } = options;
+
+    let query = db
+      .knex("promo_reward")
+      .where("user_id", userId)
+      .sum("msat_amount as total");
+
+    // Add date range filters if provided
+    if (startDate) {
+      query = query.where("created_at", ">=", startDate);
+    }
+    query = query.where("created_at", "<=", endDate);
+
+    // Filter pending rewards unless specifically included
+    if (!includePending) {
+      query = query.where("is_pending", false);
+    }
+
+    const result = await query.first();
+
+    if (!result || result.total === null) {
+      return 0;
+    }
+
+    return parseInt(result.total);
+  } catch (error) {
+    log.error("Error calculating total rewards for user:", error);
+    return 0;
+  }
+};
+
+// Helper function to get daily rewards
+export const getTotalDailyRewardsForUser = async (
+  userId: string,
+  includePending: boolean = false
+): Promise<number> => {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  return getTotalRewardsForUser(userId, {
+    startDate: today,
+    includePending,
+  });
+};

@@ -1,6 +1,7 @@
 import log from "loglevel";
 import db from "./db";
 import { IncomingInvoiceTableMap, IncomingInvoiceType } from "./common";
+import prisma from "../prisma/client";
 
 export async function getUserIdFromTransactionId(
   transactionId: number
@@ -34,6 +35,38 @@ export const wasTransactionAlreadyLogged = async (
     .catch((err) => {
       log.error(
         `Error finding invoice id ${invoiceId} in ${tableName}: ${err}`
+      );
+      return false;
+    });
+};
+export const handleCompletedPromoInvoice = async (
+  invoiceId: number,
+  msatAmount: number
+) => {
+  return prisma.promo
+    .update({
+      where: {
+        id: invoiceId,
+      },
+      data: {
+        isPending: false,
+        isPaid: true,
+        updatedAt: new Date(),
+        // auto enable promo once paid
+        // TODO - add a feature to enable/disable promos from UI
+        // may want to start with a disabled promo
+        isActive: true,
+      },
+    })
+    .then(() => {
+      log.debug(
+        `Successfully logged promo invoice of ${msatAmount} for ${invoiceId}`
+      );
+      return true;
+    })
+    .catch((err) => {
+      log.error(
+        `Error updating promo table on handleCompletedPromoInvoice: ${err}`
       );
       return false;
     });

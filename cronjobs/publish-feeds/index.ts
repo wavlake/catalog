@@ -5,6 +5,7 @@ import podcastIndex from "podcast-index-api";
 import prisma from "@prismalocal/client";
 const crypto = require("crypto");
 
+// DEPRECATED: lookbackSeconds and logic, we can remove this after the next deploy
 const lookbackSeconds = parseInt(process.env.LOOKBACK_MINUTES) * 60 * 1000;
 const FEED_URL = "https://www.wavlake.com/feed";
 
@@ -21,11 +22,19 @@ const lookbackDt = Date.now() - lookbackSeconds;
 const wavlakePodcastsForUpdate = async () => {
   const updatedPodcasts = await prisma.podcast.findMany({
     where: {
-      updatedAt: {
-        // greater than now - lookbackMinutes
-        gt: new Date(lookbackDt),
-      },
-      isDraft: false,
+      OR: [
+        {
+          updatedAt: {
+            // greater than now - lookbackMinutes
+            gt: new Date(lookbackDt),
+          },
+          isDraft: false,
+        },
+        {
+          isFeedPublished: false,
+          isDraft: false,
+        },
+      ],
     },
     select: {
       id: true,
@@ -44,19 +53,35 @@ const wavlakePodcastsForUpdate = async () => {
 const wavlakeMusicFeedsForUpdate = async () => {
   const updatedMusicFeeds = await prisma.album.findMany({
     where: {
-      updatedAt: {
-        // greater than now - lookbackMinutes
-        gt: new Date(lookbackDt),
-      },
-      isDraft: false,
-      deleted: false,
-      track: {
-        some: {
-          // Returns all records where one or more ("some") related records match filtering criteria.
-          // In English: return all albums with at least one live, undeleted track
+      OR: [
+        {
+          updatedAt: {
+            // greater than now - lookbackMinutes
+            gt: new Date(lookbackDt),
+          },
+          isDraft: false,
           deleted: false,
+          track: {
+            some: {
+              // Returns all records where one or more ("some") related records match filtering criteria.
+              // In English: return all albums with at least one live, undeleted track
+              deleted: false,
+            },
+          },
         },
-      },
+        {
+          isFeedPublished: false,
+          isDraft: false,
+          deleted: false,
+          track: {
+            some: {
+              // Returns all records where one or more ("some") related records match filtering criteria.
+              // In English: return all albums with at least one live, undeleted track
+              deleted: false,
+            },
+          },
+        },
+      ],
     },
     include: { track: true },
     orderBy: { updatedAt: "asc" },

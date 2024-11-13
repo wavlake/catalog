@@ -4,6 +4,7 @@ import db from "./db";
 import {
   getUserIdFromTransactionId,
   handleCompletedDeposit,
+  handleCompletedPromoInvoice,
   wasTransactionAlreadyLogged,
 } from "./deposit";
 import { processSplits } from "./amp";
@@ -32,8 +33,8 @@ export const updateInvoiceIfNeeded = async (
 }> => {
   const wasLogged = await wasTransactionAlreadyLogged(invoiceId, invoiceType);
   if (wasLogged) {
-    log.debug(`Transaction ${invoiceId} was already logged, skipping.`);
-    return { success: true, message: "Transaction was already logged" };
+    log.debug(`${invoiceType} id:${invoiceId} was already logged, skipping.`);
+    return { success: true, message: `${invoiceType} was already logged` };
   }
 
   const status = charge.status;
@@ -90,6 +91,10 @@ export const updateInvoiceIfNeeded = async (
             preimage,
             externalId
           );
+          break;
+        case IncomingInvoiceType.Promo:
+          log.debug(`Processing promo invoice for id ${invoiceId}`);
+          await handleCompletedPromoInvoice(invoiceId, msatAmount);
           break;
         default:
           log.error(`Invalid invoiceType: ${invoiceType}`);
