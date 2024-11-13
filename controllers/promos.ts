@@ -156,7 +156,7 @@ export const getPromo = asyncHandler<
   ResponseObject<Promo>,
   { id: string }
 >(async (req, res, next) => {
-  const userId = "Q36MH2qB8hh3DcFEHPV7fV4ucqu1"; //req["uid"];
+  const userId = req["uid"];
   const { id } = req.params;
 
   if (!id) {
