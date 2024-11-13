@@ -327,13 +327,19 @@ async function handleFailedOrExpiredInvoice(
     return;
   }
 
-  const update = {
-    is_pending: false,
-    updated_at: db.knex.fn.now(),
-    ...(table === "external_receive"
-      ? { error_message: status }
-      : { failure_reason: status }),
-  };
+  const update =
+    table === "promo"
+      ? {
+          is_pending: false,
+          updated_at: db.knex.fn.now(),
+        }
+      : {
+          is_pending: false,
+          updated_at: db.knex.fn.now(),
+          ...(table === "external_receive"
+            ? { error_message: status }
+            : { failure_reason: status }),
+        };
   await db
     .knex(table)
     .update(update)
