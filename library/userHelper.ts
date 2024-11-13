@@ -321,31 +321,6 @@ export const getUserIds = async (userId: string) => {
   ];
 };
 
-export type UserResponse = ResponseObject<{
-  uid: string;
-  username: string;
-  profileUrl: string;
-  pubkey: string;
-}>;
-
-export type UserCreateRequest = {
-  username?: string;
-  pubkey?: string;
-};
-
-export type UserVerifiedRequest = UserCreateRequest & {
-  firstName: string;
-  lastName: string;
-};
-
-export type CreatedUser = {
-  uid: string;
-  username: string;
-  profileUrl: string;
-  pubkey?: string;
-};
-
-// userCreationService.ts
 export async function validateAndGenerateUsername(
   providedUsername?: string
 ): Promise<string | null> {
