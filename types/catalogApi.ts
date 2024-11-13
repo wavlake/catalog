@@ -1,7 +1,7 @@
 export type ResponseObject<T = any> =
   | {
       success: true;
-      data: T;
+      data?: T;
     }
   | {
       error: string;

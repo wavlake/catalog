@@ -163,7 +163,7 @@ const MAX_PAYOUT_AMOUNT = 1000000;
 const MIN_PAYOUT_AMOUNT = 1000;
 const createPromo = asyncHandler<
   {},
-  ResponseObject<{ pr: string }>,
+  ResponseObject<{ pr: string; promoId: number }>,
   {
     contentId: string;
     msatBudget: number;
@@ -310,7 +310,7 @@ const createPromo = asyncHandler<
   if (updatedPromo) {
     res.status(200).json({
       success: true,
-      data: { pr: invoiceResponse.data.invoice.request },
+      data: { pr: invoiceResponse.data.invoice.request, promoId: newPromo.id },
     });
   } else {
     res.status(500).json({
