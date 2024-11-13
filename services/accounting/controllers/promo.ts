@@ -52,36 +52,20 @@ const createPromoReward = asyncHandler<
     return;
   }
 
-  // Check if ip has been used in the last minute
-  const lastReward = await db
-    .knex("promo_reward")
-    .select("created_at")
-    .where("ip", ipAddress)
-    .orderBy("created_at", "desc")
-    .first();
-
-  if (lastReward) {
-    const lastRewardDate = new Date(lastReward.created_at);
-    const now = new Date();
-    const diff = now.getTime() - lastRewardDate.getTime();
-    if (diff < 58000) {
-      res.status(400).json({
-        success: false,
-        error: "You can only earn a reward once per minute",
-      });
-      return;
-    }
-  }
-
   // Check if user is eligible for reward
 
-  const userIsEligible = await isUserEligibleForReward(userId, promoId);
+  const userIsEligible = await isUserEligibleForReward(
+    userId,
+    promoId,
+    ipAddress
+  );
   if (!userIsEligible) {
     res
       .status(400)
       .json({ success: false, error: "User not currently eligible" });
     return;
   }
+
   // Check if promo is active, and has budget
   const promoIsActive = await isPromoActive(promoId, promo.msatBudget);
 
@@ -125,6 +109,7 @@ const createPromoReward = asyncHandler<
     const userStillEligible = await isUserEligibleForReward(
       userId,
       promoId,
+      ipAddress,
       true
     );
     const totalEarned = await getTotalPromoEarnedByUser(userId, promo.id);

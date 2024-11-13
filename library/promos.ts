@@ -153,6 +153,7 @@ export const isPromoActive = async (
 
 export const isUserEligibleForPromo = async (
   userId: string,
+  ip: string,
   promoId: number
 ) => {
   const today = new Date();
@@ -185,6 +186,36 @@ export const isUserEligibleForPromo = async (
     return true;
   }
 
+  const ipDailyContentRewards = ip
+    ? await db
+        .knex("promo_reward")
+        .join("promo", "promo_reward.promo_id", "promo.id")
+        .select(
+          "promo.id",
+          "promo.msat_payout_amount as msat_payout_amount",
+          "promo.content_type as content_type",
+          "promo.content_id as content_id",
+          "promo_reward.user_id as user_id"
+        )
+        .sum("msat_amount as total")
+        .where({ "promo.id": promoId, "promo_reward.ip": ip })
+        .andWhere("promo_reward.created_at", ">", today)
+        .andWhere("promo_reward.is_pending", false)
+        .groupBy(
+          "promo.id",
+          "promo.msat_payout_amount",
+          "promo.content_type",
+          "promo.content_id",
+          "promo_reward.ip"
+        )
+        .first()
+    : null;
+
+  // In case the ip has not been rewarded for any content today
+  if (!ipDailyContentRewards) {
+    return true;
+  }
+
   const contentDuration = await getContentDuration(
     userDailyContentRewards.content_type,
     userDailyContentRewards.content_id
@@ -200,12 +231,22 @@ export const isUserEligibleForPromo = async (
     log.debug("User has reached the daily content reward limit");
     return false;
   }
+
+  if (
+    ipDailyContentRewards &&
+    parseInt(ipDailyContentRewards.total) >=
+      ipDailyContentRewards.msat_payout_amount * durationRounded
+  ) {
+    log.debug("IP has reached the daily content reward limit");
+    return false;
+  }
   return true;
 };
 
 export const isUserEligibleForReward = async (
   userId: string,
   promoId: number,
+  ip: string,
   ignoreTime = false
 ): Promise<boolean> => {
   // Set datetime to 58 seconds ago
@@ -231,6 +272,26 @@ export const isUserEligibleForReward = async (
       return false;
     }
 
+    // IP has not been rewarded in the last minute
+    const ipLastReward = ip
+      ? await db
+          .knex("promo_reward")
+          .select("ip")
+          .max("created_at as last_reward_created_at")
+          .where("user_id", ip)
+          .groupBy("ip")
+          .first()
+      : null;
+
+    if (
+      !ignoreTime &&
+      ipLastReward &&
+      ipLastReward.last_reward_created_at > now
+    ) {
+      log.debug("IP has been rewarded in the last minute");
+      return false;
+    }
+
     // User has not reached the daily reward limit
     const userDailyTotalRewards = await db
       .knex("promo_reward")
@@ -249,9 +310,30 @@ export const isUserEligibleForReward = async (
       return false;
     }
 
+    // IP has not reached the daily reward limit
+    const ipDailyTotalRewards = ip
+      ? await db
+          .knex("promo_reward")
+          .where("ip", ip)
+          .sum("msat_amount as total")
+          .andWhere("created_at", ">", today)
+          .andWhere("is_pending", false)
+          .groupBy("ip")
+          .first()
+      : null;
+
+    if (
+      ipDailyTotalRewards &&
+      ipDailyTotalRewards.total >= MAX_DAILY_USER_REWARDS
+    ) {
+      log.debug("IP has reached the daily reward limit");
+      return false;
+    }
+
     // User has not reached the daily content reward limit
     const userIsEligibleForPromo = await isUserEligibleForPromo(
       userId,
+      ip,
       promoId
     );
 
