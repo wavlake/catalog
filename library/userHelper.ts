@@ -2,6 +2,12 @@ import prisma from "../prisma/client";
 import db from "./db";
 import log from "loglevel";
 import Sentry from "@sentry/node";
+import { upload_image } from "./artwork";
+import { urlFriendly } from "./format";
+import { toPng } from "jdenticon";
+import { ResponseObject } from "../types/catalogApi";
+import { uniqueNamesGenerator, colors, animals } from "unique-names-generator";
+import fs from "fs";
 
 export type SplitContentTypes =
   | "track"
@@ -314,3 +320,181 @@ export const getUserIds = async (userId: string) => {
     ...userNpubsByPubkey.map((n) => n.userId),
   ];
 };
+
+export type UserResponse = ResponseObject<{
+  uid: string;
+  username: string;
+  profileUrl: string;
+  pubkey: string;
+}>;
+
+export type UserCreateRequest = {
+  username?: string;
+  pubkey?: string;
+};
+
+export type UserVerifiedRequest = UserCreateRequest & {
+  firstName: string;
+  lastName: string;
+};
+
+export type CreatedUser = {
+  uid: string;
+  username: string;
+  profileUrl: string;
+  pubkey?: string;
+};
+
+// userCreationService.ts
+export async function validateAndGenerateUsername(
+  providedUsername?: string
+): Promise<string | null> {
+  let username = providedUsername;
+  if (!username) {
+    username = await getRandomName();
+  }
+
+  const validUsername = await validateUsername(username);
+  if (!validUsername) {
+    return null;
+  }
+
+  const usernameOK = await usernameIsAvailable(username);
+  if (!usernameOK) {
+    return null;
+  }
+
+  return username;
+}
+
+export async function generateAndUploadAvatar(
+  userId: string,
+  username: string
+): Promise<string | undefined> {
+  const avatar = toPng(username, 300);
+  fs.writeFileSync(`/tmp/${userId}.png`, avatar);
+  const avatarFile = fs.createReadStream(`/tmp/${userId}.png`);
+
+  if (avatar) {
+    return await upload_image(avatarFile, userId, "user");
+  }
+  return undefined;
+}
+
+export async function createBaseUser(
+  userId: string,
+  username: string,
+  cdnImageUrl?: string
+) {
+  return await prisma.user.create({
+    data: {
+      id: userId,
+      name: username,
+      profileUrl: urlFriendly(username),
+      artworkUrl: cdnImageUrl,
+    },
+  });
+}
+
+export async function createUserPubkey(userId: string, pubkey?: string) {
+  if (!pubkey) return null;
+
+  return await prisma.userPubkey.create({
+    data: {
+      userId: userId,
+      pubkey: pubkey,
+      createdAt: new Date(),
+    },
+  });
+}
+
+export async function createUserVerification(
+  userId: string,
+  firstName?: string,
+  lastName?: string,
+  ip?: string
+) {
+  if (!firstName || !lastName) return null;
+
+  return await prisma.userVerification.create({
+    data: {
+      userId: userId,
+      firstName: firstName,
+      lastName: lastName,
+      ip: ip,
+    },
+  });
+}
+
+export function formatUserResponse(
+  userId: string,
+  username: string,
+  profileUrl: string,
+  pubkey?: string
+) {
+  return {
+    uid: userId,
+    username: username,
+    profileUrl: profileUrl,
+    pubkey: pubkey,
+  };
+}
+
+// Optional: Compose functions for common operations
+export const createUserWithAvatar = async (
+  userId: string,
+  username: string
+) => {
+  const cdnImageUrl = await generateAndUploadAvatar(userId, username);
+  return await createBaseUser(userId, username, cdnImageUrl);
+};
+
+export function makeRandomName() {
+  return uniqueNamesGenerator({
+    dictionaries: [colors, animals],
+    separator: "-", // word separator
+  }); // example: red-donkey
+}
+
+export async function validateUsername(username: string): Promise<boolean> {
+  // Name should only contain letters, numbers, underscores, and hyphens
+  return /^[A-Za-z0-9_-]+$/.test(username);
+}
+
+export async function usernameIsAvailable(name: string): Promise<boolean> {
+  const profileUrl = urlFriendly(name);
+
+  // username or profileUrl matches
+  const userExists = await prisma.user.findFirst({
+    where: {
+      OR: [{ name: name }, { profileUrl }],
+    },
+  });
+
+  return userExists ? false : true;
+}
+
+export async function getRandomName(): Promise<string> {
+  let newUserName: string;
+  let userExists;
+  // generate a random name until we find one that doesn't exist
+  const MAX_ATTEMPTS = 10;
+  let attempts = 0;
+  while (!newUserName && attempts < MAX_ATTEMPTS) {
+    newUserName = makeRandomName();
+    const profileUrl = urlFriendly(newUserName);
+
+    // username matches or profileUrl
+    userExists = await prisma.user.findFirst({
+      where: {
+        OR: [{ name: newUserName }, { profileUrl }],
+      },
+    });
+
+    attempts++;
+    if (!userExists) {
+      return newUserName;
+    }
+    return null;
+  }
+}
