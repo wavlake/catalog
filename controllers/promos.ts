@@ -11,6 +11,8 @@ import { getContentInfoFromId } from "../library/content";
 import { PromoResponseData } from "../library/common";
 import { ResponseObject } from "../types/catalogApi";
 import { shuffle } from "../library/helpers";
+import prisma from "../prisma/client";
+import { isContentOwner, SplitContentTypes } from "../library/userHelper";
 
 export const getActivePromos = asyncHandler<
   {},
@@ -133,4 +135,130 @@ export const getPromoByContent = asyncHandler<
     },
   });
   return;
+});
+
+export const getPromo = asyncHandler<
+  { id: string },
+  ResponseObject<{
+    id: number;
+    contentId: string;
+    msatBudget: number;
+    msatPayoutAmount: number;
+    isActive: boolean;
+    createdAt: Date;
+    updatedAt: Date;
+    isPending: boolean;
+    isPaid: boolean;
+    contentType: string;
+  }>,
+  { id: string }
+>(async (req, res, next) => {
+  const userId = req["uid"];
+  const { id } = req.params;
+
+  if (!id) {
+    res.status(400).send({
+      success: false,
+      error: "Missing promo id",
+    });
+    return;
+  }
+
+  const idInt = parseInt(id);
+  if (typeof idInt !== "number") {
+    res.status(400).send({
+      success: false,
+      error: "Invalid promo id",
+    });
+    return;
+  }
+
+  const promo = await prisma.promo.findFirst({
+    where: {
+      id: idInt,
+    },
+  });
+
+  if (!promo) {
+    res.json({
+      success: false,
+      error: "Promo not found",
+    });
+    return;
+  }
+
+  const isOwner = await isContentOwner(
+    userId,
+    promo.contentId,
+    promo.contentType as SplitContentTypes
+  );
+
+  if (!isOwner) {
+    res.status(403).send({
+      success: false,
+      error: "Unauthorized",
+    });
+    return;
+  }
+
+  res.json({
+    success: true,
+    data: promo,
+  });
+});
+
+export const deletePromo = asyncHandler<
+  { id: string },
+  ResponseObject,
+  { id: string }
+>(async (req, res, next) => {
+  const userId = req["uid"];
+  const { id } = req.params;
+
+  if (!id) {
+    res.status(400).send({
+      success: false,
+      error: "Missing promo id",
+    });
+    return;
+  }
+
+  const idInt = parseInt(id);
+  if (typeof idInt !== "number") {
+    res.status(400).send({
+      success: false,
+      error: "Invalid promo id",
+    });
+    return;
+  }
+
+  const promo = await prisma.promo.findFirst({
+    where: {
+      id: idInt,
+    },
+  });
+
+  const isOwner = await isContentOwner(
+    userId,
+    promo.contentId,
+    promo.contentType as SplitContentTypes
+  );
+
+  if (!isOwner) {
+    res.status(403).send({
+      success: false,
+      error: "Unauthorized",
+    });
+    return;
+  }
+
+  await prisma.promo.delete({
+    where: {
+      id: idInt,
+    },
+  });
+
+  res.json({
+    success: true,
+  });
 });
