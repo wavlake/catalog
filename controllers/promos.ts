@@ -1,4 +1,5 @@
 import asyncHandler from "express-async-handler";
+import type { Promo, TrackInfo } from "@prisma/client";
 import {
   identifyActivePromosWithBudgetRemaining,
   identifyPromosWhereUserEarnedToday,
@@ -8,7 +9,7 @@ import {
   getTotalPossibleEarningsForPromoForUser,
 } from "../library/promos";
 import { getContentInfoFromId } from "../library/content";
-import { PromoResponseData } from "../library/common";
+import { PromoResponseUser } from "../library/common";
 import { ResponseObject } from "../types/catalogApi";
 import { shuffle } from "../library/helpers";
 import prisma from "../prisma/client";
@@ -16,7 +17,14 @@ import { isContentOwner, SplitContentTypes } from "../library/userHelper";
 
 export const getActivePromos = asyncHandler<
   {},
-  ResponseObject<PromoResponseData[]>,
+  ResponseObject<
+    Array<
+      Promo & {
+        promoUser?: PromoResponseUser;
+        contentMetadata?: TrackInfo;
+      }
+    >
+  >,
   {}
 >(async (req, res, next) => {
   const request = {
@@ -82,7 +90,13 @@ export const getActivePromos = asyncHandler<
 
 export const getPromoByContent = asyncHandler<
   { contentId: string },
-  ResponseObject<PromoResponseData>
+  ResponseObject<
+    Array<
+      Promo & {
+        promoUser?: PromoResponseUser;
+      }
+    >
+  >
 >(async (req, res, next) => {
   const request = {
     accountId: req["uid"],
@@ -139,21 +153,10 @@ export const getPromoByContent = asyncHandler<
 
 export const getPromo = asyncHandler<
   { id: string },
-  ResponseObject<{
-    id: number;
-    contentId: string;
-    msatBudget: number;
-    msatPayoutAmount: number;
-    isActive: boolean;
-    createdAt: Date;
-    updatedAt: Date;
-    isPending: boolean;
-    isPaid: boolean;
-    contentType: string;
-  }>,
+  ResponseObject<Promo>,
   { id: string }
 >(async (req, res, next) => {
-  const userId = req["uid"];
+  const userId = "Q36MH2qB8hh3DcFEHPV7fV4ucqu1"; //req["uid"];
   const { id } = req.params;
 
   if (!id) {
@@ -207,13 +210,14 @@ export const getPromo = asyncHandler<
   });
 });
 
-export const deletePromo = asyncHandler<
+export const editPromo = asyncHandler<
   { id: string },
-  ResponseObject,
-  { id: string }
+  ResponseObject<Promo>,
+  { id: string; isActive: boolean }
 >(async (req, res, next) => {
-  const userId = req["uid"];
+  const userId = "Q36MH2qB8hh3DcFEHPV7fV4ucqu1"; //req["uid"];
   const { id } = req.params;
+  const { isActive } = req.body;
 
   if (!id) {
     res.status(400).send({
@@ -252,13 +256,18 @@ export const deletePromo = asyncHandler<
     return;
   }
 
-  await prisma.promo.delete({
+  const updatedPromo = await prisma.promo.update({
     where: {
       id: idInt,
+    },
+    data: {
+      isActive,
+      updatedAt: new Date(),
     },
   });
 
   res.json({
     success: true,
+    data: updatedPromo,
   });
 });
