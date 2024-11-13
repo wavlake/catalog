@@ -401,20 +401,6 @@ export async function createUserVerification(
   });
 }
 
-export function formatUserResponse(
-  userId: string,
-  username: string,
-  profileUrl: string,
-  pubkey?: string
-) {
-  return {
-    uid: userId,
-    username: username,
-    profileUrl: profileUrl,
-    pubkey: pubkey,
-  };
-}
-
 // Optional: Compose functions for common operations
 export const createUserWithAvatar = async (
   userId: string,

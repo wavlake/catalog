@@ -34,7 +34,6 @@ import {
   createUserPubkey,
   createUserVerification,
   createUserWithAvatar,
-  formatUserResponse,
   getRandomName,
   usernameIsAvailable,
   validateAndGenerateUsername,
@@ -1055,17 +1054,14 @@ const create_user = asyncHandler<{}, UserResponse, UserCreateRequest>(
       // Create pubkey if provided
       const userPubkey = await createUserPubkey(userId, pubkey);
 
-      // Format and send response
-      const responseData = formatUserResponse(
-        userId,
-        newUser.name,
-        newUser.profileUrl,
-        userPubkey?.pubkey
-      );
-
       res.status(201).json({
         success: true,
-        data: responseData,
+        data: {
+          uid: userId,
+          username: newUser.name,
+          profileUrl: newUser.profileUrl,
+          pubkey: userPubkey?.pubkey,
+        },
       });
     } catch (err) {
       log.debug("Error creating new user", req.body);
@@ -1109,17 +1105,14 @@ const create_user_verified = asyncHandler<
     // Create verification record
     await createUserVerification(userId, firstName, lastName, req.ip);
 
-    // Format and send response
-    const responseData = formatUserResponse(
-      userId,
-      newUser.name,
-      newUser.profileUrl,
-      userPubkey?.pubkey
-    );
-
     res.status(201).json({
       success: true,
-      data: responseData,
+      data: {
+        uid: userId,
+        username: newUser.name,
+        profileUrl: newUser.profileUrl,
+        pubkey: userPubkey?.pubkey,
+      },
     });
   } catch (err) {
     log.debug("Error creating new verified user", req.body);
