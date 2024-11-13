@@ -215,7 +215,7 @@ export const editPromo = asyncHandler<
   ResponseObject<Promo>,
   { id: string; isActive: boolean }
 >(async (req, res, next) => {
-  const userId = "Q36MH2qB8hh3DcFEHPV7fV4ucqu1"; //req["uid"];
+  const userId = req["uid"];
   const { id } = req.params;
   const { isActive } = req.body;
 
