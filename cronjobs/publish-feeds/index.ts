@@ -22,19 +22,16 @@ const lookbackDt = Date.now() - lookbackSeconds;
 const wavlakePodcastsForUpdate = async () => {
   const updatedPodcasts = await prisma.podcast.findMany({
     where: {
-      OR: [
-        {
-          updatedAt: {
-            // greater than now - lookbackMinutes
-            gt: new Date(lookbackDt),
-          },
-          isDraft: false,
+      isFeedPublished: false,
+      isDraft: false,
+      episode: {
+        some: {
+          // Returns all records where one or more ("some") related records match filtering criteria.
+          // In English: return all albums with at least one live, undeleted episode
+          deleted: false,
+          isProcessing: false,
         },
-        {
-          isFeedPublished: false,
-          isDraft: false,
-        },
-      ],
+      },
     },
     select: {
       id: true,
@@ -53,37 +50,17 @@ const wavlakePodcastsForUpdate = async () => {
 const wavlakeMusicFeedsForUpdate = async () => {
   const updatedMusicFeeds = await prisma.album.findMany({
     where: {
-      OR: [
-        {
-          updatedAt: {
-            // greater than now - lookbackMinutes
-            gt: new Date(lookbackDt),
-          },
-          isDraft: false,
+      isFeedPublished: false,
+      isDraft: false,
+      deleted: false,
+      track: {
+        some: {
+          // Returns all records where one or more ("some") related records match filtering criteria.
+          // In English: return all albums with at least one live, undeleted track
           deleted: false,
-          track: {
-            some: {
-              // Returns all records where one or more ("some") related records match filtering criteria.
-              // In English: return all albums with at least one live, undeleted track
-              deleted: false,
-              isProcessing: false,
-            },
-          },
+          isProcessing: false,
         },
-        {
-          isFeedPublished: false,
-          isDraft: false,
-          deleted: false,
-          track: {
-            some: {
-              // Returns all records where one or more ("some") related records match filtering criteria.
-              // In English: return all albums with at least one live, undeleted track
-              deleted: false,
-              isProcessing: false,
-            },
-          },
-        },
-      ],
+      },
     },
     include: { track: true },
     orderBy: { updatedAt: "asc" },
