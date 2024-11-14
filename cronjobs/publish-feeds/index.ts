@@ -66,6 +66,7 @@ const wavlakeMusicFeedsForUpdate = async () => {
               // Returns all records where one or more ("some") related records match filtering criteria.
               // In English: return all albums with at least one live, undeleted track
               deleted: false,
+              isProcessing: false,
             },
           },
         },
@@ -78,6 +79,7 @@ const wavlakeMusicFeedsForUpdate = async () => {
               // Returns all records where one or more ("some") related records match filtering criteria.
               // In English: return all albums with at least one live, undeleted track
               deleted: false,
+              isProcessing: false,
             },
           },
         },
