@@ -146,6 +146,7 @@ const createPromoReward = asyncHandler<
 
 const MAX_PAYOUT_AMOUNT = 1000000;
 const MIN_PAYOUT_AMOUNT = 1000;
+const MAX_NUMBER_OF_ACTIVE_PROMOS = 3;
 const createPromo = asyncHandler<
   {},
   ResponseObject<{ pr: string; promoId: number }>,
@@ -241,7 +242,7 @@ const createPromo = asyncHandler<
   });
 
   // check for outstanding promos that are awaiting funding
-  const existingPendingPromo = await prisma.promo.findFirst({
+  const existingPromos = await prisma.promo.findMany({
     where: {
       AND: [
         {
@@ -251,17 +252,28 @@ const createPromo = asyncHandler<
         },
         {
           contentType: "track",
-          isPending: true,
         },
       ],
     },
   });
 
-  if (existingPendingPromo) {
+  if (existingPromos.some((promo) => promo.isPending)) {
     res.status(400).json({
       success: false,
       error:
         "You already have a pending promo. Please wait for it to be funded or cancelled.",
+    });
+    return;
+  }
+
+  // if more than 3 active promos, reject
+  if (
+    existingPromos.filter((promo) => promo.isActive).length >=
+    MAX_NUMBER_OF_ACTIVE_PROMOS
+  ) {
+    res.status(400).json({
+      success: false,
+      error: `You have reached the maximum number of active promos (${MAX_NUMBER_OF_ACTIVE_PROMOS})`,
     });
     return;
   }
