@@ -52,36 +52,20 @@ const createPromoReward = asyncHandler<
     return;
   }
 
-  // Check if ip has been used in the last minute
-  const lastReward = await db
-    .knex("promo_reward")
-    .select("created_at")
-    .where("ip", ipAddress)
-    .orderBy("created_at", "desc")
-    .first();
-
-  if (lastReward) {
-    const lastRewardDate = new Date(lastReward.created_at);
-    const now = new Date();
-    const diff = now.getTime() - lastRewardDate.getTime();
-    if (diff < 58000) {
-      res.status(400).json({
-        success: false,
-        error: "You can only earn a reward once per minute",
-      });
-      return;
-    }
-  }
-
   // Check if user is eligible for reward
 
-  const userIsEligible = await isUserEligibleForReward(userId, promoId);
+  const userIsEligible = await isUserEligibleForReward(
+    userId,
+    promoId,
+    ipAddress
+  );
   if (!userIsEligible) {
     res
       .status(400)
       .json({ success: false, error: "User not currently eligible" });
     return;
   }
+
   // Check if promo is active, and has budget
   const promoIsActive = await isPromoActive(promoId, promo.msatBudget);
 
@@ -125,6 +109,7 @@ const createPromoReward = asyncHandler<
     const userStillEligible = await isUserEligibleForReward(
       userId,
       promoId,
+      ipAddress,
       true
     );
     const totalEarned = await getTotalPromoEarnedByUser(userId, promo.id);
@@ -161,9 +146,10 @@ const createPromoReward = asyncHandler<
 
 const MAX_PAYOUT_AMOUNT = 1000000;
 const MIN_PAYOUT_AMOUNT = 1000;
+const MAX_NUMBER_OF_ACTIVE_PROMOS = 3;
 const createPromo = asyncHandler<
   {},
-  ResponseObject<{ pr: string }>,
+  ResponseObject<{ pr: string; promoId: number }>,
   {
     contentId: string;
     msatBudget: number;
@@ -244,6 +230,54 @@ const createPromo = asyncHandler<
     return;
   }
 
+  const userTracks = await prisma.track.findMany({
+    where: {
+      artist: {
+        userId: userId,
+      },
+    },
+    select: {
+      id: true,
+    },
+  });
+
+  // check for outstanding promos that are awaiting funding
+  const existingPromos = await prisma.promo.findMany({
+    where: {
+      AND: [
+        {
+          contentId: {
+            in: userTracks.map((track) => track.id),
+          },
+        },
+        {
+          contentType: "track",
+        },
+      ],
+    },
+  });
+
+  if (existingPromos.some((promo) => promo.isPending)) {
+    res.status(400).json({
+      success: false,
+      error:
+        "You already have a pending promo. Please wait for it to be funded or cancelled.",
+    });
+    return;
+  }
+
+  // if more than 3 active promos, reject
+  if (
+    existingPromos.filter((promo) => promo.isActive).length >=
+    MAX_NUMBER_OF_ACTIVE_PROMOS
+  ) {
+    res.status(400).json({
+      success: false,
+      error: `You have reached the maximum number of active promos (${MAX_NUMBER_OF_ACTIVE_PROMOS})`,
+    });
+    return;
+  }
+
   // Create promo record
   const now = new Date();
   const newPromo = await prisma.promo.create({
@@ -310,7 +344,7 @@ const createPromo = asyncHandler<
   if (updatedPromo) {
     res.status(200).json({
       success: true,
-      data: { pr: invoiceResponse.data.invoice.request },
+      data: { pr: invoiceResponse.data.invoice.request, promoId: newPromo.id },
     });
   } else {
     res.status(500).json({
