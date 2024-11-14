@@ -229,6 +229,43 @@ const createPromo = asyncHandler<
     return;
   }
 
+  const userTracks = await prisma.track.findMany({
+    where: {
+      artist: {
+        userId: userId,
+      },
+    },
+    select: {
+      id: true,
+    },
+  });
+
+  // check for outstanding promos that are awaiting funding
+  const existingPendingPromo = await prisma.promo.findFirst({
+    where: {
+      AND: [
+        {
+          contentId: {
+            in: userTracks.map((track) => track.id),
+          },
+        },
+        {
+          contentType: "track",
+          isPending: true,
+        },
+      ],
+    },
+  });
+
+  if (existingPendingPromo) {
+    res.status(400).json({
+      success: false,
+      error:
+        "You already have a pending promo. Please wait for it to be funded or cancelled.",
+    });
+    return;
+  }
+
   // Create promo record
   const now = new Date();
   const newPromo = await prisma.promo.create({
