@@ -8,7 +8,7 @@ import statsController from "../controllers/stats";
 const router = express.Router();
 
 //////// ROUTES ////////
-
+router.get("/:query", statsController.get_stats);
 router.get(
   "/music/earnings",
   isAuthorized,
