@@ -261,7 +261,8 @@ export const editPromo = asyncHandler<
       id: idInt,
     },
     data: {
-      isActive,
+      // only allow isActive to be toggled if promo is paid
+      isActive: promo.isPaid ? isActive : false,
       updatedAt: new Date(),
     },
   });
