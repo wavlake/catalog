@@ -5,8 +5,6 @@ import podcastIndex from "podcast-index-api";
 import prisma from "@prismalocal/client";
 const crypto = require("crypto");
 
-// DEPRECATED: lookbackSeconds and logic, we can remove this after the next deploy
-const lookbackSeconds = parseInt(process.env.LOOKBACK_MINUTES) * 60 * 1000;
 const FEED_URL = "https://www.wavlake.com/feed";
 
 const { PODCAST_INDEX_KEY, PODCAST_INDEX_SECRET, PODCAST_INDEX_UA } =
@@ -17,24 +15,35 @@ const podcastIndexApi = podcastIndex(
   PODCAST_INDEX_UA
 );
 
-const lookbackDt = Date.now() - lookbackSeconds;
+const updateFeedStatus = async (content: any) => {
+  log.debug(`Updating feed status for ${content.id}`);
+  if (content.track) {
+    await prisma.album.update({
+      where: { id: content.id },
+      data: { isFeedPublished: true },
+    });
+    return;
+  }
+  await prisma.podcast.update({
+    where: { id: content.id },
+    data: { isFeedPublished: true },
+  });
+  return;
+};
 
 const wavlakePodcastsForUpdate = async () => {
   const updatedPodcasts = await prisma.podcast.findMany({
     where: {
-      OR: [
-        {
-          updatedAt: {
-            // greater than now - lookbackMinutes
-            gt: new Date(lookbackDt),
-          },
-          isDraft: false,
+      isFeedPublished: false,
+      isDraft: false,
+      episode: {
+        some: {
+          // Returns all records where one or more ("some") related records match filtering criteria.
+          // In English: return all albums with at least one live, undeleted episode
+          deleted: false,
+          isProcessing: false,
         },
-        {
-          isFeedPublished: false,
-          isDraft: false,
-        },
-      ],
+      },
     },
     select: {
       id: true,
@@ -46,42 +55,24 @@ const wavlakePodcastsForUpdate = async () => {
   return updatedPodcasts.map((podcast) => {
     const { id, name, updatedAt } = podcast;
     const feedUrl = `${FEED_URL}/show/${id}`;
-    return { name, feedUrl, updatedAt };
+    return { id, name, feedUrl, updatedAt };
   });
 };
 
 const wavlakeMusicFeedsForUpdate = async () => {
   const updatedMusicFeeds = await prisma.album.findMany({
     where: {
-      OR: [
-        {
-          updatedAt: {
-            // greater than now - lookbackMinutes
-            gt: new Date(lookbackDt),
-          },
-          isDraft: false,
+      isFeedPublished: false,
+      isDraft: false,
+      deleted: false,
+      track: {
+        some: {
+          // Returns all records where one or more ("some") related records match filtering criteria.
+          // In English: return all albums with at least one live, undeleted track
           deleted: false,
-          track: {
-            some: {
-              // Returns all records where one or more ("some") related records match filtering criteria.
-              // In English: return all albums with at least one live, undeleted track
-              deleted: false,
-            },
-          },
+          isProcessing: false,
         },
-        {
-          isFeedPublished: false,
-          isDraft: false,
-          deleted: false,
-          track: {
-            some: {
-              // Returns all records where one or more ("some") related records match filtering criteria.
-              // In English: return all albums with at least one live, undeleted track
-              deleted: false,
-            },
-          },
-        },
-      ],
+      },
     },
     include: { track: true },
     orderBy: { updatedAt: "asc" },
@@ -90,7 +81,7 @@ const wavlakeMusicFeedsForUpdate = async () => {
   return updatedMusicFeeds.map((musicFeed) => {
     const { id, title, updatedAt } = musicFeed;
     const feedUrl = `${FEED_URL}/${id}`;
-    return { name: title, feedUrl, updatedAt };
+    return { id, name: title, feedUrl, updatedAt, track: true };
   });
 };
 
@@ -131,12 +122,28 @@ const publishFeeds = async () => {
       log.debug("feed already exists, notifying hub");
       const { feed } = response;
       const { id } = feed;
-      const { status } = await podcastIndexApi.hubPubNotifyById(id);
+      const { status } = await podcastIndexApi
+        .hubPubNotifyById(id)
+        .catch((e) => {
+          log.error(e);
+          return { status: "false" };
+        });
       log.debug(`Update status: ${status}`);
+      if (status === "true") {
+        await updateFeedStatus(feedItem);
+      }
     } else {
       log.debug("feed does not exist, adding");
-      const addResponse = await podcastIndexApi.addByFeedUrl(feedUrl, chash);
+      const addResponse = await podcastIndexApi
+        .addByFeedUrl(feedUrl, chash)
+        .catch((e) => {
+          log.error(e);
+          return { status: "false" };
+        });
       log.debug(addResponse);
+      if (addResponse.status === "true") {
+        await updateFeedStatus(feedItem);
+      }
     }
   }
 };
