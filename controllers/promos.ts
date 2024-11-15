@@ -210,13 +210,17 @@ export const getPromo = asyncHandler<
     _sum: {
       msatAmount: true,
     },
-    _count: {
-      userId: true,
+  });
+
+  const uniqueUsersQuery = await prisma.promoReward.findMany({
+    where: {
+      promoId: idInt,
     },
+    distinct: ["userId"],
   });
 
   const remainingBudget = promo.msatBudget - msatSpent._sum.msatAmount || 0;
-  const uniqueUsers = msatSpent._count.userId || 0;
+  const uniqueUsers = uniqueUsersQuery.length;
 
   res.json({
     success: true,
