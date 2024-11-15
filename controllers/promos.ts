@@ -153,7 +153,7 @@ export const getPromoByContent = asyncHandler<
 
 export const getPromo = asyncHandler<
   { id: string },
-  ResponseObject<Promo & { remainingBudget: number }>,
+  ResponseObject<Promo & { remainingBudget: number; uniqueUsers: number }>,
   { id: string }
 >(async (req, res, next) => {
   const userId = req["uid"];
@@ -210,13 +210,17 @@ export const getPromo = asyncHandler<
     _sum: {
       msatAmount: true,
     },
+    _count: {
+      userId: true,
+    },
   });
 
   const remainingBudget = promo.msatBudget - msatSpent._sum.msatAmount || 0;
+  const uniqueUsers = msatSpent._count.userId || 0;
 
   res.json({
     success: true,
-    data: { ...promo, remainingBudget },
+    data: { ...promo, remainingBudget, uniqueUsers },
   });
 });
 
