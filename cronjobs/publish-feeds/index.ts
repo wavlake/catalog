@@ -5,8 +5,6 @@ import podcastIndex from "podcast-index-api";
 import prisma from "@prismalocal/client";
 const crypto = require("crypto");
 
-// DEPRECATED: lookbackSeconds and logic, we can remove this after the next deploy
-const lookbackSeconds = parseInt(process.env.LOOKBACK_MINUTES) * 60 * 1000;
 const FEED_URL = "https://www.wavlake.com/feed";
 
 const { PODCAST_INDEX_KEY, PODCAST_INDEX_SECRET, PODCAST_INDEX_UA } =
@@ -17,7 +15,21 @@ const podcastIndexApi = podcastIndex(
   PODCAST_INDEX_UA
 );
 
-const lookbackDt = Date.now() - lookbackSeconds;
+const updateFeedStatus = async (content: any) => {
+  log.debug(`Updating feed status for ${content.id}`);
+  if (content.track) {
+    await prisma.album.update({
+      where: { id: content.id },
+      data: { isFeedPublished: true },
+    });
+    return;
+  }
+  await prisma.podcast.update({
+    where: { id: content.id },
+    data: { isFeedPublished: true },
+  });
+  return;
+};
 
 const wavlakePodcastsForUpdate = async () => {
   const updatedPodcasts = await prisma.podcast.findMany({
@@ -110,12 +122,28 @@ const publishFeeds = async () => {
       log.debug("feed already exists, notifying hub");
       const { feed } = response;
       const { id } = feed;
-      const { status } = await podcastIndexApi.hubPubNotifyById(id);
+      const { status } = await podcastIndexApi
+        .hubPubNotifyById(id)
+        .catch((e) => {
+          log.error(e);
+          return { status: "false" };
+        });
       log.debug(`Update status: ${status}`);
+      if (status === "true") {
+        await updateFeedStatus(feedItem);
+      }
     } else {
       log.debug("feed does not exist, adding");
-      const addResponse = await podcastIndexApi.addByFeedUrl(feedUrl, chash);
+      const addResponse = await podcastIndexApi
+        .addByFeedUrl(feedUrl, chash)
+        .catch((e) => {
+          log.error(e);
+          return { status: "false" };
+        });
       log.debug(addResponse);
+      if (addResponse.status === "true") {
+        await updateFeedStatus(feedItem);
+      }
     }
   }
 };
