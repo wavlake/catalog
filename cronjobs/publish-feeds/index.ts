@@ -81,7 +81,7 @@ const wavlakeMusicFeedsForUpdate = async () => {
   return updatedMusicFeeds.map((musicFeed) => {
     const { id, title, updatedAt } = musicFeed;
     const feedUrl = `${FEED_URL}/${id}`;
-    return { id: id, name: title, feedUrl, updatedAt, track: true };
+    return { id, name: title, feedUrl, updatedAt, track: true };
   });
 };
 
