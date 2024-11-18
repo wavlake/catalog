@@ -4,11 +4,21 @@ const asyncHandler = require("express-async-handler");
 import { formatError } from "../library/errors";
 const Sentry = require("@sentry/node");
 import prisma from "../prisma/client";
+import { getContentStats } from "../library/op3";
+import { database } from "firebase-admin";
 
 const d = new Date();
 const d30 = new Date();
 d30.setDate(d.getDate() - 30);
 d30.toISOString().slice(0, 10);
+
+// Get the last 30 days of download stats for a content item
+const get_stats = asyncHandler(async (req, res, next) => {
+  const { query } = req.params;
+  const [contentId, startDate] = query.split("&");
+  const response = await getContentStats(contentId, startDate);
+  res.json({ success: true, data: response });
+});
 
 const get_earnings_by_account = asyncHandler(async (req, res, next) => {
   const request = {
@@ -579,4 +589,5 @@ export default {
   get_plays_by_tracks,
   get_plays_by_tracks_daily,
   get_totals_all_time_by_tracks,
+  get_stats,
 };

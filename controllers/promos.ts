@@ -153,7 +153,7 @@ export const getPromoByContent = asyncHandler<
 
 export const getPromo = asyncHandler<
   { id: string },
-  ResponseObject<Promo>,
+  ResponseObject<Promo & { remainingBudget: number; uniqueUsers: number }>,
   { id: string }
 >(async (req, res, next) => {
   const userId = req["uid"];
@@ -203,10 +203,28 @@ export const getPromo = asyncHandler<
     });
     return;
   }
+  const msatSpent = await prisma.promoReward.aggregate({
+    where: {
+      promoId: idInt,
+    },
+    _sum: {
+      msatAmount: true,
+    },
+  });
+
+  const uniqueUsersQuery = await prisma.promoReward.findMany({
+    where: {
+      promoId: idInt,
+    },
+    distinct: ["userId"],
+  });
+
+  const remainingBudget = promo.msatBudget - msatSpent._sum.msatAmount || 0;
+  const uniqueUsers = uniqueUsersQuery.length;
 
   res.json({
     success: true,
-    data: promo,
+    data: { ...promo, remainingBudget, uniqueUsers },
   });
 });
 

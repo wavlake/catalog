@@ -1155,15 +1155,43 @@ const get_track_promos = asyncHandler(async (req, res, next) => {
         createdAt: true,
         updatedAt: true,
         contentType: true,
+        paymentRequest: true,
       },
       orderBy: {
         createdAt: "desc",
       },
     });
 
+    const payoutsByPromo = await prisma.promoReward.groupBy({
+      by: ["promoId"],
+      where: {
+        promoId: {
+          in: userPromos.map((p) => p.id),
+        },
+      },
+      _sum: {
+        msatAmount: true,
+      },
+    });
+
+    const promoPayoutMap = payoutsByPromo.reduce((acc, curr) => {
+      acc[curr.promoId] = curr._sum.msatAmount;
+      return acc;
+    }, {});
+
+    // calculate remaining msat balance for each promo
+    const promosWithBalanceInfo = userPromos.map((promo) => {
+      const remainingBudget =
+        promo.msatBudget - (promoPayoutMap[promo.id] || 0);
+      return {
+        ...promo,
+        remainingBudget,
+      };
+    });
+
     res.send({
       success: true,
-      data: userPromos,
+      data: promosWithBalanceInfo,
     });
   } catch (err) {
     log.debug("Error fetching track promos", err);

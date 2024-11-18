@@ -147,6 +147,8 @@ const createPromoReward = asyncHandler<
 const MAX_PAYOUT_AMOUNT = 1000000;
 const MIN_PAYOUT_AMOUNT = 1000;
 const MAX_NUMBER_OF_ACTIVE_PROMOS = 3;
+// 10% wavlake fee
+const WAVLAKE_FEE = 0.9;
 const createPromo = asyncHandler<
   {},
   ResponseObject<{ pr: string; promoId: number }>,
@@ -284,7 +286,8 @@ const createPromo = asyncHandler<
     data: {
       contentId: contentId,
       contentType: contentType,
-      msatBudget: msatBudget,
+      // apply fee
+      msatBudget: msatBudget * WAVLAKE_FEE,
       msatPayoutAmount: msatPayoutAmount,
       isActive: false,
       isPending: true,
