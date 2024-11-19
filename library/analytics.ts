@@ -104,3 +104,14 @@ export const getTopContent = async (userId: string) => {
 
   return topContent;
 };
+
+export const getLifetimeEarnings = async (userId: string) => {
+  const lifetimeEarnings = await db
+    .knex("amp")
+    .sum("msat_amount as msatTotal")
+    .where("split_destination", "=", userId)
+    .groupBy("split_destination")
+    .first();
+
+  return Math.floor(parseInt(lifetimeEarnings?.msatTotal) / 1000) * 1000 || 0;
+};

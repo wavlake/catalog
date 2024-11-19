@@ -6,6 +6,7 @@ import {
   getEarningsNumbers,
   getTopSupporters,
   getTopContent,
+  getLifetimeEarnings,
 } from "../library/analytics";
 
 // Get the last 30 days of download stats for a content item
@@ -22,10 +23,12 @@ const get_earnings = asyncHandler(async (req, res, next) => {
   const earningsNumbers = await getEarningsNumbers(userId);
   const topSupporters = await getTopSupporters(userId);
   const topContent = await getTopContent(userId);
+  const msatEarningsLifetime = await getLifetimeEarnings(userId);
   res.json({
     success: true,
     data: {
       ...earningsNumbers,
+      msatEarningsLifetime,
       topSupporters,
       topContent,
     },
