@@ -40,9 +40,11 @@ export const getContentStats = async (
   startDate?: string
 ) => {
   const contentType = await getType(contentId);
+  if (contentType != "album" && contentType != "podcast") {
+    throw new Error("Invalid content type");
+  }
   const podcastGuid = v5(feedPath(contentType, contentId), podcastNamespace);
   const op3Id = await getOp3Id(podcastGuid);
-
   const op3Stats = await getOp3Stats(op3Id, startDate);
 
   return op3Stats;

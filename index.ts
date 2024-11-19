@@ -77,6 +77,7 @@ app.use(logger);
 
 // Import routes
 import accounts from "./routes/accounts";
+import analytics from "./routes/analytics";
 import albums from "./routes/albums";
 import artists from "./routes/artists";
 import charts from "./routes/charts";
@@ -100,6 +101,7 @@ app.use(cors(corsOptions));
 
 // ROUTES
 app.use("/v1/accounts", accounts);
+app.use("/v1/analytics", analytics);
 app.use("/v1/albums", albums);
 app.use("/v1/artists", artists);
 app.use("/v1/charts", charts);
