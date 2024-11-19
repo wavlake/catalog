@@ -9,7 +9,7 @@ import {
 } from "../library/analytics";
 
 // Get the last 30 days of download stats for a content item
-const get_stats = asyncHandler(async (req, res, next) => {
+const get_downloads = asyncHandler(async (req, res, next) => {
   const contentId = req.query.contentId;
   const startDate = req.query.startDate;
   const response = await getContentStats(contentId, startDate);
@@ -33,6 +33,6 @@ const get_earnings = asyncHandler(async (req, res, next) => {
 });
 
 export default {
-  get_stats,
+  get_downloads,
   get_earnings,
 };
