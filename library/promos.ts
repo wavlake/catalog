@@ -26,12 +26,22 @@ export const identifyActivePromosWithBudgetRemaining = async (): Promise<
     return [];
   }
 
-  return activePromos.filter(async (promo) => {
-    const totalSettledRewards = await getTotalSettledRewards(
-      parseInt(promo.id)
-    );
+  const activePromosRewardTotals = await db
+    .knex("promo_reward")
+    .select("promo_id")
+    .sum("msat_amount as msatTotal")
+    .whereIn(
+      "promo_id",
+      activePromos.map((promo) => promo.id)
+    )
+    .andWhere("is_pending", false)
+    .groupBy("promo_id");
 
-    return promo.msatBudget > totalSettledRewards;
+  return activePromos.filter(async (promo) => {
+    const promoRewardTotal = activePromosRewardTotals.find(
+      (total) => total.promo_id === promo.id
+    ).msatBudget;
+    return promo.msatBudget > promoRewardTotal;
   });
 };
 
