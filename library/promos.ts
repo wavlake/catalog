@@ -30,10 +30,8 @@ export const identifyActivePromosWithBudgetRemaining = async (): Promise<
     const totalSettledRewards = await getTotalSettledRewards(
       parseInt(promo.id)
     );
-    const totalPendingRewards = await getTotalPendingRewards(
-      parseInt(promo.id)
-    );
-    return promo.msatBudget > totalSettledRewards + totalPendingRewards;
+
+    return promo.msatBudget > totalSettledRewards;
   });
 };
 
@@ -103,22 +101,6 @@ const getTotalSettledRewards = async (promoId: number): Promise<number> => {
   return parseInt(query.total);
 };
 
-const getTotalPendingRewards = async (promoId: number): Promise<number> => {
-  // Set filter to 90 seconds ago
-  const dateFilter = new Date(Date.now() - 90000);
-  const query = await db
-    .knex("promo_reward")
-    .sum("msat_amount as total")
-    .where("promo_id", promoId)
-    .andWhere("created_at", ">", dateFilter)
-    .first();
-
-  if (!query.total) {
-    return 0;
-  }
-  return parseInt(query.total);
-};
-
 const getContentDuration = async (
   contentType: string,
   contentId: string
@@ -140,9 +122,7 @@ export const isPromoActive = async (
 ): Promise<boolean> => {
   const totalSettledRewards = await getTotalSettledRewards(promoId);
 
-  const totalPendingRewards = await getTotalPendingRewards(promoId);
-
-  if (totalSettledRewards + totalPendingRewards >= msatBudget) {
+  if (totalSettledRewards >= msatBudget) {
     // Deactivate promo if settled rewards exceed budget
     await deactivatePromo(promoId);
     return false;
