@@ -69,6 +69,8 @@ export const getActivePromos = asyncHandler<
           promo.msatPayoutAmount
         );
 
+      const promoIsActive = activePromos.find((p) => p.id === promo.id);
+
       return {
         ...promo,
         contentMetadata,
@@ -76,7 +78,8 @@ export const getActivePromos = asyncHandler<
           lifetimeEarnings: totalEarned,
           earnedToday: totalEarnedToday,
           earnableToday: totalPossibleEarningsForUser,
-          canEarnToday: totalEarnedToday < totalPossibleEarningsForUser,
+          canEarnToday:
+            promoIsActive && totalEarnedToday < totalPossibleEarningsForUser,
         },
       };
     })
