@@ -37,11 +37,12 @@ export const identifyActivePromosWithBudgetRemaining = async (): Promise<
     .andWhere("is_pending", false)
     .groupBy("promo_id");
 
-  return activePromos.filter(async (promo) => {
+  return activePromos.filter((promo) => {
     const promoRewardTotal = activePromosRewardTotals.find(
       (total) => total.promo_id === promo.id
-    ).msatBudget;
-    return promo.msatBudget > promoRewardTotal;
+    ).msatTotal;
+
+    return promo.msatBudget > parseInt(promoRewardTotal);
   });
 };
 
