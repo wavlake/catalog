@@ -68,8 +68,7 @@ export const getActivePromos = asyncHandler<
           contentMetadata.duration,
           promo.msatPayoutAmount
         );
-
-      const promoIsActive = activePromos.find((p) => p.id === promo.id);
+      const promoIsActive = !!activePromos.find((p) => p.id === promo.id);
 
       return {
         ...promo,
