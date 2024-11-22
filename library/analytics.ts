@@ -88,7 +88,7 @@ export const getTopContent = async (userId: string) => {
       "episode.podcast_id as podcastId",
       db.knex.raw("COALESCE(track.title, episode.title) as title"),
       db.knex.raw(
-        "COALESCE(album.artwork_url, podcast.artwork_url) as artworkUrl"
+        `COALESCE(album.artwork_url, podcast.artwork_url) as "artworkUrl"`
       )
     )
     .sum("msat_amount as msatTotal")
