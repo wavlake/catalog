@@ -144,6 +144,7 @@ const createPromoReward = asyncHandler<
   }
 });
 
+const DEFAULT_PAYOUT_AMOUNT = 10000;
 const MAX_PAYOUT_AMOUNT = 1000000;
 const MIN_PAYOUT_AMOUNT = 1000;
 const MAX_NUMBER_OF_ACTIVE_PROMOS = 3;
@@ -288,7 +289,7 @@ const createPromo = asyncHandler<
       contentType: contentType,
       // apply fee
       msatBudget: msatBudget * WAVLAKE_FEE,
-      msatPayoutAmount: msatPayoutAmount,
+      msatPayoutAmount: DEFAULT_PAYOUT_AMOUNT,
       isActive: false,
       isPending: true,
       isPaid: false,
