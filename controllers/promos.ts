@@ -68,6 +68,7 @@ export const getActivePromos = asyncHandler<
           contentMetadata.duration,
           promo.msatPayoutAmount
         );
+      const promoIsActive = !!activePromos.find((p) => p.id === promo.id);
 
       return {
         ...promo,
@@ -76,7 +77,8 @@ export const getActivePromos = asyncHandler<
           lifetimeEarnings: totalEarned,
           earnedToday: totalEarnedToday,
           earnableToday: totalPossibleEarningsForUser,
-          canEarnToday: totalEarnedToday < totalPossibleEarningsForUser,
+          canEarnToday:
+            promoIsActive && totalEarnedToday < totalPossibleEarningsForUser,
         },
       };
     })
@@ -153,7 +155,7 @@ export const getPromoByContent = asyncHandler<
 
 export const getPromo = asyncHandler<
   { id: string },
-  ResponseObject<Promo & { remainingBudget: number; uniqueUsers: number }>,
+  ResponseObject<Promo & { remainingBudget: number }>,
   { id: string }
 >(async (req, res, next) => {
   const userId = req["uid"];
@@ -212,19 +214,11 @@ export const getPromo = asyncHandler<
     },
   });
 
-  const uniqueUsersQuery = await prisma.promoReward.findMany({
-    where: {
-      promoId: idInt,
-    },
-    distinct: ["userId"],
-  });
-
   const remainingBudget = promo.msatBudget - msatSpent._sum.msatAmount || 0;
-  const uniqueUsers = uniqueUsersQuery.length;
 
   res.json({
     success: true,
-    data: { ...promo, remainingBudget, uniqueUsers },
+    data: { ...promo, remainingBudget },
   });
 });
 

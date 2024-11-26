@@ -1179,13 +1179,28 @@ const get_track_promos = asyncHandler(async (req, res, next) => {
       return acc;
     }, {});
 
+    // get distinct user counts for each promo
+    const uniqueUserCounts = await db
+      .knex("promo_reward")
+      .select("promo_id")
+      .countDistinct("user_id")
+      .whereIn(
+        "promo_id",
+        userPromos.map((p) => p.id)
+      )
+      .groupBy("promo_id");
+
     // calculate remaining msat balance for each promo
     const promosWithBalanceInfo = userPromos.map((promo) => {
       const remainingBudget =
         promo.msatBudget - (promoPayoutMap[promo.id] || 0);
+      // add unique user count
+      const uniqueUsers =
+        uniqueUserCounts.find((u) => u.promo_id === promo.id)?.count || 0;
       return {
         ...promo,
         remainingBudget,
+        uniqueUsers: parseInt(uniqueUsers),
       };
     });
 
