@@ -117,7 +117,7 @@ export const getPlaylist = async (req, res, next) => {
     return;
   }
 
-  if (validate(id) === false || !customPlaylists.includes(id)) {
+  if (validate(id) === false && !customPlaylists.includes(id)) {
     res.status(400).json({
       success: false,
       error: "Invalid playlistId",
