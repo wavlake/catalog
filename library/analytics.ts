@@ -2,12 +2,13 @@ import db from "../library/db";
 
 const currentMonth = () => {
   const now = new Date();
-  return new Date(now.getFullYear(), now.getMonth(), 1);
+  // get last 30 days
+  return new Date(now.setDate(now.getDate() - 30));
 };
 
 const priorMonth = () => {
   const now = new Date();
-  return new Date(now.getFullYear(), now.getMonth() - 1, 1);
+  return new Date(now.setDate(now.getDate() - 60));
 };
 
 export const getEarningsNumbers = async (userId: string) => {
@@ -61,10 +62,12 @@ export const getTopSupporters = async (userId: string) => {
   const topSupporters = await db
     .knex("amp")
     .leftOuterJoin("user", "amp.user_id", "user.id")
-    .select("user_id", "user.name", "user.artwork_url")
+    .select("user_id as userId", "user.name", "user.artwork_url as artworkUrl")
     .sum("msat_amount as msatTotal")
     .where("split_destination", "=", userId)
     .whereNotIn("user_id", ["keysend", "invoice"])
+    .andWhere("amp.created_at", ">", priorMonth())
+    .andWhere("amp.created_at", "<", currentMonth())
     .groupBy("user_id", "user.name", "user.artwork_url")
     .orderBy("msatTotal", "desc")
     .limit(5);
@@ -85,11 +88,13 @@ export const getTopContent = async (userId: string) => {
       "episode.podcast_id as podcastId",
       db.knex.raw("COALESCE(track.title, episode.title) as title"),
       db.knex.raw(
-        "COALESCE(album.artwork_url, podcast.artwork_url) as artworkUrl"
+        `COALESCE(album.artwork_url, podcast.artwork_url) as "artworkUrl"`
       )
     )
     .sum("msat_amount as msatTotal")
     .where("split_destination", "=", userId)
+    .andWhere("amp.created_at", ">", priorMonth())
+    .andWhere("amp.created_at", "<", currentMonth())
     .groupBy(
       "amp.track_id",
       "track.title",
