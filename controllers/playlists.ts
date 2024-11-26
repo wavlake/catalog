@@ -129,8 +129,8 @@ export const getPlaylist = async (req, res, next) => {
     res.json({
       success: true,
       data: {
-        title: "Random",
-        userId: "n/a",
+        title: "Shuffle",
+        userId: null,
         tracks: await getShufflePlaylistTracks(),
       },
     });
