@@ -126,12 +126,13 @@ export const getPlaylist = async (req, res, next) => {
   }
 
   if (id === "shuffle") {
+    const numberOfTracks = 2200;
     res.json({
       success: true,
       data: {
         title: "Shuffle",
         userId: null,
-        tracks: await getShufflePlaylistTracks(),
+        tracks: await getShufflePlaylistTracks(numberOfTracks),
       },
     });
     return;

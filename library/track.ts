@@ -7,9 +7,9 @@ import log from "loglevel";
 /**
  * Get tracks for the shuffle playlist
  */
-export const getShufflePlaylistTracks = async () => {
+export const getShufflePlaylistTracks = async (limit?: number) => {
   try {
-    return await getRandomTracks();
+    return await getRandomTracks(limit);
   } catch (err) {
     log.error(`Error getting shuffle playlist tracks: ${err}`);
     return [];
