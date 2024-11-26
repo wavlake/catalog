@@ -17,10 +17,13 @@ import {
 } from "../library/constants";
 import { getPlaylistTracks } from "../library/playlist";
 import { getWeeklyTop40 } from "../library/chart";
-import { getUserRecentTracks, getNewTracks } from "../library/track";
+import {
+  getUserRecentTracks,
+  getNewTracks,
+  getRandomTracks,
+} from "../library/track";
 import { shuffle } from "../library/helpers";
 
-const randomSampleSize = process.env.RANDOM_SAMPLE_SIZE;
 const s3BucketName = `${process.env.AWS_S3_BUCKET_NAME}`;
 const cdnDomain = `${process.env.AWS_CDN_DOMAIN}`;
 
@@ -163,60 +166,19 @@ const get_tracks_by_random = asyncHandler(async (req, res, next) => {
   const trackLimit =
     typeof req.query.limit === "string" ? parseInt(req.query.limit) : 100;
 
-  if (isNaN(trackLimit)) {
-    res.status(400).json({
-      success: false,
-      error: "Limit must be an integer",
-    });
-    return;
-  }
-  // NOTES: https://www.redpill-linpro.com/techblog/2021/05/07/getting-random-rows-faster.html
-
-  const randomTracks = db.knex
-    .select(
-      "track.id as id",
-      "track.title as title",
-      "artist.name as artist",
-      "artist.artist_url as artistUrl",
-      "artist.artwork_url as avatarUrl",
-      "artist.id as artistId",
-      "artist.user_id as ownerId",
-      "album.id as albumId",
-      "album.artwork_url as artworkUrl",
-      "album.color_info as colorInfo",
-      "album.title as albumTitle",
-      "track.live_url as liveUrl",
-      "track.duration as duration"
-    )
-    .from(db.knex.raw(`track TABLESAMPLE BERNOULLI(${randomSampleSize})`))
-    .join("amp", "amp.track_id", "=", "track.id")
-    .join("artist", "track.artist_id", "=", "artist.id")
-    .join("album", "album.id", "=", "track.album_id");
-
-  randomTracks
-    .distinct()
-    .where("track.deleted", "=", false)
-    .andWhere("track.published_at", "<", new Date())
-    .andWhere("track.is_draft", "=", false)
-    .andWhere("album.published_at", "<", new Date())
-    .andWhere("album.is_draft", "=", false)
-    .andWhere("track.duration", "is not", null)
-    .limit(trackLimit)
-    .then((data) => {
-      // Add OP3 URL prefix to liveUrl
-      data.forEach((track) => {
-        track.liveUrl = addOP3URLPrefix({
-          url: track.liveUrl,
-          albumId: track.albumId,
-        });
+  try {
+    const data = await getRandomTracks(trackLimit);
+    res.status(200).json({ success: true, data });
+  } catch (err) {
+    if (err.message === "Limit must be an integer") {
+      res.status(400).json({
+        success: false,
+        error: err.message,
       });
-      const shuffledData = shuffle(data);
-      res.status(200).json({ success: true, data: shuffledData });
-    })
-    .catch((err) => {
-      log.debug(`Error querying track table for random: ${err}`);
+    } else {
       next(err);
-    });
+    }
+  }
 });
 
 const get_tracks_by_artist_id = asyncHandler(async (req, res, next) => {

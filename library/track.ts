@@ -1,7 +1,78 @@
 import { addOP3URLPrefix } from "../library/op3";
 import prisma from "../prisma/client";
-import { parseLimit } from "../library/helpers";
+import { parseLimit, shuffle } from "../library/helpers";
 import db from "./db";
+import log from "loglevel";
+
+/**
+ * Get tracks for the shuffle playlist
+ */
+export const getShufflePlaylistTracks = async () => {
+  try {
+    return await getRandomTracks();
+  } catch (err) {
+    log.error(`Error getting shuffle playlist tracks: ${err}`);
+    return [];
+  }
+};
+
+/**
+ * Get a random selection of tracks from the database
+ * @param {number} limit - Maximum number of tracks to return
+ * @param {number} randomSampleSize - Size of the random sample to take (as percentage)
+ * @returns {Promise<Array>} Array of track objects
+ */
+export const getRandomTracks = async (
+  limit = 100,
+  randomSampleSize = process.env.RANDOM_SAMPLE_SIZE ?? 10
+) => {
+  if (isNaN(limit)) {
+    throw new Error("Limit must be an integer");
+  }
+
+  const randomTracks = await db.knex
+    .select(
+      "track.id as id",
+      "track.title as title",
+      "artist.name as artist",
+      "artist.artist_url as artistUrl",
+      "artist.artwork_url as avatarUrl",
+      "artist.id as artistId",
+      "artist.user_id as ownerId",
+      "album.id as albumId",
+      "album.artwork_url as artworkUrl",
+      "album.color_info as colorInfo",
+      "album.title as albumTitle",
+      "track.live_url as liveUrl",
+      "track.duration as duration"
+    )
+    .from(db.knex.raw(`track TABLESAMPLE BERNOULLI(${randomSampleSize})`))
+    .join("amp", "amp.track_id", "=", "track.id")
+    .join("artist", "track.artist_id", "=", "artist.id")
+    .join("album", "album.id", "=", "track.album_id")
+    .distinct()
+    .where("track.deleted", "=", false)
+    .andWhere("track.published_at", "<", new Date())
+    .andWhere("track.is_draft", "=", false)
+    .andWhere("album.published_at", "<", new Date())
+    .andWhere("album.is_draft", "=", false)
+    .andWhere("track.duration", "is not", null)
+    .limit(limit)
+    .catch((err) => {
+      log.debug(`Error querying track table for random: ${err}`);
+      throw err;
+    });
+
+  // Add OP3 URL prefix to liveUrl
+  randomTracks.forEach((track) => {
+    track.liveUrl = addOP3URLPrefix({
+      url: track.liveUrl,
+      albumId: track.albumId,
+    });
+  });
+
+  return shuffle(randomTracks);
+};
 
 export const getNewTracks = async (limit?: number): Promise<any[]> => {
   limit = parseLimit(limit, 50);

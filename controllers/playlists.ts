@@ -7,6 +7,7 @@ import db from "../library/db";
 import { isValidDateString } from "../library/validation";
 import { getUserIds, userOwnsContent } from "../library/userHelper";
 import { getPlaylistTracks } from "../library/playlist";
+import { getShufflePlaylistTracks } from "../library/track";
 
 const MAX_PLAYLIST_LENGTH = 300;
 export const addTrackToPlaylist = asyncHandler(async (req, res, next) => {
@@ -103,6 +104,7 @@ export const addTrackToPlaylist = asyncHandler(async (req, res, next) => {
 
 const SORT_BY_SATS = "sats";
 
+const customPlaylists = ["shuffle"];
 export const getPlaylist = async (req, res, next) => {
   const { id } = req.params;
   const { sort, startDate, endDate } = req.query;
@@ -115,7 +117,7 @@ export const getPlaylist = async (req, res, next) => {
     return;
   }
 
-  if (validate(id) === false) {
+  if (validate(id) === false || !customPlaylists.includes(id)) {
     res.status(400).json({
       success: false,
       error: "Invalid playlistId",
@@ -123,112 +125,124 @@ export const getPlaylist = async (req, res, next) => {
     return;
   }
 
-  const playlist = await prisma.playlist.findUnique({
-    where: { id: id },
-  });
-
-  if (!playlist) {
-    res.status(404).json({
-      success: false,
-      error: `Playlist ${id} not found`,
-    });
-    return;
-  }
-
-  const playlistMetadata = await prisma.playlist.findUnique({
-    where: { id: id },
-    select: {
-      title: true,
-      userId: true,
-    },
-  });
-
-  const playlistTracks = await prisma.playlistTrack.findMany({
-    where: { playlistId: id },
-    select: {
-      trackId: true,
-      orderInt: true,
-    },
-    orderBy: { orderInt: "asc" },
-  });
-
-  if (!playlistTracks) {
+  if (id === "shuffle") {
     res.json({
       success: true,
-      data: [],
+      data: {
+        title: "Random",
+        userId: "n/a",
+        tracks: await getShufflePlaylistTracks(),
+      },
     });
     return;
-  }
-
-  const trackInfo: { id: string; msatTotal: string }[] =
-    await getPlaylistTracks(id);
-
-  if (sort === SORT_BY_SATS) {
-    if (!startDate || !endDate) {
-      res.status(400).json({
-        success: false,
-        error: "Start and end date are required when sorting by sats",
-      });
-      return;
-    }
-
-    const startDateValid = await isValidDateString(startDate);
-    const endDateValid = await isValidDateString(endDate);
-
-    if (!startDateValid || !endDateValid) {
-      res.status(400).json({
-        success: false,
-        error: "Invalid start or end date (format: YYYY-MM-DD)",
-      });
-      return;
-    }
-
-    const BEGIN_DATE = new Date(startDate);
-    const END_DATE = new Date(endDate);
-
-    const daysWindow =
-      (END_DATE.getTime() - BEGIN_DATE.getTime()) / (1000 * 60 * 60 * 24);
-
-    if (daysWindow < 0 || daysWindow > 90) {
-      res.status(400).json({
-        success: false,
-        error: "Date range must be between 0 and 90 days",
-      });
-      return;
-    }
-
-    const trackIds = trackInfo.map((track) => track.id);
-    const trackSatsInTimeframe = await db
-      .knex("amp")
-      .select("track_id")
-      .sum("msat_amount as msatTotal")
-      .where("created_at", ">=", BEGIN_DATE)
-      .andWhere("created_at", "<=", END_DATE)
-      .whereIn("track_id", trackIds)
-      .groupBy("track_id");
-
-    trackInfo.forEach((track) => {
-      const trackSatInfo = trackSatsInTimeframe.find(
-        (t) => t.track_id === track.id
-      );
-      track.msatTotal = trackSatInfo?.msatTotal ?? 0;
+  } else {
+    const playlist = await prisma.playlist.findUnique({
+      where: { id: id },
     });
 
-    trackInfo.sort((a, b) => {
-      const aTotal = parseInt(a.msatTotal);
-      const bTotal = parseInt(b.msatTotal);
-      return bTotal - aTotal;
+    if (!playlist) {
+      res.status(404).json({
+        success: false,
+        error: `Playlist ${id} not found`,
+      });
+      return;
+    }
+
+    const playlistMetadata = await prisma.playlist.findUnique({
+      where: { id: id },
+      select: {
+        title: true,
+        userId: true,
+      },
+    });
+
+    const playlistTracks = await prisma.playlistTrack.findMany({
+      where: { playlistId: id },
+      select: {
+        trackId: true,
+        orderInt: true,
+      },
+      orderBy: { orderInt: "asc" },
+    });
+
+    if (!playlistTracks) {
+      res.json({
+        success: true,
+        data: [],
+      });
+      return;
+    }
+
+    const trackInfo: { id: string; msatTotal: string }[] =
+      await getPlaylistTracks(id);
+
+    if (sort === SORT_BY_SATS) {
+      if (!startDate || !endDate) {
+        res.status(400).json({
+          success: false,
+          error: "Start and end date are required when sorting by sats",
+        });
+        return;
+      }
+
+      const startDateValid = await isValidDateString(startDate);
+      const endDateValid = await isValidDateString(endDate);
+
+      if (!startDateValid || !endDateValid) {
+        res.status(400).json({
+          success: false,
+          error: "Invalid start or end date (format: YYYY-MM-DD)",
+        });
+        return;
+      }
+
+      const BEGIN_DATE = new Date(startDate);
+      const END_DATE = new Date(endDate);
+
+      const daysWindow =
+        (END_DATE.getTime() - BEGIN_DATE.getTime()) / (1000 * 60 * 60 * 24);
+
+      if (daysWindow < 0 || daysWindow > 90) {
+        res.status(400).json({
+          success: false,
+          error: "Date range must be between 0 and 90 days",
+        });
+        return;
+      }
+
+      const trackIds = trackInfo.map((track) => track.id);
+      const trackSatsInTimeframe = await db
+        .knex("amp")
+        .select("track_id")
+        .sum("msat_amount as msatTotal")
+        .where("created_at", ">=", BEGIN_DATE)
+        .andWhere("created_at", "<=", END_DATE)
+        .whereIn("track_id", trackIds)
+        .groupBy("track_id");
+
+      trackInfo.forEach((track) => {
+        const trackSatInfo = trackSatsInTimeframe.find(
+          (t) => t.track_id === track.id
+        );
+        track.msatTotal = trackSatInfo?.msatTotal ?? 0;
+      });
+
+      trackInfo.sort((a, b) => {
+        const aTotal = parseInt(a.msatTotal);
+        const bTotal = parseInt(b.msatTotal);
+        return bTotal - aTotal;
+      });
+    }
+
+    res.json({
+      success: true,
+      data: {
+        title: playlistMetadata.title,
+        userId: playlistMetadata.userId,
+        tracks: trackInfo,
+      },
     });
   }
-
-  res.json({
-    success: true,
-    data: {
-      title: playlistMetadata.title,
-      userId: playlistMetadata.userId,
-      tracks: trackInfo,
-    },
-  });
 };
 
 // playlists are publically accessible via the user id (npub or firebase uid)
