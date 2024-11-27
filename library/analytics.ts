@@ -66,8 +66,7 @@ export const getTopSupporters = async (userId: string) => {
     .sum("msat_amount as msatTotal")
     .where("split_destination", "=", userId)
     .whereNotIn("user_id", ["keysend", "invoice"])
-    .andWhere("amp.created_at", ">", priorMonth())
-    .andWhere("amp.created_at", "<", currentMonth())
+    .andWhere("amp.created_at", ">", currentMonth())
     .groupBy("user_id", "user.name", "user.artwork_url")
     .orderBy("msatTotal", "desc")
     .limit(5);
