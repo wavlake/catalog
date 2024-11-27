@@ -37,8 +37,6 @@ export const identifyActivePromosWithBudgetRemaining = async (): Promise<
     .andWhere("is_pending", false)
     .groupBy("promo_id");
 
-  console.log("activePromosRewardTotals", activePromosRewardTotals);
-
   return activePromos.filter((promo) => {
     const promoRewardTotal = activePromosRewardTotals.find(
       (total) => total.promo_id === promo.id
