@@ -323,36 +323,23 @@ const createPromo = asyncHandler<
 
   // Create promo record
   const now = new Date();
-  // const newPromo = await prisma.promo.create({
-  //   data: {
-  //     contentId: contentId,
-  //     contentType: contentType,
-  //     // apply fee
-  //     msatBudget: msatBudget * WAVLAKE_FEE,
-  //     msatPayoutAmount,
-  //     isActive: false,
-  //     isPending: true,
-  //     isPaid: false,
-  //     createdAt: now,
-  //     updatedAt: now,
-  //     externalTransactionId: "",
-  //     paymentRequest: "",
-  //   },
-  // });
-  const newPromo = {
-    id: 1,
-    contentId: contentId,
-    contentType: contentType,
-    msatBudget: msatBudget * WAVLAKE_FEE,
-    msatPayoutAmount,
-    isActive: false,
-    isPending: true,
-    isPaid: false,
-    createdAt: now,
-    updatedAt: now,
-    externalTransactionId: "",
-    paymentRequest: "",
-  };
+  const newPromo = await prisma.promo.create({
+    data: {
+      contentId: contentId,
+      contentType: contentType,
+      // apply fee
+      msatBudget: msatBudget * WAVLAKE_FEE,
+      msatPayoutAmount,
+      isActive: false,
+      isPending: true,
+      isPaid: false,
+      createdAt: now,
+      updatedAt: now,
+      externalTransactionId: "",
+      paymentRequest: "",
+    },
+  });
+
   log.debug(`Created placeholder promo invoice: ${newPromo.id}`);
 
   const invoiceRequest = {
