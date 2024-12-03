@@ -8,7 +8,7 @@ import analyticsController from "../controllers/analytics";
 const router = express.Router();
 
 //////// ROUTES ////////
-router.get("/downloads", analyticsController.get_downloads);
+router.get("/downloads", isAuthorized, analyticsController.get_downloads);
 router.get("/earnings", isAuthorized, analyticsController.get_earnings);
 
 // Export router
