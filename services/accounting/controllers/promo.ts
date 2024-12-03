@@ -204,29 +204,29 @@ const createPromo = asyncHandler<
   }
 
   // Calculate budget after fee
-  const budgetAfterFee = msatBudget * WAVLAKE_FEE;
+  const budgetAfterFee = Math.round(msatBudget * WAVLAKE_FEE); // Use Math.round instead of floor
+  // Calculate suggested budgets
+  const nearestLowerMinutes = Math.floor(budgetAfterFee / msatPayoutAmount);
+  const nearestHigherMinutes = nearestLowerMinutes + 1;
 
-  // Validate that budget after fee is evenly divisible by payout amount
-  if (budgetAfterFee % msatPayoutAmount !== 0) {
-    // Calculate the desired budget before fee that would result in an even division after fee
-    const nearestLowerPayouts = Math.floor(budgetAfterFee / msatPayoutAmount);
-    const nearestHigherPayouts = nearestLowerPayouts + 1;
-
-    const suggestedBudgetBeforeFee = Math.ceil(
-      (nearestLowerPayouts * msatPayoutAmount) / WAVLAKE_FEE
-    );
-    const nextBudgetBeforeFee = Math.ceil(
-      (nearestHigherPayouts * msatPayoutAmount) / WAVLAKE_FEE
-    );
-
+  const suggestedBudget = Math.ceil(
+    (nearestLowerMinutes * msatPayoutAmount) / WAVLAKE_FEE
+  );
+  const nextBudget = Math.ceil(
+    (nearestHigherMinutes * msatPayoutAmount) / WAVLAKE_FEE
+  );
+  // Check if current budget matches either suggestion
+  if (msatBudget !== suggestedBudget && msatBudget !== nextBudget) {
     res.status(400).json({
       success: false,
       error:
-        `Budget must result in whole number of payouts after ${
+        `Budget must result in whole number of minutes after ${
           (1 - WAVLAKE_FEE) * 100
         }% fee. ` +
-        `Suggested budgets: ${suggestedBudgetBeforeFee} or ${nextBudgetBeforeFee} msats ` +
-        `(resulting in payouts of ${nearestLowerPayouts} or ${nearestHigherPayouts})`,
+        `Suggested amounts: ${suggestedBudget / 1000} or ${
+          nextBudget / 1000
+        } sats ` +
+        `(pays for ${nearestLowerMinutes} or ${nearestHigherMinutes} minutes at ${msatPayoutAmount} sats each)`,
     });
     return;
   }
