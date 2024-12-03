@@ -46,8 +46,36 @@ export const getContentStats = async (
   const podcastGuid = v5(feedPath(contentType, contentId), podcastNamespace);
   const op3Id = await getOp3Id(podcastGuid);
   const op3Stats = await getOp3Stats(op3Id, startDate);
+  const op3ShowInfo = await getOp3ShowInfo(op3Id);
 
-  return op3Stats;
+  const statsWithShowInfo = await mergeShowInfo(op3Stats, op3ShowInfo);
+  statsWithShowInfo.statsPageUrl = op3ShowInfo.statsPageUrl;
+
+  return statsWithShowInfo;
+};
+
+export const mergeShowInfo = async (stats: any, showInfo: any) => {
+  const episodes = showInfo.episodes;
+  const results = stats.rows.map((result: any) => {
+    const episode = episodes.find((episode: any) => {
+      return episode.id === result.episodeId;
+    });
+    return {
+      ...result,
+      title: episode.title,
+      itemGuid: episode.itemGuid,
+    };
+  });
+  stats.rows = results;
+  return stats;
+};
+
+export const getOp3ShowInfo = async (op3Id: string) => {
+  const response = await op3Client.get(`/shows/${op3Id}?episodes=include`);
+  if (!response.data) {
+    throw new Error("No show found");
+  }
+  return response.data;
 };
 
 export const getOp3Id = async (podcastGuid: string) => {
