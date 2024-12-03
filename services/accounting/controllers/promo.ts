@@ -145,8 +145,8 @@ const createPromoReward = asyncHandler<
 });
 
 const MAX_BUDGET_MULTIPLIER = 2000;
-const MAX_PAYOUT_AMOUNT = 100000;
-const MIN_PAYOUT_AMOUNT = 1000;
+const MAX_PAYOUT_AMOUNT = 100000; // units of msats
+const MIN_PAYOUT_AMOUNT = 1000; // units of msats
 const MAX_NUMBER_OF_ACTIVE_PROMOS = 3;
 // 10% wavlake fee
 const WAVLAKE_FEE = 0.9;
