@@ -41,7 +41,12 @@ export const identifyActivePromosWithBudgetRemaining = async (): Promise<
   return activePromos.filter((promo) => {
     const promoRewardTotal = activePromosRewardTotals.find(
       (total) => total.promo_id === promo.id
-    ).msatTotal;
+    )?.msatTotal;
+
+    // If no rewards have been issued for this promo, it has budget remaining
+    if (!promoRewardTotal) {
+      return true;
+    }
 
     return promo.msatBudget > parseInt(promoRewardTotal);
   });
