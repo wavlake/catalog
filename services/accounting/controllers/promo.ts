@@ -235,7 +235,6 @@ const createPromo = asyncHandler<
     return;
   }
 
-  // Rest of the controller code remains the same...
   // validate contentId
   if (!validate(contentId)) {
     res.status(400).json({
