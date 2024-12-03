@@ -144,7 +144,7 @@ const createPromoReward = asyncHandler<
   }
 });
 
-const DEFAULT_PAYOUT_AMOUNT = 10000;
+const MAX_BUDGET_MULTIPLIER = 2000;
 const MAX_PAYOUT_AMOUNT = 1000000;
 const MIN_PAYOUT_AMOUNT = 1000;
 const MAX_NUMBER_OF_ACTIVE_PROMOS = 3;
@@ -189,6 +189,15 @@ const createPromo = asyncHandler<
     res.status(400).json({
       success: false,
       error: `msatPayoutAmount must be between ${MIN_PAYOUT_AMOUNT} and ${MAX_PAYOUT_AMOUNT} msats`,
+    });
+    return;
+  }
+
+  const maxAllowedBudget = msatPayoutAmount * MAX_BUDGET_MULTIPLIER;
+  if (msatBudget > maxAllowedBudget) {
+    res.status(400).json({
+      success: false,
+      error: `msatBudget cannot exceed ${MAX_BUDGET_MULTIPLIER} times the payout amount (${maxAllowedBudget} msats)`,
     });
     return;
   }
@@ -289,7 +298,7 @@ const createPromo = asyncHandler<
       contentType: contentType,
       // apply fee
       msatBudget: msatBudget * WAVLAKE_FEE,
-      msatPayoutAmount: DEFAULT_PAYOUT_AMOUNT,
+      msatPayoutAmount,
       isActive: false,
       isPending: true,
       isPaid: false,
