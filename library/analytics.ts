@@ -156,5 +156,19 @@ export const getLifetimeEarnings = async (userId: string) => {
     .groupBy("split_destination")
     .first();
 
-  return Math.floor(parseInt(lifetimeEarnings?.msatTotal) / 1000) * 1000 || 0;
+  const legacyEarnings = await db
+    .knex("amp")
+    .sum("msat_amount as msatTotal")
+    .where("user_id", "=", userId)
+    .whereNull("split_destination")
+    .groupBy("user_id")
+    .first();
+
+  return (
+    Math.floor(
+      (parseInt(lifetimeEarnings?.msatTotal) +
+        parseInt(legacyEarnings?.msatTotal)) /
+        1000
+    ) * 1000 || 0
+  );
 };
