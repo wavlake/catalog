@@ -1,3 +1,4 @@
+import Sentry from "@sentry/node";
 import log, { LogLevelDesc } from "loglevel";
 log.setLevel((process.env.LOG_LEVEL as LogLevelDesc) || "info");
 import db from "./db";
@@ -83,11 +84,15 @@ async function deactivatePromo(promoId: number) {
 
   const totalSettledRewards = await getTotalSettledRewards(promoId);
 
+  if (totalSettledRewards > promo.msat_budget) {
+    Sentry.captureException(new Error(`Promo ${promoId} exceeded budget`), {
+      extra: { promo, totalSettledRewards, promoBudget: promo.msat_budget },
+    });
+  }
+
   if (
-    // Deactivate promo if settled rewards exceed budget
-    totalSettledRewards === promo.msat_budget ||
-    // Or if settled rewards plus next minimum payout exceed budget
-    totalSettledRewards + promo.msat_payout_amount >= promo.msat_budget
+    // Deactivate promo if settled rewards exceed or equal budget
+    totalSettledRewards >= promo.msat_budget
   ) {
     await db
       .knex("promo")
