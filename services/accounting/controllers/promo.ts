@@ -21,6 +21,7 @@ import {
 } from "@library/constants";
 import { createCharge } from "@library/zbd";
 import { validate } from "uuid";
+const { createHash } = require("crypto");
 
 const createPromoReward = asyncHandler<
   {},
@@ -29,7 +30,9 @@ const createPromoReward = asyncHandler<
 >(async (req, res, next) => {
   const { promoId } = req.body;
   const userId = req["uid"];
-  const ipAddress = req.ip;
+  const rawIpAddress = req.ip;
+  // hash ip address
+  const ipAddress = createHash("MD5").update(rawIpAddress).digest("hex");
 
   // Validate
   if (!promoId) {
