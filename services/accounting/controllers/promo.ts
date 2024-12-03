@@ -147,12 +147,13 @@ const createPromoReward = asyncHandler<
   }
 });
 
-const DEFAULT_PAYOUT_AMOUNT = 10000;
-const MAX_PAYOUT_AMOUNT = 1000000;
-const MIN_PAYOUT_AMOUNT = 1000;
+const MAX_BUDGET_MULTIPLIER = 2000;
+const MAX_PAYOUT_AMOUNT = 100000; // units of msats
+const MIN_PAYOUT_AMOUNT = 1000; // units of msats
 const MAX_NUMBER_OF_ACTIVE_PROMOS = 3;
 // 10% wavlake fee
 const WAVLAKE_FEE = 0.9;
+const ERROR_MESSAGE_FEE = 10; // Store exact percentage
 const createPromo = asyncHandler<
   {},
   ResponseObject<{ pr: string; promoId: number }>,
@@ -192,6 +193,44 @@ const createPromo = asyncHandler<
     res.status(400).json({
       success: false,
       error: `msatPayoutAmount must be between ${MIN_PAYOUT_AMOUNT} and ${MAX_PAYOUT_AMOUNT} msats`,
+    });
+    return;
+  }
+
+  // Add validation for maximum budget relative to payout amount
+  const maxAllowedBudget = msatPayoutAmount * MAX_BUDGET_MULTIPLIER;
+  if (msatBudget > maxAllowedBudget) {
+    res.status(400).json({
+      success: false,
+      error: `msatBudget cannot exceed ${MAX_BUDGET_MULTIPLIER} times the payout amount (${maxAllowedBudget} msats)`,
+    });
+    return;
+  }
+
+  // Calculate budget after fee
+  const budgetAfterFee = Math.round(msatBudget * WAVLAKE_FEE); // Use Math.round instead of floor
+  // Calculate suggested budgets
+  const nearestLowerMinutes = Math.floor(budgetAfterFee / msatPayoutAmount);
+  const nearestHigherMinutes = nearestLowerMinutes + 1;
+
+  const satBudget = msatBudget / 1000;
+  // Match frontend calculations exactly
+  const suggestedBudgetSats = Math.ceil(
+    (nearestLowerMinutes * msatPayoutAmount) / WAVLAKE_FEE / 1000
+  );
+  const nextBudgetSats = Math.ceil(
+    (nearestHigherMinutes * msatPayoutAmount) / WAVLAKE_FEE / 1000
+  );
+  const payoutAmountSats = msatPayoutAmount / 1000;
+
+  // Check if current budget matches either suggestion
+  if (satBudget !== suggestedBudgetSats && satBudget !== nextBudgetSats) {
+    res.status(400).json({
+      success: false,
+      error:
+        `Budget must result in whole number of minutes after ${ERROR_MESSAGE_FEE}% fee. ` +
+        `Suggested amounts: ${suggestedBudgetSats.toLocaleString()} or ${nextBudgetSats.toLocaleString()} sats ` +
+        `(pays for ${nearestLowerMinutes} or ${nearestHigherMinutes} minutes at ${payoutAmountSats} sats per minute)`,
     });
     return;
   }
@@ -292,7 +331,7 @@ const createPromo = asyncHandler<
       contentType: contentType,
       // apply fee
       msatBudget: msatBudget * WAVLAKE_FEE,
-      msatPayoutAmount: DEFAULT_PAYOUT_AMOUNT,
+      msatPayoutAmount,
       isActive: false,
       isPending: true,
       isPaid: false,
