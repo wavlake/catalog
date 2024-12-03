@@ -193,6 +193,7 @@ const createPromo = asyncHandler<
     return;
   }
 
+  // Add validation for maximum budget relative to payout amount
   const maxAllowedBudget = msatPayoutAmount * MAX_BUDGET_MULTIPLIER;
   if (msatBudget > maxAllowedBudget) {
     res.status(400).json({
@@ -202,6 +203,35 @@ const createPromo = asyncHandler<
     return;
   }
 
+  // Calculate budget after fee
+  const budgetAfterFee = msatBudget * WAVLAKE_FEE;
+
+  // Validate that budget after fee is evenly divisible by payout amount
+  if (budgetAfterFee % msatPayoutAmount !== 0) {
+    // Calculate the desired budget before fee that would result in an even division after fee
+    const nearestLowerPayouts = Math.floor(budgetAfterFee / msatPayoutAmount);
+    const nearestHigherPayouts = nearestLowerPayouts + 1;
+
+    const suggestedBudgetBeforeFee = Math.ceil(
+      (nearestLowerPayouts * msatPayoutAmount) / WAVLAKE_FEE
+    );
+    const nextBudgetBeforeFee = Math.ceil(
+      (nearestHigherPayouts * msatPayoutAmount) / WAVLAKE_FEE
+    );
+
+    res.status(400).json({
+      success: false,
+      error:
+        `Budget must result in whole number of payouts after ${
+          (1 - WAVLAKE_FEE) * 100
+        }% fee. ` +
+        `Suggested budgets: ${suggestedBudgetBeforeFee} or ${nextBudgetBeforeFee} msats ` +
+        `(resulting in payouts of ${nearestLowerPayouts} or ${nearestHigherPayouts})`,
+    });
+    return;
+  }
+
+  // Rest of the controller code remains the same...
   // validate contentId
   if (!validate(contentId)) {
     res.status(400).json({
