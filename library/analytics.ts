@@ -1,4 +1,6 @@
 import db from "../library/db";
+import { getType } from "./content";
+import { getOwnerId } from "./split";
 
 const currentMonth = () => {
   const now = new Date();
@@ -11,6 +13,43 @@ const priorMonth = () => {
   return new Date(now.setDate(now.getDate() - 60));
 };
 
+export const getContentMonthlyEarnings = async (
+  userId: string,
+  contentId: string
+) => {
+  const contentType = await getType(contentId);
+  if (contentType != "album" && contentType != "podcast") {
+    throw new Error("Invalid content type");
+  }
+  const isOwner = (await getOwnerId(contentId, contentType)) === userId;
+  if (!isOwner) {
+    throw new Error("User is not the owner of this content");
+  }
+
+  const table = contentType === "album" ? "track" : "episode";
+  const contentIds = await db
+    .knex(table)
+    .select("id")
+    .where(`${contentType}_id`, "=", contentId);
+
+  const earnings = await db
+    .knex("amp")
+    .sum("msat_amount as msatTotal")
+    .countDistinct("user_id as uniqueUsers")
+    .whereIn(
+      "track_id",
+      contentIds.map((c) => c.id)
+    )
+    .andWhere("created_at", ">=", currentMonth())
+    .groupBy("track_id")
+    .first();
+
+  return {
+    earnings: Math.floor(parseInt(earnings?.msatTotal) / 1000) * 1000 || 0,
+    uniqueAmpUsers: parseInt(earnings?.uniqueUsers) || 0,
+  };
+};
+
 export const getEarningsNumbers = async (userId: string) => {
   // get earnings and unique supporters for current month
   const last30DayEarnings = await db
@@ -18,7 +57,7 @@ export const getEarningsNumbers = async (userId: string) => {
     .countDistinct("user_id as supporters")
     .sum("msat_amount as msatTotal")
     .where("split_destination", "=", userId)
-    .andWhere("created_at", ">", currentMonth())
+    .andWhere("created_at", ">=", currentMonth())
     .groupBy("split_destination")
     .first();
 
@@ -66,8 +105,7 @@ export const getTopSupporters = async (userId: string) => {
     .sum("msat_amount as msatTotal")
     .where("split_destination", "=", userId)
     .whereNotIn("user_id", ["keysend", "invoice"])
-    .andWhere("amp.created_at", ">", priorMonth())
-    .andWhere("amp.created_at", "<", currentMonth())
+    .andWhere("amp.created_at", ">=", currentMonth())
     .groupBy("user_id", "user.name", "user.artwork_url")
     .orderBy("msatTotal", "desc")
     .limit(5);
@@ -93,8 +131,7 @@ export const getTopContent = async (userId: string) => {
     )
     .sum("msat_amount as msatTotal")
     .where("split_destination", "=", userId)
-    .andWhere("amp.created_at", ">", priorMonth())
-    .andWhere("amp.created_at", "<", currentMonth())
+    .andWhere("amp.created_at", ">=", currentMonth())
     .groupBy(
       "amp.track_id",
       "track.title",
@@ -118,5 +155,19 @@ export const getLifetimeEarnings = async (userId: string) => {
     .groupBy("split_destination")
     .first();
 
-  return Math.floor(parseInt(lifetimeEarnings?.msatTotal) / 1000) * 1000 || 0;
+  const legacyEarnings = await db
+    .knex("amp")
+    .sum("msat_amount as msatTotal")
+    .where("user_id", "=", userId)
+    .whereNull("split_destination")
+    .groupBy("user_id")
+    .first();
+
+  return (
+    Math.floor(
+      (parseInt(lifetimeEarnings?.msatTotal) +
+        parseInt(legacyEarnings?.msatTotal)) /
+        1000
+    ) * 1000 || 0
+  );
 };
