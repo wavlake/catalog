@@ -118,7 +118,7 @@ export const getPromoByContent = asyncHandler<
   if (!promo.isActive) {
     res.json({
       success: true,
-      data: null,
+      data: promo,
     });
     return;
   }
