@@ -311,6 +311,19 @@ const createPromo = asyncHandler<
     return;
   }
 
+  if (
+    existingPromos.some(
+      (promo) => promo.isActive && promo.contentId === contentId
+    )
+  ) {
+    res.status(400).json({
+      success: false,
+      error:
+        "You already have an active promo for this content. Please deactivate the exisitng promo, or wait for it to be depleted.",
+    });
+    return;
+  }
+
   // if more than 3 active promos, reject
   if (
     existingPromos.filter((promo) => promo.isActive).length >=
