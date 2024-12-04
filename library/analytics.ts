@@ -40,7 +40,7 @@ export const getContentMonthlyEarnings = async (
       "track_id",
       contentIds.map((c) => c.id)
     )
-    .andWhere("created_at", ">", currentMonth())
+    .andWhere("created_at", ">=", currentMonth())
     .groupBy("track_id")
     .first();
 
@@ -57,7 +57,7 @@ export const getEarningsNumbers = async (userId: string) => {
     .countDistinct("user_id as supporters")
     .sum("msat_amount as msatTotal")
     .where("split_destination", "=", userId)
-    .andWhere("created_at", ">", currentMonth())
+    .andWhere("created_at", ">=", currentMonth())
     .groupBy("split_destination")
     .first();
 
@@ -105,7 +105,7 @@ export const getTopSupporters = async (userId: string) => {
     .sum("msat_amount as msatTotal")
     .where("split_destination", "=", userId)
     .whereNotIn("user_id", ["keysend", "invoice"])
-    .andWhere("amp.created_at", ">", currentMonth())
+    .andWhere("amp.created_at", ">=", currentMonth())
     .groupBy("user_id", "user.name", "user.artwork_url")
     .orderBy("msatTotal", "desc")
     .limit(5);
@@ -131,8 +131,7 @@ export const getTopContent = async (userId: string) => {
     )
     .sum("msat_amount as msatTotal")
     .where("split_destination", "=", userId)
-    .andWhere("amp.created_at", ">", priorMonth())
-    .andWhere("amp.created_at", "<", currentMonth())
+    .andWhere("amp.created_at", ">=", currentMonth())
     .groupBy(
       "amp.track_id",
       "track.title",
