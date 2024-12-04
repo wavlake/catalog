@@ -351,7 +351,7 @@ export const isUserEligibleForReward = async (
 };
 
 export const getPromoByContentId = async (contentId: string): Promise<any> => {
-  const promo = await prisma.promo.findFirst({
+  const matches = await prisma.promo.findMany({
     select: {
       id: true,
       msatBudget: true,
@@ -365,15 +365,22 @@ export const getPromoByContentId = async (contentId: string): Promise<any> => {
       isPending: false,
       isPaid: true,
     },
+    orderBy: {
+      createdAt: "desc",
+    },
   });
 
-  if (!promo) {
+  const [mostRecentPromo] = matches;
+  if (!mostRecentPromo) {
     return null;
   }
 
-  const isActive = await isPromoActive(promo.id, promo.msatBudget);
+  const isActive = await isPromoActive(
+    mostRecentPromo.id,
+    mostRecentPromo.msatBudget
+  );
 
-  return { ...promo, isPromoActive: isActive };
+  return { ...mostRecentPromo, isPromoActive: isActive };
 };
 
 export const getTotalPromoEarnedByUser = async (
