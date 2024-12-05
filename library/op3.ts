@@ -1,7 +1,7 @@
 import { OP3_PREFIX, podcastNamespace, feedPath } from "./rssUtils";
 const { v5 } = require("uuid");
 import axios from "axios";
-import { getType } from "./content";
+import { getType, getReleaseTitle } from "./content";
 
 const OP3_API = "https://op3.dev/api/1";
 const OP3_KEY = process.env.OP3_KEY;
@@ -51,6 +51,8 @@ export const getContentStats = async (
   const statsWithShowInfo = await mergeShowInfo(op3Stats, op3ShowInfo);
   statsWithShowInfo.statsPageUrl = op3ShowInfo.statsPageUrl;
 
+  const releaseTitle = await getReleaseTitle(contentId, contentType);
+  statsWithShowInfo.releaseTitle = releaseTitle || "";
   return statsWithShowInfo;
 };
 
