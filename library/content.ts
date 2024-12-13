@@ -175,3 +175,25 @@ export const getContentFromEventId = async (eventId) => {
 
   return content;
 };
+
+export const getReleaseTitle = async (contentId: string, type: string) => {
+  if (!contentId || !validate(contentId) || !type) {
+    return null;
+  }
+  if (type !== "album" && type !== "podcast") {
+    return null;
+  }
+
+  const releaseTitle = await db
+    .knex(type)
+    .select(`${type === "album" ? "title" : "name"} as title`)
+    .where("id", "=", contentId)
+    .then((data) => {
+      if (!data || data.length === 0) {
+        return null;
+      }
+      return data[0].title;
+    });
+
+  return releaseTitle;
+};
