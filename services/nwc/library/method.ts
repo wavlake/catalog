@@ -232,7 +232,7 @@ const createInternalPayment = async (
   event
 ) => {
   const txId = randomUUID();
-  const timestamp = zapRequest.tags.find((tag) => tag[0] === "timestamp")[1];
+  const [timestampTag, timestamp] = zapRequest.tags.find((tag) => tag[0] === "timestamp") ?? [];
   const payment = await processSplits({
     paymentType: 10,
     contentTime: parseInt(timestamp),
