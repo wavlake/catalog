@@ -40,7 +40,7 @@ export const getContentMonthlyEarnings = async (
       "track_id",
       contentIds.map((c) => c.id)
     )
-    .andWhere("created_at", ">", currentMonth())
+    .andWhere("created_at", ">=", currentMonth())
     .groupBy("track_id")
     .first();
 
@@ -57,7 +57,7 @@ export const getEarningsNumbers = async (userId: string) => {
     .countDistinct("user_id as supporters")
     .sum("msat_amount as msatTotal")
     .where("split_destination", "=", userId)
-    .andWhere("created_at", ">", currentMonth())
+    .andWhere("created_at", ">=", currentMonth())
     .groupBy("split_destination")
     .first();
 
@@ -101,16 +101,67 @@ export const getTopSupporters = async (userId: string) => {
   const topSupporters = await db
     .knex("amp")
     .leftOuterJoin("user", "amp.user_id", "user.id")
-    .select("user_id as userId", "user.name", "user.artwork_url as artworkUrl")
-    .sum("msat_amount as msatTotal")
+    .leftOuterJoin("preamp", "amp.tx_id", "preamp.tx_id")
+    .select(
+      "amp.user_id as userId",
+      "user.name as name",
+      "preamp.sender_name as senderName",
+      "preamp.app_name as appName",
+      "user.artwork_url as artworkUrl"
+    )
+    .sum("amp.msat_amount as msatTotal")
     .where("split_destination", "=", userId)
-    .whereNotIn("user_id", ["keysend", "invoice"])
-    .andWhere("amp.created_at", ">", currentMonth())
-    .groupBy("user_id", "user.name", "user.artwork_url")
-    .orderBy("msatTotal", "desc")
-    .limit(5);
+    .andWhere("amp.created_at", ">=", currentMonth())
+    .groupBy(
+      "amp.user_id",
+      "user.name",
+      "user.artwork_url",
+      "preamp.sender_name",
+      "preamp.app_name"
+    )
+    .orderBy("msatTotal", "desc");
 
-  return topSupporters;
+  // Clean up anon supporters
+  let anonSupporters = 0;
+  let anonMsats = 0;
+  const countAndRemoveAnon = topSupporters.map((supporter) => {
+    if (!supporter.name && !supporter.senderName) {
+      anonSupporters += 1;
+      anonMsats += parseInt(supporter.msatTotal);
+      return null;
+    }
+    return supporter;
+  });
+
+  // filter nulls
+  const filteredSupporters = countAndRemoveAnon.filter(
+    (supporter) => supporter !== null
+  );
+
+  // Use senderName and appName for name if name is missing
+  filteredSupporters.forEach((supporter) => {
+    if (supporter.senderName) {
+      supporter.name = `${supporter.senderName} (via ${
+        supporter.appName ?? "unknown"
+      })`;
+    }
+  });
+
+  if (anonSupporters > 0) {
+    filteredSupporters.push({
+      userId: "",
+      name: `anonymous (${anonSupporters})`,
+      artworkUrl: null,
+      msatTotal: anonMsats.toString(),
+    });
+  }
+
+  // sort by filtered supporters by msatTotal
+  filteredSupporters.sort(
+    (a, b) => parseInt(b.msatTotal) - parseInt(a.msatTotal)
+  );
+
+  return filteredSupporters;
 };
 
 export const getTopContent = async (userId: string) => {
@@ -131,8 +182,7 @@ export const getTopContent = async (userId: string) => {
     )
     .sum("msat_amount as msatTotal")
     .where("split_destination", "=", userId)
-    .andWhere("amp.created_at", ">", priorMonth())
-    .andWhere("amp.created_at", "<", currentMonth())
+    .andWhere("amp.created_at", ">=", currentMonth())
     .groupBy(
       "amp.track_id",
       "track.title",
@@ -142,10 +192,10 @@ export const getTopContent = async (userId: string) => {
       "album.artwork_url",
       "podcast.artwork_url"
     )
-    .orderBy("msatTotal", "desc")
-    .limit(5);
+    .orderBy("msatTotal", "desc");
 
-  return topContent;
+  // Filter out content with no title (removes artist only boosts)
+  return topContent.filter((content) => content.title);
 };
 
 export const getLifetimeEarnings = async (userId: string) => {
