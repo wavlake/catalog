@@ -120,6 +120,7 @@ router.post(
 );
 
 router.get("/promos", isAuthorized, accountsController.get_track_promos);
+router.put("/disable", isAuthorized, accountsController.disable_user);
 
 // Export router
 export default router;
