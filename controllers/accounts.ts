@@ -39,6 +39,7 @@ import {
   validateAndGenerateUsername,
   validateUsername,
 } from "../library/userHelper";
+import { firestore } from "firebase-admin";
 
 const get_account = asyncHandler(async (req, res, next) => {
   const request = {
@@ -1215,6 +1216,27 @@ const get_track_promos = asyncHandler(async (req, res, next) => {
   }
 });
 
+const disable_user = asyncHandler(async (req, res, next) => {
+  const userId = req["uid"];
+
+  try {
+    auth().updateUser(userId, {
+      disabled: true,
+    });
+
+    res.send({
+      success: true,
+    });
+  } catch (err) {
+    log.debug("Error disabling user", err);
+    res.status(500).send({
+      success: false,
+      error: "Failed to disable user",
+    });
+    return;
+  }
+});
+
 export default {
   check_user_verified,
   create_update_lnaddress,
@@ -1242,4 +1264,5 @@ export default {
   get_track_promos,
   create_user,
   create_user_verified,
+  disable_user,
 };
