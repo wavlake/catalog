@@ -1,4 +1,4 @@
-import Sentry from "@sentry/node";
+import * as Sentry from "@sentry/node";
 import log, { LogLevelDesc } from "loglevel";
 log.setLevel((process.env.LOG_LEVEL as LogLevelDesc) || "info");
 import db from "./db";
