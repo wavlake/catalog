@@ -105,6 +105,12 @@ export const getOp3Stats = async (op3Id: string, startDate?: string) => {
   const response = await op3Client.get(
     `/downloads/show/${op3Id}?${query}&format=json&limit=1000`
   );
+
+  // Initialize results array if it doesn't exist
+  if (!response.data.results) {
+    response.data.results = [];
+  }
+
   // Fetch results until there is no continuationToken in the response
   let continuationToken = response.data.continuationToken;
   while (continuationToken) {
