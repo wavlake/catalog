@@ -2,7 +2,7 @@ import { addOP3URLPrefix } from "../library/op3";
 import prisma from "../prisma/client";
 import { parseLimit, shuffle } from "../library/helpers";
 import db from "./db";
-import log from "loglevel";
+import log from "./winston";
 
 /**
  * Get tracks for the shuffle playlist

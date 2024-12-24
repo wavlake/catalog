@@ -2,7 +2,7 @@ import fetch from "node-fetch";
 import { Filter, SimplePool } from "nostr-tools";
 import { DEFAULT_READ_RELAY_URIS } from "./common";
 import { Follow } from "../common";
-import log from "loglevel";
+import log from "./winston";
 import axios from "axios";
 
 const pool = new SimplePool();

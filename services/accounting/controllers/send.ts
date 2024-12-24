@@ -9,7 +9,7 @@ import {
   recordInProgressKeysend,
 } from "@library/keysends";
 import core from "express-serve-static-core";
-import log from "loglevel";
+import log from "../library/winston";
 import { sendKeysend as zbdSendKeysend } from "@library/zbd/zbdClient";
 import { validate } from "uuid";
 import { processSplits } from "@library/amp";

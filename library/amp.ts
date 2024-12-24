@@ -7,7 +7,7 @@ import {
   getTimeSplit,
 } from "./split";
 import { getType } from "./content";
-import log from "loglevel";
+import log from "./winston";
 
 const AMP_FEE = 0.1; // 10% fee
 

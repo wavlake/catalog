@@ -1,6 +1,6 @@
 import podcastIndex from "podcast-index-api";
 import { PodcastIndexPodcastEpisodes, PodcastIndexPodcast } from "./types";
-import log from "loglevel";
+import log from "./winston";
 import { sanitize } from "../htmlSanitization";
 import { getPodcastFromURL } from "@podverse/podcast-feed-parser";
 
