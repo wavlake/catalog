@@ -16,7 +16,7 @@ export const handleCompletedForward = async ({
   fee: number;
   preimage: string;
 }): Promise<boolean> => {
-  log.debug(
+  log.info(
     `Received forward callback for ${externalPaymentId}, status: ${status}`
   );
   const trx = await db.knex.transaction();
@@ -60,7 +60,7 @@ export const handleCompletedForward = async ({
       })
       .then(trx.commit)
       .then(() => {
-        log.debug(`Successfully logged forward for ${externalPaymentId}`);
+        log.info(`Successfully logged forward for ${externalPaymentId}`);
         return true;
       })
       .catch((err) => {
@@ -109,7 +109,7 @@ export const handleCompletedWithdrawal = async ({
   }
   const isPending = await checkWithdrawalStatus(transactionId);
   if (!isPending) {
-    log.debug(
+    log.info(
       `Withdrawal already processed for ${transactionId}, skipping update.`
     );
     return true;
@@ -137,7 +137,7 @@ export const handleCompletedWithdrawal = async ({
       })
       .then(trx.commit)
       .then(() => {
-        log.debug(
+        log.info(
           `Successfully logged withdrawal of ${msatAmount} for ${userId}`
         );
         return true;
@@ -158,7 +158,7 @@ export const handleCompletedWithdrawal = async ({
       .where({ id: transactionId })
       .then(trx.commit)
       .then(() => {
-        log.debug(`Logged withdrawal with error for ${userId}`);
+        log.info(`Logged withdrawal with error for ${userId}`);
         return true;
       })
       .catch((err) => {

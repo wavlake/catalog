@@ -35,7 +35,7 @@ const get_featured_tracks = asyncHandler(async (req, res, next) => {
   const newTracks = await getNewTracks();
   let forYouTracks;
   if (pubkey) {
-    log.debug(`Nostr pubkey: ${pubkey}`);
+    log.info(`Nostr pubkey: ${pubkey}`);
     forYouTracks = await getUserRecentTracks(pubkey);
     if (forYouTracks.length < 3) {
       forYouTracks = await getPlaylistTracks(DEFAULT_FOR_YOU_PLAYLIST_ID);
@@ -286,7 +286,7 @@ const get_random_tracks_by_genre_id = asyncHandler(async (req, res, next) => {
       res.send(shuffle(data));
     })
     .catch((err) => {
-      log.debug(`Error querying random genre tracks: ${err}`);
+      log.error(`Error querying random genre tracks: ${err}`);
       next(err);
     });
 });
@@ -324,7 +324,7 @@ const delete_track = asyncHandler(async (req, res, next) => {
     return;
   }
 
-  log.debug(`Deleting track ${request.trackId}`);
+  log.info(`Deleting track ${request.trackId}`);
   const deleteTrackData = await db
     .knex("track")
     .where("id", "=", request.trackId)
@@ -445,7 +445,7 @@ const create_track = asyncHandler(async (req, res, next) => {
     .then(async (data) => {
       const updatedAt = new Date();
 
-      log.debug(`Created new track ${request.title} with id: ${data[0]["id"]}`);
+      log.info(`Created new track ${request.title} with id: ${data[0]["id"]}`);
 
       // update the album's updatedAt field
       await prisma.album.update({
@@ -592,7 +592,7 @@ const update_track = asyncHandler(async (req, res, next) => {
     }
   }
 
-  log.debug(`Editing track ${trackId}`);
+  log.info(`Editing track ${trackId}`);
   try {
     const updatedTrack = await prisma.track.update({
       where: {
@@ -615,7 +615,7 @@ const update_track = asyncHandler(async (req, res, next) => {
 
     res.json({ success: true, data: updatedTrack });
   } catch (err) {
-    log.debug(`Error editing track ${trackId}: ${err}`);
+    log.error(`Error editing track ${trackId}: ${err}`);
     res.status(500).json({
       success: false,
       error: "Something went wrong",
@@ -650,7 +650,7 @@ const get_track_ranking_count = asyncHandler(async (req, res, next) => {
     .where("track_id", "=", request.trackId)
     .andWhere("rank", "=", 1)
     .catch((err) => {
-      log.debug(`Error querying ranking_forty table: ${err}`);
+      log.error(`Error querying ranking_forty table: ${err}`);
     });
 
   if (!ranking) {

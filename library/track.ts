@@ -59,7 +59,7 @@ export const getRandomTracks = async (
     .andWhere("track.duration", "is not", null)
     .limit(limit)
     .catch((err) => {
-      log.debug(`Error querying track table for random: ${err}`);
+      log.error(`Error querying track table for random: ${err}`);
       throw err;
     });
 

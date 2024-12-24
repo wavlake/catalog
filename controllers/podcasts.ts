@@ -23,7 +23,7 @@ export const get_podcasts_by_account = asyncHandler(async (req, res, next) => {
       where: { userId: uid, deleted: false },
     })
     .catch((err) => {
-      log.debug(`Error fetching podcasts for user ${uid}: ${err}`);
+      log.error(`Error fetching podcasts for user ${uid}: ${err}`);
       res.status(500).send("Something went wrong");
       return [];
     });
@@ -52,8 +52,8 @@ export const get_podcast_by_id = asyncHandler(async (req, res, next) => {
       where: { id: podcastId },
     })
     .catch((err) => {
-      log.debug(`No podcast found for id: ${podcastId}`);
-      log.debug(err);
+      log.info(`No podcast found for id: ${podcastId}`);
+      log.error(err);
       return;
     });
 
@@ -73,8 +73,8 @@ export const get_podcast_by_url = asyncHandler(async (req, res, next) => {
       where: { podcastUrl },
     })
     .catch((err) => {
-      log.debug(`No podcast found for url: ${podcastUrl}`);
-      log.debug(err);
+      log.info(`No podcast found for url: ${podcastUrl}`);
+      log.error(err);
       return;
     });
 
@@ -141,7 +141,7 @@ export const create_podcast = asyncHandler(async (req, res, next) => {
       ["*"]
     )
     .then((data) => {
-      log.debug(`Created new podcast ${name} with id: ${data[0]["id"]}`);
+      log.info(`Created new podcast ${name} with id: ${data[0]["id"]}`);
 
       res.send({
         success: true,
@@ -165,11 +165,11 @@ export const create_podcast = asyncHandler(async (req, res, next) => {
     })
     .catch((err) => {
       if (err instanceof multer.MulterError) {
-        log.debug(`MulterError creating new podcast: ${err}`);
+        log.error(`MulterError creating new podcast: ${err}`);
 
         res.status(500).send("Something went wrong");
       } else if (err) {
-        log.debug(`Error creating new podcast: ${err}`);
+        log.error(`Error creating new podcast: ${err}`);
         if (err.message.includes("duplicate")) {
           res.status(500).json({
             success: false,
@@ -235,7 +235,7 @@ export const update_podcast = asyncHandler(async (req, res, next) => {
     ? await upload_image(artwork, podcastId, "podcast")
     : undefined;
 
-  log.debug(`Editing podcast ${podcastId}`);
+  log.info(`Editing podcast ${podcastId}`);
   const updatedPodcast = await prisma.podcast
     .update({
       where: {
@@ -266,7 +266,7 @@ export const update_podcast = asyncHandler(async (req, res, next) => {
       },
     })
     .catch((err) => {
-      log.debug(`Error updating podcast ${podcastId}: ${err}`);
+      log.error(`Error updating podcast ${podcastId}: ${err}`);
       res.status(500).send("Something went wrong");
       return;
     });
@@ -309,14 +309,14 @@ export const delete_podcast = asyncHandler(async (req, res, next) => {
     return;
   }
 
-  log.debug(`Checking episodes for podcast ${request.podcastId}`);
+  log.info(`Checking episodes for podcast ${request.podcastId}`);
   const episodes = await db
     .knex("episode")
     .select("episode.podcast_id as podcastId", "episode.deleted")
     .where("episode.podcast_id", "=", request.podcastId)
     .andWhere("episode.deleted", false)
     .catch((err) => {
-      log.debug(`Error deleting podcast ${request.podcastId}: ${err}`);
+      log.error(`Error deleting podcast ${request.podcastId}: ${err}`);
       res.status(500).send("Something went wrong");
       return;
     });
@@ -329,7 +329,7 @@ export const delete_podcast = asyncHandler(async (req, res, next) => {
     return;
   }
 
-  log.debug(`Deleting podcast ${request.podcastId}`);
+  log.info(`Deleting podcast ${request.podcastId}`);
   return db
     .knex("podcast")
     .where("id", "=", request.podcastId)
@@ -338,7 +338,7 @@ export const delete_podcast = asyncHandler(async (req, res, next) => {
       res.send({ success: true, data: data[0] });
     })
     .catch((err) => {
-      log.debug(`Error deleting podcast ${request.podcastId}: ${err}`);
+      log.error(`Error deleting podcast ${request.podcastId}: ${err}`);
       next(err);
     });
 });

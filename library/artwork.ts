@@ -63,12 +63,12 @@ const upload_image = async (
 
     invalidateCdn(s3Key);
 
-    log.debug(
+    log.info(
       `Artwork for ${type}: ${contentId} uploaded to S3 ${s3UploadResult.Location}`
     );
 
     // Clean up with async calls to avoid blocking response
-    log.debug(`Deleting local files: ${convertPath} & ${uploadPath}`);
+    log.info(`Deleting local files: ${convertPath} & ${uploadPath}`);
     fs.unlinkSync(convertPath);
     if (artworkFile) {
       // only delete the new image if it was uploaded
@@ -81,7 +81,7 @@ const upload_image = async (
     // this is saved in the database
     return liveUrl;
   } catch (err) {
-    log.debug(`Error uploading image: ${err}`);
+    log.error(`Error uploading image: ${err}`);
     throw err;
   }
 };

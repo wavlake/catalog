@@ -69,7 +69,7 @@ export const handleConferenceZap = async (zapRequestEvent: ZapRequestEvent) => {
       content: encryptedMessage,
     };
 
-    // log.debug(`Signing zap receipt: ${JSON.stringify(zapReceipt)}`);
+    // log.info(`Signing zap receipt: ${JSON.stringify(zapReceipt)}`);
 
     const signedEvent = finalizeEvent(event, WAVLAKE_SECRET);
 
@@ -78,7 +78,7 @@ export const handleConferenceZap = async (zapRequestEvent: ZapRequestEvent) => {
     let relays = DM_RECEIVER_RELAYS;
     Promise.any(pool.publish(relays, signedEvent))
       .then(() => {
-        log.debug(`Published btc24 message for ${trackId}`);
+        log.info(`Published btc24 message for ${trackId}`);
         return;
       })
       .catch((e) => {

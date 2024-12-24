@@ -32,7 +32,7 @@ export async function getPaymentStatus(
       return res.data;
     })
     .catch((err) => {
-      log.trace(err);
+      log.error(err);
       return err.response;
     });
 }
@@ -41,7 +41,7 @@ export async function getProductionIps(): Promise<Array<string>> {
   const { data } = await client
     .get("https://api.zebedee.io/v0/prod-ips")
     .catch((err) => {
-      log.trace(err);
+      log.error(err);
       return err.response;
     });
 
@@ -54,13 +54,11 @@ export async function isSupportedRegion(ipAddress: string): Promise<boolean> {
       `https://api.zebedee.io/v0/is-supported-region/${ipAddress}`
     )
     .then((res) => {
-      log.debug(
-        `ZBD is-supported-region response: ${JSON.stringify(res.data)}`
-      );
+      log.info(`ZBD is-supported-region response: ${JSON.stringify(res.data)}`);
       return res.data.data.isSupported;
     })
     .catch((err) => {
-      log.trace(err);
+      log.error(err);
       return false;
     });
 }
@@ -75,11 +73,11 @@ export async function sendKeysend(request: SendKeysendRequest) {
       }
     )
     .then((res) => {
-      log.debug(`ZBD send keysend response: ${JSON.stringify(res.data)}`);
+      log.info(`ZBD send keysend response: ${JSON.stringify(res.data)}`);
       return res.data;
     })
     .catch((err) => {
-      log.trace(err);
+      log.error(err);
       return;
     });
 }
@@ -93,7 +91,7 @@ export async function createCharge(
       ...request,
     })
     .catch((err) => {
-      log.trace(err);
+      log.error(err);
       return err.response;
     });
   return data;
@@ -105,7 +103,7 @@ export async function getCharge(
   const { data } = await client
     .get(`https://api.zebedee.io/v0/charges/${paymentId}`)
     .catch((err) => {
-      log.trace(err);
+      log.error(err);
       return err.response;
     });
   return data;
@@ -120,7 +118,7 @@ export async function sendPayment(
       ...request,
     })
     .catch((err) => {
-      log.trace(err);
+      log.error(err);
       return err.response;
     });
   return data;
@@ -139,7 +137,7 @@ export async function payToLightningAddress(
     );
     return data;
   } catch (err) {
-    log.debug(err);
+    log.error(err);
     if (axios.isAxiosError(err)) {
       return err as AxiosError;
     } else {
@@ -158,7 +156,7 @@ export async function validateLightningAddress(
       return res.data.data.valid;
     })
     .catch((err) => {
-      log.trace(err);
+      log.error(err);
       return false;
     });
 }

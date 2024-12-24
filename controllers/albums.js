@@ -214,7 +214,7 @@ const create_album = asyncHandler(async (req, res, next) => {
       ["*"]
     )
     .then((data) => {
-      log.debug(`Created new album ${request.title} with id: ${data[0]["id"]}`);
+      log.info(`Created new album ${request.title} with id: ${data[0]["id"]}`);
 
       res.send({
         success: true,
@@ -234,9 +234,9 @@ const create_album = asyncHandler(async (req, res, next) => {
     })
     .catch((err) => {
       if (err instanceof multer.MulterError) {
-        log.debug(`MulterError creating new album: ${err}`);
+        log.error(`MulterError creating new album: ${err}`);
       } else if (err) {
-        log.debug(`Error creating new album: ${err}`);
+        log.error(`Error creating new album: ${err}`);
       }
       res.status(500).json({
         success: false,
@@ -307,7 +307,7 @@ const update_album = asyncHandler(async (req, res, next) => {
     ? await get_color_palette(cdnImageUrl)
     : undefined;
 
-  log.debug(`Editing album ${request.albumId}`);
+  log.info(`Editing album ${request.albumId}`);
   const updatedAlbum = await prisma.album.update({
     where: {
       id: request.albumId,
@@ -356,7 +356,7 @@ const delete_album = asyncHandler(async (req, res, next) => {
     return;
   }
 
-  log.debug(`Checking tracks for album ${request.albumId}`);
+  log.info(`Checking tracks for album ${request.albumId}`);
   db.knex("track")
     .select("track.album_id as albumId", "track.deleted")
     .where("track.album_id", "=", request.albumId)
@@ -367,7 +367,7 @@ const delete_album = asyncHandler(async (req, res, next) => {
         next(error);
         return;
       } else {
-        log.debug(`Deleting album ${request.albumId}`);
+        log.info(`Deleting album ${request.albumId}`);
         db.knex("album")
           .where("id", "=", request.albumId)
           .update({ deleted: true }, ["id", "title"])
@@ -375,13 +375,13 @@ const delete_album = asyncHandler(async (req, res, next) => {
             res.send({ success: true, data: data[0] });
           })
           .catch((err) => {
-            log.debug(`Error deleting album ${request.albumId}: ${err}`);
+            log.error(`Error deleting album ${request.albumId}: ${err}`);
             next(err);
           });
       }
     })
     .catch((err) => {
-      log.debug(`Error deleting album ${request.albumId}: ${err}`);
+      log.error(`Error deleting album ${request.albumId}: ${err}`);
       next(err);
     });
 });

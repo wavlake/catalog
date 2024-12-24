@@ -16,7 +16,7 @@ const podcastIndexApi = podcastIndex(
 );
 
 const updateFeedStatus = async (content: any) => {
-  log.debug(`Updating feed status for ${content.id}`);
+  log.info(`Updating feed status for ${content.id}`);
   if (content.track) {
     await prisma.album.update({
       where: { id: content.id },
@@ -91,8 +91,8 @@ const publishFeeds = async () => {
 
   const updatedFeeds = [...updatedPodcasts, ...updatedMusicFeeds];
 
-  // log.debug("last item");
-  // log.debug(updatedFeeds[updatedFeeds.length - 1]);
+  // log.info("last item");
+  // log.info(updatedFeeds[updatedFeeds.length - 1]);
 
   const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
@@ -109,7 +109,7 @@ const publishFeeds = async () => {
       .update(attributeString)
       .digest("hex");
 
-    log.debug(`checking: ${name}`);
+    log.info(`checking: ${name}`);
     const response = await podcastIndexApi
       .podcastsByFeedUrl(feedUrl)
       .catch((e) => {
@@ -117,9 +117,9 @@ const publishFeeds = async () => {
         return { status: "false" };
       });
 
-    // log.debug(response);
+    // log.info(response);
     if (response.status === "true") {
-      log.debug("feed already exists, notifying hub");
+      log.info("feed already exists, notifying hub");
       const { feed } = response;
       const { id } = feed;
       const { status } = await podcastIndexApi
@@ -128,19 +128,19 @@ const publishFeeds = async () => {
           log.error(e);
           return { status: "false" };
         });
-      log.debug(`Update status: ${status}`);
+      log.info(`Update status: ${status}`);
       if (status === "true") {
         await updateFeedStatus(feedItem);
       }
     } else {
-      log.debug("feed does not exist, adding");
+      log.info("feed does not exist, adding");
       const addResponse = await podcastIndexApi
         .addByFeedUrl(feedUrl, chash)
         .catch((e) => {
           log.error(e);
           return { status: "false" };
         });
-      log.debug(addResponse);
+      log.info(addResponse);
       if (addResponse.status === "true") {
         await updateFeedStatus(feedItem);
       }

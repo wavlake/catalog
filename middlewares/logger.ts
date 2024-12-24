@@ -6,8 +6,8 @@ export const logger = (req: Request, res: Response, next: NextFunction) => {
     return;
   }
 
-  log.debug(`${req.method} ${req.originalUrl}`);
-  !!Object.entries(req.body).length && log.debug(req.body);
+  log.info(`${req.method} ${req.originalUrl}`);
+  !!Object.entries(req.body).length && log.info(req.body);
 
   next();
 };

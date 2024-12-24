@@ -19,7 +19,7 @@ export const validateEventAndGetUser = async (event) => {
   if (!isValid) return;
 
   const requesterPubkey = event.pubkey;
-  log.debug(`Received valid event from ${requesterPubkey}`);
+  log.info(`Received valid event from ${requesterPubkey}`);
 
   const walletUser = await getWalletUser(requesterPubkey);
   return walletUser;
@@ -54,6 +54,6 @@ export const broadcastEventResponse = async (
   // Relay action
   const relay = await Relay.connect(relayUrl);
   await relay.publish(signedEvent);
-  log.debug(`Published event response, id: ${signedEvent.id}`);
+  log.info(`Published event response, id: ${signedEvent.id}`);
   return;
 };

@@ -285,7 +285,7 @@ const get_activity_feed = asyncHandler(async (req, res, next) => {
       },
     })
     .catch((err) => {
-      log.debug("Pubkey not found in npub table: ", err);
+      log.info("Pubkey not found in npub table: ", err);
       return { follows: [] };
     });
 

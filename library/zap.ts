@@ -27,7 +27,7 @@ export const validateNostrZapRequest = ({
   amount: string;
   requireAOrETag?: boolean;
 }): { isValid: boolean; error?: string; zapRequestEvent?: Event } => {
-  log.debug(`Validating zap request: ${nostr}`);
+  log.info(`Validating zap request: ${nostr}`);
   let zapRequestEvent: Event;
   try {
     zapRequestEvent = JSON.parse(nostr);
@@ -52,8 +52,8 @@ export const validateNostrZapRequest = ({
   const [amountTag, amountTagValue] =
     zapRequestEvent.tags.find((x) => x[0] === "amount") ?? [];
   if (!amountTagValue || parseInt(amount) !== parseInt(amountTagValue)) {
-    log.debug("Invalid zap request amount: ", amountTagValue);
-    log.debug("Invoice amount: ", amount);
+    log.info("Invalid zap request amount: ", amountTagValue);
+    log.info("Invoice amount: ", amount);
     // we continue here because we want to allow the zap to go through
     // some clients may not include the amount tag
   }
@@ -166,14 +166,14 @@ export const publishZapReceipt = async (
   let relays = DEFAULT_WRITE_RELAY_URIS;
   try {
     await Promise.any(pool.publish(relays, signedEvent));
-    log.debug(`Published zap receipt for ${paymentRequest}`);
+    log.info(`Published zap receipt for ${paymentRequest}`);
     // Log zap receipt event id
     return db
       .knex("comment")
       .where({ tx_id: txId })
       .update({ zap_event_id: signedEvent.id })
       .then(() => {
-        log.debug(`Logged zap receipt event id for txId: ${txId}`);
+        log.info(`Logged zap receipt event id for txId: ${txId}`);
       })
       .catch((e) => {
         log.error(`Error logging zap receipt event id: ${e}`);

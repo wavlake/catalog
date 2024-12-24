@@ -1,11 +1,11 @@
 import { errorHandler } from "./middlewares/errorHandler";
 import express from "express";
 import { logger } from "./middlewares/logger";
+import log from "loglevel";
 
 const config = require("dotenv").config();
 const fs = require("fs");
 const app = express();
-const log = require("loglevel");
 const cors = require("cors");
 const compression = require("compression");
 const helmet = require("helmet");
@@ -13,7 +13,7 @@ const bodyParser = require("body-parser");
 const Sentry = require("@sentry/node");
 
 const corsHost = process.env.CORS_HOST;
-log.setLevel(process.env.LOGLEVEL);
+log.setLevel(process.env.LOGLEVEL as log.LogLevelDesc);
 const port = process.env.EXPRESS_PORT;
 const localConvertPath = `${process.env.LOCAL_CONVERT_PATH}`;
 const localUploadPath = `${process.env.LOCAL_UPLOAD_PATH}`;
@@ -127,5 +127,5 @@ app.use(Sentry.Handlers.errorHandler());
 // override default html error page with custom error handler
 app.use(errorHandler);
 export const server = app.listen(port, () => {
-  log.debug(`Wavlake catalog is listening on port ${port}`);
+  log.info(`Wavlake catalog is listening on port ${port}`);
 });

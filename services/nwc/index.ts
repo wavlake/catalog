@@ -77,7 +77,7 @@ const calculateDelay = (npub) => {
 const applySoftRateLimit = async (npub) => {
   const delay = calculateDelay(npub);
   if (delay > 0) {
-    log.debug(`Applying soft rate limit for ${npub}. Delaying by ${delay}ms`);
+    log.info(`Applying soft rate limit for ${npub}. Delaying by ${delay}ms`);
     await new Promise((resolve) => setTimeout(resolve, delay));
   }
   return delay;
@@ -85,7 +85,7 @@ const applySoftRateLimit = async (npub) => {
 
 // Main process
 const monitorForNWCRequests = async () => {
-  log.debug("monitorForNWCRequests");
+  log.info("monitorForNWCRequests");
   if (!walletSk) {
     throw new Error(
       "Unable to listen for NWC requests, no wallet service SK found"
@@ -93,7 +93,7 @@ const monitorForNWCRequests = async () => {
   }
 
   const relay = await Relay.connect(relayUrl);
-  log.debug(`Listening for NWC requests for ${walletServicePubkey}`);
+  log.info(`Listening for NWC requests for ${walletServicePubkey}`);
   const sub = relay.subscribe(
     [
       {
@@ -104,7 +104,7 @@ const monitorForNWCRequests = async () => {
     ],
     {
       onevent(event) {
-        log.debug(`Received event: ${event.id}`);
+        log.info(`Received event: ${event.id}`);
         handleRequest(event);
       },
     }
@@ -115,13 +115,13 @@ const monitorForNWCRequests = async () => {
 
 // Request handler
 const handleRequest = async (event) => {
-  log.debug(`Received event: ${event.id}, authenticating...`);
+  log.info(`Received event: ${event.id}, authenticating...`);
 
   try {
     // Apply soft rate limit
     const delay = await applySoftRateLimit(event.pubkey);
     if (delay > 0) {
-      log.debug(
+      log.info(
         `Request for ${event.pubkey} delayed by ${delay}ms due to rate limiting`
       );
       const content = JSON.stringify({
@@ -142,7 +142,7 @@ const handleRequest = async (event) => {
 
     // If no user found, return
     if (!walletUser) {
-      log.debug(`No user found for wallet connection ${event.pubkey}`);
+      log.info(`No user found for wallet connection ${event.pubkey}`);
       const content = JSON.stringify({
         result_type: method,
         error: {
@@ -164,10 +164,10 @@ const handleRequest = async (event) => {
       case "lookup_invoice":
         return lookupInvoice(event, params, walletUser);
       default:
-        log.debug(`No method found for ${method}`);
+        log.info(`No method found for ${method}`);
     }
   } catch (err) {
-    log.debug(`Error handling request ${err}`);
+    log.error(`Error handling request ${err}`);
     return;
   }
 };
