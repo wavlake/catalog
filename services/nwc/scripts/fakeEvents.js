@@ -2,7 +2,7 @@ require("dotenv").config();
 require("websocket-polyfill");
 const { relayInit, getPublicKey, finishEvent, nip04 } = require("nostr-tools");
 const log = require("loglevel");
-log.setLevel(process.env.LOGLEVEL);
+log.setlevel("trace");
 const relayUrl = process.env.RELAY;
 const walletSk = process.env.WALLET_SERVICE_SECRET;
 const walletServicePubkey = getPublicKey(walletSk);
@@ -15,7 +15,7 @@ globalThis.crypto = webcrypto;
 const testSecret =
   "022f354b92cbbd1be441b480a8faabece4c3786dad28dc3ed436252c04205eb9";
 const testPubkey = getPublicKey(testSecret);
-log.debug(`testPubkey: ${testPubkey}`);
+log.info(`testPubkey: ${testPubkey}`);
 
 // Relay setup
 const relay = relayInit(relayUrl);
