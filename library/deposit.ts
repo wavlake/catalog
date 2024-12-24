@@ -1,4 +1,4 @@
-import log from "loglevel";
+import log from "./winston";
 import db from "./db";
 import { IncomingInvoiceTableMap, IncomingInvoiceType } from "./common";
 import prisma from "../prisma/client";

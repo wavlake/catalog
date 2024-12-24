@@ -5,7 +5,7 @@ import {
   contentHasTimeSplits,
   validateTimeSplitRequest,
 } from "../library/timeSplit";
-import log from "loglevel";
+import log from "../library/winston";
 
 const create_time_splits = asyncHandler(async (req, res, next) => {
   const { contentId } = req.body;

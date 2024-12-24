@@ -1,4 +1,4 @@
-import log from "loglevel";
+import log from "../library/winston";
 import asyncHandler from "express-async-handler";
 import { nip98 } from "nostr-tools";
 import { formatError } from "../library/errors";

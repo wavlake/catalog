@@ -1,5 +1,5 @@
 import db from "./db";
-import log from "loglevel";
+import log from "./winston";
 import {
   SimplePool,
   finalizeEvent,

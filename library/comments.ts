@@ -1,5 +1,5 @@
 import db from "../library/db";
-import log from "loglevel";
+import log from "./winston";
 
 const BAD_COMMENTS = ["Zapped by", "TrueFans Stream"];
 

@@ -1,5 +1,5 @@
 import asyncHandler from "express-async-handler";
-import log from "loglevel";
+import log from "../library/winston";
 import { isSupportedRegion } from "../library/zbd";
 import { isRegionVerified } from "../library/userHelper";
 

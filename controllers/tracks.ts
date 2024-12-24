@@ -1,6 +1,6 @@
 import prisma from "../prisma/client";
 import db from "../library/db";
-import log from "loglevel";
+import log from "../library/winston";
 import { Event } from "nostr-tools";
 import { randomUUID } from "crypto";
 import { invalidateCdn } from "../library/cloudfrontClient";

@@ -4,7 +4,7 @@ import {
   SendPaymentRequest,
   LightningAddressPaymentRequest,
 } from "./requestInterfaces";
-import log from "loglevel";
+import log from "../winston";
 import {
   ZBDGetChargeResponse,
   ZBDCreateChargeLightningResponse,
