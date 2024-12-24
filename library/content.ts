@@ -9,7 +9,7 @@ export async function getContentInfoFromId(contentId: string) {
   const type = await getType(contentId);
 
   if (type != "track") {
-    log.debug("TODO: This function currently only supports track info.");
+    log.info("TODO: This function currently only supports track info.");
     return null;
   }
 
@@ -18,7 +18,7 @@ export async function getContentInfoFromId(contentId: string) {
   });
 
   if (!contentInfo) {
-    log.debug("No content info found for track: ", contentId);
+    log.info("No content info found for track: ", contentId);
     return null;
   }
 
@@ -36,7 +36,7 @@ export async function getType(
   const validUuid = validate(contentId);
 
   if (!validUuid) {
-    log.debug("Invalid id: ", contentId);
+    log.info("Invalid id: ", contentId);
     return null;
   }
 
@@ -141,7 +141,7 @@ export const getContentFromId = async (contentId) => {
   const validUuid = validate(contentId);
 
   if (!validUuid) {
-    log.debug("Invalid id: ", contentId);
+    log.info("Invalid id: ", contentId);
     return;
   }
 

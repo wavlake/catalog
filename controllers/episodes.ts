@@ -117,7 +117,7 @@ export const delete_episode = asyncHandler(async (req, res, next) => {
     return;
   }
 
-  log.debug(`Deleting episode ${episodeId}`);
+  log.info(`Deleting episode ${episodeId}`);
   const deleteEpisodeData = await db
     .knex("episode")
     .where("id", "=", episodeId)
@@ -225,7 +225,7 @@ export const create_episode = asyncHandler(async (req, res, next) => {
       ["*"]
     )
     .then(async (data) => {
-      log.debug(
+      log.info(
         `Created new episode ${request.title} with id: ${data[0]["id"]}`
       );
 
@@ -322,7 +322,7 @@ export const update_episode = asyncHandler(async (req, res, next) => {
     }
   }
 
-  log.debug(`Editing episode ${episodeId}`);
+  log.info(`Editing episode ${episodeId}`);
   const updatedEpisode = await prisma.episode.update({
     where: {
       id: episodeId,
@@ -421,7 +421,7 @@ export const get_new_episodes = asyncHandler(async (req, res, next) => {
       data: episodes,
     });
   } catch (err) {
-    log.debug(`Error getting new episodes: ${err}`);
+    log.error(`Error getting new episodes: ${err}`);
     next(err);
   }
 });
@@ -498,7 +498,7 @@ export const get_featured_episodes = asyncHandler(async (req, res, next) => {
       data: episodes,
     });
   } catch (err) {
-    log.debug(`Error getting featured episodes: ${err}`);
+    log.error(`Error getting featured episodes: ${err}`);
     next(err);
   }
 });

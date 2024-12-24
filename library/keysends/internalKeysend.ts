@@ -39,7 +39,7 @@ export const handleInternalKeysends = async (
         keysend.customValue
       );
 
-      log.debug(
+      log.info(
         `Creating internal amp from external keysend for user: ${userId} to ${contentId}`
       );
 

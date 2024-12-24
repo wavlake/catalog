@@ -10,7 +10,7 @@ const awsCdn = new AWS.CloudFront({
 const distributionId = `${process.env.AWS_CDN_ID}`;
 
 async function invalidateCdn(sourcePath) {
-  log.debug(`Invalidating content ${sourcePath}`);
+  log.info(`Invalidating content ${sourcePath}`);
   // console.log(sourcePath)
   const params = {
     DistributionId: distributionId /* required */,
@@ -32,7 +32,7 @@ async function invalidateCdn(sourcePath) {
   return awsCdn
     .createInvalidation(params, (err, data) => {
       if (err) {
-        log.debug(`Error invalidating cache for ${sourcePath}: ${err}`);
+        log.error(`Error invalidating cache for ${sourcePath}: ${err}`);
       }
     })
     .promise();

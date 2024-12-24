@@ -1,6 +1,6 @@
 import prisma from "@prismalocal/client";
 const log = require("loglevel");
-log.setLevel(process.env.LOGLEVEL);
+log.setlevel("trace");
 const nlInvoice = require("@node-lightning/invoice");
 import { processSplits } from "@library/amp";
 const { getZapPubkeyAndContent, publishZapReceipt } = require("@library/zap");
@@ -40,7 +40,7 @@ export const payInvoice = async (
   content,
   walletUser: WalletUser
 ) => {
-  log.debug(`Processing pay_invoice event ${event.id}`);
+  log.info(`Processing pay_invoice event ${event.id}`);
   const { params } = JSON.parse(content);
   const { invoice } = params;
   const { userId, msatBudget, maxMsatPaymentAmount, msatBalance } = walletUser;
@@ -53,11 +53,11 @@ export const payInvoice = async (
   }
 
   const { paymentHash, valueMsat, network } = decodedInvoice;
-  log.debug(`Decoded invoice ${invoice}`);
+  log.info(`Decoded invoice ${invoice}`);
 
   // Check if payment amount exceeds max payment amount
   if (parseInt(valueMsat) > maxMsatPaymentAmount) {
-    log.debug(`Transaction for ${userId} exceeds max payment amount.`);
+    log.info(`Transaction for ${userId} exceeds max payment amount.`);
     sendErrorResponse(
       event,
       "pay_invoice",
@@ -76,7 +76,7 @@ export const payInvoice = async (
   );
 
   if (!passedChecks.success) {
-    log.debug(`Transaction for ${userId} failed payment checks.`);
+    log.info(`Transaction for ${userId} failed payment checks.`);
     sendErrorResponse(
       event,
       "pay_invoice",
@@ -95,9 +95,9 @@ export const payInvoice = async (
     msatBudget,
     valueMsat
   );
-  log.debug(`Remaining budget for ${userId} is ${hasRemainingBudget}`);
+  log.info(`Remaining budget for ${userId} is ${hasRemainingBudget}`);
   if (!hasRemainingBudget) {
-    log.debug(`Transaction for ${userId} exceeds budget.`);
+    log.info(`Transaction for ${userId} exceeds budget.`);
     sendErrorResponse(
       event,
       "pay_invoice",
@@ -111,7 +111,7 @@ export const payInvoice = async (
   const paymentHashStr = Buffer.from(paymentHash).toString("hex");
   const wavlakeInvoiceInfo = await getWavlakeInvoice(paymentHashStr);
 
-  log.debug(`Wavlake invoice info: ${JSON.stringify(wavlakeInvoiceInfo)}`);
+  log.info(`Wavlake invoice info: ${JSON.stringify(wavlakeInvoiceInfo)}`);
   // If Wavlake invoice, treat as an internal amp payment
   if (wavlakeInvoiceInfo?.isWavlake) {
     if (!wavlakeInvoiceInfo.isSettled) {
@@ -121,12 +121,12 @@ export const payInvoice = async (
       );
 
       if (!zapRequestData) {
-        log.debug(`No zap request found for invoice ${paymentHashStr}`);
+        log.info(`No zap request found for invoice ${paymentHashStr}`);
         return;
       }
 
       const { pubkey, content, zapRequest } = zapRequestData;
-      log.debug(`Processing Wavlake invoice...`);
+      log.info(`Processing Wavlake invoice...`);
       await createInternalPayment(
         zapRequest,
         wavlakeInvoiceInfo.id,
@@ -141,19 +141,19 @@ export const payInvoice = async (
       );
       return;
     } else {
-      log.debug(`Wavlake invoice is closed, skipping.`);
+      log.info(`Wavlake invoice is closed, skipping.`);
       return;
     }
   }
 
   // If not Wavlake invoice, treat as an external payment
-  log.debug(`Processing external invoice...`);
+  log.info(`Processing external invoice...`);
   await createExternalPayment(event, invoice, userId, valueMsat, msatBalance);
   return;
 };
 
 export const getBalance = async (event: Event, walletUser: WalletUser) => {
-  log.debug(`Processing get_balance event ${event.id}`);
+  log.info(`Processing get_balance event ${event.id}`);
   const { msatBalance, maxMsatPaymentAmount, msatBudget } = walletUser;
   broadcastEventResponse(
     event.pubkey,
@@ -186,7 +186,7 @@ const createExternalPayment = async (
   );
 
   if (externalPaymentResult.success) {
-    log.debug(`External payment successful`);
+    log.info(`External payment successful`);
 
     const preimageString = externalPaymentResult.data.preimage; // Returned as string already
     const msatSpentIncludingFee =
@@ -208,7 +208,7 @@ const createExternalPayment = async (
       })
     );
   } else {
-    log.debug(`External payment failed`);
+    log.info(`External payment failed`);
     sendErrorResponse(event, "pay_invoice", "PAYMENT_FAILED", "Payment failed");
   }
   return;
@@ -232,7 +232,8 @@ const createInternalPayment = async (
   event
 ) => {
   const txId = randomUUID();
-  const [timestampTag, timestamp] = zapRequest.tags.find((tag) => tag[0] === "timestamp") ?? [];
+  const [timestampTag, timestamp] =
+    zapRequest.tags.find((tag) => tag[0] === "timestamp") ?? [];
   const payment = await processSplits({
     paymentType: 10,
     contentTime: parseInt(timestamp),
@@ -245,7 +246,7 @@ const createInternalPayment = async (
     externalTxId: txId,
   });
   if (payment) {
-    log.debug(`Paid internal invoice with id ${invoiceId}, cancelling...`);
+    log.info(`Paid internal invoice with id ${invoiceId}, cancelling...`);
 
     await prisma.externalReceive.update({
       where: { id: invoiceId },
@@ -276,20 +277,20 @@ const createInternalPayment = async (
     await updateWallet(event.pubkey, valueMsat);
     return;
   } else {
-    log.debug(`Internal payment failed`);
+    log.info(`Internal payment failed`);
     return;
   }
 };
 
 const getWavlakeInvoice = async (paymentHash: string) => {
-  log.debug(`Checking if invoice is Wavlake invoice`);
+  log.info(`Checking if invoice is Wavlake invoice`);
 
   const receiveRecord = await prisma.externalReceive.findMany({
     where: { paymentHash: paymentHash },
   });
 
   if (receiveRecord.length === 0) {
-    log.debug(`Invoice not found in database`);
+    log.info(`Invoice not found in database`);
     return null;
   }
 

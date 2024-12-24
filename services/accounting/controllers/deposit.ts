@@ -42,7 +42,7 @@ const createDeposit = asyncHandler(async (req, res: any, next) => {
     },
   });
 
-  log.debug(`Created placeholder invoice: ${invoice.id}`);
+  log.info(`Created placeholder invoice: ${invoice.id}`);
 
   const invoiceRequest = {
     description: `Wavlake deposit`,
@@ -51,7 +51,7 @@ const createDeposit = asyncHandler(async (req, res: any, next) => {
     internalId: `${IncomingInvoiceType.Transaction}-${invoice.id.toString()}`,
   };
 
-  log.debug(
+  log.info(
     `Sending create invoice request for deposit: ${JSON.stringify(
       invoiceRequest
     )}`
@@ -69,7 +69,7 @@ const createDeposit = asyncHandler(async (req, res: any, next) => {
     return;
   }
 
-  log.debug(
+  log.info(
     `Received create invoice response: ${JSON.stringify(invoiceResponse)}`
   );
 
@@ -97,7 +97,7 @@ const createDeposit = asyncHandler(async (req, res: any, next) => {
     return;
   }
 
-  log.debug(`Updated invoice: ${JSON.stringify(updatedInvoice)}`);
+  log.info(`Updated invoice: ${JSON.stringify(updatedInvoice)}`);
 
   res.json({
     success: true,
@@ -115,7 +115,7 @@ const createDepositLNURL = asyncHandler(async (req, res: any, next) => {
   const amountInt = parseInt(amount);
 
   if (isNaN(amountInt) || amountInt < 1000 || amountInt > MAX_INVOICE_AMOUNT) {
-    log.debug(
+    log.info(
       `Invalid amount, must be between 1000 and ${MAX_INVOICE_AMOUNT} sats, recieved ${amount}`
     );
     res.status(400).send({
@@ -129,7 +129,7 @@ const createDepositLNURL = asyncHandler(async (req, res: any, next) => {
   if (nostr) {
     const validationResult = validateNostrZapRequest({ nostr, amount });
     if (!validationResult.isValid) {
-      log.debug(`Lnurl zap request is invalid: ${validationResult.error}`);
+      log.info(`Lnurl zap request is invalid: ${validationResult.error}`);
       res.status(400).send({ success: false, error: validationResult.error });
       return;
     }
@@ -152,7 +152,7 @@ const createDepositLNURL = asyncHandler(async (req, res: any, next) => {
     },
   });
 
-  log.debug(`Created placeholder lnurl invoice: ${invoice.id}`);
+  log.info(`Created placeholder lnurl invoice: ${invoice.id}`);
 
   if (zapRequestEvent) {
     // Create zap request record
@@ -175,7 +175,7 @@ const createDepositLNURL = asyncHandler(async (req, res: any, next) => {
     }-${invoice.id.toString()}`,
   };
 
-  log.debug(
+  log.info(
     `Sending create invoice request for lnurl deposit: ${JSON.stringify(
       invoiceRequest
     )}`
@@ -193,7 +193,7 @@ const createDepositLNURL = asyncHandler(async (req, res: any, next) => {
     return;
   }
 
-  log.debug(
+  log.info(
     `Received create lnurl invoice response: ${JSON.stringify(invoiceResponse)}`
   );
 
@@ -221,7 +221,7 @@ const createDepositLNURL = asyncHandler(async (req, res: any, next) => {
     return;
   }
 
-  log.debug(`Updated lnurl invoice: ${JSON.stringify(updatedInvoice)}`);
+  log.info(`Updated lnurl invoice: ${JSON.stringify(updatedInvoice)}`);
 
   res.json({
     success: true,

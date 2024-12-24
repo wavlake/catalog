@@ -37,7 +37,7 @@ const checkPublicKey = async (
       new Date().getTime() - npub.updatedAt.getTime() < STALE_TIME;
 
     if (npubUpdatedRecently && !forceUpdate) {
-      log.debug("Skipping check, metadata was recently updated");
+      log.info("Skipping check, metadata was recently updated");
       return npub;
     }
 
@@ -53,7 +53,7 @@ const checkPublicKey = async (
       },
     });
 
-    log.debug(
+    log.info(
       `Retrieving metadata for: ${publicHex}, forceUpdate: ${forceUpdate}`
     );
 
@@ -63,7 +63,7 @@ const checkPublicKey = async (
     const followersCount = await getFollowersList(publicHex);
     const follows = await getFollowsList(publicHex);
 
-    log.debug(`Updating DB: ${latestMetadata.name} ${publicHex}`);
+    log.info(`Updating DB: ${latestMetadata.name} ${publicHex}`);
     const updatedData = await prisma.npub.upsert({
       where: { publicHex: publicHex },
       update: {

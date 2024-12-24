@@ -355,7 +355,7 @@ const createPromo = asyncHandler<
     },
   });
 
-  log.debug(`Created placeholder promo invoice: ${newPromo.id}`);
+  log.info(`Created placeholder promo invoice: ${newPromo.id}`);
 
   const invoiceRequest = {
     description: `Wavlake Promo`,
@@ -364,7 +364,7 @@ const createPromo = asyncHandler<
     internalId: `${IncomingInvoiceType.Promo}-${newPromo.id.toString()}`,
   };
 
-  log.debug(
+  log.info(
     `Sending create invoice request for promo: ${JSON.stringify(
       invoiceRequest
     )}`
@@ -382,7 +382,7 @@ const createPromo = asyncHandler<
     return;
   }
 
-  log.debug(
+  log.info(
     `Received create promo invoice response: ${JSON.stringify(invoiceResponse)}`
   );
 

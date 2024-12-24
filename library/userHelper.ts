@@ -57,7 +57,7 @@ export async function checkUserHasSufficientSats(
       return parseInt(userData.msatBalance) - inFlightSats > msatAmount;
     })
     .catch((err) => {
-      log.debug(`Error querying user table: ${err}`);
+      log.error(`Error querying user table: ${err}`);
       return false;
     });
 }

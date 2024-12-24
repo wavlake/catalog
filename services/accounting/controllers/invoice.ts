@@ -54,7 +54,7 @@ const createZapInvoice = asyncHandler<
     return;
   }
 
-  log.debug(`Zap request: ${JSON.stringify(nostr)}`);
+  log.info(`Zap request: ${JSON.stringify(nostr)}`);
   const validationResult = validateNostrZapRequest({
     nostr,
     amount,
@@ -130,7 +130,7 @@ const createZapInvoice = asyncHandler<
     },
   });
 
-  log.debug(`Created placeholder invoice: ${invoice.id}`);
+  log.info(`Created placeholder invoice: ${invoice.id}`);
 
   // Create zap request record
   await logZapRequest(
@@ -159,9 +159,7 @@ const createZapInvoice = asyncHandler<
     invoiceDescriptionHash: descriptionHash,
   };
 
-  log.debug(
-    `Sending create invoice request: ${JSON.stringify(invoiceRequest)}`
-  );
+  log.info(`Sending create invoice request: ${JSON.stringify(invoiceRequest)}`);
 
   // call ZBD api to create an invoice
   const invoiceResponse = await createCharge(invoiceRequest);
@@ -187,7 +185,7 @@ const createZapInvoice = asyncHandler<
     return;
   }
 
-  log.debug(
+  log.info(
     `Received create invoice response: ${JSON.stringify(invoiceResponse)}`
   );
 
@@ -217,7 +215,7 @@ const createZapInvoice = asyncHandler<
     return;
   }
 
-  log.debug(`Updated invoice: ${JSON.stringify(updatedInvoice)}`);
+  log.info(`Updated invoice: ${JSON.stringify(updatedInvoice)}`);
 
   res.send({
     success: true,

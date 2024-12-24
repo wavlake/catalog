@@ -20,9 +20,9 @@ async function deleteFromS3(key) {
   return s3
     .deleteObject(params, function (err, data) {
       if (err) {
-        log.debug(`Error deleting ${key} from S3: ${err}`);
+        log.error(`Error deleting ${key} from S3: ${err}`);
       }
-      log.debug(`Deleted ${key} from S3`);
+      log.info(`Deleted ${key} from S3`);
     })
     .promise();
 }
@@ -38,7 +38,7 @@ async function uploadS3(sourcePath, key, type) {
   return s3
     .upload(object, (err, data) => {
       if (err) {
-        log.debug(`Error uploading ${type}:${key} to S3: ${err}`);
+        log.error(`Error uploading ${type}:${key} to S3: ${err}`);
       }
     })
     .promise();
@@ -54,7 +54,7 @@ async function generatePresignedUrl({ key, extension }) {
   return new Promise((resolve, reject) => {
     s3.getSignedUrl("putObject", params, (err, data) => {
       if (err) {
-        log.debug(`Error generating presigned url for ${key}: ${err}`);
+        log.error(`Error generating presigned url for ${key}: ${err}`);
         reject(err);
       } else resolve(data);
     });

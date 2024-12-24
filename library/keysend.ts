@@ -82,7 +82,7 @@ async function constructCustomRecords(
     });
   }
 
-  log.debug(customRecords);
+  log.info(customRecords);
   return customRecords;
 }
 
@@ -137,7 +137,7 @@ function logExternalKeysend({
     })
     .then(trx.commit)
     .then((data) => {
-      log.debug(
+      log.info(
         `Created external payment record for ${userId} to ${keysend.pubkey} at payment index ${paymentIndex}`
       );
     })

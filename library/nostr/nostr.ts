@@ -33,12 +33,12 @@ const updateNpubMetadata = async function (
       method: "PUT",
     }
   ).catch((err) => {
-    log.debug("error fetching npub metadata: ", err);
+    log.error("Error fetching npub metadata: ", err);
     return { ok: false };
   });
 
   if (!res.ok) {
-    log.debug(
+    log.info(
       "error response while updating npub metadata: ",
       res.status,
       res.statusText
@@ -64,7 +64,7 @@ const getFollowersList = async (publicHex: string) => {
       };
     }>(`/v0/stats/profile/${publicHex}`)
     .catch((err) => {
-      log.debug("error fetching followers list from nostr.band API: ", err);
+      log.error("Error fetching followers list from nostr.band API: ", err);
       return { data: { stats: {} } };
     });
 

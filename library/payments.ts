@@ -21,7 +21,7 @@ async function checkUserHasPendingTx(userId: string): Promise<boolean> {
       }
     })
     .catch((err) => {
-      log.debug(
+      log.info(
         `Error in checkUserHasPendingTx querying transaction table: ${err}`
       );
       return false;
@@ -57,7 +57,7 @@ async function createPaymentRecord(
       return data[0]?.id;
     })
     .catch((err) => {
-      log.debug(
+      log.info(
         `Error inserting new payment record into transaction table: ${err}`
       );
       return null;
@@ -76,10 +76,10 @@ async function handleCompletedPayment(
   // Check if the payment amount + final fee is greater than the user's balance
   let substituteFeeAmount;
   if (parseInt(userBalance) < totalAmount) {
-    log.debug(
+    log.info(
       `Total transaction amount exceeds user balance for ${userId} with ${userBalance} msats`
     );
-    log.debug(
+    log.info(
       `Transaction total: ${msatAmount} msats + ${paymentData.data.fee} msats`
     );
     substituteFeeAmount = Math.abs(parseInt(userBalance) - totalAmount);
@@ -110,7 +110,7 @@ async function handleCompletedPayment(
     })
     .then(trx.commit)
     .then(() => {
-      log.debug(`Payment successful for ${userId}`);
+      log.info(`Payment successful for ${userId}`);
       return res
         ? res.status(200).send({
             success: true,
@@ -158,7 +158,7 @@ async function handleFailedPayment(
     })
     .then(trx.commit)
     .then(() => {
-      log.debug(`Payment failed for ${userId}`);
+      log.info(`Payment failed for ${userId}`);
       return res
         ? res.status(400).send(`Payment failed: ${paymentData.message}`)
         : { success: false, error: paymentData.message };
@@ -249,7 +249,7 @@ export const initiatePayment = async (
   msatAmount: number,
   msatMaxFee: number
 ) => {
-  log.debug(
+  log.info(
     `Initiating payment of ${msatAmount} msats for ${userId} with max fee ${msatMaxFee} msats`
   );
 

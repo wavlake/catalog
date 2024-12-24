@@ -33,14 +33,14 @@ export const validateNostrEvent = async (req, res) => {
 
   updateNpubMetadata(nostrEvent.pubkey)
     .then(({ success }) => {
-      log.debug(
+      log.info(
         `${success ? "Updated" : "Failed to update"} nostr metadata for: ${
           nostrEvent.pubkey
         }`
       );
     })
     .catch((err) => {
-      log.debug("error updating npub metadata: ", err);
+      log.error("Error updating npub metadata: ", err);
     });
 
   // successfull auth'd, add the event to res.locals so other middleware can use it
@@ -60,7 +60,7 @@ export const isNostrAuthorized = asyncHandler(async (req, res, next) => {
 export const isNostrAuthorizedOptional = asyncHandler(
   async (req, res, next) => {
     await validateNostrEvent(req, res).catch((err) => {
-      log.debug("Nostr auth failed on optional route, continuing without auth");
+      log.info("Nostr auth failed on optional route, continuing without auth");
     });
 
     next();

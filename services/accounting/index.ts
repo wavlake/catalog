@@ -83,5 +83,5 @@ app.use(Sentry.Handlers.errorHandler());
 app.use(errorHandler);
 const port = parseInt(process.env.PORT) || 8080;
 export const server = app.listen(port, () => {
-  log.debug(`Payments is listening on port ${port}`);
+  log.info(`Payments is listening on port ${port}`);
 });

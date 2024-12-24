@@ -32,7 +32,7 @@ export const isZbdRegion = asyncHandler(async (req, res, next) => {
     return;
   }
   const ipAddress = req.ip;
-  log.debug(`Checking if ${ipAddress} is supported`);
+  log.info(`Checking if ${ipAddress} is supported`);
   const isSupported = await isSupportedRegion(ipAddress);
   if (isSupported) {
     next();
@@ -45,7 +45,7 @@ export const isZbdRegion = asyncHandler(async (req, res, next) => {
 
 export const isWalletVerified = asyncHandler(async (req, res, next) => {
   const userId = req["uid"] ?? req.body.userId;
-  log.debug(`Checking if wallet is verified for userId: ${userId}`);
+  log.info(`Checking if wallet is verified for userId: ${userId}`);
   const isVerified = await isRegionVerified(userId);
   if (isVerified) {
     next();

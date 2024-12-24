@@ -66,7 +66,7 @@ const update_time_splits = asyncHandler(async (req, res, next) => {
   // Delete splits if time split list is empty
   const timeSplits = req.body.timeSplits;
   if (Array.isArray(timeSplits) && timeSplits.length === 0) {
-    log.debug(
+    log.info(
       "timeSplit is empty, deleting all splits for contentId: ",
       contentId
     );
