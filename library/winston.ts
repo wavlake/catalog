@@ -18,7 +18,12 @@ originalLog.methodFactory = function (methodName, logLevel, loggerName) {
   const rawMethod = originalFactory(methodName, logLevel, loggerName);
 
   return function (message: any, ...args: any[]) {
-    rawMethod(message, ...args);
+    const isDev =
+      process.env.NODE_ENV === "dev" || process.env.NODE_ENV === "development";
+    if (isDev) {
+      rawMethod(message, ...args);
+      return;
+    }
 
     const levelMap: Record<string, string> = {
       trace: "debug",
