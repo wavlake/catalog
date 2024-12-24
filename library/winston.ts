@@ -8,7 +8,7 @@ const cloudLogging = new LoggingWinston();
 // Create Winston logger
 const winstonLogger = winston.createLogger({
   level: "info",
-  transports: [new winston.transports.Console(), cloudLogging],
+  transports: [cloudLogging],
   format: winston.format.json(),
 });
 
