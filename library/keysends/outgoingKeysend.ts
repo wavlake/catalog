@@ -1,7 +1,7 @@
 import { TransactionStatus, SendKeysendStatus } from "./../zbd/constants";
 import db from "../db";
 import { getUserName } from "../userHelper";
-import log from "./winston";
+import log from "../winston";
 
 const BUFFER_AMOUNT = 0.15;
 const BLIP0010 = "7629169";

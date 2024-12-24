@@ -1,4 +1,4 @@
-import log from "./winston";
+import log from "../winston";
 import db from "../db";
 import { getUserName } from "../userHelper";
 import { ExternalKeysend } from "./interfaces";
