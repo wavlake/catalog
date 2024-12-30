@@ -3,15 +3,46 @@ const { v5 } = require("uuid");
 import axios from "axios";
 import { getType, getReleaseTitle } from "./content";
 
+// Constants
 const OP3_API = "https://op3.dev/api/1";
 const OP3_KEY = process.env.OP3_KEY;
+const RESULTS_LIMIT = 1000;
+const PAGINATION_LIMIT = 2;
+const RATE_LIMIT_MS = 1000;
 
+// Types
 interface IParams {
   url: string;
   albumId?: string;
   podcastId?: string;
 }
 
+interface OP3Response {
+  results: any[];
+  continuationToken?: string;
+}
+
+interface OP3ShowInfo {
+  showUuid: string;
+  episodes: Array<{
+    id: string;
+    title: string;
+    itemGuid: string;
+  }>;
+  statsPageUrl: string;
+}
+
+interface OP3Stats {
+  rows: Array<{
+    episodeId: string;
+    title?: string;
+    itemGuid?: string;
+  }>;
+  statsPageUrl?: string;
+  releaseTitle?: string;
+}
+
+// API client setup
 const op3Client = axios.create({
   baseURL: OP3_API,
   headers: {
@@ -20,7 +51,38 @@ const op3Client = axios.create({
   },
 });
 
-export const addOP3URLPrefix = ({ url, albumId, podcastId }: IParams) => {
+// Utility functions
+const delay = (ms: number): Promise<void> =>
+  new Promise((resolve) => setTimeout(resolve, ms));
+
+const rateLimit = async <T>(fn: () => Promise<T>): Promise<T> => {
+  const result = await fn();
+  await delay(RATE_LIMIT_MS);
+  return result;
+};
+
+const buildDateRange = (
+  startDate?: string
+): { query: string; endDate?: string } => {
+  if (!startDate) {
+    return { query: "start=-30d&end=-24h" };
+  }
+
+  const date = new Date(startDate);
+  date.setMonth(date.getMonth() + 1);
+  const endDate = date.toISOString();
+  return {
+    query: `start=${startDate}&end=${endDate}`,
+    endDate,
+  };
+};
+
+// Main functions
+export const addOP3URLPrefix = ({
+  url,
+  albumId,
+  podcastId,
+}: IParams): string => {
   if (albumId) {
     return `${OP3_PREFIX},pg=${v5(
       feedPath("album", albumId),
@@ -33,15 +95,16 @@ export const addOP3URLPrefix = ({ url, albumId, podcastId }: IParams) => {
       podcastNamespace
     )}/${url}`;
   }
+  throw new Error("Either albumId or podcastId must be provided");
 };
 
 export const getContentStats = async (
   contentId: string,
   startDate?: string
-) => {
+): Promise<OP3Stats> => {
   const contentType = await getType(contentId);
-  if (contentType != "album" && contentType != "podcast") {
-    throw new Error("Invalid content type");
+  if (contentType !== "album" && contentType !== "podcast") {
+    throw new Error("Invalid content type: must be 'album' or 'podcast'");
   }
   const podcastGuid = v5(feedPath(contentType, contentId), podcastNamespace);
   const op3Id = await getOp3Id(podcastGuid);
@@ -56,71 +119,73 @@ export const getContentStats = async (
   return statsWithShowInfo;
 };
 
-export const mergeShowInfo = async (stats: any, showInfo: any) => {
+export const mergeShowInfo = async (
+  stats: OP3Stats,
+  showInfo: OP3ShowInfo
+): Promise<OP3Stats> => {
   const episodes = showInfo.episodes;
-  const results = stats.rows.map((result: any) => {
-    const episode = episodes.find((episode: any) => {
-      return episode.id === result.episodeId;
-    });
+  const results = stats.rows.map((result) => {
+    const episode = episodes.find((episode) => episode.id === result.episodeId);
     return {
       ...result,
-      title: episode.title,
-      itemGuid: episode.itemGuid,
+      title: episode?.title,
+      itemGuid: episode?.itemGuid,
     };
   });
-  stats.rows = results;
-  return stats;
+
+  return { ...stats, rows: results };
 };
 
-export const getOp3ShowInfo = async (op3Id: string) => {
-  const response = await op3Client.get(`/shows/${op3Id}?episodes=include`);
+export const getOp3ShowInfo = async (op3Id: string): Promise<OP3ShowInfo> => {
+  const response = await rateLimit(() =>
+    op3Client.get<OP3ShowInfo>(`/shows/${op3Id}?episodes=include`)
+  );
+
   if (!response.data) {
     throw new Error("No show found");
   }
+
   return response.data;
 };
 
-export const getOp3Id = async (podcastGuid: string) => {
-  const response = await op3Client.get(`/shows/${podcastGuid}`);
+export const getOp3Id = async (podcastGuid: string): Promise<string> => {
+  const response = await rateLimit(() =>
+    op3Client.get<OP3ShowInfo>(`/shows/${podcastGuid}`)
+  );
+
   if (!response.data) {
     throw new Error("No show found");
   }
+
   return response.data.showUuid;
 };
 
-export const getOp3Stats = async (op3Id: string, startDate?: string) => {
-  let endDate;
-  if (startDate) {
-    const date = new Date(startDate);
-    // increment date by one month
-    date.setMonth(date.getMonth() + 1);
-    endDate = date.toISOString();
-  }
+export const getOp3Stats = async (
+  op3Id: string,
+  startDate?: string
+): Promise<OP3Stats> => {
+  const { query } = buildDateRange(startDate);
 
-  // Default query is the last 30 days
-  const query = startDate
-    ? `start=${startDate}&end=${endDate}`
-    : "start=-30d&end=-24h";
-
-  const response = await op3Client.get(
-    `/downloads/show/${op3Id}?${query}&format=json&limit=1000`
+  const response = await rateLimit(() =>
+    op3Client.get<OP3Response>(
+      `/downloads/show/${op3Id}?${query}&format=json&limit=${RESULTS_LIMIT}`
+    )
   );
 
-  // Initialize results array if it doesn't exist
-  if (!response.data.results) {
-    response.data.results = [];
-  }
+  const results = response.data.results || [];
+  let { continuationToken } = response.data;
 
-  // Fetch results until there is no continuationToken in the response
-  let continuationToken = response.data.continuationToken;
+  // Fetch remaining pages
   while (continuationToken) {
-    const nextResponse = await op3Client.get(
-      `/downloads/show/${op3Id}?${query}&format=json&limit=2&continuationToken=${continuationToken}`
+    const nextResponse = await rateLimit(() =>
+      op3Client.get<OP3Response>(
+        `/downloads/show/${op3Id}?${query}&format=json&limit=${PAGINATION_LIMIT}&continuationToken=${continuationToken}`
+      )
     );
-    response.data.results = response.data.results.concat(
-      nextResponse.data.results
-    );
+
+    results.push(...nextResponse.data.results);
     continuationToken = nextResponse.data.continuationToken;
   }
-  return response.data;
+
+  return { rows: results };
 };
