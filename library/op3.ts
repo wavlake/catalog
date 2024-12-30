@@ -186,9 +186,9 @@ export const getOp3Stats = async (
       )
     );
 
-    results.push(...nextResponse.data.results);
+    response.data.results.push(...nextResponse.data.results);
     continuationToken = nextResponse.data.continuationToken;
   }
 
-  return { rows: results };
+  return { rows: response.data.results };
 };
