@@ -172,10 +172,13 @@ export const getOp3Stats = async (
     )
   );
 
-  const results = response.data.results || [];
-  let { continuationToken } = response.data;
+  // Initialize results array if it doesn't exist
+  if (!response.data.results) {
+    response.data.results = [];
+  }
 
-  // Fetch remaining pages
+  // Fetch results until there is no continuationToken in the response
+  let continuationToken = response.data.continuationToken;
   while (continuationToken) {
     const nextResponse = await rateLimit(() =>
       op3Client.get<OP3Response>(
