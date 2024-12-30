@@ -1,5 +1,24 @@
 [![Node.js CI](https://github.com/wavlake/catalog/actions/workflows/node.js.yml/badge.svg?branch=main)](https://github.com/wavlake/catalog/actions/workflows/node.js.yml)
 
+This is a monorepo for Wavlake's main backend processes and services. It consists of:
+
+- catalog: the API that manages all content. This exists at the top level and runs as a Google Cloud Run service. Config is in `prod.yaml` in the project root.
+
+- services:
+  - accounting: the API that manages all payment-related interactions. This exists in the services directory.
+  - indexer: listens to a pool of Nostr relays for Wavlake content to index for future reference
+  - npub-metadata: reference for npub profile data
+  - nwc: listens to Nostr relays for Nostr Wallet Connect events
+  - rss: an API for responding to RSS feed requests
+- cronjobs:
+  - forwarder: forwards earnings to external lightning addresses
+  - log-charts: records the top content daily
+  - publish-feeds (deprecated): publishes content metadatda to Nostr events
+
+More details about each process and service can be found in their respective directories.
+
+### Developing
+
 Install dependencies
 
 ```bash
