@@ -20,7 +20,9 @@
     "loglevel": "^1.7.1",
     "nostr-tools": "^2.5.2",
     "podcast-index-api": "^1.1.10",
-    "websocket-polyfill": "^0.0.3"
+    "websocket-polyfill": "^0.0.3",
+    "@google-cloud/logging-winston": "^6.0.0",
+    "winston": "^3.17.0"
   },
   "devDependencies": {
     "@babel/preset-env": "^7.22.15",

@@ -57,7 +57,7 @@ const valueTimeSplit = async ({
   const split = (numerator / denominator) * 100;
   // const remainderSplit = 100 - split;
   // console.log({ split });
-  // log.debug(await remoteRecipient(recipient_content_id));
+  // log.info(await remoteRecipient(recipient_content_id));
   return {
     "podcast:valueTimeSplit": [
       {

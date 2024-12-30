@@ -345,11 +345,11 @@ const buildPodcastFeed = async (data) => {
           )
           .where("time_split.content_id", "=", episodeId)
           .catch((err) => {
-            log.debug(`Error querying time_split table: ${err}`);
+            log.error(`Error querying time_split table: ${err}`);
             return [];
           });
 
-        // log.debug(timeSplits);
+        // log.info(timeSplits);
 
         // Generate individual time split blocks
         const timeSplitBlocks = await Promise.all(
@@ -358,7 +358,7 @@ const buildPodcastFeed = async (data) => {
           })
         );
 
-        // log.debug(JSON.stringify(block[0]));
+        // log.info(JSON.stringify(block[0]));
         feed.addItem({
           title: episodeTitle,
           description: episodeDescription,

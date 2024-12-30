@@ -22,7 +22,7 @@ import {
 import { TransactionType } from "../library/common";
 import asyncHandler from "express-async-handler";
 import prisma from "../prisma/client";
-import log from "loglevel";
+import log from "../library/winston";
 import { auth } from "../library/firebaseService";
 import { validateLightningAddress } from "../library/zbd/zbdClient";
 import { urlFriendly } from "../library/format";
@@ -45,7 +45,7 @@ const get_account = asyncHandler(async (req, res, next) => {
   const request = {
     accountId: req["uid"],
   };
-  log.debug("get_account uid:", request.accountId);
+  log.info("get_account uid:", request.accountId);
   try {
     const userData = await db
       .knex("user")
@@ -612,8 +612,8 @@ const edit_account = asyncHandler(async (req, res, next) => {
       data: { userId: userId, name: name },
     });
   } catch (err) {
-    log.debug("error editing account", { ...req.body, userId });
-    log.debug(err);
+    log.error("Error editing account", { ...req.body, userId });
+    log.error(err);
     next(err);
     return;
   }
@@ -727,7 +727,7 @@ const get_login_token_for_zbd_user = asyncHandler(async (req, res, next) => {
     }
 
     if (!firebaseLoginToken) {
-      log.debug("error getting firebase token for zbd user");
+      log.error("Error getting firebase token for zbd user");
       res.status(500).send({
         success: false,
         error: "Failed to create login token",
@@ -743,7 +743,7 @@ const get_login_token_for_zbd_user = asyncHandler(async (req, res, next) => {
       },
     });
   } catch (err) {
-    log.debug("error getting zbd user data", err);
+    log.error("Error getting zbd user data", err);
     res.status(500).send({
       success: false,
       error: "Failed to get login token for ZBD user",
@@ -764,9 +764,9 @@ const add_pubkey_to_account = asyncHandler(async (req, res, next) => {
   }
 
   try {
-    log.debug("validating authToken");
+    log.info("validating authToken");
     const user = await auth().verifyIdToken(authToken);
-    log.debug("valid authToken for uid: ", user.uid);
+    log.info("valid authToken for uid: ", user.uid);
 
     const existingPubkey = await prisma.userPubkey.findFirst({
       where: {
@@ -811,8 +811,8 @@ const add_pubkey_to_account = asyncHandler(async (req, res, next) => {
       data: { userId: user.uid, pubkey },
     });
   } catch (err) {
-    log.debug("error adding pubkey to account", { pubkey });
-    log.debug(err);
+    log.error("Error adding pubkey to account", { pubkey });
+    log.error(err);
     next(err);
     return;
   }
@@ -849,8 +849,8 @@ const delete_pubkey_from_account = asyncHandler(async (req, res, next) => {
       data: { userId: userId, pubkeys: pubkeys.map((row) => row.pubkey) },
     });
   } catch (err) {
-    log.debug("error deleting pubkey from account", { ...req.body, userId });
-    log.debug(err);
+    log.error("Error deleting pubkey from account", { ...req.body, userId });
+    log.error(err);
     next(err);
     return;
   }
@@ -886,8 +886,8 @@ const get_pubkey_metadata = asyncHandler(async (req, res, next) => {
       data: pubkeyMetadata,
     });
   } catch (err) {
-    log.debug("error getting pubkey metadata", { pubkey });
-    log.debug(err);
+    log.error("Error getting pubkey metadata", { pubkey });
+    log.error(err);
     next(err);
     return;
   }
@@ -909,8 +909,8 @@ const update_metadata = asyncHandler(async (req, res, next) => {
 
     res.status(response.success ? 200 : 404).send(response);
   } catch (err) {
-    log.debug("error updating pubkey metadata", { pubkey });
-    log.debug(err);
+    log.error("Error updating pubkey metadata", { pubkey });
+    log.error(err);
     next(err);
     return;
   }
@@ -1065,8 +1065,8 @@ const create_user = asyncHandler<{}, UserResponse, UserCreateRequest>(
         },
       });
     } catch (err) {
-      log.debug("Error creating new user", req.body);
-      log.debug(err);
+      log.error("Error creating new user", req.body);
+      log.error(err);
       next(err);
     }
   }
@@ -1116,8 +1116,8 @@ const create_user_verified = asyncHandler<
       },
     });
   } catch (err) {
-    log.debug("Error creating new verified user", req.body);
-    log.debug(err);
+    log.error("Error creating new verified user", req.body);
+    log.error(err);
     next(err);
   }
 });
@@ -1210,7 +1210,7 @@ const get_track_promos = asyncHandler(async (req, res, next) => {
       data: promosWithBalanceInfo,
     });
   } catch (err) {
-    log.debug("Error fetching track promos", err);
+    log.error("Error fetching track promos", err);
     next(err);
     return;
   }
@@ -1228,7 +1228,7 @@ const disable_user = asyncHandler(async (req, res, next) => {
       success: true,
     });
   } catch (err) {
-    log.debug("Error disabling user", err);
+    log.error("Error disabling user", err);
     res.status(500).send({
       success: false,
       error: "Failed to disable user",

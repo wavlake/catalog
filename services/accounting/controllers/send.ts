@@ -9,7 +9,7 @@ import {
   recordInProgressKeysend,
 } from "@library/keysends";
 import core from "express-serve-static-core";
-import log from "loglevel";
+import log from "../../../library/winston";
 import { sendKeysend as zbdSendKeysend } from "@library/zbd/zbdClient";
 import { validate } from "uuid";
 import { processSplits } from "@library/amp";
@@ -42,7 +42,7 @@ const sendKeysend = asyncHandler<
     ts,
   } = body;
   const userId = req["uid"];
-  log.debug(`Processing external keysend request for user ${userId}`);
+  log.info(`Processing external keysend request for user ${userId}`);
   try {
     const isValidRequest = isValidExternalKeysendRequest(body);
     if (!isValidRequest) {
@@ -133,7 +133,7 @@ const sendKeysend = asyncHandler<
           };
         } else {
           // failed keysend
-          log.debug(`Keysend failed: ${res.message}`);
+          log.info(`Keysend failed: ${res.message}`);
           return {
             success: false,
             msatAmount: keysend.msatAmount,
@@ -176,7 +176,7 @@ const createSend = asyncHandler(async (req, res: any, next) => {
     return;
   }
 
-  log.debug(`Checking if user ${userId} has sufficient sats`);
+  log.info(`Checking if user ${userId} has sufficient sats`);
   const userHasSufficientSats = await checkUserHasSufficientSats(
     userId,
     request.msatAmount
@@ -188,7 +188,7 @@ const createSend = asyncHandler(async (req, res: any, next) => {
       .json({ success: false, error: "Insufficient balance" });
   }
 
-  log.debug(`Creating amp transaction for user ${userId}`);
+  log.info(`Creating amp transaction for user ${userId}`);
 
   const amp = await processSplits({
     contentId: request.contentId,

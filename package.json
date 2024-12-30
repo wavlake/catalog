@@ -53,7 +53,9 @@
     "sanitize-html": "^2.13.0",
     "unique-names-generator": "^4.7.1",
     "uuid": "^9.0.1",
-    "ws": "^8.17.0"
+    "ws": "^8.17.0",
+    "@google-cloud/logging-winston": "^6.0.0",
+    "winston": "^3.17.0"
   },
   "devDependencies": {
     "@babel/core": "^7.23.9",

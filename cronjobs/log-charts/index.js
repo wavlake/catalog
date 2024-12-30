@@ -11,7 +11,7 @@ const getTopHundred = async () => {
     .where("msat_total_7_days", ">", 0)
     .limit(CHUNK_SIZE)
     .catch((e) => {
-      log.debug(`ERROR: ${e}`);
+      log.error(`Error: ${e}`);
     });
 };
 
@@ -24,7 +24,7 @@ const run = async () => {
   });
 
   db.knex.batchInsert("ranking_forty", topHundredWithRank).then(() => {
-    log.debug("Done");
+    log.info("Done");
     process.exit();
   });
 };

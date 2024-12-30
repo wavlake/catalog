@@ -7,7 +7,7 @@ import {
   getTimeSplit,
 } from "./split";
 import { getType } from "./content";
-import log from "loglevel";
+import log from "./winston";
 
 const AMP_FEE = 0.1; // 10% fee
 
@@ -78,9 +78,9 @@ export const processSplits = async ({
   isConferenceZap?: boolean;
   /////////
 }) => {
-  log.debug(`Building amp tx: ${externalTxId}`);
+  log.info(`Building amp tx: ${externalTxId}`);
   const contentType = await getType(contentId);
-  log.debug(`Content type: ${contentType}`);
+  log.info(`Content type: ${contentType}`);
   if (!contentType) {
     log.error(`No record found for content id ${contentId}`);
     return;
@@ -93,7 +93,7 @@ export const processSplits = async ({
   );
 
   if (timeSplit) {
-    log.debug(`Time split: `, timeSplit);
+    log.info(`Time split: `, timeSplit);
   }
   // Check for splits, return a list of recipients and their splitPercentage.
   // Object will look something like:

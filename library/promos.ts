@@ -229,7 +229,7 @@ export const isUserEligibleForPromo = async (
     parseInt(userDailyContentRewards.total) >=
       userDailyContentRewards.msat_payout_amount * durationRounded
   ) {
-    log.debug("User has reached the daily content reward limit");
+    log.info("User has reached the daily content reward limit");
     return false;
   }
 
@@ -238,7 +238,7 @@ export const isUserEligibleForPromo = async (
     parseInt(ipDailyContentRewards.total) >=
       ipDailyContentRewards.msat_payout_amount * durationRounded
   ) {
-    log.debug("IP has reached the daily content reward limit");
+    log.info("IP has reached the daily content reward limit");
     return false;
   }
   return true;
@@ -269,7 +269,7 @@ export const isUserEligibleForReward = async (
       userLastReward &&
       userLastReward.last_reward_created_at > now
     ) {
-      log.debug("User has been rewarded in the last minute");
+      log.info("User has been rewarded in the last minute");
       return false;
     }
 
@@ -289,7 +289,7 @@ export const isUserEligibleForReward = async (
       ipLastReward &&
       ipLastReward.last_reward_created_at > now
     ) {
-      log.debug("IP has been rewarded in the last minute");
+      log.info("IP has been rewarded in the last minute");
       return false;
     }
 
@@ -307,7 +307,7 @@ export const isUserEligibleForReward = async (
       userDailyTotalRewards &&
       userDailyTotalRewards.total >= MAX_DAILY_USER_REWARDS
     ) {
-      log.debug("User has reached the daily reward limit");
+      log.info("User has reached the daily reward limit");
       return false;
     }
 
@@ -327,7 +327,7 @@ export const isUserEligibleForReward = async (
       ipDailyTotalRewards &&
       ipDailyTotalRewards.total >= MAX_DAILY_USER_REWARDS
     ) {
-      log.debug("IP has reached the daily reward limit");
+      log.info("IP has reached the daily reward limit");
       return false;
     }
 
@@ -339,7 +339,7 @@ export const isUserEligibleForReward = async (
     );
 
     if (!userIsEligibleForPromo) {
-      log.debug("User has reached the daily content reward limit");
+      log.info("User has reached the daily content reward limit");
       return false;
     }
 

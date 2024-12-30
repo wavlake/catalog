@@ -3,7 +3,7 @@ import asyncHandler from "express-async-handler";
 import { Prisma } from "@prisma/client";
 import db from "../library/db";
 import { SplitContentTypes } from "../library/userHelper";
-import log from "loglevel";
+import log from "../library/winston";
 import { nip19 } from "nostr-tools";
 
 type ActivityType =
@@ -285,7 +285,7 @@ const get_activity_feed = asyncHandler(async (req, res, next) => {
       },
     })
     .catch((err) => {
-      log.debug("Pubkey not found in npub table: ", err);
+      log.info("Pubkey not found in npub table: ", err);
       return { follows: [] };
     });
 

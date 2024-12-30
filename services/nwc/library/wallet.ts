@@ -1,9 +1,9 @@
 import db from "@library/db";
 const log = require("loglevel");
-log.setLevel(process.env.LOGLEVEL);
+log.setlevel("trace");
 
 export async function getWalletUser(pubkey) {
-  // log.debug(weeklySpend);
+  // log.info(weeklySpend);
 
   return db
     .knex("wallet_connection")
@@ -45,7 +45,7 @@ export const walletHasRemainingBudget = async (
   msatBudget,
   valueMsat
 ) => {
-  log.debug(`Getting budget remaining for NWC wallet: ${walletPubkey}`);
+  log.info(`Getting budget remaining for NWC wallet: ${walletPubkey}`);
 
   // if the max budget is 0 then the user has no budget, its unlimited
   if (msatBudget === 0) {

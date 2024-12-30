@@ -1,4 +1,4 @@
-import log from "loglevel";
+import log from "../../../library/winston";
 import asyncHandler from "express-async-handler";
 import { validate } from "uuid";
 import core from "express-serve-static-core";
@@ -23,7 +23,7 @@ const jsonParser = (jsonString?: string) => {
   try {
     return JSON.parse(jsonString);
   } catch (e) {
-    log.debug("Error parsing json", e);
+    log.error("Error parsing json", e);
     return;
   }
 };
@@ -36,7 +36,7 @@ const processIncomingKeysend = asyncHandler<
   any,
   ZBDKeysendCallbackRequest
 >(async (req, res, next) => {
-  log.debug(`Keysend received`);
+  log.info(`Keysend received`);
 
   const { invoice, transaction } = req.body;
 
@@ -58,9 +58,9 @@ const processIncomingKeysend = asyncHandler<
     : undefined;
 
   // for testing in deployed service
-  log.debug("request body", req.body);
-  log.debug("keysendMetadata", keysendMetadata);
-  log.debug("contentId", contentId);
+  log.info("request body", req.body);
+  log.info("keysendMetadata", keysendMetadata);
+  log.info("contentId", contentId);
 
   if (!contentId || !validate(contentId)) {
     log.error("Did not find a valid content id in the tlv records");
@@ -85,7 +85,7 @@ const processIncomingKeysend = asyncHandler<
   });
 
   if (success) {
-    log.debug("Amp tx built successfully");
+    log.info("Amp tx built successfully");
     res.status(200).send({
       success: true,
     });
@@ -105,7 +105,7 @@ const processOutgoingKeysend = asyncHandler<
 >(async (req, res, next) => {
   const { metadata, status, fee } = req.body;
   const internalTxId = metadata.internalTxId;
-  log.debug(
+  log.info(
     `Processing outgoing keysend callback internalTxId: ${internalTxId}`
   );
 
@@ -126,7 +126,7 @@ const processOutgoingKeysend = asyncHandler<
     fee,
   })
     .then(() => {
-      log.debug(`Updated keysend ${internalTxId} with status ${status}`);
+      log.info(`Updated keysend ${internalTxId} with status ${status}`);
       res.status(200).send({ success: true });
     })
     .catch((e) => {
@@ -143,7 +143,7 @@ const processIncomingInvoice = asyncHandler<
   any,
   ZBDChargeCallbackRequest
 >(async (req, res, next) => {
-  log.debug(`Incoming invoice received`);
+  log.info(`Incoming invoice received`);
   // the invoice status is expected to change from pending to success or fail
   const { internalId } = req.body;
 
@@ -171,7 +171,7 @@ const processOutgoingInvoice = asyncHandler<
   any,
   ZBDPaymentCallbackRequest
 >(async (req, res, next) => {
-  log.debug(`Received outgoing invoice callback: ${JSON.stringify(req.body)}`);
+  log.info(`Received outgoing invoice callback: ${JSON.stringify(req.body)}`);
 
   const { id, status, internalId, fee, preimage, amount } = req.body;
 

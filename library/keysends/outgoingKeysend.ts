@@ -1,7 +1,7 @@
 import { TransactionStatus, SendKeysendStatus } from "./../zbd/constants";
 import db from "../db";
 import { getUserName } from "../userHelper";
-import log from "loglevel";
+import log from "../winston";
 
 const BUFFER_AMOUNT = 0.15;
 const BLIP0010 = "7629169";
@@ -75,7 +75,7 @@ export const updateKeysend = async ({
   }
 
   if (keysendRecord.is_settled) {
-    log.debug("Keysend already settled, skipping update");
+    log.info("Keysend already settled, skipping update");
     return;
   }
 
@@ -101,7 +101,7 @@ export const updateKeysend = async ({
   return trx
     .commit()
     .then(() => {
-      log.debug(
+      log.info(
         `Updated external_payment record for ${internalTxId} with status ${status}`
       );
     })

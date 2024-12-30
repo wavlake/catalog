@@ -58,7 +58,7 @@ export const calculatePercentages = async (
   const totalShares = splitRecipients.reduce((acc, curr) => {
     return acc + curr.share;
   }, 0);
-  // log.debug(`Total shares: ${totalShares}`);
+  // log.info(`Total shares: ${totalShares}`);
 
   return splitRecipients.map((recipient) => {
     return {
@@ -114,7 +114,7 @@ export const getOwnerId = async (contentId, type) => {
       .where(`${typeConfig.mainTable}.id`, "=", contentId)
       .first();
 
-    log.debug(
+    log.info(
       `Found content owner userId: ${JSON.stringify(
         data
       )} for contentId: ${contentId}`
@@ -141,7 +141,7 @@ export const getSplitRecipientsAndShares = async (contentId, contentType) => {
         contentType
       );
     } else {
-      log.debug(`No recipient(s) found for content: ${contentId}`);
+      log.info(`No recipient(s) found for content: ${contentId}`);
       return null;
     }
   } else {
@@ -168,7 +168,7 @@ export const getHigherLevelSplitId = async (contentId, type) => {
       .first()
       .then((data) => {
         if (!data) {
-          log.debug(`No higher-level split for content: ${contentId}`);
+          log.info(`No higher-level split for content: ${contentId}`);
           return null;
         }
         return data.id;
@@ -185,7 +185,7 @@ export const getHigherLevelSplitId = async (contentId, type) => {
       .first()
       .then((data) => {
         if (!data) {
-          log.debug(`No higher-level split for content: ${contentId}`);
+          log.info(`No higher-level split for content: ${contentId}`);
           return null;
         }
         return data.id;
@@ -194,7 +194,7 @@ export const getHigherLevelSplitId = async (contentId, type) => {
         log.error(`Error finding higher-level splitId from contentId ${err}`);
       });
   } else {
-    log.debug(
+    log.info(
       `Content is not a track or episode: ${contentId}, skipping higher-level split check`
     );
     return null;
@@ -210,7 +210,7 @@ export const getSplitId = async (contentId, type) => {
     .then((data) => {
       // Splits at track/episode level take precendence over podcast/album-level splits
       if (!data) {
-        log.debug(
+        log.info(
           `No split found for content: ${contentId}, checking for higher-level split`
         );
         const higherLevelSplitId = exports.getHigherLevelSplitId(
@@ -227,14 +227,14 @@ export const getSplitId = async (contentId, type) => {
 };
 
 export const getSplitRecipients = async (splitId) => {
-  log.debug(`Getting split recipients for splitId: ${splitId}`);
+  log.info(`Getting split recipients for splitId: ${splitId}`);
   return db
     .knex("split_recipient")
     .select("user_id as userId", "share as share")
     .where("split_id", "=", splitId)
     .then((data) => {
       if (data.length > 0) {
-        log.debug(`Found ${data.length} split recipients`);
+        log.info(`Found ${data.length} split recipients`);
         return data;
       }
       return null;
@@ -253,7 +253,7 @@ export const getTimeSplit = async (contentId, contentTime, contentType) => {
   }
 
   if (!contentTime) {
-    log.debug(`No timeSeconds provided, skipping time split check`);
+    log.info(`No timeSeconds provided, skipping time split check`);
     return null;
   }
   return db
@@ -273,7 +273,7 @@ export const getTimeSplit = async (contentId, contentTime, contentType) => {
       if (!data) {
         return null;
       }
-      log.debug(`Found time split: ${JSON.stringify(data)}`);
+      log.info(`Found time split: ${JSON.stringify(data)}`);
       return data;
     })
     .catch((err) => {

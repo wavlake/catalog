@@ -50,13 +50,13 @@ if (startTimestamp) {
 
 // Main process
 const main = async () => {
-  log.debug("Starting to monitor for Wavlake content id events...");
+  log.info("Starting to monitor for Wavlake content id events...");
   if (!walletSk) {
     throw new Error("No wallet service SK found");
   }
 
   const latestRunTimestamp = await getLatestRunTimestamp();
-  log.debug(`Latest run timestamp: ${latestRunTimestamp}`);
+  log.info(`Latest run timestamp: ${latestRunTimestamp}`);
 
   pool.subscribeMany(
     relayUris,
@@ -78,7 +78,7 @@ const main = async () => {
         checkEvent(event);
       },
       oneose: () => {
-        log.debug("One or more subscriptions have ended");
+        log.info("One or more subscriptions have ended");
         // Wait 30 seconds, then exit
         if (isHistoricalRun) {
           setTimeout(() => {
@@ -106,24 +106,24 @@ const getLatestRunTimestamp = async () => {
 const checkEvent = async (event: any) => {
   if (event.kind === 1 && event.content.includes("wavlake.com")) {
     const eventContent = event.content;
-    log.debug(`Found Wavlake link...`);
-    log.debug(`Event content: ${eventContent}`);
+    log.info(`Found Wavlake link...`);
+    log.info(`Event content: ${eventContent}`);
     // Look for a uuid in the content
     const uuidMatch = eventContent.match(
       /([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})/
     );
     if (!uuidMatch) {
-      log.debug("No uuid found in content");
+      log.info("No uuid found in content");
       return;
     }
-    log.debug(`Found uuid: ${uuidMatch[0]}`);
+    log.info(`Found uuid: ${uuidMatch[0]}`);
     const contentId = uuidMatch[0];
-    // log.debug(`Found uuid: ${contentId}`);
+    // log.info(`Found uuid: ${contentId}`);
     // Fetch the content id
     const wavlakeContent = await getContentFromId(contentId);
     // Send the content to the wallet service
     if (wavlakeContent) {
-      // log.debug(`Found content: ${JSON.stringify(wavlakeContent)}`);
+      // log.info(`Found content: ${JSON.stringify(wavlakeContent)}`);
       const contentType = await getType(contentId);
       const parentContentData = await getParentContentTypeAndId(contentId);
       await publishLabelEvent(
@@ -145,7 +145,7 @@ const publishLabelEvent = async (
   parentContentData: any,
   eventCreatedAt: number
 ) => {
-  log.debug(`Constructing label event for content id: ${contentId}`);
+  log.info(`Constructing label event for content id: ${contentId}`);
   const namespace = await generateNamespace(contentType);
   const itemLabel = await generateIdentifier(contentId, contentType);
   const parentItemLabel = parentContentData
@@ -170,7 +170,7 @@ const publishLabelEvent = async (
   };
   const signedEvent = finalizeEvent(eventTemplate, walletSkBytes);
   await Promise.any(pool.publish(relayUris, signedEvent));
-  log.debug(`Published label event: ${JSON.stringify(signedEvent)}`);
+  log.info(`Published label event: ${JSON.stringify(signedEvent)}`);
   // Update the run log with the original event timestamp if this is a normal run
   if (!isHistoricalRun) {
     await knex("run_log").insert({
@@ -188,7 +188,7 @@ const generateNamespace = async (contentType: string) => {
   } else if (contentType === "artist") {
     return `podcast:publisher:guid`;
   } else {
-    log.debug(`Unknown content type: ${contentType}`);
+    log.info(`Unknown content type: ${contentType}`);
     return;
   }
 };
@@ -204,7 +204,7 @@ const generateIdentifier = async (contentId: string, contentType: string) => {
   } else if (contentType === "artist") {
     return `podcast:publisher:guid:${contentId}`;
   } else {
-    log.debug(`Unknown content type: ${contentType}`);
+    log.info(`Unknown content type: ${contentType}`);
     return;
   }
 };

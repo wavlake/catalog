@@ -7,8 +7,8 @@ import {
 import { PaymentStatus } from "@library/zbd/constants";
 import { handleCompletedForward } from "@library/withdraw";
 import axios from "axios";
-const log = require("loglevel");
-log.setLevel(process.env.LOGLEVEL);
+import log from "loglevel";
+log.setLevel(process.env.LOGLEVEL as log.LogLevelDesc);
 
 const TIME_BETWEEN_REQUESTS = 3000; // 3 seconds
 const MIN_BATCH_FORWARD_AMOUNT =
@@ -38,7 +38,7 @@ const run = async () => {
     },
   });
 
-  log.debug("In flight forwards:", inFlightForwards.length);
+  log.info("In flight forwards:", inFlightForwards.length);
   // Filter inFlightForwards to only include unique externalPaymentIds
   const uniqueExternalPaymentIds = [
     ...new Set(inFlightForwards.map((forward) => forward.externalPaymentId)),
@@ -61,7 +61,7 @@ const run = async () => {
     },
   });
 
-  log.debug("Forwards outstanding:", forwardsOutstanding.length);
+  log.info("Forwards outstanding:", forwardsOutstanding.length);
   // If there are any, group the payments by lightning_address and sum msat_amount
   const groupedForwards = forwardsOutstanding.reduce((acc, curr) => {
     if (!acc[curr.userId]) {
@@ -94,14 +94,14 @@ const run = async () => {
   // For each group where the sum is greater than or equal to the minimum_forward_amount, initiate a payment
   await handlePayments(groupedForwards);
 
-  log.debug("Finished processing forwards");
+  log.info("Finished processing forwards");
   return;
   // DONE
 };
 
 const handlePayments = async (groupedForwards: groupedForwards) => {
   const totalForwardCount = Object.keys(groupedForwards).length;
-  log.debug("Grouped forwards:", totalForwardCount);
+  log.info("Grouped forwards:", totalForwardCount);
   // Iterate over each group
   for (const [
     userId,
@@ -123,7 +123,7 @@ const handlePayments = async (groupedForwards: groupedForwards) => {
       (msatAmount as number) >= MIN_BATCH_FORWARD_AMOUNT ||
       isOldEnoughAndMeetsMinimum
     ) {
-      log.debug(
+      log.info(
         `Processing payment for lightning address: ${lightningAddress} with msat amount: ${amountToSend}`
       );
       // Add sleep to avoid rate limiting
@@ -166,7 +166,7 @@ const handlePayments = async (groupedForwards: groupedForwards) => {
         });
         // If there is a remainder, create a new forward record for the remainder
         if (remainderMsats > 0) {
-          log.debug(`Creating remainder forward record for ${remainderMsats}`);
+          log.info(`Creating remainder forward record for ${remainderMsats}`);
           await prisma.forward.create({
             data: {
               userId: userId,

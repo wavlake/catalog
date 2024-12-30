@@ -68,5 +68,5 @@ app.use(Sentry.Handlers.errorHandler());
 // override default html error page with custom error handler
 const port = 8080;
 export const server = app.listen(port, () => {
-  log.debug(`Feed is listening on port ${port}`);
+  log.info(`Feed is listening on port ${port}`);
 });

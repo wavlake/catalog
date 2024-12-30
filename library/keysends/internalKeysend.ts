@@ -1,4 +1,4 @@
-import log from "loglevel";
+import log from "../winston";
 import db from "../db";
 import { getUserName } from "../userHelper";
 import { ExternalKeysend } from "./interfaces";
@@ -39,7 +39,7 @@ export const handleInternalKeysends = async (
         keysend.customValue
       );
 
-      log.debug(
+      log.info(
         `Creating internal amp from external keysend for user: ${userId} to ${contentId}`
       );
 

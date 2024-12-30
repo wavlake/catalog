@@ -1,4 +1,4 @@
-import log from "loglevel";
+import log from "../library/winston";
 import { isFirebaseAuthorized } from "./auth";
 import { validateNostrEvent } from "./nostrAuth";
 
@@ -12,9 +12,9 @@ export const isFirebaseOrNostrAuthorized = (req, res, next) => {
         responses[0].status === "rejected" &&
         responses[1].status === "rejected"
       ) {
-        log.debug("Unauthorized request");
-        log.debug("Firebase auth:", responses[0].reason);
-        log.debug("Nostr auth:", responses[1].reason);
+        log.info("Unauthorized request");
+        log.info("Firebase auth:", responses[0].reason);
+        log.info("Nostr auth:", responses[1].reason);
         res.status(401).json({ error: "Unauthorized" });
 
         return;

@@ -1,4 +1,4 @@
-import log from "loglevel";
+import log from "./winston";
 import db from "./db";
 import { getUserName } from "./userHelper";
 import { randomUUID } from "crypto";
@@ -82,7 +82,7 @@ async function constructCustomRecords(
     });
   }
 
-  log.debug(customRecords);
+  log.info(customRecords);
   return customRecords;
 }
 
@@ -137,7 +137,7 @@ function logExternalKeysend({
     })
     .then(trx.commit)
     .then((data) => {
-      log.debug(
+      log.info(
         `Created external payment record for ${userId} to ${keysend.pubkey} at payment index ${paymentIndex}`
       );
     })

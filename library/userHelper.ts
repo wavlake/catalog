@@ -1,6 +1,6 @@
 import prisma from "../prisma/client";
 import db from "./db";
-import log from "loglevel";
+import log from "./winston";
 import Sentry from "@sentry/node";
 import { upload_image } from "./artwork";
 import { urlFriendly } from "./format";
@@ -57,7 +57,7 @@ export async function checkUserHasSufficientSats(
       return parseInt(userData.msatBalance) - inFlightSats > msatAmount;
     })
     .catch((err) => {
-      log.debug(`Error querying user table: ${err}`);
+      log.error(`Error querying user table: ${err}`);
       return false;
     });
 }

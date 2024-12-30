@@ -1,5 +1,5 @@
 import asyncHandler from "express-async-handler";
-import log from "loglevel";
+import log from "../library/winston";
 import { validate } from "uuid";
 import { SplitContentTypes } from "../library/userHelper";
 import db from "../library/db";

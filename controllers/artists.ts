@@ -160,7 +160,7 @@ const create_artist = asyncHandler(async (req, res, next) => {
       ["*"]
     )
     .then((data) => {
-      log.debug(`Created new artist ${request.name} with id: ${data[0]["id"]}`);
+      log.info(`Created new artist ${request.name} with id: ${data[0]["id"]}`);
 
       res.send({
         success: true,
@@ -182,11 +182,11 @@ const create_artist = asyncHandler(async (req, res, next) => {
     .catch((err) => {
       Sentry.captureException(err);
       if (err instanceof multer.MulterError) {
-        log.debug(`MulterError creating new artist: ${err}`);
+        log.error(`MulterError creating new artist: ${err}`);
 
         res.status(500).send("Something went wrong");
       } else {
-        log.debug(`Error creating new artist: ${err}`);
+        log.error(`Error creating new artist: ${err}`);
         if (err.message.includes("duplicate")) {
           res.status(400).json({
             success: false,
@@ -280,7 +280,7 @@ const update_artist = asyncHandler(async (req, res, next) => {
     ? await upload_image(artwork, request.artistId, "artist")
     : undefined;
 
-  log.debug(`Editing artist ${request.artistId}`);
+  log.info(`Editing artist ${request.artistId}`);
   return db
     .knex("artist")
     .where("id", "=", request.artistId)
@@ -318,7 +318,7 @@ const update_artist = asyncHandler(async (req, res, next) => {
       });
     })
     .catch((err) => {
-      log.debug(`Error editing artist ${request.artistId}: ${err}`);
+      log.error(`Error editing artist ${request.artistId}: ${err}`);
       res.status(500).json({
         success: false,
         error: "Something went wrong creating the artist.",
@@ -348,7 +348,7 @@ const delete_artist = asyncHandler(async (req, res, next) => {
     return;
   }
 
-  log.debug(`Checking albums for artist ${request.artistId}`);
+  log.info(`Checking albums for artist ${request.artistId}`);
   db.knex("album")
     .select("album.artist_id as artistId", "album.deleted")
     .where("album.artist_id", "=", request.artistId)
@@ -358,7 +358,7 @@ const delete_artist = asyncHandler(async (req, res, next) => {
         const error = formatError(403, "Artist has undeleted albums");
         next(error);
       } else {
-        log.debug(`Deleting artist ${request.artistId}`);
+        log.info(`Deleting artist ${request.artistId}`);
         db.knex("artist")
           .where("id", "=", request.artistId)
           .update({ deleted: true }, ["id", "name"])
@@ -366,13 +366,13 @@ const delete_artist = asyncHandler(async (req, res, next) => {
             res.send({ success: true, data: data[0] });
           })
           .catch((err) => {
-            log.debug(`Error deleting artist ${request.artistId}: ${err}`);
+            log.error(`Error deleting artist ${request.artistId}: ${err}`);
             next(err);
           });
       }
     })
     .catch((err) => {
-      log.debug(`Error deleting artist ${request.artistId}: ${err}`);
+      log.error(`Error deleting artist ${request.artistId}: ${err}`);
       next(err);
     });
 });

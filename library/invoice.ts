@@ -33,7 +33,7 @@ export const updateInvoiceIfNeeded = async (
 }> => {
   const wasLogged = await wasTransactionAlreadyLogged(invoiceId, invoiceType);
   if (wasLogged) {
-    log.debug(`${invoiceType} id:${invoiceId} was already logged, skipping.`);
+    log.info(`${invoiceType} id:${invoiceId} was already logged, skipping.`);
     return { success: true, message: `${invoiceType} was already logged` };
   }
 
@@ -49,12 +49,10 @@ export const updateInvoiceIfNeeded = async (
 
   // Handle finalized invoices
   if (status != ChargeStatus.Pending) {
-    log.debug(
-      `Transaction ${invoiceId} is stale, updating status to ${status}`
-    );
+    log.info(`Transaction ${invoiceId} is stale, updating status to ${status}`);
 
     if (status === ChargeStatus.Error || status === ChargeStatus.Expired) {
-      log.debug("Invoice failed or expired");
+      log.info("Invoice failed or expired");
       await handleFailedOrExpiredInvoice(invoiceType, invoiceId, status);
       return {
         success: true,
@@ -64,11 +62,11 @@ export const updateInvoiceIfNeeded = async (
     } else {
       switch (invoiceType) {
         case IncomingInvoiceType.Transaction:
-          log.debug(`Processing transaction invoice for id ${invoiceId}`);
+          log.info(`Processing transaction invoice for id ${invoiceId}`);
           await handleCompletedDeposit(invoiceId, msatAmount);
           break;
         case IncomingInvoiceType.ExternalReceive:
-          log.debug(`Processing external_receive invoice for id ${invoiceId}`);
+          log.info(`Processing external_receive invoice for id ${invoiceId}`);
           // Process should account for plain invoices and zaps
           await handleCompletedAmpInvoice(
             invoiceId,
@@ -79,11 +77,11 @@ export const updateInvoiceIfNeeded = async (
           );
           break;
         case IncomingInvoiceType.LNURL:
-          log.debug(`Processing lnurl invoice for id ${invoiceId}`);
+          log.info(`Processing lnurl invoice for id ${invoiceId}`);
           await handleCompletedDeposit(invoiceId, msatAmount);
           break;
         case IncomingInvoiceType.LNURL_Zap:
-          log.debug(`Processing lnurl zap invoice for id ${invoiceId}`);
+          log.info(`Processing lnurl zap invoice for id ${invoiceId}`);
           await handleCompletedLNURLZapInvoice(
             invoiceId,
             msatAmount,
@@ -93,7 +91,7 @@ export const updateInvoiceIfNeeded = async (
           );
           break;
         case IncomingInvoiceType.Promo:
-          log.debug(`Processing promo invoice for id ${invoiceId}`);
+          log.info(`Processing promo invoice for id ${invoiceId}`);
           await handleCompletedPromoInvoice(invoiceId, msatAmount);
           break;
         default:
@@ -137,7 +135,7 @@ async function handleCompletedAmpInvoice(
   /////////
 
   if (paymentTypeCode === PaymentType.Zap) {
-    log.debug(`Processing zap details for invoice id ${invoiceId}`);
+    log.info(`Processing zap details for invoice id ${invoiceId}`);
     const zapInfo = await getZapPubkeyAndContent(invoiceId);
     zapRequest = zapInfo.zapRequest;
     pubkey = zapInfo.pubkey;
@@ -157,7 +155,7 @@ async function handleCompletedAmpInvoice(
     /////////
   }
   const contentId = await getContentIdFromInvoiceId(invoiceId);
-  log.debug(`Processing amp invoice for content id ${contentId}`);
+  log.info(`Processing amp invoice for content id ${contentId}`);
 
   if (!contentId) {
     log.error(`No content id found for invoice id ${invoiceId}`);
@@ -198,7 +196,7 @@ async function handleCompletedAmpInvoice(
 
   // Publish zap receipt if isZap
   if (paymentTypeCode === PaymentType.Zap) {
-    log.debug(`Publishing zap receipt for invoice id ${invoiceId}`);
+    log.info(`Publishing zap receipt for invoice id ${invoiceId}`);
     await publishZapReceipt(
       zapRequest,
       paymentRequest,
@@ -211,7 +209,7 @@ async function handleCompletedAmpInvoice(
       return;
     });
 
-    log.debug(`Publishing party receipt for invoice id ${invoiceId}`);
+    log.info(`Publishing party receipt for invoice id ${invoiceId}`);
     await publishPartyReceipt(contentId).catch((e) => {
       log.error(
         `Error publishing party receipt for invoice id ${invoiceId}: ${e}`
@@ -221,14 +219,14 @@ async function handleCompletedAmpInvoice(
     // async update the npub metadata in the db
     updateNpubMetadata(pubkey)
       .then(({ success }) => {
-        log.debug(
+        log.info(
           `${
             success ? "Updated" : "Failed to update"
           } nostr metadata for: ${pubkey}`
         );
       })
       .catch((err) => {
-        log.debug("error updating npub metadata: ", err);
+        log.error("Error updating npub metadata: ", err);
       });
   }
 
@@ -262,7 +260,7 @@ async function handleCompletedLNURLZapInvoice(
     })
     .then(trx.commit)
     .then(() => {
-      log.debug(`Successfully logged deposit of ${msatAmount} for ${userId}`);
+      log.info(`Successfully logged deposit of ${msatAmount} for ${userId}`);
       return true;
     })
     .catch((err) => {
@@ -275,7 +273,7 @@ async function handleCompletedLNURLZapInvoice(
   const { zapRequest, pubkey, content, timestamp } =
     await getZapPubkeyAndContent(transactionId, IncomingInvoiceType.LNURL_Zap);
 
-  log.debug(`Publishing zap receipt for invoice id ${transactionId}`);
+  log.info(`Publishing zap receipt for invoice id ${transactionId}`);
   await publishZapReceipt(
     zapRequest,
     paymentRequest,
@@ -291,14 +289,14 @@ async function handleCompletedLNURLZapInvoice(
   // async update the npub metadata in the db
   updateNpubMetadata(pubkey)
     .then(({ success }) => {
-      log.debug(
+      log.info(
         `${
           success ? "Updated" : "Failed to update"
         } nostr metadata for: ${pubkey}`
       );
     })
     .catch((err) => {
-      log.debug("error updating npub metadata: ", err);
+      log.error("Error updating npub metadata: ", err);
     });
 }
 

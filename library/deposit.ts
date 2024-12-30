@@ -1,4 +1,4 @@
-import log from "loglevel";
+import log from "./winston";
 import db from "./db";
 import { IncomingInvoiceTableMap, IncomingInvoiceType } from "./common";
 import prisma from "../prisma/client";
@@ -59,7 +59,7 @@ export const handleCompletedPromoInvoice = async (
       },
     })
     .then(() => {
-      log.debug(
+      log.info(
         `Successfully logged promo invoice of ${msatAmount} for ${invoiceId}`
       );
       return true;
@@ -96,7 +96,7 @@ export const handleCompletedDeposit = async (
     })
     .then(trx.commit)
     .then(() => {
-      log.debug(`Successfully logged deposit of ${msatAmount} for ${userId}`);
+      log.info(`Successfully logged deposit of ${msatAmount} for ${userId}`);
       return true;
     })
     .catch((err) => {
