@@ -57,7 +57,7 @@ const delay = (ms: number): Promise<void> =>
   new Promise((resolve) => setTimeout(resolve, ms));
 
 // Error handling utilities
-const handleOP3Error = (error: unknown, context: string): never => {
+const handleOP3Error = (error: unknown, context: string) => {
   if (axios.isAxiosError(error)) {
     const axiosError = error as AxiosError;
     log.error(`OP3 API Error in ${context}:`, {
@@ -69,7 +69,6 @@ const handleOP3Error = (error: unknown, context: string): never => {
     throw new Error(`OP3 API error in ${context}: ${axiosError.message}`);
   }
   log.error(`Unexpected error in ${context}:`, { error });
-  throw error;
 };
 
 // Rate limited axios request with error handling
@@ -82,7 +81,8 @@ const rateLimit = async <T>(
     await delay(RATE_LIMIT_MS);
     return result;
   } catch (error) {
-    return handleOP3Error(error, context);
+    handleOP3Error(error, context);
+    return;
   }
 };
 
@@ -154,7 +154,8 @@ export const getContentStats = async (
 
     return statsWithShowInfo;
   } catch (error) {
-    return handleOP3Error(error, "getContentStats");
+    handleOP3Error(error, "getContentStats");
+    return;
   }
 };
 
@@ -219,6 +220,11 @@ export const getOp3Stats = async (
       "getOp3Stats initial request"
     );
 
+    if (!response.data) {
+      log.error("No data received from OP3 API", { op3Id });
+      throw new Error("No data received from OP3 API");
+    }
+
     const results = response.data.results || [];
     let { continuationToken } = response.data;
 
@@ -230,16 +236,42 @@ export const getOp3Stats = async (
         page: ++pageCount,
       });
 
-      const nextResponse = await rateLimit(
-        () =>
-          op3Client.get<OP3Response>(
-            `/downloads/show/${op3Id}?${query}&format=json&limit=${PAGINATION_LIMIT}&continuationToken=${continuationToken}`
-          ),
-        `getOp3Stats page ${pageCount}`
-      );
+      try {
+        const nextResponse = await rateLimit(
+          () =>
+            op3Client.get<OP3Response>(
+              `/downloads/show/${op3Id}?${query}&format=json&limit=${PAGINATION_LIMIT}&continuationToken=${continuationToken}`
+            ),
+          `getOp3Stats page ${pageCount}`
+        );
 
-      results.push(...nextResponse.data.results);
-      continuationToken = nextResponse.data.continuationToken;
+        if (!nextResponse.data) {
+          log.error("No data received from OP3 API during pagination", {
+            op3Id,
+            page: pageCount,
+          });
+          break;
+        }
+
+        if (!Array.isArray(nextResponse.data.results)) {
+          log.error("Invalid results format received from OP3 API", {
+            op3Id,
+            page: pageCount,
+            actualType: typeof nextResponse.data.results,
+          });
+          break;
+        }
+
+        results.push(...(nextResponse.data.results || []));
+        continuationToken = nextResponse.data.continuationToken;
+      } catch (paginationError) {
+        log.error("Error during pagination", {
+          op3Id,
+          page: pageCount,
+          error: paginationError,
+        });
+        break;
+      }
     }
 
     log.info("Successfully fetched OP3 stats", {
@@ -250,6 +282,7 @@ export const getOp3Stats = async (
 
     return { rows: results };
   } catch (error) {
-    return handleOP3Error(error, "getOp3Stats");
+    handleOP3Error(error, "getOp3Stats");
+    return { rows: [] };
   }
 };
