@@ -1,7 +1,7 @@
 import { OP3_PREFIX, podcastNamespace, feedPath } from "./rssUtils";
 const { v5 } = require("uuid");
 import axios, { AxiosError } from "axios";
-import { getType, getReleaseTitle } from "./content";
+import { getType } from "./content";
 import log from "./winston";
 
 // Constants
@@ -17,29 +17,51 @@ interface IParams {
   podcastId?: string;
 }
 
+export type DownloadRow = {
+  time: string;
+  url: string;
+  audienceId: string;
+  showUuid: string;
+  episodeId: string;
+  hashedIpAddress: string;
+  agentType: string;
+  agentName: string;
+  deviceType: string;
+  deviceName: string;
+  countryCode: string;
+  continentCode: string;
+  regionCode: string;
+  regionName: string;
+  timezone: string;
+  metroCode: string;
+  title: string;
+  itemGuid: string;
+};
+
 interface OP3Response {
-  rows: any[];
+  rows: DownloadRow[];
+  count: number;
+  queryTime: number;
   continuationToken?: string;
 }
 
 interface OP3ShowInfo {
   showUuid: string;
+  title: string;
+  podcastGuid: string;
+  statsPageUrl: string;
   episodes: Array<{
     id: string;
     title: string;
     itemGuid: string;
   }>;
-  statsPageUrl: string;
 }
 
+export type OP3CombinedData = OP3Stats &
+  Pick<OP3ShowInfo, "statsPageUrl"> & { releaseTitle: string };
 interface OP3Stats {
-  rows: Array<{
-    episodeId: string;
-    title?: string;
-    itemGuid?: string;
-  }>;
-  statsPageUrl?: string;
-  releaseTitle?: string;
+  rows: DownloadRow[];
+  count: number;
 }
 
 // API client setup
@@ -125,7 +147,7 @@ export const addOP3URLPrefix = ({
 export const getContentStats = async (
   contentId: string,
   startDate?: string
-): Promise<OP3Stats> => {
+) => {
   try {
     log.info("Fetching content stats", { contentId, startDate });
 
@@ -141,9 +163,6 @@ export const getContentStats = async (
     const op3ShowInfo = await getOp3ShowInfo(op3Id);
 
     const statsWithShowInfo = await mergeShowInfo(op3Stats, op3ShowInfo);
-    statsWithShowInfo.statsPageUrl = op3ShowInfo.statsPageUrl;
-    statsWithShowInfo.releaseTitle =
-      (await getReleaseTitle(contentId, contentType)) || "";
 
     log.info("Successfully fetched content stats", {
       contentId,
@@ -161,7 +180,7 @@ export const getContentStats = async (
 export const mergeShowInfo = async (
   stats: OP3Stats,
   showInfo: OP3ShowInfo
-): Promise<OP3Stats> => {
+): Promise<OP3CombinedData> => {
   const episodes = showInfo.episodes;
   const results = stats.rows.map((result) => {
     const episode = episodes.find((episode) => episode.id === result.episodeId);
@@ -172,7 +191,12 @@ export const mergeShowInfo = async (
     };
   });
 
-  return { ...stats, rows: results };
+  return {
+    ...stats,
+    statsPageUrl: showInfo.statsPageUrl,
+    releaseTitle: showInfo.title,
+    rows: results,
+  };
 };
 
 export const getOp3ShowInfo = async (op3Id: string): Promise<OP3ShowInfo> => {
@@ -275,9 +299,12 @@ export const getOp3Stats = async (
       pages: pageCount,
     });
 
-    return { rows: results };
+    return {
+      count: results.length,
+      rows: results,
+    };
   } catch (error) {
     handleOP3Error(error, "getOp3Stats");
-    return { rows: [] };
+    return { rows: [], count: 0 };
   }
 };
