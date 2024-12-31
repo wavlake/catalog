@@ -7,8 +7,7 @@ import log from "./winston";
 // Constants
 const OP3_API = "https://op3.dev/api/1";
 const OP3_KEY = process.env.OP3_KEY;
-const RESULTS_LIMIT = 1000;
-const PAGINATION_LIMIT = 2;
+const RESULTS_LIMIT = 20000;
 const RATE_LIMIT_MS = 1000;
 
 // Types
@@ -19,7 +18,7 @@ interface IParams {
 }
 
 interface OP3Response {
-  results: any[];
+  rows: any[];
   continuationToken?: string;
 }
 
@@ -210,13 +209,11 @@ export const getOp3Stats = async (
 ): Promise<OP3Stats> => {
   try {
     const { query } = buildDateRange(startDate);
-    log.info("Fetching OP3 stats", { op3Id, query });
+    const url = `/downloads/show/${op3Id}?${query}&format=json&limit=${RESULTS_LIMIT}`;
+    log.info("Fetching OP3 stats", { op3Id, query, url });
 
     const response = await rateLimit(
-      () =>
-        op3Client.get<OP3Response>(
-          `/downloads/show/${op3Id}?${query}&format=json&limit=${RESULTS_LIMIT}`
-        ),
+      () => op3Client.get<OP3Response>(url),
       "getOp3Stats initial request"
     );
 
@@ -225,26 +222,24 @@ export const getOp3Stats = async (
       throw new Error("No data received from OP3 API");
     }
 
-    const results = response.data.results || [];
+    const results = response.data.rows || [];
     let { continuationToken } = response.data;
 
     // Log pagination progress
     let pageCount = 1;
     while (continuationToken) {
-      log.debug(`Fetching paginated results`, {
+      const url = `/downloads/show/${op3Id}?${query}&format=json&limit=${RESULTS_LIMIT}&continuationToken=${continuationToken}`;
+      log.info(`Fetching paginated results`, {
         op3Id,
         page: ++pageCount,
+        url,
       });
 
       try {
         const nextResponse = await rateLimit(
-          () =>
-            op3Client.get<OP3Response>(
-              `/downloads/show/${op3Id}?${query}&format=json&limit=${PAGINATION_LIMIT}&continuationToken=${continuationToken}`
-            ),
+          () => op3Client.get<OP3Response>(url),
           `getOp3Stats page ${pageCount}`
         );
-
         if (!nextResponse.data) {
           log.error("No data received from OP3 API during pagination", {
             op3Id,
@@ -253,16 +248,16 @@ export const getOp3Stats = async (
           break;
         }
 
-        if (!Array.isArray(nextResponse.data.results)) {
+        if (!Array.isArray(nextResponse.data.rows)) {
           log.error("Invalid results format received from OP3 API", {
             op3Id,
             page: pageCount,
-            actualType: typeof nextResponse.data.results,
+            actualType: typeof nextResponse.data.rows,
           });
           break;
         }
 
-        results.push(...(nextResponse.data.results || []));
+        results.push(...(nextResponse.data.rows || []));
         continuationToken = nextResponse.data.continuationToken;
       } catch (paginationError) {
         log.error("Error during pagination", {
