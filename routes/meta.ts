@@ -1,3 +1,4 @@
+import { get } from "http";
 const express = require("express");
 
 // Import controllers
@@ -15,6 +16,7 @@ router.get(
   "/podcast/subcategories/:categoryId",
   metaController.get_podcast_subcategory_list
 );
+router.get("/content/:contentId", metaController.get_content_type);
 router.get("/content", metaController.get_meta_content_by_guids);
 
 // Export router

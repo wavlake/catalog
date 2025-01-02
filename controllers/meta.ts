@@ -2,6 +2,7 @@ const log = require("loglevel");
 import prisma from "../prisma/client";
 const asyncHandler = require("express-async-handler");
 import db from "../library/db";
+import { getContentFromId, getType } from "../library/content";
 const { validate } = require("uuid");
 
 const get_music_genre_list = asyncHandler(async (req, res, next) => {
@@ -113,10 +114,32 @@ const get_meta_content_by_guids = asyncHandler(async (req, res, next) => {
   res.send({ success: true, data: tracks });
 });
 
+const get_content_type = asyncHandler(async (req, res, next) => {
+  const { contentId } = req.params;
+  const contentType = await getType(contentId);
+
+  if (!contentType) {
+    return res
+      .status(404)
+      .send({ success: false, message: "Content not found" });
+  }
+
+  const contentData = getContentFromId(contentId);
+
+  return res.status(200).send({
+    success: true,
+    data: {
+      type: contentType,
+      metadata: contentData,
+    },
+  });
+});
+
 export default {
   get_music_genre_list,
   get_music_subgenre_list,
   get_podcast_category_list,
   get_podcast_subcategory_list,
   get_meta_content_by_guids,
+  get_content_type,
 };
