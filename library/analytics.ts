@@ -27,26 +27,33 @@ export const getContentMonthlyEarnings = async (
   }
 
   const table = contentType === "album" ? "track" : "episode";
+
+  // Get all content IDs in a single query
   const contentIds = await db
     .knex(table)
     .select("id")
     .where(`${contentType}_id`, "=", contentId);
 
-  const earnings = await db
-    .knex("amp")
-    .sum("msat_amount as msatTotal")
-    .countDistinct("user_id as uniqueUsers")
-    .whereIn(
-      "track_id",
-      contentIds.map((c) => c.id)
-    )
-    .andWhere("created_at", ">=", currentMonth())
-    .groupBy("track_id")
-    .first();
+  const contentIdList = contentIds.map((c) => c.id);
+
+  const [trackEarnings, uniqueUserCount] = await Promise.all([
+    db
+      .knex("amp")
+      .sum("msat_amount as total")
+      .whereIn("track_id", contentIdList)
+      .andWhere("created_at", ">=", currentMonth())
+      .first(),
+    db
+      .knex("amp")
+      .countDistinct("user_id as count")
+      .whereIn("track_id", contentIdList)
+      .andWhere("created_at", ">=", currentMonth())
+      .first(),
+  ]);
 
   return {
-    earnings: Math.floor(parseInt(earnings?.msatTotal) / 1000) * 1000 || 0,
-    uniqueAmpUsers: parseInt(earnings?.uniqueUsers) || 0,
+    earnings: parseInt(trackEarnings?.total || "0"),
+    uniqueAmpUsers: parseInt(String(uniqueUserCount?.count) || "0"),
   };
 };
 
