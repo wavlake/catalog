@@ -123,7 +123,7 @@ const get_content_type = asyncHandler(async (req, res, next) => {
       .send({ success: false, message: "Content not found" });
   }
 
-  const contentData = getContentFromId(contentId);
+  const contentData = await getContentFromId(contentId);
 
   return res.status(200).send({
     success: true,
