@@ -13,6 +13,14 @@ const priorMonth = () => {
   return new Date(now.setDate(now.getDate() - 60));
 };
 
+interface TrackEarnings {
+  total: string | null;
+}
+
+interface UniqueUserCount {
+  unique_user_count: string | number;
+}
+
 export const getContentMonthlyEarnings = async (
   userId: string,
   contentId: string
@@ -44,16 +52,26 @@ export const getContentMonthlyEarnings = async (
       .andWhere("created_at", ">=", currentMonth())
       .first(),
     db
-      .knex("amp")
-      .countDistinct("user_id as count")
-      .whereIn("track_id", contentIdList)
+      .knex("preamp")
+      .select(
+        db.knex.raw(`
+      COUNT(DISTINCT 
+        CASE 
+          WHEN user_id = 'keysend' THEN sender_name 
+          ELSE user_id 
+        END
+      ) as unique_user_count
+    `)
+      )
+      .whereIn("content_id", contentIdList)
       .andWhere("created_at", ">=", currentMonth())
       .first(),
   ]);
-
   return {
-    earnings: parseInt(trackEarnings?.total || "0"),
-    uniqueAmpUsers: parseInt(String(uniqueUserCount?.count) || "0"),
+    earnings: parseInt((trackEarnings as TrackEarnings)?.total || "0"),
+    uniqueAmpUsers: parseInt(
+      String((uniqueUserCount as UniqueUserCount)?.unique_user_count) || "0"
+    ),
   };
 };
 
