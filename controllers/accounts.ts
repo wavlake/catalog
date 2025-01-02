@@ -39,13 +39,12 @@ import {
   validateAndGenerateUsername,
   validateUsername,
 } from "../library/userHelper";
-import { firestore } from "firebase-admin";
 
 const get_account = asyncHandler(async (req, res, next) => {
   const request = {
     accountId: req["uid"],
   };
-  log.info("get_account uid:", request.accountId);
+  log.info("get_account uid:", req["uid"]);
   try {
     const userData = await db
       .knex("user")
