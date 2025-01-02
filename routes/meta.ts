@@ -1,5 +1,4 @@
-import { get } from "http";
-const express = require("express");
+import express from "express";
 
 // Import controllers
 import metaController from "../controllers/meta";
