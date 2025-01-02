@@ -1,4 +1,3 @@
-const log = require("loglevel");
 import prisma from "../prisma/client";
 const asyncHandler = require("express-async-handler");
 import db from "../library/db";
