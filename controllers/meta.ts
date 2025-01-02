@@ -115,6 +115,12 @@ const get_meta_content_by_guids = asyncHandler(async (req, res, next) => {
 
 const get_content_type = asyncHandler(async (req, res, next) => {
   const { contentId } = req.params;
+  if (!validate(contentId)) {
+    return res
+      .status(400)
+      .send({ success: false, message: "Invalid content ID" });
+  }
+
   const contentType = await getType(contentId);
 
   if (!contentType) {
@@ -123,7 +129,13 @@ const get_content_type = asyncHandler(async (req, res, next) => {
       .send({ success: false, message: "Content not found" });
   }
 
-  const contentData = getContentFromId(contentId);
+  const contentData = await getContentFromId(contentId);
+
+  if (!contentData) {
+    return res
+      .status(404)
+      .send({ success: false, message: "Content not found" });
+  }
 
   return res.status(200).send({
     success: true,
