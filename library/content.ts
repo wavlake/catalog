@@ -152,12 +152,19 @@ export const getContentFromId = async (contentId) => {
   }
 
   // return all data for the content
-  const content = await db
-    .knex(contentType)
-    .select("*")
-    .where("id", "=", contentId)
-    .andWhere("deleted", "=", false)
-    .first();
+  const content =
+    contentType === "track"
+      ? await db
+          .knex("track_info")
+          .select("*")
+          .where("id", "=", contentId)
+          .first()
+      : await db
+          .knex(contentType)
+          .select("*")
+          .where("id", "=", contentId)
+          .andWhere("deleted", "=", false)
+          .first();
 
   return content;
 };

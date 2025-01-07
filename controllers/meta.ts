@@ -137,16 +137,6 @@ const get_content_type = asyncHandler(async (req, res, next) => {
       .send({ success: false, message: "Content not found" });
   }
 
-  // getContentFromId doesnt return artwork_url for tracks
-  if (contentType === "track") {
-    const artworkUrl = await db
-      .knex("album")
-      .select("artwork_url")
-      .where("id", contentData.album_id)
-      .first();
-    contentData.artwork_url = artworkUrl?.artwork_url;
-  }
-
   return res.status(200).send({
     success: true,
     data: {
