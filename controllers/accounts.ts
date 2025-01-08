@@ -360,8 +360,9 @@ const get_tx_id = asyncHandler(async (req, res, next) => {
 
 const get_txs = asyncHandler(async (req, res, next) => {
   const userId = req["uid"];
-
   const { page } = req.params;
+  const filters = req.query.filters as string | undefined;
+
   const pageInt = parseInt(page);
   if (!Number.isInteger(pageInt) || pageInt <= 0) {
     res.status(400).json({
@@ -371,33 +372,127 @@ const get_txs = asyncHandler(async (req, res, next) => {
     return;
   }
 
-  const txs = await db
-    .knex(transactions(userId))
-    .unionAll([
-      nwcTransactions(userId),
-      forwards(userId),
-      earnings(userId),
-      internalAmps(userId),
-      externalAmps(userId),
-      pendingForwards(userId),
-      promoEarnings(userId),
-    ])
-    .orderBy("createDate", "desc")
-    .paginate({
-      perPage: 20,
-      currentPage: pageInt,
-      isLengthAware: true,
+  // If no filters provided, maintain original behavior
+  if (!filters) {
+    const txs = await db
+      .knex(transactions(userId))
+      .unionAll([
+        nwcTransactions(userId),
+        forwards(userId),
+        earnings(userId),
+        internalAmps(userId),
+        externalAmps(userId),
+        pendingForwards(userId),
+        promoEarnings(userId),
+      ])
+      .orderBy("createDate", "desc")
+      .paginate({
+        perPage: 20,
+        currentPage: pageInt,
+        isLengthAware: true,
+      });
+
+    const txsModified = {};
+    txs.data.forEach((tx) => {
+      const createDate = new Date(tx.createDate);
+      const date = `${tx.createDate.toLocaleString("default", {
+        month: "long",
+      })} ${createDate.getDate()}`;
+
+      if (!txsModified[date]) {
+        txsModified[date] = [];
+      }
+      txsModified[date].push({
+        ...tx,
+        isPending: tx.ispending,
+        feeMsat: tx.feemsat,
+        paymentId: tx.paymentid,
+      });
     });
 
+    res.json({
+      success: true,
+      data: {
+        transactions: txsModified,
+        pagination: {
+          currentPage: txs.pagination.currentPage,
+          perPage: txs.pagination.perPage,
+          total: txs.pagination.total,
+          totalPages: txs.pagination.lastPage,
+        },
+      },
+    });
+    return;
+  }
+
+  // Parse filters if provided
+  const activeFilters = filters.split(",");
+
+  // Create an array of queries based on active filters
+  const queryArray = [];
+
+  if (
+    activeFilters.includes(TransactionType.DEPOSIT) ||
+    activeFilters.includes(TransactionType.WITHDRAW) ||
+    activeFilters.includes(TransactionType.ZAP)
+  ) {
+    queryArray.push(transactions(userId));
+  }
+
+  if (activeFilters.includes(TransactionType.ZAP_SEND)) {
+    queryArray.push(nwcTransactions(userId));
+    queryArray.push(internalAmps(userId));
+    queryArray.push(externalAmps(userId));
+  }
+
+  if (activeFilters.includes(TransactionType.AUTOFORWARD)) {
+    queryArray.push(forwards(userId));
+    queryArray.push(pendingForwards(userId));
+  }
+
+  if (activeFilters.includes(TransactionType.EARNINGS)) {
+    queryArray.push(earnings(userId));
+  }
+
+  if (activeFilters.includes(TransactionType.TOPUP)) {
+    queryArray.push(promoEarnings(userId));
+  }
+
+  const txs =
+    queryArray.length > 0
+      ? await db
+          .knex(queryArray[0])
+          .unionAll(queryArray.slice(1))
+          .orderBy("createDate", "desc")
+          .paginate({
+            perPage: 20,
+            currentPage: pageInt,
+            isLengthAware: true,
+          })
+      : {
+          data: [],
+          pagination: {
+            currentPage: pageInt,
+            perPage: 20,
+            total: 0,
+            lastPage: 1,
+          },
+        };
+
+  const allTransactions = txs.data;
+
+  // filter out transactions that are not in the active filters
+  const finalTxs = allTransactions.filter((tx) =>
+    activeFilters.includes(tx.type)
+  );
+
   const txsModified = {};
-  txs.data.forEach((tx) => {
-    // Group records by createDate YYYY-MM-DD
+  finalTxs.forEach((tx) => {
     const createDate = new Date(tx.createDate);
     const date = `${tx.createDate.toLocaleString("default", {
       month: "long",
     })} ${createDate.getDate()}`;
 
-    // Create date key if it doesn't exist and add tx to array
     if (!txsModified[date]) {
       txsModified[date] = [];
     }
