@@ -358,6 +358,7 @@ const get_tx_id = asyncHandler(async (req, res, next) => {
   res.json({ success: true, data: formatData });
 });
 
+const PAGE_SIZE = 80;
 const get_txs = asyncHandler(async (req, res, next) => {
   const userId = req["uid"];
   const { page } = req.params;
@@ -387,7 +388,7 @@ const get_txs = asyncHandler(async (req, res, next) => {
       ])
       .orderBy("createDate", "desc")
       .paginate({
-        perPage: 20,
+        perPage: PAGE_SIZE,
         currentPage: pageInt,
         isLengthAware: true,
       });
@@ -465,7 +466,7 @@ const get_txs = asyncHandler(async (req, res, next) => {
           .unionAll(queryArray.slice(1))
           .orderBy("createDate", "desc")
           .paginate({
-            perPage: 20,
+            perPage: PAGE_SIZE,
             currentPage: pageInt,
             isLengthAware: true,
           })
@@ -473,7 +474,7 @@ const get_txs = asyncHandler(async (req, res, next) => {
           data: [],
           pagination: {
             currentPage: pageInt,
-            perPage: 20,
+            perPage: PAGE_SIZE,
             total: 0,
             lastPage: 1,
           },
