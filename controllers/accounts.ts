@@ -427,7 +427,10 @@ const get_txs = asyncHandler(async (req, res, next) => {
   }
 
   // Parse filters if provided
-  const activeFilters = filters.split(",");
+  // Parse filters if provided
+  const activeFilters = filters
+    .split(",")
+    .map((filter) => decodeURIComponent(filter));
 
   // Create an array of queries based on active filters
   const queryArray = [];
