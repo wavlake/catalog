@@ -358,7 +358,7 @@ const get_tx_id = asyncHandler(async (req, res, next) => {
   res.json({ success: true, data: formatData });
 });
 
-const PAGE_SIZE = 80;
+const PAGE_SIZE = 40;
 const get_txs = asyncHandler(async (req, res, next) => {
   const userId = req["uid"];
   const { page } = req.params;
@@ -373,127 +373,96 @@ const get_txs = asyncHandler(async (req, res, next) => {
     return;
   }
 
-  // If no filters provided, maintain original behavior
+  // Build the query based on filters
+  let query;
   if (!filters) {
-    const txs = await db
-      .knex(transactions(userId))
-      .unionAll([
-        nwcTransactions(userId),
-        forwards(userId),
-        earnings(userId),
-        internalAmps(userId),
-        externalAmps(userId),
-        pendingForwards(userId),
-        promoEarnings(userId),
-      ])
-      .orderBy("createDate", "desc")
-      .paginate({
-        perPage: PAGE_SIZE,
-        currentPage: pageInt,
-        isLengthAware: true,
-      });
+    // If no filters, use all transaction types
+    query = db.knex.select("*").from(
+      db
+        .knex(transactions(userId))
+        .unionAll([
+          nwcTransactions(userId),
+          forwards(userId),
+          earnings(userId),
+          internalAmps(userId),
+          externalAmps(userId),
+          pendingForwards(userId),
+          promoEarnings(userId),
+        ])
+        .as("all_transactions")
+    );
+  } else {
+    const activeFilters = filters
+      .split(",")
+      .map((filter) => decodeURIComponent(filter));
 
-    const txsModified = {};
-    txs.data.forEach((tx) => {
-      const createDate = new Date(tx.createDate);
-      const date = `${tx.createDate.toLocaleString("default", {
-        month: "long",
-      })} ${createDate.getDate()}`;
+    // Start with an empty array of queries
+    const queryArray = [];
 
-      if (!txsModified[date]) {
-        txsModified[date] = [];
-      }
-      txsModified[date].push({
-        ...tx,
-        isPending: tx.ispending,
-        feeMsat: tx.feemsat,
-        paymentId: tx.paymentid,
-      });
-    });
+    // Add relevant queries based on filters
+    if (
+      activeFilters.includes(TransactionType.DEPOSIT) ||
+      activeFilters.includes(TransactionType.WITHDRAW) ||
+      activeFilters.includes(TransactionType.ZAP)
+    ) {
+      // Create a base transaction query with type filter
+      const transactionTypes = activeFilters.filter((type) =>
+        [
+          TransactionType.DEPOSIT,
+          TransactionType.WITHDRAW,
+          TransactionType.ZAP,
+        ].includes(type as TransactionType)
+      );
+      const transactionQuery = db
+        .knex(transactions(userId))
+        .whereIn("type", transactionTypes)
+        .as("filtered_transactions");
+      queryArray.push(db.knex.select("*").from(transactionQuery));
+    }
 
-    res.json({
-      success: true,
-      data: {
-        transactions: txsModified,
-        pagination: {
-          currentPage: txs.pagination.currentPage,
-          perPage: txs.pagination.perPage,
-          total: txs.pagination.total,
-          totalPages: txs.pagination.lastPage,
-        },
-      },
-    });
-    return;
+    if (activeFilters.includes(TransactionType.ZAP_SEND)) {
+      queryArray.push(nwcTransactions(userId));
+      queryArray.push(internalAmps(userId));
+      queryArray.push(externalAmps(userId));
+    }
+
+    if (activeFilters.includes(TransactionType.AUTOFORWARD)) {
+      queryArray.push(forwards(userId));
+      queryArray.push(pendingForwards(userId));
+    }
+
+    if (activeFilters.includes(TransactionType.EARNINGS)) {
+      queryArray.push(earnings(userId));
+    }
+
+    if (activeFilters.includes(TransactionType.TOPUP)) {
+      queryArray.push(promoEarnings(userId));
+    }
+
+    // Combine queries if any exist
+    query =
+      queryArray.length > 0
+        ? db.knex
+            .select("*")
+            .from(db.knex.union(queryArray, true).as("filtered_transactions"))
+        : db.knex
+            .select("*")
+            .from(db.knex.raw("SELECT NULL as empty WHERE false"))
+            .as("empty_result");
   }
 
-  // Parse filters if provided
-  // Parse filters if provided
-  const activeFilters = filters
-    .split(",")
-    .map((filter) => decodeURIComponent(filter));
+  // Apply sorting and pagination
+  const txs = await query.orderBy("createDate", "desc").paginate({
+    perPage: PAGE_SIZE,
+    currentPage: pageInt,
+    isLengthAware: true,
+  });
 
-  // Create an array of queries based on active filters
-  const queryArray = [];
-
-  if (
-    activeFilters.includes(TransactionType.DEPOSIT) ||
-    activeFilters.includes(TransactionType.WITHDRAW) ||
-    activeFilters.includes(TransactionType.ZAP)
-  ) {
-    queryArray.push(transactions(userId));
-  }
-
-  if (activeFilters.includes(TransactionType.ZAP_SEND)) {
-    queryArray.push(nwcTransactions(userId));
-    queryArray.push(internalAmps(userId));
-    queryArray.push(externalAmps(userId));
-  }
-
-  if (activeFilters.includes(TransactionType.AUTOFORWARD)) {
-    queryArray.push(forwards(userId));
-    queryArray.push(pendingForwards(userId));
-  }
-
-  if (activeFilters.includes(TransactionType.EARNINGS)) {
-    queryArray.push(earnings(userId));
-  }
-
-  if (activeFilters.includes(TransactionType.TOPUP)) {
-    queryArray.push(promoEarnings(userId));
-  }
-
-  const txs =
-    queryArray.length > 0
-      ? await db
-          .knex(queryArray[0])
-          .unionAll(queryArray.slice(1))
-          .orderBy("createDate", "desc")
-          .paginate({
-            perPage: PAGE_SIZE,
-            currentPage: pageInt,
-            isLengthAware: true,
-          })
-      : {
-          data: [],
-          pagination: {
-            currentPage: pageInt,
-            perPage: PAGE_SIZE,
-            total: 0,
-            lastPage: 1,
-          },
-        };
-
-  const allTransactions = txs.data;
-
-  // filter out transactions that are not in the active filters
-  const finalTxs = allTransactions.filter((tx) =>
-    activeFilters.includes(tx.type)
-  );
-
+  // Format the results
   const txsModified = {};
-  finalTxs.forEach((tx) => {
+  txs.data.forEach((tx) => {
     const createDate = new Date(tx.createDate);
-    const date = `${tx.createDate.toLocaleString("default", {
+    const date = `${createDate.toLocaleString("default", {
       month: "long",
     })} ${createDate.getDate()}`;
 
