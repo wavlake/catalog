@@ -358,10 +358,12 @@ const get_tx_id = asyncHandler(async (req, res, next) => {
   res.json({ success: true, data: formatData });
 });
 
+const PAGE_SIZE = 40;
 const get_txs = asyncHandler(async (req, res, next) => {
   const userId = req["uid"];
-
   const { page } = req.params;
+  const filters = req.query.filters as string | undefined;
+
   const pageInt = parseInt(page);
   if (!Number.isInteger(pageInt) || pageInt <= 0) {
     res.status(400).json({
@@ -371,33 +373,99 @@ const get_txs = asyncHandler(async (req, res, next) => {
     return;
   }
 
-  const txs = await db
-    .knex(transactions(userId))
-    .unionAll([
-      nwcTransactions(userId),
-      forwards(userId),
-      earnings(userId),
-      internalAmps(userId),
-      externalAmps(userId),
-      pendingForwards(userId),
-      promoEarnings(userId),
-    ])
-    .orderBy("createDate", "desc")
-    .paginate({
-      perPage: 20,
-      currentPage: pageInt,
-      isLengthAware: true,
-    });
+  // Build the query based on filters
+  let query;
+  if (!filters) {
+    // If no filters, use all transaction types
+    query = db.knex.select("*").from(
+      db
+        .knex(transactions(userId))
+        .unionAll([
+          nwcTransactions(userId),
+          forwards(userId),
+          earnings(userId),
+          internalAmps(userId),
+          externalAmps(userId),
+          pendingForwards(userId),
+          promoEarnings(userId),
+        ])
+        .as("all_transactions")
+    );
+  } else {
+    const activeFilters = filters
+      .split(",")
+      .map((filter) => decodeURIComponent(filter));
 
+    // Start with an empty array of queries
+    const queryArray = [];
+
+    // Add relevant queries based on filters
+    if (
+      activeFilters.includes(TransactionType.DEPOSIT) ||
+      activeFilters.includes(TransactionType.WITHDRAW) ||
+      activeFilters.includes(TransactionType.ZAP)
+    ) {
+      // Create a base transaction query with type filter
+      const transactionTypes = activeFilters.filter((type) =>
+        [
+          TransactionType.DEPOSIT,
+          TransactionType.WITHDRAW,
+          TransactionType.ZAP,
+        ].includes(type as TransactionType)
+      );
+      const transactionQuery = db
+        .knex(transactions(userId))
+        .whereIn("type", transactionTypes)
+        .as("filtered_transactions");
+      queryArray.push(db.knex.select("*").from(transactionQuery));
+    }
+
+    if (activeFilters.includes(TransactionType.ZAP_SEND)) {
+      queryArray.push(nwcTransactions(userId));
+      queryArray.push(internalAmps(userId));
+      queryArray.push(externalAmps(userId));
+    }
+
+    if (activeFilters.includes(TransactionType.AUTOFORWARD)) {
+      queryArray.push(forwards(userId));
+      queryArray.push(pendingForwards(userId));
+    }
+
+    if (activeFilters.includes(TransactionType.EARNINGS)) {
+      queryArray.push(earnings(userId));
+    }
+
+    if (activeFilters.includes(TransactionType.TOPUP)) {
+      queryArray.push(promoEarnings(userId));
+    }
+
+    // Combine queries if any exist
+    query =
+      queryArray.length > 0
+        ? db.knex
+            .select("*")
+            .from(db.knex.union(queryArray, true).as("filtered_transactions"))
+        : db.knex
+            .select("*")
+            .from(db.knex.raw("SELECT NULL as empty WHERE false"))
+            .as("empty_result");
+  }
+
+  // Apply sorting and pagination
+  const txs = await query.orderBy("createDate", "desc").paginate({
+    perPage: PAGE_SIZE,
+    currentPage: pageInt,
+    isLengthAware: true,
+  });
+
+  // Format the results
   const txsModified = {};
   txs.data.forEach((tx) => {
-    // Group records by createDate YYYY-MM-DD
     const createDate = new Date(tx.createDate);
-    const date = `${tx.createDate.toLocaleString("default", {
+    const date = `${createDate.toLocaleString("default", {
       month: "long",
     })} ${createDate.getDate()}`;
 
-    // Create date key if it doesn't exist and add tx to array
     if (!txsModified[date]) {
       txsModified[date] = [];
     }
@@ -1236,6 +1304,60 @@ const disable_user = asyncHandler(async (req, res, next) => {
   }
 });
 
+const get_inbox_lastread = asyncHandler(async (req, res, next) => {
+  const userId = req["uid"];
+
+  try {
+    const lastRead = await prisma.user.findFirstOrThrow({
+      where: {
+        id: userId,
+      },
+      select: {
+        lastInboxRead: true,
+      },
+    });
+
+    res.send({
+      success: true,
+      data: lastRead.lastInboxRead,
+    });
+  } catch (err) {
+    log.error("Error fetching inbox last read", err);
+    res.status(500).send({
+      success: false,
+      error: "Error fetching inbox last read",
+    });
+    return;
+  }
+});
+
+const put_inbox_lastread = asyncHandler(async (req, res, next) => {
+  const userId = req["uid"];
+  const now = new Date();
+
+  try {
+    await prisma.user.update({
+      where: {
+        id: userId,
+      },
+      data: {
+        lastInboxRead: now,
+      },
+    });
+
+    res.send({
+      success: true,
+    });
+  } catch (err) {
+    log.error("Error updating inbox last read", err);
+    res.status(500).send({
+      success: false,
+      error: "Error updating inbox last read",
+    });
+    return;
+  }
+});
+
 export default {
   check_user_verified,
   create_update_lnaddress,
@@ -1264,4 +1386,6 @@ export default {
   create_user,
   create_user_verified,
   disable_user,
+  get_inbox_lastread,
+  put_inbox_lastread,
 };
