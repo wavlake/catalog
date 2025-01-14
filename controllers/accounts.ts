@@ -1308,7 +1308,7 @@ const get_inbox_lastread = asyncHandler(async (req, res, next) => {
   const userId = req["uid"];
 
   try {
-    const lastRead = await prisma.user.findFirst({
+    const lastRead = await prisma.user.findFirstOrThrow({
       where: {
         id: userId,
       },
