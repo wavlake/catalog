@@ -303,7 +303,13 @@ export function transactions(userId) {
       "transaction.id as id",
       "transaction.msat_amount as msatAmount",
       "transaction.failure_reason as failureReason",
-      "transaction.created_at as createDate"
+      "transaction.created_at as createDate",
+      "zap_request.event as zapEvent"
+    )
+    .leftJoin(
+      "zap_request",
+      "zap_request.payment_hash",
+      db.knex.raw(`CONCAT('transaction-', CAST("transaction"."id" as text))`)
     )
     .where("transaction.user_id", "=", userId)
     .andWhere("transaction.created_at", ">", getDateFilter())
