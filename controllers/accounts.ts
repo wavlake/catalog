@@ -1304,6 +1304,60 @@ const disable_user = asyncHandler(async (req, res, next) => {
   }
 });
 
+const get_inbox_lastread = asyncHandler(async (req, res, next) => {
+  const userId = req["uid"];
+
+  try {
+    const lastRead = await prisma.user.findFirst({
+      where: {
+        id: userId,
+      },
+      select: {
+        lastInboxRead: true,
+      },
+    });
+
+    res.send({
+      success: true,
+      data: lastRead.lastInboxRead,
+    });
+  } catch (err) {
+    log.error("Error fetching inbox last read", err);
+    res.status(500).send({
+      success: false,
+      error: "Error fetching inbox last read",
+    });
+    return;
+  }
+});
+
+const put_inbox_lastread = asyncHandler(async (req, res, next) => {
+  const userId = req["uid"];
+  const now = new Date();
+
+  try {
+    await prisma.user.update({
+      where: {
+        id: userId,
+      },
+      data: {
+        lastInboxRead: now,
+      },
+    });
+
+    res.send({
+      success: true,
+    });
+  } catch (err) {
+    log.error("Error updating inbox last read", err);
+    res.status(500).send({
+      success: false,
+      error: "Error updating inbox last read",
+    });
+    return;
+  }
+});
+
 export default {
   check_user_verified,
   create_update_lnaddress,
@@ -1332,4 +1386,6 @@ export default {
   create_user,
   create_user_verified,
   disable_user,
+  get_inbox_lastread,
+  put_inbox_lastread,
 };
