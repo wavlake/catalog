@@ -72,6 +72,16 @@ router.get(
 );
 router.get("/notification", isAuthorized, accountsController.get_notification);
 router.put("/notification", isAuthorized, accountsController.put_notification);
+router.get(
+  "/inbox/lastread",
+  isAuthorized,
+  accountsController.get_inbox_lastread
+);
+router.put(
+  "/inbox/lastread",
+  isAuthorized,
+  accountsController.put_inbox_lastread
+);
 router.get("/features", isAuthorized, accountsController.get_features);
 router.get("/connections", isAuthorized, connectionsController.get_connections);
 router.get("/tx/splits/:id", isAuthorized, accountsController.get_splits);
