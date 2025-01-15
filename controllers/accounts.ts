@@ -372,7 +372,7 @@ const get_txs = asyncHandler(async (req, res, next) => {
     });
     return;
   }
-
+  console.log("no filters1111");
   // Build the query based on filters
   let query;
   if (!filters) {
@@ -381,23 +381,13 @@ const get_txs = asyncHandler(async (req, res, next) => {
       db
         .knex(transactions(userId))
         .unionAll([
-          db.knex(
-            nwcTransactions(userId).select(db.knex.raw("NULL as event"), "*")
-          ),
-          db.knex(forwards(userId).select(db.knex.raw("NULL as event"), "*")),
-          db.knex(earnings(userId).select(db.knex.raw("NULL as event"), "*")),
-          db.knex(
-            internalAmps(userId).select(db.knex.raw("NULL as event"), "*")
-          ),
-          db.knex(
-            externalAmps(userId).select(db.knex.raw("NULL as event"), "*")
-          ),
-          db.knex(
-            pendingForwards(userId).select(db.knex.raw("NULL as event"), "*")
-          ),
-          db.knex(
-            promoEarnings(userId).select(db.knex.raw("NULL as event"), "*")
-          ),
+          nwcTransactions(userId),
+          forwards(userId),
+          earnings(userId),
+          internalAmps(userId),
+          externalAmps(userId),
+          pendingForwards(userId),
+          promoEarnings(userId),
         ])
         .as("all_transactions")
     );
