@@ -39,6 +39,11 @@ export function getTopUpDetail(userId, paymentId) {
 export function getZapDetail(userId, paymentId) {
   return db
     .knex("transaction")
+    .leftJoin(
+      "zap_request",
+      "zap_request.payment_hash",
+      db.knex.raw(`CONCAT('transaction-', CAST("transaction"."id" as text))`)
+    )
     .select(
       "transaction.fee_msat as feemsat",
       "transaction.success as success",
@@ -49,7 +54,8 @@ export function getZapDetail(userId, paymentId) {
       "transaction.id as id",
       "transaction.msat_amount as msatAmount",
       "transaction.failure_reason as failureReason",
-      "transaction.created_at as createDate"
+      "transaction.created_at as createDate",
+      "zap_request.event as zapEvent"
     )
     .where("transaction.id", "=", paymentId)
     .andWhere("transaction.user_id", "=", userId)
