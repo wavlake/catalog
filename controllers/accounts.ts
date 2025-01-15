@@ -372,7 +372,7 @@ const get_txs = asyncHandler(async (req, res, next) => {
     });
     return;
   }
-  console.log("no filters1111");
+
   // Build the query based on filters
   let query;
   if (!filters) {
