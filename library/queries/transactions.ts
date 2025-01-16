@@ -192,7 +192,6 @@ export function getEarningsDetail(userId, paymentId) {
     .knex("amp")
     .join("preamp", "preamp.tx_id", "=", "amp.tx_id")
     .leftOuterJoin("user", "user.id", "=", "amp.user_id")
-    .leftOuterJoin("npub", "npub.public_hex", "=", "amp.user_id")
     .leftOuterJoin("comment", "comment.tx_id", "=", "amp.tx_id")
     .leftOuterJoin("track", "track.id", "=", "amp.track_id")
     .leftOuterJoin("album", "album.id", "=", "amp.track_id")
@@ -216,7 +215,13 @@ export function getEarningsDetail(userId, paymentId) {
       "preamp.app_name as appName",
       "user.artwork_url as commenterArtworkUrl",
       db.knex.raw(`COALESCE("user"."name", "preamp"."sender_name") as name`),
-      "npub.metadata as nostrMetadata"
+      // only return the nostrPublicHex if the user_id is a nostr public key of length 64
+      db.knex.raw(`
+        CASE 
+          WHEN LENGTH("amp"."user_id") = 64 THEN "amp"."user_id"
+          ELSE NULL
+        END as nostrPublicHex
+      `)
     )
     .where("amp.split_destination", "=", userId)
     .andWhere("amp.tx_id", "=", paymentId)
