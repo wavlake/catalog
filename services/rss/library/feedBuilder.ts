@@ -57,7 +57,7 @@ const buildAlbumFeed = async (data) => {
     // itunesAuthor: '',
     // itunesSubtitle: '',
     // itunesSummary: '',
-    // itunesOwner: { name: '', email: '' },
+    itunesOwner: { name: "Wavlake", email: "contact@wavlake.com" },
     itunesExplicit: `${isExplicit ?? false}`,
     itunesImage: `${artwork}`,
     customElements: [
