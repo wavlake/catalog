@@ -17,7 +17,7 @@ export const identifyActivePromosWithBudgetRemaining = async (): Promise<
       "msat_budget as msatBudget",
       "msat_payout_amount as msatPayoutAmount",
       "content_id as contentId",
-      "content_type as contentType"
+      "content_type as contentType",
     )
     .where("is_active", true)
     .andWhere("is_pending", false)
@@ -33,14 +33,14 @@ export const identifyActivePromosWithBudgetRemaining = async (): Promise<
     .sum("msat_amount as msatTotal")
     .whereIn(
       "promo_id",
-      activePromos.map((promo) => promo.id)
+      activePromos.map((promo) => promo.id),
     )
     .andWhere("is_pending", false)
     .groupBy("promo_id");
 
   return activePromos.filter((promo) => {
     const promoRewardTotal = activePromosRewardTotals.find(
-      (total) => total.promo_id === promo.id
+      (total) => total.promo_id === promo.id,
     )?.msatTotal;
 
     // If no rewards have been issued for this promo, it has budget remaining
@@ -53,7 +53,7 @@ export const identifyActivePromosWithBudgetRemaining = async (): Promise<
 };
 
 export const identifyPromosWhereUserEarnedToday = async (
-  accountId: string
+  accountId: string,
 ): Promise<any[]> => {
   const today = new Date();
   today.setHours(0, 0, 0, 0); // Set to start of day
@@ -66,7 +66,7 @@ export const identifyPromosWhereUserEarnedToday = async (
       "promo.msat_budget as msatBudget",
       "promo.msat_payout_amount as msatPayoutAmount",
       "promo.content_id as contentId",
-      "promo.content_type as contentType"
+      "promo.content_type as contentType",
     )
     .where("promo_reward.user_id", accountId)
     .andWhere("promo_reward.created_at", ">=", today)
@@ -75,7 +75,7 @@ export const identifyPromosWhereUserEarnedToday = async (
       "promo.id",
       "promo.msat_payout_amount",
       "promo.content_id",
-      "promo.content_type"
+      "promo.content_type",
     );
 
   return userPromos;
@@ -124,7 +124,7 @@ const getTotalSettledRewards = async (promoId: number): Promise<number> => {
 
 const getContentDuration = async (
   contentType: string,
-  contentId: string
+  contentId: string,
 ): Promise<number> => {
   const content = await db
     .knex(contentType)
@@ -139,7 +139,7 @@ const getContentDuration = async (
 
 export const isPromoActive = async (
   promoId: number,
-  msatBudget: number
+  msatBudget: number,
 ): Promise<boolean> => {
   const totalSettledRewards = await getTotalSettledRewards(promoId);
 
@@ -155,7 +155,7 @@ export const isPromoActive = async (
 export const isUserEligibleForPromo = async (
   userId: string,
   ip: string,
-  promoId: number
+  promoId: number,
 ) => {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -167,7 +167,7 @@ export const isUserEligibleForPromo = async (
       "promo.msat_payout_amount as msat_payout_amount",
       "promo.content_type as content_type",
       "promo.content_id as content_id",
-      "promo_reward.user_id as user_id"
+      "promo_reward.user_id as user_id",
     )
     .sum("msat_amount as total")
     .where({ "promo.id": promoId, "promo_reward.user_id": userId })
@@ -178,7 +178,7 @@ export const isUserEligibleForPromo = async (
       "promo.msat_payout_amount",
       "promo.content_type",
       "promo.content_id",
-      "promo_reward.user_id"
+      "promo_reward.user_id",
     )
     .first();
 
@@ -196,7 +196,7 @@ export const isUserEligibleForPromo = async (
           "promo.msat_payout_amount as msat_payout_amount",
           "promo.content_type as content_type",
           "promo.content_id as content_id",
-          "promo_reward.ip as ip"
+          "promo_reward.ip as ip",
         )
         .sum("msat_amount as total")
         .where({ "promo.id": promoId, "promo_reward.ip": ip })
@@ -207,7 +207,7 @@ export const isUserEligibleForPromo = async (
           "promo.msat_payout_amount",
           "promo.content_type",
           "promo.content_id",
-          "promo_reward.ip"
+          "promo_reward.ip",
         )
         .first()
     : null;
@@ -219,7 +219,7 @@ export const isUserEligibleForPromo = async (
 
   const contentDuration = await getContentDuration(
     userDailyContentRewards.content_type,
-    userDailyContentRewards.content_id
+    userDailyContentRewards.content_id,
   );
 
   const durationRounded = Math.floor(contentDuration / EARNING_INTERVAL);
@@ -248,7 +248,7 @@ export const isUserEligibleForReward = async (
   userId: string,
   promoId: number,
   ip: string,
-  ignoreTime = false
+  ignoreTime = false,
 ): Promise<boolean> => {
   // Set datetime to 58 seconds ago
   const now = new Date(Date.now() - 58000);
@@ -335,7 +335,7 @@ export const isUserEligibleForReward = async (
     const userIsEligibleForPromo = await isUserEligibleForPromo(
       userId,
       ip,
-      promoId
+      promoId,
     );
 
     if (!userIsEligibleForPromo) {
@@ -377,7 +377,7 @@ export const getPromoByContentId = async (contentId: string): Promise<any> => {
 
   const isActive = await isPromoActive(
     mostRecentPromo.id,
-    mostRecentPromo.msatBudget
+    mostRecentPromo.msatBudget,
   );
 
   return { ...mostRecentPromo, isPromoActive: isActive };
@@ -385,7 +385,7 @@ export const getPromoByContentId = async (contentId: string): Promise<any> => {
 
 export const getTotalPromoEarnedByUser = async (
   userId: string,
-  promoId: number
+  promoId: number,
 ): Promise<number> => {
   const userTotalMsatEarned = await db
     .knex("promo_reward")
@@ -404,7 +404,7 @@ export const getTotalPromoEarnedByUser = async (
 // TODO - This uses UTC time, need to convert to local time
 export const getTotalPromoEarnedByUserToday = async (
   userId: string,
-  promoId: number
+  promoId: number,
 ): Promise<number> => {
   const today = new Date();
   today.setHours(0, 0, 0, 0); // Set to start of day
@@ -429,8 +429,14 @@ export const getTotalPromoEarnedByUserToday = async (
 
 export const getTotalPossibleEarningsForPromoForUser = async (
   contentDuration: number,
-  msatPayoutAmount: number
+  msatPayoutAmount: number,
 ): Promise<number> => {
+  if (contentDuration < EARNING_INTERVAL) {
+    // set a floor of 1 earning period
+    const wholeEarningPeriods = 1;
+    return wholeEarningPeriods * msatPayoutAmount;
+  }
+
   const wholeEarningPeriods = Math.floor(contentDuration / EARNING_INTERVAL);
   return wholeEarningPeriods * msatPayoutAmount;
 };
@@ -441,7 +447,7 @@ export const getTotalRewardsForUser = async (
     startDate?: Date;
     endDate?: Date;
     includePending?: boolean;
-  } = {}
+  } = {},
 ): Promise<number> => {
   try {
     const { startDate, endDate = new Date(), includePending = false } = options;
@@ -478,7 +484,7 @@ export const getTotalRewardsForUser = async (
 // Helper function to get daily rewards
 export const getTotalDailyRewardsForUser = async (
   userId: string,
-  includePending: boolean = false
+  includePending: boolean = false,
 ): Promise<number> => {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
