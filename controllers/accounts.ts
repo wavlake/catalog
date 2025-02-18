@@ -349,7 +349,7 @@ const get_tx_id = asyncHandler(async (req, res, next) => {
   const formatData = {
     ...data,
     feeMsat: data.feemsat ? data.feemsat : data.feeMsat,
-    createDate: data.createdate ? data.createdate : data.createDate,
+    createDate: data.created_at ? data.created_at : data.created_at,
     paymentId: data.paymentid ? data.paymentid : data.paymentId,
     msatAmount: data.msatamount ? data.msatamount : data.msatAmount,
     failureReason: data.failurereason ? data.failurereason : data.failureReason,
@@ -452,7 +452,7 @@ const get_txs = asyncHandler(async (req, res, next) => {
   }
 
   // Apply sorting and pagination
-  const txs = await query.orderBy("createDate", "desc").paginate({
+  const txs = await query.orderBy("created_at", "desc").paginate({
     perPage: PAGE_SIZE,
     currentPage: pageInt,
     isLengthAware: true,
@@ -461,7 +461,7 @@ const get_txs = asyncHandler(async (req, res, next) => {
   // Format the results
   const txsModified = {};
   txs.data.forEach((tx) => {
-    const createDate = new Date(tx.createDate);
+    const createDate = new Date(tx.created_at);
     const date = `${createDate.toLocaleString("default", {
       month: "long",
     })} ${createDate.getDate()}`;
