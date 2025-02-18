@@ -27,7 +27,7 @@ export function getTopUpDetail(userId, paymentId) {
       db.knex.raw("NULL as id"),
       db.knex.raw(`sum("msat_amount") as "msatAmount"`),
       db.knex.raw("NULL as failureReason"),
-      db.knex.raw(`DATE("promo_reward"."created_at") as "createDate"`)
+      db.knex.raw(`DATE("promo_reward"."created_at") as "created_at"`)
     )
     .where("user_id", "=", userId)
     .andWhere("promo_reward.is_pending", "=", false)
@@ -54,7 +54,7 @@ export function getZapDetail(userId, paymentId) {
       "transaction.id as id",
       "transaction.msat_amount as msatAmount",
       "transaction.failure_reason as failureReason",
-      "transaction.created_at as createDate",
+      "transaction.created_at as created_at",
       "zap_request.event as zapEvent"
     )
     .where("transaction.id", "=", paymentId)
@@ -76,7 +76,7 @@ export function getDepositDetail(userId, paymentId) {
       "transaction.id as id",
       "transaction.msat_amount as msatAmount",
       "transaction.failure_reason as failureReason",
-      "transaction.created_at as createDate"
+      "transaction.created_at as created_at"
     )
     .where("transaction.user_id", "=", userId)
     .andWhere("transaction.id", "=", paymentId)
@@ -96,7 +96,7 @@ export function getWithdrawDetail(userId, paymentId) {
       "transaction.id as id",
       "transaction.msat_amount as msatAmount",
       "transaction.failure_reason as failureReason",
-      "transaction.created_at as createDate"
+      "transaction.created_at as created_at"
     )
     .where("transaction.user_id", "=", userId)
     .andWhere("transaction.id", "=", paymentId)
@@ -125,7 +125,7 @@ export function getAutoforwardDetail(userId, paymentId) {
       db.knex.raw("max(forward.external_payment_id) as id"),
       db.knex.raw("max(forward_detail.msat_amount) as msatAmount"),
       db.knex.raw("max(forward_detail.error) as failureReason"),
-      db.knex.raw("max(forward_detail.created_at) as createDate")
+      db.knex.raw("max(forward_detail.created_at) as created_at")
     )
     .where("forward.user_id", "=", userId)
     .andWhere("forward_detail.external_payment_id", "=", paymentId)
@@ -146,7 +146,7 @@ export async function getZapSendDetail(userId, paymentId) {
       .leftOuterJoin("podcast", "podcast.id", "=", "amp.track_id")
       .select(
         "preamp.msat_amount as msatAmount",
-        "amp.created_at as createDate",
+        "amp.created_at as created_at",
         db.knex.raw(
           'COALESCE("track"."title", "album"."title", "artist"."name", "episode"."title", "podcast"."name") as title'
         ),
@@ -162,7 +162,7 @@ export async function getZapSendDetail(userId, paymentId) {
       .knex("external_payment")
       .select(
         "msat_amount as msatAmount",
-        "created_at as createDate",
+        "created_at as created_at",
         "podcast as title",
         "is_settled as success",
         "fee_msat as fee",
@@ -178,7 +178,7 @@ export async function getZapSendDetail(userId, paymentId) {
       .knex("nwc_wallet_transaction")
       .select(
         "msat_amount as msatAmount",
-        "created_at as createDate",
+        "created_at as created_at",
         "id",
         db.knex.raw(`'${TransactionType.ZAP_SEND}' as type`)
       )
@@ -207,7 +207,7 @@ export function getEarningsDetail(userId, paymentId) {
         'COALESCE("track"."title", "album"."title", "artist"."name", "episode"."title") as title'
       ),
       "comment.content as comment",
-      "amp.created_at as createDate",
+      "amp.created_at as created_at",
       "preamp.msat_amount as msatAmount",
       "amp.msat_amount as splitMsatAmount",
       "preamp.podcast as podcast",
@@ -259,7 +259,7 @@ export function promoEarnings(userId) {
       db.knex.raw("NULL as id"),
       db.knex.raw(`sum("msat_amount") as "msatAmount"`),
       db.knex.raw("NULL as failureReason"),
-      db.knex.raw(`max("created_at") as "createDate"`),
+      db.knex.raw(`max("created_at") as "created_at"`),
       db.knex.raw("NULL as zapEvent")
     )
     .where("user_id", "=", userId)
@@ -292,7 +292,7 @@ export function earnings(userId) {
       "amp.id as id",
       "amp.msat_amount as msatAmount",
       db.knex.raw("'' as failureReason"),
-      "amp.created_at as createDate",
+      "amp.created_at as created_at",
       db.knex.raw("NULL as zapEvent")
     )
     .where("amp.split_destination", "=", userId)
@@ -321,7 +321,7 @@ export function transactions(userId) {
       "transaction.id as id",
       "transaction.msat_amount as msatAmount",
       "transaction.failure_reason as failureReason",
-      "transaction.created_at as createDate",
+      "transaction.created_at as created_at",
       "zap_request.event as zapEvent"
     )
     .where("transaction.user_id", "=", userId)
@@ -350,7 +350,7 @@ export function nwcTransactions(userId) {
       "nwc_wallet_transaction.id as id",
       "nwc_wallet_transaction.msat_amount as msatAmount",
       db.knex.raw("'' as failureReason"),
-      "nwc_wallet_transaction.created_at as createDate",
+      "nwc_wallet_transaction.created_at as created_at",
       db.knex.raw("NULL as zapEvent")
     )
     .where("wallet_connection.user_id", "=", userId)
@@ -379,7 +379,7 @@ export function forwards(userId) {
       db.knex.raw("min(forward_detail.id) as id"),
       db.knex.raw("min(forward_detail.msat_amount) as msatAmount"),
       db.knex.raw("min(forward_detail.error) as failureReason"),
-      db.knex.raw("min(forward_detail.created_at) as createDate"),
+      db.knex.raw("min(forward_detail.created_at) as created_at"),
       db.knex.raw("NULL as zapEvent")
     )
     .where("forward.user_id", "=", userId)
@@ -409,7 +409,7 @@ export function internalAmps(userId) {
       db.knex.raw("MIN(amp.id) as id"),
       "preamp.msat_amount as msatAmount",
       db.knex.raw("'' as failureReason"),
-      "preamp.created_at as createDate",
+      "preamp.created_at as created_at",
       db.knex.raw("NULL as zapEvent")
     )
     .groupBy("preamp.tx_id")
@@ -432,7 +432,7 @@ export function externalAmps(userId) {
       "external_payment.id as id",
       "external_payment.msat_amount as msatAmount",
       db.knex.raw("'' as failureReason"),
-      "external_payment.created_at as createDate",
+      "external_payment.created_at as created_at",
       db.knex.raw("NULL as zapEvent")
     )
     .where("external_payment.user_id", "=", userId)
@@ -454,7 +454,7 @@ export function pendingForwards(userId) {
       db.knex.raw("max(forward.id) as id"),
       db.knex.raw("sum(forward.msat_amount) as msatAmount"),
       db.knex.raw("'' as failureReason"),
-      db.knex.raw("max(forward.created_at) as createDate"),
+      db.knex.raw("max(forward.created_at) as created_at"),
       db.knex.raw("NULL as zapEvent")
     )
     .where("forward.user_id", "=", userId)
