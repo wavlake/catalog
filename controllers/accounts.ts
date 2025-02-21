@@ -578,12 +578,6 @@ const create_update_lnaddress = asyncHandler(async (req, res, next) => {
   }
 
   try {
-    console.log("updating.....", lightningAddress, userId);
-    res.send({
-      success: true,
-      data: { userId: userId, lightningAddress: lightningAddress },
-    });
-    return;
     await prisma.user.update({
       where: {
         id: userId,
