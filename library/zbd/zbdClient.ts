@@ -49,7 +49,6 @@ export async function getProductionIps(): Promise<Array<string>> {
 }
 
 export async function isSupportedRegion(ipAddress: string): Promise<boolean> {
-  console.log("Checking if region is supported", ipAddress);
   return client
     .get<ZBDIsSupportedRegionResponse>(
       `https://api.zebedee.io/v0/is-supported-region/${ipAddress}`
@@ -59,8 +58,6 @@ export async function isSupportedRegion(ipAddress: string): Promise<boolean> {
       return res.data.data.isSupported;
     })
     .catch((err) => {
-      console.log("11111res", err.Response);
-      console.log("22222req", err.Request);
       log.error(err);
       return false;
     });
@@ -156,7 +153,6 @@ export async function validateLightningAddress(
   return client
     .get(`https://api.zebedee.io/v0/ln-address/validate/${lightningAddress}`)
     .then((res) => {
-      console.log("valid?", res.data);
       return res.data.data.valid;
     })
     .catch((err) => {
