@@ -493,6 +493,7 @@ const get_txs = asyncHandler(async (req, res, next) => {
 
 const get_check_region = asyncHandler(async (req, res, next) => {
   // Respond with 200 if request gets past middleware
+  console.log("get_check_region, returning valid");
   res.send(200);
 });
 
@@ -577,6 +578,12 @@ const create_update_lnaddress = asyncHandler(async (req, res, next) => {
   }
 
   try {
+    console.log("updating.....", lightningAddress, userId);
+    res.send({
+      success: true,
+      data: { userId: userId, lightningAddress: lightningAddress },
+    });
+    return;
     await prisma.user.update({
       where: {
         id: userId,
