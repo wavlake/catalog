@@ -643,6 +643,17 @@ const edit_account = asyncHandler(async (req, res, next) => {
     if (name) {
       // generate profile url
       profileUrl = urlFriendly(name);
+      const isValid = validateUsername(profileUrl);
+
+      if (!isValid) {
+        res.status(400).json({
+          success: false,
+          error:
+            "Name should only contain letters, numbers, underscores, hyphens, and be available",
+        });
+        return;
+      }
+
       const existingUser = await prisma.user.findUnique({
         where: {
           profileUrl: profileUrl,
@@ -751,17 +762,13 @@ const get_login_token_for_zbd_user = asyncHandler(async (req, res, next) => {
       });
 
       const incomingUsername = userData?.gamerTag;
-      const existingUsername = await prisma.user.findFirst({
-        where: {
-          name: incomingUsername,
-        },
-      });
 
-      // if the username is already taken, generate a new one, otherwise use the incoming username
-      const username =
-        existingUsername?.id || !incomingUsername
-          ? await getRandomName()
-          : incomingUsername;
+      // Validate username
+      let username = await validateAndGenerateUsername(incomingUsername);
+
+      if (!username) {
+        username = await getRandomName();
+      }
 
       // create the new user record in the user table
       await prisma.user.create({
