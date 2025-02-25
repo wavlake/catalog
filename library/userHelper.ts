@@ -418,9 +418,22 @@ export function makeRandomName() {
 }
 
 export async function validateUsername(username: string): Promise<boolean> {
+  if (RESERVED_USERNAMES.includes(username)) {
+    return false;
+  }
+
   // Name should only contain letters, numbers, underscores, and hyphens
   return /^[A-Za-z0-9_-]+$/.test(username);
 }
+
+const RESERVED_USERNAMES = [
+  "admin",
+  "administrator",
+  "wavlake",
+  "ticket",
+  "tickets",
+  "zap",
+];
 
 export async function usernameIsAvailable(name: string): Promise<boolean> {
   const profileUrl = urlFriendly(name);
