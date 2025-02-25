@@ -15,7 +15,7 @@ import core from "express-serve-static-core";
 import { getContentFromEventId } from "@library/content";
 import crypto from "crypto";
 import { validateNostrZapRequest } from "@library/zap";
-import { IncomingInvoiceType } from "@library/common";
+import { IncomingInvoiceType, PaymentType } from "@library/common";
 
 const getPaymentHash = (invoice: string) => {
   let decodedInvoice;
@@ -87,10 +87,7 @@ const createZapInvoice = asyncHandler<
   }
 
   if (!zappedContent) {
-    res
-      .status(404)
-      .send({ success: false, error: `Content id for zap could not be found` });
-    return;
+    log.info(`Content id not found, processing as a non-content zap`);
   }
 
   // Validate referrer if present
@@ -123,8 +120,9 @@ const createZapInvoice = asyncHandler<
   // Create a blank invoice in the database with a reference to the targeted content
   const invoice = await prisma.externalReceive.create({
     data: {
-      trackId: zappedContent.id,
-      paymentTypeCode: 7, // Zap code
+      // this will handle zaps sent without a zappedContent id
+      trackId: zappedContent?.id,
+      paymentTypeCode: PaymentType.Zap,
       isPending: true,
       referrerAppId: referrer ?? null,
     },
