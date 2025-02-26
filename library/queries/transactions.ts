@@ -476,3 +476,30 @@ export function getMaxAmpDate(userId) {
     .max("created_at as created_at")
     .where("split_destination", "=", userId);
 }
+
+// TODO - add ticketed event id to the transaction results
+export function getTicketPayments(userId) {
+  return db
+    .knex("ticket")
+    .join(
+      "ticketed_event",
+      "ticketed_event.id",
+      "=",
+      "ticket.ticketed_event_id"
+    )
+    .where("ticketed_event.user_id", "=", userId)
+    .select(
+      db.knex.raw("external_receive_id as paymentid"),
+      db.knex.raw("0 as feemsat"),
+      db.knex.raw("is_paid as success"),
+      db.knex.raw(`'${TransactionType.TICKET}' as type`),
+      db.knex.raw("'' as title"),
+      db.knex.raw("is_pending as ispending"),
+      db.knex.raw("'' as comment"),
+      db.knex.raw("ticket.id as id"),
+      db.knex.raw("max(ticekt.price_msat) as msatAmount"),
+      db.knex.raw("'' as failureReason"),
+      db.knex.raw("max(ticket.created_at) as created_at"),
+      db.knex.raw("NULL as zapEvent")
+    );
+}
