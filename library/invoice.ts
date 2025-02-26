@@ -1,10 +1,13 @@
 const log = require("loglevel");
 log.setLevel("debug");
+// nlInvoice is undefined when using import
+const nlInvoice = require("@node-lightning/invoice");
 import db from "./db";
 import {
   getUserIdFromTransactionId,
   handleCompletedDeposit,
   handleCompletedPromoInvoice,
+  handleCompletedTicketInvoice,
   wasTransactionAlreadyLogged,
 } from "./deposit";
 import { processSplits } from "./amp";
@@ -93,6 +96,16 @@ export const updateInvoiceIfNeeded = async (
         case IncomingInvoiceType.Promo:
           log.info(`Processing promo invoice for id ${invoiceId}`);
           await handleCompletedPromoInvoice(invoiceId, msatAmount);
+          break;
+        case IncomingInvoiceType.Ticket:
+          log.info(`Processing ticket invoice for id ${invoiceId}`);
+          await handleCompletedTicketInvoice(
+            invoiceId,
+            msatAmount,
+            paymentRequest,
+            preimage,
+            externalId
+          );
           break;
         default:
           log.error(`Invalid invoiceType: ${invoiceType}`);
@@ -379,4 +392,17 @@ export const logZapRequest = async (
     .catch((err) => {
       throw new Error(`Error inserting zap request: ${err}`);
     });
+};
+
+export const getPaymentHash = (invoice: string) => {
+  let decodedInvoice;
+  try {
+    decodedInvoice = nlInvoice.decode(invoice);
+  } catch (err) {
+    log.error(`Error decoding invoice ${err}`);
+    return;
+  }
+  const { paymentHash } = decodedInvoice;
+
+  return Buffer.from(paymentHash).toString("hex");
 };
