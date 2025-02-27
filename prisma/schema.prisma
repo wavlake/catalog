@@ -131,6 +131,7 @@ model externalReceive {
   paymentTypeCode Int?      @map("payment_type_code") @db.SmallInt
   errorMessage    String?   @map("error_message")
   referrerAppId   String?   @map("referrer_app_id") @db.VarChar(21)
+  ticket          ticket[]
 
   @@map("external_receive")
 }
@@ -271,6 +272,7 @@ model User {
   referrer_app        ReferrerApp[]
   split_recipient     SplitRecipient[]
   subscriber          Subscriber?
+  ticketed_event      ticketed_event[]
   transaction         Transaction[]
   user_flag           UserFlag[]
   user_pubkey         UserPubkey[]
@@ -689,6 +691,38 @@ model PromoReward {
   @@index([promoId], map: "idx_promo_reward_promo_id")
   @@index([userId], map: "idx_promo_reward_user_id")
   @@map("promo_reward")
+}
+
+model ticket {
+  id                  Int             @id @default(autoincrement())
+  ticketed_event_id   String          @db.VarChar(64)
+  external_receive_id Int
+  is_used             Boolean         @default(false)
+  is_paid             Boolean         @default(false)
+  is_pending          Boolean         @default(true)
+  created_at          DateTime?       @db.Timestamptz(6)
+  updated_at          DateTime?       @db.Timestamptz(6)
+  nostr               String?         @db.VarChar(255)
+  ticket_secret       String?         @db.VarChar(255)
+  used_at             DateTime?       @db.Timestamptz(6)
+  price_msat          Int?
+  external_receive    externalReceive @relation(fields: [external_receive_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "ticket_external_receive_id_foreign")
+  ticketed_event      ticketed_event  @relation(fields: [ticketed_event_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "ticket_ticketed_event_id_foreign")
+}
+
+model ticketed_event {
+  id                     String    @id @unique(map: "ticketed_event_id_unique") @db.VarChar(64)
+  name                   String    @db.VarChar(255)
+  location               String    @db.VarChar(255)
+  description            String    @db.VarChar(255)
+  price_msat             Int
+  total_tickets          Int
+  max_tickets_per_person Int
+  user_id                String    @db.VarChar(255)
+  dt_start               DateTime  @db.Timestamptz(6)
+  dt_end                 DateTime? @db.Timestamptz(6)
+  ticket                 ticket[]
+  user                   User      @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "ticketed_event_user_id_foreign")
 }
 
 view TrackInfo {

@@ -9,6 +9,7 @@ export enum TransactionType {
   AUTOFORWARD = "Autoforward",
   EARNINGS = "Earnings",
   TOPUP = "Top Up",
+  TICKET = "Ticket Sale",
 }
 
 export enum PaymentType {
@@ -41,6 +42,7 @@ export enum IncomingInvoiceType {
   LNURL_Zap = "lnurl_zap",
   LNURL = "lnurl",
   Promo = "promo",
+  Ticket = "ticket",
 }
 
 export const IncomingInvoiceTableMap: Record<
@@ -52,6 +54,7 @@ export const IncomingInvoiceTableMap: Record<
   [IncomingInvoiceType.LNURL_Zap]: "transaction",
   [IncomingInvoiceType.LNURL]: "transaction",
   [IncomingInvoiceType.Promo]: "promo",
+  [IncomingInvoiceType.Ticket]: "transaction",
 };
 
 export type PromoResponseData = {

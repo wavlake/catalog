@@ -2,6 +2,7 @@ import log from "./winston";
 import db from "./db";
 import { IncomingInvoiceTableMap, IncomingInvoiceType } from "./common";
 import prisma from "../prisma/client";
+import { generateValidationCode, sendTicketDm } from "./tickets";
 
 export async function getUserIdFromTransactionId(
   transactionId: number
@@ -70,6 +71,87 @@ export const handleCompletedPromoInvoice = async (
       );
       return false;
     });
+};
+
+export const handleCompletedTicketInvoice = async (
+  invoiceId: number,
+  msatAmount: number,
+  paymentRequest: string,
+  preimage: string,
+  externalId: string
+) => {
+  // Start a transaction using Prisma
+  return await prisma.$transaction(async (prismaTransaction) => {
+    // Find the ticket inside the transaction
+    const ticket = await prismaTransaction.ticket.findFirst({
+      where: {
+        external_receive_id: invoiceId,
+      },
+    });
+
+    if (!ticket) {
+      throw new Error(`Ticket not found for invoice ID: ${invoiceId}`);
+    }
+
+    // Find the ticketed event inside the transaction
+    const ticketedEvent = await prismaTransaction.ticketed_event.findFirst({
+      where: {
+        id: ticket.ticketed_event_id,
+      },
+    });
+
+    if (!ticketedEvent) {
+      throw new Error(`Ticketed event not found for ticket ID: ${ticket.id}`);
+    }
+
+    // Update ticket record
+    await prismaTransaction.ticket.update({
+      where: {
+        id: ticket.id,
+      },
+      data: {
+        is_pending: false,
+        is_paid: true,
+        ticket_secret: generateValidationCode(),
+        updated_at: new Date(),
+        price_msat: msatAmount,
+      },
+    });
+
+    // Update external receive record
+    await prismaTransaction.externalReceive.update({
+      where: {
+        id: invoiceId,
+      },
+      data: {
+        isPending: false,
+        preimage: preimage,
+        paymentHash: paymentRequest,
+        externalId: externalId,
+        updatedAt: new Date(),
+      },
+    });
+
+    // Update user record balance
+    await prismaTransaction.user.update({
+      where: {
+        id: ticketedEvent.user_id,
+      },
+      data: {
+        msatBalance: {
+          increment: msatAmount,
+        },
+        updatedAt: new Date(),
+      },
+    });
+
+    // TODO: Send ticket DM
+    const ticketDm = await sendTicketDm(
+      "recipientPubkey",
+      ticket.id,
+      ticketedEvent.id
+    );
+  });
 };
 
 export const handleCompletedDeposit = async (

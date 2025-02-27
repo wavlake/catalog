@@ -1,10 +1,12 @@
 const log = require("loglevel");
 log.setLevel("debug");
+
 import db from "./db";
 import {
   getUserIdFromTransactionId,
   handleCompletedDeposit,
   handleCompletedPromoInvoice,
+  handleCompletedTicketInvoice,
   wasTransactionAlreadyLogged,
 } from "./deposit";
 import { processSplits } from "./amp";
@@ -93,6 +95,16 @@ export const updateInvoiceIfNeeded = async (
         case IncomingInvoiceType.Promo:
           log.info(`Processing promo invoice for id ${invoiceId}`);
           await handleCompletedPromoInvoice(invoiceId, msatAmount);
+          break;
+        case IncomingInvoiceType.Ticket:
+          log.info(`Processing ticket invoice for id ${invoiceId}`);
+          await handleCompletedTicketInvoice(
+            invoiceId,
+            msatAmount,
+            paymentRequest,
+            preimage,
+            externalId
+          );
           break;
         default:
           log.error(`Invalid invoiceType: ${invoiceType}`);

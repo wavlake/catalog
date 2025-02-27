@@ -21,7 +21,7 @@ interface CommonDataFields {
   status: PaymentStatus | ChargeStatus;
 }
 
-interface InvoiceBasic {
+export interface InvoiceBasic {
   request: string;
   uri: string;
 }
