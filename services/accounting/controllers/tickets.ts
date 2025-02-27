@@ -1,20 +1,16 @@
-import { zap_request } from "./../../../node_modules/.prisma/client/index.d";
+// nlInvoice is undefined when using import
+const nlInvoice = require("@node-lightning/invoice");
 import asyncHandler from "express-async-handler";
 import core from "express-serve-static-core";
 import log from "../../../library/winston";
 import { validateNostrZapRequest } from "@library/zap";
 import { ZapRequest } from "@library/nostr/common";
 import prisma from "@prismalocal/client";
-import {
-  IncomingInvoiceTableMap,
-  IncomingInvoiceType,
-  PaymentType,
-} from "@library/common";
-import { getPaymentHash, logZapRequest } from "@library/invoice";
+import { IncomingInvoiceType, PaymentType } from "@library/common";
+import { logZapRequest } from "@library/invoice";
 import crypto from "crypto";
 import { createCharge, InvoiceBasic } from "@library/zbd";
 import { TICKET_INVOICE_EXPIRATION_SECONDS } from "@library/constants";
-import { Event, verifyEvent } from "nostr-tools";
 
 const getTicketInvoice = asyncHandler<
   core.ParamsDictionary,
@@ -29,22 +25,11 @@ const getTicketInvoice = asyncHandler<
   try {
     const { amount, nostr, metadata, lnurl } = req.query;
     const zapRequestString = decodeURIComponent(nostr);
-    const zapRequest = JSON.parse(zapRequestString) as Event;
-    const eventIsValid = verifyEvent(zapRequest);
 
-    if (!eventIsValid) {
-      log.info(`Invalid zap request: ${zapRequest}`);
-
-      res.status(400).send({ success: false, error: "Invalid zap request" });
-      return;
-    }
-
-    log.info(
-      `Processing ticket payment with zap request: ${JSON.stringify(nostr)}`
-    );
+    log.info(`Processing ticket payment with zap request: ${zapRequestString}`);
 
     const { isValid, error, zapRequestEvent } = validateNostrZapRequest({
-      nostr,
+      nostr: zapRequestString,
       amount,
       requireAOrETag: true,
     });
@@ -103,7 +88,7 @@ const getTicketInvoice = asyncHandler<
       return;
     }
 
-    // Create a blank invoice in the database with a reference to the targeted content
+    // Create a blank invoice in the database
     const invoice = await prisma.externalReceive.create({
       data: {
         paymentTypeCode: PaymentType.Zap,
@@ -122,7 +107,7 @@ const getTicketInvoice = asyncHandler<
       IncomingInvoiceType.Ticket
     );
 
-    const new_ticket = await prisma.ticket.create({
+    const newTicket = await prisma.ticket.create({
       data: {
         ticketed_event_id: ticketedEvent.id,
         external_receive_id: invoice.id,
@@ -146,11 +131,12 @@ const getTicketInvoice = asyncHandler<
     }
 
     const invoiceRequest = {
-      // description: `Wavlake Zap: ${zappedContent.title}`, // Removed for now
+      description: `Wavlake Ticket ID: ${newTicket.id}`,
       amount: amount,
       expiresIn: TICKET_INVOICE_EXPIRATION_SECONDS,
       internalId: `external_receive-${invoice.id.toString()}`,
-      invoiceDescriptionHash: descriptionHash,
+      // can't have both description and invoiceDescriptionHash
+      // invoiceDescriptionHash: descriptionHash,
     };
 
     log.info(
@@ -197,6 +183,7 @@ const getTicketInvoice = asyncHandler<
           paymentHash: paymentHash,
           externalId: invoiceResponse.data.id,
           updatedAt: new Date(),
+          trackId: `ticket-${newTicket.id}`,
         },
       })
       .catch((e) => {
@@ -228,3 +215,16 @@ const getTicketInvoice = asyncHandler<
 });
 
 export default { getTicketInvoice };
+
+const getPaymentHash = (invoice: string) => {
+  let decodedInvoice;
+  try {
+    decodedInvoice = nlInvoice.decode(invoice);
+  } catch (err) {
+    log.error(`Error decoding invoice ${err}`);
+    return;
+  }
+  const { paymentHash } = decodedInvoice;
+
+  return Buffer.from(paymentHash).toString("hex");
+};

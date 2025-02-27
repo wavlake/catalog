@@ -2,7 +2,7 @@ import log, { LogLevelDesc } from "loglevel";
 log.setLevel((process.env.LOG_LEVEL as LogLevelDesc) || "info");
 import asyncHandler from "express-async-handler";
 import prisma from "@prismalocal/client";
-import { getPaymentHash, logZapRequest } from "@library/invoice";
+import { logZapRequest } from "@library/invoice";
 import { getContentFromId } from "@library/content";
 import { createCharge } from "@library/zbd/zbdClient";
 import {
@@ -15,6 +15,8 @@ import crypto from "crypto";
 import { validateNostrZapRequest } from "@library/zap";
 import { IncomingInvoiceType } from "@library/common";
 import { ZapRequest } from "@library/nostr/common";
+// nlInvoice is undefined when using import
+const nlInvoice = require("@node-lightning/invoice");
 
 const createZapInvoice = asyncHandler<
   core.ParamsDictionary,
@@ -205,3 +207,16 @@ const createZapInvoice = asyncHandler<
 });
 
 export default { createZapInvoice };
+
+const getPaymentHash = (invoice: string) => {
+  let decodedInvoice;
+  try {
+    decodedInvoice = nlInvoice.decode(invoice);
+  } catch (err) {
+    log.error(`Error decoding invoice ${err}`);
+    return;
+  }
+  const { paymentHash } = decodedInvoice;
+
+  return Buffer.from(paymentHash).toString("hex");
+};

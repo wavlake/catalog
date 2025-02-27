@@ -1,7 +1,6 @@
 const log = require("loglevel");
 log.setLevel("debug");
-// nlInvoice is undefined when using import
-const nlInvoice = require("@node-lightning/invoice");
+
 import db from "./db";
 import {
   getUserIdFromTransactionId,
@@ -392,17 +391,4 @@ export const logZapRequest = async (
     .catch((err) => {
       throw new Error(`Error inserting zap request: ${err}`);
     });
-};
-
-export const getPaymentHash = (invoice: string) => {
-  let decodedInvoice;
-  try {
-    decodedInvoice = nlInvoice.decode(invoice);
-  } catch (err) {
-    log.error(`Error decoding invoice ${err}`);
-    return;
-  }
-  const { paymentHash } = decodedInvoice;
-
-  return Buffer.from(paymentHash).toString("hex");
 };
