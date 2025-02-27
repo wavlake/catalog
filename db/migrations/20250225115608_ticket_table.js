@@ -24,7 +24,6 @@ exports.up = function (knex) {
       table.boolean("is_used").notNullable().defaultTo(false);
       table.boolean("is_paid").notNullable().defaultTo(false);
       table.boolean("is_pending").notNullable().defaultTo(true);
-      table.string("recipient_pubkey", 64).notNullable();
       table.timestamp("created_at");
       table.timestamp("updated_at");
       table.string("nostr").nullable();

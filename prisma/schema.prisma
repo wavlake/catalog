@@ -700,13 +700,13 @@ model ticket {
   is_used             Boolean         @default(false)
   is_paid             Boolean         @default(false)
   is_pending          Boolean         @default(true)
-  recipient_pubkey    String          @db.VarChar(64)
   created_at          DateTime?       @db.Timestamptz(6)
   updated_at          DateTime?       @db.Timestamptz(6)
   nostr               String?         @db.VarChar(255)
   ticket_secret       String?         @db.VarChar(255)
   used_at             DateTime?       @db.Timestamptz(6)
   price_msat          Int?
+  recipient_pubkey    String          @db.VarChar(64)
   external_receive    externalReceive @relation(fields: [external_receive_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "ticket_external_receive_id_foreign")
   ticketed_event      ticketed_event  @relation(fields: [ticketed_event_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "ticket_ticketed_event_id_foreign")
 
