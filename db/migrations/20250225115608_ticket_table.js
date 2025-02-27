@@ -11,7 +11,7 @@ exports.up = function (knex) {
       table.integer("total_tickets").notNullable();
       table.integer("max_tickets_per_person").notNullable();
       table.string("user_id").notNullable();
-      table.timestamp("dt_start");
+      table.timestamp("dt_start").notNullable();
       table.timestamp("dt_end");
 
       table.foreign("user_id").references("user.id");
@@ -30,6 +30,7 @@ exports.up = function (knex) {
       table.string("ticket_secret").nullable();
       table.timestamp("used_at").nullable();
       table.integer("price_msat").nullable();
+
       table.foreign("ticketed_event_id").references("ticketed_event.id");
       table.foreign("external_receive_id").references("external_receive.id");
     });

@@ -719,7 +719,7 @@ model ticketed_event {
   total_tickets          Int
   max_tickets_per_person Int
   user_id                String    @db.VarChar(255)
-  dt_start               DateTime? @db.Timestamptz(6)
+  dt_start               DateTime  @db.Timestamptz(6)
   dt_end                 DateTime? @db.Timestamptz(6)
   ticket                 ticket[]
   user                   User      @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "ticketed_event_user_id_foreign")
