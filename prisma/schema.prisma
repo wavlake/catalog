@@ -702,7 +702,7 @@ model ticket {
   is_pending          Boolean         @default(true)
   created_at          DateTime?       @db.Timestamptz(6)
   updated_at          DateTime?       @db.Timestamptz(6)
-  nostr               String?         @db.VarChar(255)
+  nostr               Json?
   ticket_secret       String?         @db.VarChar(255)
   used_at             DateTime?       @db.Timestamptz(6)
   price_msat          Int?
