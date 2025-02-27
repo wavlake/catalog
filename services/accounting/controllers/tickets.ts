@@ -74,7 +74,7 @@ const getTicketInvoice = asyncHandler<
     }
 
     const pendingTickets = await prisma.ticket.findMany({
-      where: { ticketed_event_id: ticketedEvent.id, is_pending: false },
+      where: { ticketed_event_id: ticketedEvent.id, is_pending: true },
     });
 
     const num_of_pending_tickets_allowed_at_once = 5;
