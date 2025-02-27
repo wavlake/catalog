@@ -61,10 +61,10 @@ const getTicketInvoice = asyncHandler<
       return;
     }
 
-    const issuedTickets = await prisma.ticket.findMany({
-      where: { ticketed_event_id: ticketedEvent.id, is_paid: true },
+    const ticketCount = await prisma.ticket.count({
+      where: { ticketed_event_id: ticketedEvent.id, is_paid: true }
     });
-    const isSoldOut = ticketedEvent.total_tickets <= issuedTickets.length;
+    const isSoldOut = ticketedEvent.total_tickets <= ticketCount;
     if (isSoldOut) {
       res.status(400).send({
         success: false,
