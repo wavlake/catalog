@@ -31,12 +31,11 @@ export const validateNostrZapRequest = ({
   let zapRequestEvent: Event;
   try {
     zapRequestEvent = JSON.parse(nostr);
+    if (!verifyEvent(zapRequestEvent) || zapRequestEvent.kind !== 9734) {
+      return { isValid: false, error: "Invalid zap request event" };
+    }
   } catch (e) {
-    return { isValid: false, error: "Invalid nostr object" };
-  }
-
-  if (!verifyEvent(zapRequestEvent) || zapRequestEvent.kind !== 9734) {
-    return { isValid: false, error: "Invalid zap request event" };
+    return { isValid: false, error: e || "Invalid nostr object" };
   }
 
   // https://github.com/nostr-protocol/nips/blob/master/57.md#appendix-a-zap-request-event
