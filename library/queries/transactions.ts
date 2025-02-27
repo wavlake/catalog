@@ -497,7 +497,7 @@ export function getTicketPayments(userId) {
       db.knex.raw("is_pending as ispending"),
       db.knex.raw("'' as comment"),
       db.knex.raw("ticket.id as id"),
-      db.knex.raw("max(ticekt.price_msat) as msatAmount"),
+      db.knex.raw("max(ticket.price_msat) as msatAmount"),
       db.knex.raw("'' as failureReason"),
       db.knex.raw("max(ticket.created_at) as created_at"),
       db.knex.raw("NULL as zapEvent")
