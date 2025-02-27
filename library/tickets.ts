@@ -1,3 +1,4 @@
+import { randomInt } from "crypto";
 export const sendTicketDm = async (
   recipientPubkey: string,
   ticketId: number,
@@ -20,7 +21,7 @@ export function generateValidationCode(length = 6) {
   // Generate the code
   let code = "";
   for (let i = 0; i < length; i++) {
-    const randomIndex = Math.floor(Math.random() * chars.length);
+    const randomIndex = randomInt(0, chars.length);
     code += chars[randomIndex];
   }
 
