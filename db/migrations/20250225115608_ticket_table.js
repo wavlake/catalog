@@ -19,7 +19,7 @@ exports.up = function (knex) {
 
     .createTable("ticket", function (table) {
       table.increments("id").primary().unique();
-      table.string("ticketed_event_id", 64).notNullable();
+      table.string("ticketed_event_id", 64).notNullable().index();
       table.integer("external_receive_id").notNullable();
       table.boolean("is_used").notNullable().defaultTo(false);
       table.boolean("is_paid").notNullable().defaultTo(false);
