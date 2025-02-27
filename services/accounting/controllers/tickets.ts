@@ -62,7 +62,7 @@ const getTicketInvoice = asyncHandler<
     }
 
     const ticketCount = await prisma.ticket.count({
-      where: { ticketed_event_id: ticketedEvent.id, is_paid: true }
+      where: { ticketed_event_id: ticketedEvent.id, is_paid: true },
     });
     const isSoldOut = ticketedEvent.total_tickets <= ticketCount;
     if (isSoldOut) {
@@ -116,6 +116,8 @@ const getTicketInvoice = asyncHandler<
         is_pending: true,
         created_at: new Date(),
         updated_at: new Date(),
+        recipient_pubkey: zapRequestEvent.pubkey,
+        nostr: zapRequestString,
       },
     });
 
