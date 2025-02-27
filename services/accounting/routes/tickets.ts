@@ -7,7 +7,11 @@ const router = express.Router();
 
 //////// ROUTES ////////
 
-router.get("/zap", isAPITokenAuthorized, ticketsController.getTicketInvoice);
+router.get(
+  "/invoice",
+  isAPITokenAuthorized,
+  ticketsController.getTicketInvoice
+);
 
 // Export router
 export default router;
