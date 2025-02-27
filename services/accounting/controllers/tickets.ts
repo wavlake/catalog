@@ -117,7 +117,7 @@ const getTicketInvoice = asyncHandler<
         created_at: new Date(),
         updated_at: new Date(),
         recipient_pubkey: zapRequestEvent.pubkey,
-        nostr: zapRequestString,
+        nostr: zapRequestEvent as any,
       },
     });
 
