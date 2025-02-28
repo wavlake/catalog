@@ -102,7 +102,6 @@ export const updateInvoiceIfNeeded = async (
             invoiceId,
             msatAmount,
             paymentRequest,
-            preimage,
             externalId
           );
           break;
@@ -338,7 +337,7 @@ async function handleFailedOrExpiredInvoice(
   }
 
   const update =
-    table === "promo"
+    table === "promo" || table === "ticket"
       ? {
           is_pending: false,
           updated_at: db.knex.fn.now(),
