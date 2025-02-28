@@ -35,6 +35,7 @@ const getTicketInvoice = asyncHandler<
     });
 
     if (!isValid) {
+      log.info(`Invalid ticket zap request: ${error}`);
       res.status(400).send({ success: false, error });
       return;
     }
@@ -42,6 +43,7 @@ const getTicketInvoice = asyncHandler<
     const [eTag, eventId] = zapRequestEvent.tags.find((x) => x[0] === "e");
 
     if (!eventId) {
+      log.info("Invalid zap request: missing event id");
       res.status(400).send({
         success: false,
         error: "Zap request must reference a ticketed event using an e tag",
@@ -54,6 +56,7 @@ const getTicketInvoice = asyncHandler<
     });
 
     if (!ticketedEvent) {
+      log.info(`Ticketed event not found for eventId: ${eventId}`);
       res.status(400).send({
         success: false,
         error: "Event not found",
@@ -66,6 +69,7 @@ const getTicketInvoice = asyncHandler<
     });
     const isSoldOut = ticketedEvent.total_tickets <= ticketCount;
     if (isSoldOut) {
+      log.info(`Event is sold out: ${ticketedEvent.id}`);
       res.status(400).send({
         success: false,
         error: "Event is sold out",
@@ -76,7 +80,7 @@ const getTicketInvoice = asyncHandler<
     const pendingTickets = await prisma.ticket.findMany({
       where: { ticketed_event_id: ticketedEvent.id, is_pending: true },
     });
-
+    log.info("Pending ticket count: ", pendingTickets);
     const num_of_pending_tickets_allowed_at_once = 5;
 
     if (pendingTickets.length >= num_of_pending_tickets_allowed_at_once) {
@@ -102,6 +106,7 @@ const getTicketInvoice = asyncHandler<
         nostr: zapRequestEvent as any,
       },
     });
+    log.info(`Created new ticket, id: ${newTicket.id}`);
     const ticketId = newTicket.id;
     // Create zap request record
     await logZapRequest(
