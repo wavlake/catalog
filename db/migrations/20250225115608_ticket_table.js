@@ -20,19 +20,21 @@ exports.up = function (knex) {
     .createTable("ticket", function (table) {
       table.increments("id").primary().unique();
       table.string("ticketed_event_id", 64).notNullable().index();
-      table.integer("external_receive_id").notNullable();
       table.boolean("is_used").notNullable().defaultTo(false);
       table.boolean("is_paid").notNullable().defaultTo(false);
       table.boolean("is_pending").notNullable().defaultTo(true);
+      table.string("recipient_pubkey", 64).notNullable();
+      table.text("external_transaction_id").notNullable();
+      table.text("payment_request").notNullable();
+
       table.timestamp("created_at");
       table.timestamp("updated_at");
-      table.string("nostr").nullable();
+      table.jsonb("nostr").nullable();
       table.string("ticket_secret").nullable();
       table.timestamp("used_at").nullable();
       table.integer("price_msat").nullable();
 
       table.foreign("ticketed_event_id").references("ticketed_event.id");
-      table.foreign("external_receive_id").references("external_receive.id");
     });
 };
 
