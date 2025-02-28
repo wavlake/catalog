@@ -77,7 +77,6 @@ export const handleCompletedTicketInvoice = async (
   invoiceId: number,
   msatAmount: number,
   paymentRequest: string,
-  preimage: string,
   externalId: string
 ) => {
   // Start a transaction using Prisma
@@ -85,7 +84,7 @@ export const handleCompletedTicketInvoice = async (
     // Find the ticket inside the transaction
     const ticket = await prismaTransaction.ticket.findFirst({
       where: {
-        external_receive_id: invoiceId,
+        id: invoiceId,
       },
     });
 
@@ -115,20 +114,8 @@ export const handleCompletedTicketInvoice = async (
         ticket_secret: generateValidationCode(),
         updated_at: new Date(),
         price_msat: msatAmount,
-      },
-    });
-
-    // Update external receive record
-    await prismaTransaction.externalReceive.update({
-      where: {
-        id: invoiceId,
-      },
-      data: {
-        isPending: false,
-        preimage: preimage,
-        paymentHash: paymentRequest,
-        externalId: externalId,
-        updatedAt: new Date(),
+        payment_request: paymentRequest,
+        external_transaction_id: externalId,
       },
     });
 
@@ -151,6 +138,7 @@ export const handleCompletedTicketInvoice = async (
       ticket.id,
       ticketedEvent.id
     );
+    console.log("Ticket DM", ticketDm);
   });
 };
 

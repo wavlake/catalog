@@ -102,7 +102,6 @@ export const updateInvoiceIfNeeded = async (
             invoiceId,
             msatAmount,
             paymentRequest,
-            preimage,
             externalId
           );
           break;

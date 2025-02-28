@@ -17,7 +17,7 @@ const getTicketInvoice = asyncHandler<
   {
     success: boolean;
     error?: string;
-    data?: InvoiceBasic & { invoiceId: string };
+    data?: InvoiceBasic;
   },
   any,
   ZapRequest
@@ -88,29 +88,11 @@ const getTicketInvoice = asyncHandler<
       return;
     }
 
-    // Create a blank invoice in the database
-    const invoice = await prisma.externalReceive.create({
-      data: {
-        paymentTypeCode: PaymentType.Zap,
-        isPending: true,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      },
-    });
-    log.info(`Created placeholder invoice: ${invoice.id}`);
-
-    // Create zap request record
-    await logZapRequest(
-      invoice.id,
-      zapRequestEvent.id,
-      JSON.stringify(zapRequestEvent),
-      IncomingInvoiceType.Ticket
-    );
-
     const newTicket = await prisma.ticket.create({
       data: {
-        ticketed_event_id: ticketedEvent.id,
-        external_receive_id: invoice.id,
+        ticketed_event_id: "",
+        external_transaction_id: "",
+        payment_request: "",
         is_used: false,
         is_paid: false,
         is_pending: true,
@@ -120,6 +102,14 @@ const getTicketInvoice = asyncHandler<
         nostr: zapRequestEvent as any,
       },
     });
+    const ticketId = newTicket.id;
+    // Create zap request record
+    await logZapRequest(
+      ticketId,
+      zapRequestEvent.id,
+      JSON.stringify(zapRequestEvent),
+      IncomingInvoiceType.Ticket
+    );
 
     const hash = crypto.createHash("sha256");
 
@@ -133,12 +123,12 @@ const getTicketInvoice = asyncHandler<
     }
 
     const invoiceRequest = {
-      description: `Wavlake Ticket ID: ${newTicket.id}`,
+      // description: `Wavlake Ticket ID: ${newTicket.id}`,
       amount: amount,
       expiresIn: TICKET_INVOICE_EXPIRATION_SECONDS,
-      internalId: `external_receive-${invoice.id.toString()}`,
+      internalId: `ticket-${ticketId}`,
       // can't have both description and invoiceDescriptionHash
-      // invoiceDescriptionHash: descriptionHash,
+      invoiceDescriptionHash: descriptionHash,
     };
 
     log.info(
@@ -150,19 +140,14 @@ const getTicketInvoice = asyncHandler<
 
     if (!invoiceResponse.success) {
       log.error(`Error creating ticket invoice: ${invoiceResponse.message}`);
-      await prisma.externalReceive
-        .update({
-          where: { id: invoice.id },
-          data: {
-            isPending: false,
-            errorMessage: invoiceResponse.message,
-            updatedAt: new Date(),
-          },
-        })
-        .catch((e) => {
-          log.error(`Error updating ticket invoice: ${e}`);
-          return null;
-        });
+      await prisma.ticket.update({
+        where: { id: ticketId },
+        data: {
+          is_pending: false,
+          updated_at: new Date(),
+        },
+      });
+
       res
         .status(400)
         .send({ success: false, error: `${invoiceResponse.message}` });
@@ -175,17 +160,13 @@ const getTicketInvoice = asyncHandler<
       )}`
     );
 
-    // Update the invoice in the database
-    const paymentHash = getPaymentHash(invoiceResponse.data.invoice.request);
-
-    const updatedInvoice = await prisma.externalReceive
+    const updatedTicket = await prisma.ticket
       .update({
-        where: { id: invoice.id },
+        where: { id: newTicket.id },
         data: {
-          paymentHash: paymentHash,
-          externalId: invoiceResponse.data.id,
-          updatedAt: new Date(),
-          trackId: `ticket-${newTicket.id}`,
+          payment_request: invoiceResponse.data.invoice.request,
+          external_transaction_id: invoiceResponse.data.id,
+          updated_at: new Date(),
         },
       })
       .catch((e) => {
@@ -193,8 +174,8 @@ const getTicketInvoice = asyncHandler<
         return null;
       });
 
-    if (!updatedInvoice) {
-      log.error(`Error updating invoice: ${invoiceResponse.message}`);
+    if (!updatedTicket) {
+      log.error(`Error updating ticket: ${invoiceResponse.message}`);
       res.status(500).send({
         success: false,
         error: "There has been an error generating a ticket invoice",
@@ -202,11 +183,11 @@ const getTicketInvoice = asyncHandler<
       return;
     }
 
-    log.info(`Updated ticket invoice: ${JSON.stringify(updatedInvoice)}`);
+    log.info(`Updated ticket invoice: ${JSON.stringify(updatedTicket)}`);
 
     res.send({
       success: true,
-      data: { ...invoiceResponse.data.invoice, invoiceId: updatedInvoice.id },
+      data: { ...invoiceResponse.data.invoice },
     });
   } catch (e) {
     log.error(`Error generating ticket invoice: ${e}`);
@@ -217,16 +198,3 @@ const getTicketInvoice = asyncHandler<
 });
 
 export default { getTicketInvoice };
-
-const getPaymentHash = (invoice: string) => {
-  let decodedInvoice;
-  try {
-    decodedInvoice = nlInvoice.decode(invoice);
-  } catch (err) {
-    log.error(`Error decoding invoice ${err}`);
-    return;
-  }
-  const { paymentHash } = decodedInvoice;
-
-  return Buffer.from(paymentHash).toString("hex");
-};

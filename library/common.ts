@@ -47,14 +47,14 @@ export enum IncomingInvoiceType {
 
 export const IncomingInvoiceTableMap: Record<
   IncomingInvoiceType,
-  "transaction" | "external_receive" | "promo"
+  "transaction" | "external_receive" | "promo" | "ticket"
 > = {
   [IncomingInvoiceType.Transaction]: "transaction",
   [IncomingInvoiceType.ExternalReceive]: "external_receive",
   [IncomingInvoiceType.LNURL_Zap]: "transaction",
   [IncomingInvoiceType.LNURL]: "transaction",
   [IncomingInvoiceType.Promo]: "promo",
-  [IncomingInvoiceType.Ticket]: "transaction",
+  [IncomingInvoiceType.Ticket]: "ticket",
 };
 
 export type PromoResponseData = {
