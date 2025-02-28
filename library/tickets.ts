@@ -109,11 +109,17 @@ const normalizeTimeString = (x: string) => {
   return x.replace(/(AM|PM)$/, "").trim();
 };
 
-const SECRET_KEY_BYTES = hexToBytes(process.env.SECRET_KEY);
 const createEncryptedMessage = async (
   message: string,
   recipientPublicKey: string
 ): Promise<VerifiedEvent> => {
+  const secretKey = process.env.SECRET_KEY;
+  if (!secretKey) {
+    log.info(`SECRET_KEY: ${secretKey}`);
+    throw new Error("SECRET_KEY is required");
+  }
+
+  const SECRET_KEY_BYTES = hexToBytes(secretKey);
   const encryptedContent = await nip04.encrypt(
     SECRET_KEY_BYTES,
     recipientPublicKey,
