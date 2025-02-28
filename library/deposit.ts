@@ -81,6 +81,10 @@ export const handleCompletedTicketInvoice = async (
 ) => {
   // Start a transaction using Prisma
   return await prisma.$transaction(async (prismaTransaction) => {
+    log.info(
+      `Processing ticket invoiceId: ${invoiceId} externalId: ${externalId}`
+    );
+
     // Find the ticket inside the transaction
     const ticket = await prismaTransaction.ticket.findFirst({
       where: {
@@ -91,6 +95,7 @@ export const handleCompletedTicketInvoice = async (
     if (!ticket) {
       throw new Error(`Ticket not found for invoice ID: ${invoiceId}`);
     }
+    log.info(`Ticket found: ${ticket.id}`);
 
     // Find the ticketed event inside the transaction
     const ticketedEvent = await prismaTransaction.ticketed_event.findFirst({
@@ -103,6 +108,8 @@ export const handleCompletedTicketInvoice = async (
       throw new Error(`Ticketed event not found for ticket ID: ${ticket.id}`);
     }
 
+    log.info(`Ticketed event found: ${ticketedEvent.id}`);
+    log.info(`Ticketed event owner: ${ticketedEvent.user_id}`);
     // Update ticket record
     await prismaTransaction.ticket.update({
       where: {
@@ -119,6 +126,7 @@ export const handleCompletedTicketInvoice = async (
       },
     });
 
+    log.info(`Incrementing owner balance by ${msatAmount} msat`);
     // Update user record balance
     await prismaTransaction.user.update({
       where: {
