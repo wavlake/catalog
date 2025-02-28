@@ -90,7 +90,7 @@ const getTicketInvoice = asyncHandler<
 
     const newTicket = await prisma.ticket.create({
       data: {
-        ticketed_event_id: "",
+        ticketed_event_id: ticketedEvent.id,
         external_transaction_id: "",
         payment_request: "",
         is_used: false,
