@@ -337,7 +337,7 @@ async function handleFailedOrExpiredInvoice(
   }
 
   const update =
-    table === "promo"
+    table === "promo" || table === "ticket"
       ? {
           is_pending: false,
           updated_at: db.knex.fn.now(),
