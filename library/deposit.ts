@@ -110,19 +110,20 @@ export const handleCompletedTicketInvoice = async (
 
     log.info(`Ticketed event found: ${ticketedEvent.id}`);
     log.info(`Ticketed event owner: ${ticketedEvent.user_id}`);
+    const ticketSecret = generateValidationCode();
     // Update ticket record
-    await prismaTransaction.ticket.update({
+    const updatedTicket = await prismaTransaction.ticket.update({
       where: {
         id: ticket.id,
       },
       data: {
         is_pending: false,
         is_paid: true,
-        ticket_secret: generateValidationCode(),
         updated_at: new Date(),
         price_msat: msatAmount,
         payment_request: paymentRequest,
         external_transaction_id: externalId,
+        ticket_secret: ticketSecret,
       },
     });
 
@@ -140,13 +141,7 @@ export const handleCompletedTicketInvoice = async (
       },
     });
 
-    // TODO: Send ticket DM
-    const ticketDm = await sendTicketDm(
-      "recipientPubkey",
-      ticket.id,
-      ticketedEvent.id
-    );
-    console.log("Ticket DM", ticketDm);
+    await sendTicketDm(ticketedEvent, updatedTicket);
   });
 };
 
