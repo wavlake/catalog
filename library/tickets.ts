@@ -2,7 +2,8 @@ import log from "./winston";
 
 import { hexToBytes } from "@noble/hashes/utils";
 import { randomInt } from "crypto";
-import { finalizeEvent, nip04, Relay, VerifiedEvent } from "nostr-tools";
+import { finalizeEvent, nip04, SimplePool, VerifiedEvent } from "nostr-tools";
+import { DEFAULT_WRITE_RELAY_URIS } from "./nostr/common";
 
 interface TicketEvent {
   name: string;
@@ -60,11 +61,22 @@ export const sendTicketDm = async (
   log.info(`Encrypted message created, eventId: ${signedEvent.id}`);
 
   // Send DM to buyer
-  const relay = await Relay.connect(process.env.WAVLAKE_RELAY);
-  log.info(`Connected to ${relay.url}`);
+  const pool = new SimplePool();
 
-  await relay.publish(signedEvent);
-  relay.close();
+  const result = await Promise.allSettled(
+    pool.publish(DEFAULT_WRITE_RELAY_URIS, signedEvent)
+  );
+  const sucesses = result.filter((x) => x.status === "fulfilled");
+  const failures = result.filter((x) => x.status === "rejected");
+  log.info(
+    `Event successfully published: `,
+    sucesses.map((x) => x.value)
+  );
+  log.error(
+    `Event failed to publish: `,
+    failures.map((x) => x.reason)
+  );
+  pool.close(DEFAULT_WRITE_RELAY_URIS);
   return;
 };
 
@@ -113,10 +125,10 @@ const createEncryptedMessage = async (
   message: string,
   recipientPublicKey: string
 ): Promise<VerifiedEvent> => {
-  const secretKey = process.env.SECRET_KEY;
+  const secretKey = process.env.TICKET_SECRET_KEY;
   if (!secretKey) {
-    log.info(`SECRET_KEY: ${secretKey}`);
-    throw new Error("SECRET_KEY is required");
+    log.info(`TICKET_SECRET_KEY: ${secretKey}`);
+    throw new Error("TICKET_SECRET_KEY is required");
   }
 
   const SECRET_KEY_BYTES = hexToBytes(secretKey);
