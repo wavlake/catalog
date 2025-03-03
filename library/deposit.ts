@@ -135,7 +135,7 @@ export const handleCompletedTicketInvoice = async (
       },
       data: {
         msatBalance: {
-          increment: msatAmount,
+          increment: msatAmount * updatedTicket.count,
         },
         updatedAt: new Date(),
       },

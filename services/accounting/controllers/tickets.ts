@@ -6,7 +6,7 @@ import log from "../../../library/winston";
 import { validateNostrZapRequest } from "@library/zap";
 import { ZapRequest } from "@library/nostr/common";
 import prisma from "@prismalocal/client";
-import { IncomingInvoiceType, PaymentType } from "@library/common";
+import { IncomingInvoiceType } from "@library/common";
 import { logZapRequest } from "@library/invoice";
 import crypto from "crypto";
 import { createCharge, InvoiceBasic } from "@library/zbd";
@@ -41,6 +41,9 @@ const getTicketInvoice = asyncHandler<
     }
 
     const [eTag, eventId] = zapRequestEvent.tags.find((x) => x[0] === "e");
+    const DEFAULT_TICKET_COUNT = "1";
+    const [countTag, ticketcount = DEFAULT_TICKET_COUNT] =
+      zapRequestEvent.tags.find((x) => x[0] === "count");
 
     if (!eventId) {
       log.info("Invalid zap request: missing event id");
@@ -92,6 +95,52 @@ const getTicketInvoice = asyncHandler<
       return;
     }
 
+    const intCount = parseInt(ticketcount);
+    if (intCount > ticketedEvent.max_tickets_per_person) {
+      log.info(
+        `Ticket count exceeds max tickets per person: ${intCount} > ${ticketedEvent.max_tickets_per_person}`
+      );
+      res.status(400).send({
+        success: false,
+        error: `Ticket count exceeds max tickets per person, max: ${ticketedEvent.max_tickets_per_person}`,
+      });
+      return;
+    }
+
+    const maxTicketsAvailable = ticketedEvent.total_tickets - ticketCount;
+    if (intCount > maxTicketsAvailable) {
+      log.info(
+        `Ticket count exceeds total tickets: ${intCount} > ${maxTicketsAvailable}`
+      );
+      res.status(400).send({
+        success: false,
+        error: `Ticket count exceeds total tickets. You may only purchase ${maxTicketsAvailable} tickets.`,
+      });
+      return;
+    }
+
+    const ticketsIssuedForPubkey = await prisma.ticket.count({
+      where: {
+        ticketed_event_id: ticketedEvent.id,
+        recipient_pubkey: zapRequestEvent.pubkey,
+        is_paid: true,
+      },
+    });
+
+    if (
+      ticketsIssuedForPubkey + intCount >
+      ticketedEvent.max_tickets_per_person
+    ) {
+      log.info(
+        `User has already purchased ${ticketsIssuedForPubkey} tickets. Purchasing ${intCount} additional tickets would be greater than the max of ${ticketedEvent.max_tickets_per_person}`
+      );
+      res.status(400).send({
+        success: false,
+        error: `Maximum number of tickets allowed per person: ${ticketedEvent.max_tickets_per_person}`,
+      });
+      return;
+    }
+
     const newTicket = await prisma.ticket.create({
       data: {
         ticketed_event_id: ticketedEvent.id,
@@ -104,6 +153,7 @@ const getTicketInvoice = asyncHandler<
         updated_at: new Date(),
         recipient_pubkey: zapRequestEvent.pubkey,
         nostr: zapRequestEvent as any,
+        count: intCount,
       },
     });
     log.info(`Created new ticket, id: ${newTicket.id}`);
