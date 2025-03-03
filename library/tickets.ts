@@ -32,8 +32,10 @@ interface Ticket {
   recipient_pubkey: string;
   external_transaction_id: string;
   payment_request: string;
+  count: number;
 }
 
+const DELIMETER = " | ";
 export const sendTicketDm = async (
   ticketedEvent: TicketEvent,
   ticket: Ticket
@@ -43,19 +45,25 @@ export const sendTicketDm = async (
   );
 
   const message = `
-    Thanks for purchasing a ticket to ${ticketedEvent.name}!
+  Thanks for purchasing a ticket to ${ticketedEvent.name}!
+  
+  Here's your unique ticket code to get into the event: ${ticket.ticket_secret}
+  
+  Details: ${ticketedEvent.dt_start} at ${ticketedEvent.location}
+  
+  Enjoy the event!\n\n`;
 
-    Here's your unique ticket code to get into the event: ${ticket.ticket_secret}
-    
-    Details: ${ticketedEvent.dt_start} at ${ticketedEvent.location}
-    
-    Enjoy the event!
-    
-    
-    | ${ticketedEvent.name} | ${ticketedEvent.dt_start} | ${ticketedEvent.location}  | ${ticket.id}  | ${ticketedEvent.id}`;
-
-  const signedEvent = await createEncryptedMessage(
+  const ticketMetadata = [
     message,
+    ticket.ticket_secret,
+    ticket.id.toString(),
+    ticket.count.toString(),
+    ticketedEvent.id,
+  ];
+
+  const formattedMessage = ticketMetadata.join(DELIMETER);
+  const signedEvent = await createEncryptedMessage(
+    formattedMessage,
     ticket.recipient_pubkey
   );
   log.info(`Encrypted message created, eventId: ${signedEvent.id}`);
