@@ -26,6 +26,7 @@ exports.up = function (knex) {
       table.string("recipient_pubkey", 64).notNullable();
       table.text("external_transaction_id").notNullable();
       table.text("payment_request").notNullable();
+      table.integer("count").notNullable().defaultTo(1);
 
       table.timestamp("created_at");
       table.timestamp("updated_at");
