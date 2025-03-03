@@ -80,13 +80,14 @@ const getTicketInvoice = asyncHandler<
       return;
     }
 
-    const pendingTickets = await prisma.ticket.findMany({
+    const pendingTickets = await prisma.ticket.count({
       where: { ticketed_event_id: ticketedEvent.id, is_pending: true },
     });
     log.info("Pending ticket count: ", pendingTickets);
     const num_of_pending_tickets_allowed_at_once = 5;
 
-    if (pendingTickets.length >= num_of_pending_tickets_allowed_at_once) {
+    if (pendingTickets >= num_of_pending_tickets_allowed_at_once) {
+      log.info("Too many pending tickets");
       res.status(400).send({
         success: false,
         error:
@@ -126,6 +127,7 @@ const getTicketInvoice = asyncHandler<
         is_paid: true,
       },
     });
+    log.info(`Tickets issued for pubkey: ${ticketsIssuedForPubkey}`);
 
     if (
       ticketsIssuedForPubkey + intCount >
