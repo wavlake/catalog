@@ -160,13 +160,6 @@ const getTicketInvoice = asyncHandler<
     });
     log.info(`Created new ticket, id: ${newTicket.id}`);
     const ticketId = newTicket.id;
-    // Create zap request record
-    await logZapRequest(
-      ticketId,
-      zapRequestEvent.id,
-      JSON.stringify(zapRequestEvent),
-      IncomingInvoiceType.Ticket
-    );
 
     const hash = crypto.createHash("sha256");
 
