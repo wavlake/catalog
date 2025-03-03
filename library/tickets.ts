@@ -66,17 +66,7 @@ export const sendTicketDm = async (
   const result = await Promise.allSettled(
     pool.publish(DEFAULT_WRITE_RELAY_URIS, signedEvent)
   );
-  const sucesses = result.filter((x) => x.status === "fulfilled");
-  const failures = result.filter((x) => x.status === "rejected");
-  log.info(
-    `Event successfully published: `,
-    sucesses.map((x) => x.value)
-  );
-  log.error(
-    `Event failed to publish: `,
-    failures.map((x) => x.reason)
-  );
-  pool.close(DEFAULT_WRITE_RELAY_URIS);
+
   return;
 };
 
