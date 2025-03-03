@@ -380,6 +380,9 @@ export const logZapRequest = async (
   event: string,
   invoiceType = IncomingInvoiceType.ExternalReceive
 ) => {
+  log.info(
+    `Logging zap request for invoice type ${invoiceType} id ${invoiceId}`
+  );
   return db
     .knex("zap_request")
     .insert({
