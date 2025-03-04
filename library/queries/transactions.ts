@@ -501,5 +501,11 @@ export function getTicketPayments(userId) {
       db.knex.raw("'' as failureReason"),
       db.knex.raw("max(ticket.created_at) as created_at"),
       db.knex.raw("NULL as zapEvent")
+    )
+    .groupBy(
+      "ticket.id",
+      "ticket.external_receive_id",
+      "ticket.is_paid",
+      "ticket.is_pending"
     );
 }
