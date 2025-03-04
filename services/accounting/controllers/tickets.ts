@@ -67,14 +67,16 @@ const getTicketInvoice = asyncHandler<
       return;
     }
 
+    const intCount = parseInt(ticketcount);
     const amountInt = parseInt(amount);
-    if (ticketedEvent.price_msat < amountInt) {
+    const grandTotal = intCount * ticketedEvent.price_msat;
+    if (grandTotal < amountInt) {
       log.info(
-        `Zap request is for less than ticket price: ${amountInt} < ${ticketedEvent.price_msat}`
+        `Payment for ticket order is too low. Total price: ${grandTotal} sats, zap amount: ${amountInt} sats, ticket quantity: ${intCount} tickets`
       );
       res.status(400).send({
         success: false,
-        error: `This event has a ticket price of ${ticketedEvent.price_msat} msat`,
+        error: `Not enough sats for ${intCount} tickets. Total order price: ${grandTotal} sats`,
       });
       return;
     }
@@ -108,7 +110,6 @@ const getTicketInvoice = asyncHandler<
       return;
     }
 
-    const intCount = parseInt(ticketcount);
     if (intCount > ticketedEvent.max_tickets_per_person) {
       log.info(
         `Ticket count exceeds max tickets per person: ${intCount} > ${ticketedEvent.max_tickets_per_person}`
