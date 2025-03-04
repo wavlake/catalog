@@ -125,7 +125,6 @@ const createEncryptedMessage = async (
 ): Promise<VerifiedEvent> => {
   const secretKey = process.env.TICKET_SECRET_KEY;
   if (!secretKey) {
-    log.info(`TICKET_SECRET_KEY: ${secretKey}`);
     throw new Error("TICKET_SECRET_KEY is required");
   }
 
