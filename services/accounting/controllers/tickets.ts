@@ -67,6 +67,18 @@ const getTicketInvoice = asyncHandler<
       return;
     }
 
+    const amountInt = parseInt(amount);
+    if (ticketedEvent.price_msat < amountInt) {
+      log.info(
+        `Zap request is for less than ticket price: ${amountInt} < ${ticketedEvent.price_msat}`
+      );
+      res.status(400).send({
+        success: false,
+        error: `This event has a ticket price of ${ticketedEvent.price_msat} msat`,
+      });
+      return;
+    }
+
     const ticketCount = await prisma.ticket.count({
       where: { ticketed_event_id: ticketedEvent.id, is_paid: true },
     });
