@@ -65,6 +65,7 @@ import send from "./routes/send";
 import withdraw from "./routes/withdraw";
 import callback from "./routes/callback";
 import promo from "./routes/promo";
+import tickets from "./routes/tickets";
 
 app.use(cors(corsOptions));
 
@@ -75,6 +76,7 @@ app.use("/v1/send", send);
 app.use("/v1/withdraw", withdraw);
 app.use("/v1/callback", callback);
 app.use("/v1/promo", promo);
+app.use("/v1/tickets", tickets);
 
 // The error handler must be registered before any other error middleware and after all controllers
 app.use(Sentry.Handlers.errorHandler());

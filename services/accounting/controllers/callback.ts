@@ -57,11 +57,6 @@ const processIncomingKeysend = asyncHandler<
     ? Buffer.from(contentIdRecord.value, "hex").toString()
     : undefined;
 
-  // for testing in deployed service
-  log.info("request body", req.body);
-  log.info("keysendMetadata", keysendMetadata);
-  log.info("contentId", contentId);
-
   if (!contentId || !validate(contentId)) {
     log.error("Did not find a valid content id in the tlv records");
     res.status(400).send({

@@ -2,6 +2,7 @@ import log from "./winston";
 import db from "./db";
 import { IncomingInvoiceTableMap, IncomingInvoiceType } from "./common";
 import prisma from "../prisma/client";
+import { generateValidationCode, sendTicketDm } from "./tickets";
 
 export async function getUserIdFromTransactionId(
   transactionId: number
@@ -70,6 +71,78 @@ export const handleCompletedPromoInvoice = async (
       );
       return false;
     });
+};
+
+export const handleCompletedTicketInvoice = async (
+  invoiceId: number,
+  msatAmount: number,
+  paymentRequest: string,
+  externalId: string
+) => {
+  // Start a transaction using Prisma
+  return await prisma.$transaction(async (prismaTransaction) => {
+    log.info(
+      `Processing ticket invoiceId: ${invoiceId} externalId: ${externalId}`
+    );
+
+    // Find the ticket inside the transaction
+    const ticket = await prismaTransaction.ticket.findFirst({
+      where: {
+        id: invoiceId,
+      },
+    });
+
+    if (!ticket) {
+      throw new Error(`Ticket not found for invoice ID: ${invoiceId}`);
+    }
+    log.info(`Ticket found: ${ticket.id}`);
+
+    // Find the ticketed event inside the transaction
+    const ticketedEvent = await prismaTransaction.ticketed_event.findFirst({
+      where: {
+        id: ticket.ticketed_event_id,
+      },
+    });
+
+    if (!ticketedEvent) {
+      throw new Error(`Ticketed event not found for ticket ID: ${ticket.id}`);
+    }
+
+    log.info(`Ticketed event found: ${ticketedEvent.id}`);
+    log.info(`Ticketed event owner: ${ticketedEvent.user_id}`);
+    const ticketSecret = generateValidationCode();
+    // Update ticket record
+    const updatedTicket = await prismaTransaction.ticket.update({
+      where: {
+        id: ticket.id,
+      },
+      data: {
+        is_pending: false,
+        is_paid: true,
+        updated_at: new Date(),
+        price_msat: msatAmount,
+        payment_request: paymentRequest,
+        external_transaction_id: externalId,
+        ticket_secret: ticketSecret,
+      },
+    });
+
+    log.info(`Incrementing owner balance by ${msatAmount} msat`);
+    // Update user record balance
+    await prismaTransaction.user.update({
+      where: {
+        id: ticketedEvent.user_id,
+      },
+      data: {
+        msatBalance: {
+          increment: msatAmount * updatedTicket.count,
+        },
+        updatedAt: new Date(),
+      },
+    });
+
+    await sendTicketDm(ticketedEvent, updatedTicket);
+  });
 };
 
 export const handleCompletedDeposit = async (

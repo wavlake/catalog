@@ -9,33 +9,14 @@ import {
   MAX_INVOICE_AMOUNT,
   DEFAULT_EXPIRATION_SECONDS,
 } from "@library/constants";
-// nlInvoice is undefined when using import
-const nlInvoice = require("@node-lightning/invoice");
 import core from "express-serve-static-core";
 import { getContentFromEventId } from "@library/content";
 import crypto from "crypto";
 import { validateNostrZapRequest } from "@library/zap";
 import { IncomingInvoiceType } from "@library/common";
-
-const getPaymentHash = (invoice: string) => {
-  let decodedInvoice;
-  try {
-    decodedInvoice = nlInvoice.decode(invoice);
-  } catch (err) {
-    log.error(`Error decoding invoice ${err}`);
-    return;
-  }
-  const { paymentHash } = decodedInvoice;
-
-  return Buffer.from(paymentHash).toString("hex");
-};
-
-interface ZapRequest {
-  amount: string;
-  nostr: string;
-  metadata: string;
-  lnurl: string;
-}
+import { ZapRequest } from "@library/nostr/common";
+// nlInvoice is undefined when using import
+const nlInvoice = require("@node-lightning/invoice");
 
 const createZapInvoice = asyncHandler<
   core.ParamsDictionary,
@@ -155,7 +136,9 @@ const createZapInvoice = asyncHandler<
     // description: `Wavlake Zap: ${zappedContent.title}`, // Removed for now
     amount: amount,
     expiresIn: DEFAULT_EXPIRATION_SECONDS,
-    internalId: `external_receive-${invoice.id.toString()}`,
+    internalId: `${
+      IncomingInvoiceType.ExternalReceive
+    }-${invoice.id.toString()}`,
     invoiceDescriptionHash: descriptionHash,
   };
 
@@ -224,3 +207,16 @@ const createZapInvoice = asyncHandler<
 });
 
 export default { createZapInvoice };
+
+const getPaymentHash = (invoice: string) => {
+  let decodedInvoice;
+  try {
+    decodedInvoice = nlInvoice.decode(invoice);
+  } catch (err) {
+    log.error(`Error decoding invoice ${err}`);
+    return;
+  }
+  const { paymentHash } = decodedInvoice;
+
+  return Buffer.from(paymentHash).toString("hex");
+};

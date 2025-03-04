@@ -1,10 +1,12 @@
 const log = require("loglevel");
 log.setLevel("debug");
+
 import db from "./db";
 import {
   getUserIdFromTransactionId,
   handleCompletedDeposit,
   handleCompletedPromoInvoice,
+  handleCompletedTicketInvoice,
   wasTransactionAlreadyLogged,
 } from "./deposit";
 import { processSplits } from "./amp";
@@ -93,6 +95,15 @@ export const updateInvoiceIfNeeded = async (
         case IncomingInvoiceType.Promo:
           log.info(`Processing promo invoice for id ${invoiceId}`);
           await handleCompletedPromoInvoice(invoiceId, msatAmount);
+          break;
+        case IncomingInvoiceType.Ticket:
+          log.info(`Processing ticket invoice for id ${invoiceId}`);
+          await handleCompletedTicketInvoice(
+            invoiceId,
+            msatAmount,
+            paymentRequest,
+            externalId
+          );
           break;
         default:
           log.error(`Invalid invoiceType: ${invoiceType}`);
@@ -326,7 +337,7 @@ async function handleFailedOrExpiredInvoice(
   }
 
   const update =
-    table === "promo"
+    table === "promo" || table === "ticket"
       ? {
           is_pending: false,
           updated_at: db.knex.fn.now(),
@@ -369,6 +380,9 @@ export const logZapRequest = async (
   event: string,
   invoiceType = IncomingInvoiceType.ExternalReceive
 ) => {
+  log.info(
+    `Logging zap request for invoice type ${invoiceType} id ${invoiceId}`
+  );
   return db
     .knex("zap_request")
     .insert({
