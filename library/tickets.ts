@@ -19,19 +19,19 @@ interface TicketEvent {
 }
 interface Ticket {
   id: number;
-  ticketed_event_id: string;
-  is_used: boolean;
-  is_paid: boolean;
-  is_pending: boolean;
-  created_at: Date | null;
-  updated_at: Date | null;
+  ticketedEventId: string;
+  isUsed: boolean;
+  isPaid: boolean;
+  isPending: boolean;
+  createdAt: Date | null;
+  updatedAt: Date | null;
   nostr: any;
-  ticket_secret: string | null;
-  used_at: Date | null;
-  price_msat: number;
-  recipient_pubkey: string;
-  external_transaction_id: string;
-  payment_request: string;
+  ticketSecret: string | null;
+  usedAt: Date | null;
+  priceMsat: number;
+  recipientPubkey: string;
+  externalTransactionId: string;
+  paymentRequest: string;
   count: number;
 }
 
@@ -41,13 +41,13 @@ export const sendTicketDm = async (
   ticket: Ticket
 ): Promise<void> => {
   log.debug(
-    `Sending ticket to buyer: ${ticket.recipient_pubkey}, ticketId: ${ticket.id} eventId: ${ticketedEvent.id}`
+    `Sending ticket to buyer: ${ticket.recipientPubkey}, ticketId: ${ticket.id} eventId: ${ticketedEvent.id}`
   );
 
   const message = `
   Thanks for purchasing a ticket to ${ticketedEvent.name}!
   
-  Here's your unique ticket code to get into the event: ${ticket.ticket_secret}
+  Here's your unique ticket code to get into the event: ${ticket.ticketSecret}
   
   Details: ${ticketedEvent.dt_start} at ${ticketedEvent.location}
   
@@ -55,7 +55,7 @@ export const sendTicketDm = async (
 
   const ticketMetadata = [
     message,
-    ticket.ticket_secret,
+    ticket.ticketSecret,
     ticket.id.toString(),
     ticket.count.toString(),
     ticketedEvent.id,
@@ -64,7 +64,7 @@ export const sendTicketDm = async (
   const formattedMessage = ticketMetadata.join(DELIMETER);
   const signedEvent = await createEncryptedMessage(
     formattedMessage,
-    ticket.recipient_pubkey
+    ticket.recipientPubkey
   );
   log.info(`Encrypted message created, eventId: ${signedEvent.id}`);
 

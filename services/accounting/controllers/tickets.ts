@@ -67,20 +67,22 @@ const getTicketInvoice = asyncHandler<
       return;
     }
 
+    const intCount = parseInt(ticketcount);
     const amountInt = parseInt(amount);
-    if (ticketedEvent.price_msat < amountInt) {
+    const grandTotal = intCount * ticketedEvent.price_msat;
+    if (grandTotal < amountInt) {
       log.info(
-        `Zap request is for less than ticket price: ${amountInt} < ${ticketedEvent.price_msat}`
+        `Payment for ticket order is too low. Total price: ${grandTotal} sats, zap amount: ${amountInt} sats, ticket quantity: ${intCount} tickets`
       );
       res.status(400).send({
         success: false,
-        error: `This event has a ticket price of ${ticketedEvent.price_msat} msat`,
+        error: `Not enough sats for ${intCount} tickets. Total order price: ${grandTotal} sats`,
       });
       return;
     }
 
     const ticketCount = await prisma.ticket.count({
-      where: { ticketed_event_id: ticketedEvent.id, is_paid: true },
+      where: { ticketedEventId: ticketedEvent.id, isPaid: true },
     });
     const isSoldOut = ticketedEvent.total_tickets <= ticketCount;
     if (isSoldOut) {
@@ -93,7 +95,7 @@ const getTicketInvoice = asyncHandler<
     }
 
     const pendingTickets = await prisma.ticket.count({
-      where: { ticketed_event_id: ticketedEvent.id, is_pending: true },
+      where: { ticketedEventId: ticketedEvent.id, isPending: true },
     });
     log.info("Pending ticket count: ", pendingTickets);
     const num_of_pending_tickets_allowed_at_once = 5;
@@ -108,7 +110,6 @@ const getTicketInvoice = asyncHandler<
       return;
     }
 
-    const intCount = parseInt(ticketcount);
     if (intCount > ticketedEvent.max_tickets_per_person) {
       log.info(
         `Ticket count exceeds max tickets per person: ${intCount} > ${ticketedEvent.max_tickets_per_person}`
@@ -134,9 +135,9 @@ const getTicketInvoice = asyncHandler<
 
     const ticketsIssuedForPubkey = await prisma.ticket.count({
       where: {
-        ticketed_event_id: ticketedEvent.id,
-        recipient_pubkey: zapRequestEvent.pubkey,
-        is_paid: true,
+        ticketedEventId: ticketedEvent.id,
+        recipientPubkey: zapRequestEvent.pubkey,
+        isPaid: true,
       },
     });
     log.info(`Tickets issued for pubkey: ${ticketsIssuedForPubkey}`);
@@ -157,15 +158,15 @@ const getTicketInvoice = asyncHandler<
 
     const newTicket = await prisma.ticket.create({
       data: {
-        ticketed_event_id: ticketedEvent.id,
-        external_transaction_id: "",
-        payment_request: "",
-        is_used: false,
-        is_paid: false,
-        is_pending: true,
-        created_at: new Date(),
-        updated_at: new Date(),
-        recipient_pubkey: zapRequestEvent.pubkey,
+        ticketedEventId: ticketedEvent.id,
+        externalTransactionId: "",
+        paymentRequest: "",
+        isUsed: false,
+        isPaid: false,
+        isPending: true,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        recipientPubkey: zapRequestEvent.pubkey,
         nostr: zapRequestEvent as any,
         count: intCount,
       },
@@ -205,8 +206,8 @@ const getTicketInvoice = asyncHandler<
       await prisma.ticket.update({
         where: { id: ticketId },
         data: {
-          is_pending: false,
-          updated_at: new Date(),
+          isPending: false,
+          updatedAt: new Date(),
         },
       });
 
@@ -226,9 +227,9 @@ const getTicketInvoice = asyncHandler<
       .update({
         where: { id: newTicket.id },
         data: {
-          payment_request: invoiceResponse.data.invoice.request,
-          external_transaction_id: invoiceResponse.data.id,
-          updated_at: new Date(),
+          paymentRequest: invoiceResponse.data.invoice.request,
+          externalTransactionId: invoiceResponse.data.id,
+          updatedAt: new Date(),
         },
       })
       .catch((e) => {

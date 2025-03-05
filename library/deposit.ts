@@ -27,7 +27,7 @@ export const wasTransactionAlreadyLogged = async (
   const tableName = IncomingInvoiceTableMap[invoiceType];
   return db
     .knex(tableName)
-    .select("is_pending as isPending")
+    .select("isPending as isPending")
     .where("id", "=", invoiceId)
     .first()
     .then((data) => {
@@ -40,26 +40,48 @@ export const wasTransactionAlreadyLogged = async (
       return false;
     });
 };
+
 export const handleCompletedPromoInvoice = async (
   invoiceId: number,
-  msatAmount: number
+  msatAmount: number,
+  // decrement sender balance if internal payment
+  isInternalPayment: boolean,
+  senderUserId?: string
 ) => {
-  return prisma.promo
-    .update({
-      where: {
-        id: invoiceId,
-      },
-      data: {
-        isPending: false,
-        isPaid: true,
-        updatedAt: new Date(),
-        // auto enable promo once paid
-        // TODO - add a feature to enable/disable promos from UI
-        // may want to start with a disabled promo
-        isActive: true,
-      },
-    })
-    .then(() => {
+  return prisma
+    .$transaction(async (prismaTransaction) => {
+      // Update promo invoice status
+      const updatedPromo = await prismaTransaction.promo.update({
+        where: {
+          id: invoiceId,
+        },
+        data: {
+          isPending: false,
+          isPaid: true,
+          updatedAt: new Date(),
+          // auto enable promo once paid
+          isActive: true,
+        },
+      });
+
+      // If it's an internal payment, decrement sender's balance
+      if (isInternalPayment && senderUserId) {
+        await prismaTransaction.user.update({
+          where: {
+            id: senderUserId,
+          },
+          data: {
+            msatBalance: {
+              decrement: msatAmount,
+            },
+            updatedAt: new Date(),
+          },
+        });
+        log.info(
+          `Decremented sender ${senderUserId} balance by ${msatAmount} msat for promo invoice`
+        );
+      }
+
       log.info(
         `Successfully logged promo invoice of ${msatAmount} for ${invoiceId}`
       );
@@ -76,73 +98,98 @@ export const handleCompletedPromoInvoice = async (
 export const handleCompletedTicketInvoice = async (
   invoiceId: number,
   msatAmount: number,
-  paymentRequest: string,
-  externalId: string
+  // decrement sender balance if internal payment
+  isInternalPayment: boolean,
+  senderUserId?: string
 ) => {
   // Start a transaction using Prisma
-  return await prisma.$transaction(async (prismaTransaction) => {
-    log.info(
-      `Processing ticket invoiceId: ${invoiceId} externalId: ${externalId}`
-    );
-
-    // Find the ticket inside the transaction
-    const ticket = await prismaTransaction.ticket.findFirst({
-      where: {
-        id: invoiceId,
-      },
-    });
-
-    if (!ticket) {
-      throw new Error(`Ticket not found for invoice ID: ${invoiceId}`);
-    }
-    log.info(`Ticket found: ${ticket.id}`);
-
-    // Find the ticketed event inside the transaction
-    const ticketedEvent = await prismaTransaction.ticketed_event.findFirst({
-      where: {
-        id: ticket.ticketed_event_id,
-      },
-    });
-
-    if (!ticketedEvent) {
-      throw new Error(`Ticketed event not found for ticket ID: ${ticket.id}`);
-    }
-
-    log.info(`Ticketed event found: ${ticketedEvent.id}`);
-    log.info(`Ticketed event owner: ${ticketedEvent.user_id}`);
-    const ticketSecret = generateValidationCode();
-    // Update ticket record
-    const updatedTicket = await prismaTransaction.ticket.update({
-      where: {
-        id: ticket.id,
-      },
-      data: {
-        is_pending: false,
-        is_paid: true,
-        updated_at: new Date(),
-        price_msat: msatAmount,
-        payment_request: paymentRequest,
-        external_transaction_id: externalId,
-        ticket_secret: ticketSecret,
-      },
-    });
-
-    log.info(`Incrementing owner balance by ${msatAmount} msat`);
-    // Update user record balance
-    await prismaTransaction.user.update({
-      where: {
-        id: ticketedEvent.user_id,
-      },
-      data: {
-        msatBalance: {
-          increment: msatAmount * updatedTicket.count,
+  return await prisma
+    .$transaction(async (prismaTransaction) => {
+      // Find the ticket inside the transaction
+      const ticket = await prismaTransaction.ticket.findFirst({
+        where: {
+          id: invoiceId,
         },
-        updatedAt: new Date(),
-      },
-    });
+      });
 
-    await sendTicketDm(ticketedEvent, updatedTicket);
-  });
+      if (!ticket) {
+        log.error(`Ticket not found for ID: ${invoiceId}`);
+        return;
+      }
+      log.info(`Ticket found: ${ticket.id}`);
+
+      // Find the ticketed event inside the transaction
+      const ticketedEvent = await prismaTransaction.ticketed_event.findFirst({
+        where: {
+          id: ticket.ticketedEventId,
+        },
+      });
+
+      if (!ticketedEvent) {
+        log.error(`Ticketed event not found for ticket ID: ${ticket.id}`);
+        return;
+      }
+
+      log.info(`Ticketed event found: ${ticketedEvent.id}`);
+      log.info(`Ticketed event owner: ${ticketedEvent.user_id}`);
+      const ticketSecret = generateValidationCode();
+
+      // Update ticket record
+      const updatedTicket = await prismaTransaction.ticket.update({
+        where: {
+          id: ticket.id,
+        },
+        data: {
+          isPending: false,
+          isPaid: true,
+          updatedAt: new Date(),
+          priceMsat: msatAmount,
+          ticketSecret: ticketSecret,
+        },
+      });
+
+      // Increment event owner's balance
+      log.info(`Incrementing owner balance by ${msatAmount} msat`);
+      await prismaTransaction.user.update({
+        where: {
+          id: ticketedEvent.user_id,
+        },
+        data: {
+          msatBalance: {
+            increment: msatAmount * updatedTicket.count,
+          },
+          updatedAt: new Date(),
+        },
+      });
+
+      // If it's an internal payment, decrement sender's balance
+      if (isInternalPayment && senderUserId) {
+        await prismaTransaction.user.update({
+          where: {
+            id: senderUserId,
+          },
+          data: {
+            msatBalance: {
+              decrement: msatAmount,
+            },
+            updatedAt: new Date(),
+          },
+        });
+        log.info(
+          `Decremented sender ${senderUserId} balance by ${msatAmount} msat for ticket invoice`
+        );
+      }
+
+      await sendTicketDm(ticketedEvent, updatedTicket);
+
+      return true;
+    })
+    .catch((err) => {
+      log.error(
+        `Error updating ticket invoice on handleCompletedTicketInvoice: ${err}`
+      );
+      return false;
+    });
 };
 
 export const handleCompletedDeposit = async (
@@ -155,7 +202,7 @@ export const handleCompletedDeposit = async (
   return trx("transaction")
     .update({
       success: true,
-      is_pending: false,
+      isPending: false,
     })
     .where({ id: transactionId })
     .then(() => {

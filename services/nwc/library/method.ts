@@ -13,6 +13,10 @@ import { FEE_BUFFER } from "@library/constants";
 import { randomUUID } from "crypto";
 import { IncomingInvoiceType } from "@library/common";
 import { Event } from "nostr-tools";
+import {
+  handleCompletedPromoInvoice,
+  handleCompletedTicketInvoice,
+} from "@library/deposit";
 
 type InvoiceResult = {
   type: "incoming" | "outgoing";
@@ -137,7 +141,8 @@ export const payInvoice = async (
         userId,
         valueMsat,
         msatBalance,
-        event
+        event,
+        wavlakeInvoiceInfo.type
       );
       return;
     } else {
@@ -229,8 +234,11 @@ const createInternalPayment = async (
   userId: string,
   valueMsat,
   msatBalance,
-  event
+  event,
+  type: IncomingInvoiceType
 ) => {
+  const newBalance = parseInt(msatBalance) - parseInt(valueMsat);
+
   const txId = randomUUID();
   const [timestampTag, timestamp] =
     zapRequest.tags.find((tag) => tag[0] === "timestamp") ?? [];
@@ -262,47 +270,125 @@ const createInternalPayment = async (
     await publishZapReceipt(zapRequest, paymentRequest, "nwc", txId);
     // Broadcast response
 
-    const newBalance = parseInt(msatBalance) - parseInt(valueMsat);
-    broadcastEventResponse(
-      event.pubkey,
-      event.id,
-      JSON.stringify({
-        result_type: "pay_invoice",
-        result: {
-          preimage: "nwc",
-          balance: newBalance,
-        },
-      })
-    );
+    await broadcastPaymentResponse(event, newBalance);
     await updateWallet(event.pubkey, valueMsat);
     return;
-  } else {
-    log.info(`Internal payment failed`);
-    return;
   }
+
+  if (type === IncomingInvoiceType.Promo) {
+    log.info(`Attempting to settle promo invoice`);
+    const success = await handleCompletedPromoInvoice(
+      invoiceId,
+      valueMsat,
+      true,
+      userId
+    );
+    if (success) {
+      await broadcastPaymentResponse(event, newBalance);
+      await updateWallet(event.pubkey, valueMsat);
+      return;
+    }
+  }
+  if (type === IncomingInvoiceType.Ticket) {
+    log.info(`Attempting to settle ticket invoice`);
+    const success = await handleCompletedTicketInvoice(
+      invoiceId,
+      valueMsat,
+      true,
+      userId
+    );
+    if (success) {
+      await broadcastPaymentResponse(event, newBalance);
+      await updateWallet(event.pubkey, valueMsat);
+      return;
+    }
+  }
+
+  // Fallback error handling
+
+  log.info(`Internal payment failed`);
+  broadcastEventResponse(
+    event.pubkey,
+    event.id,
+    JSON.stringify({
+      result_type: "pay_invoice",
+      error: {
+        message: "Internal payment failed",
+        code: "INTERNAL",
+      },
+    })
+  );
 };
 
+// Helper function to broadcast payment response
+const broadcastPaymentResponse = async (event: any, newBalance: number) => {
+  broadcastEventResponse(
+    event.pubkey,
+    event.id,
+    JSON.stringify({
+      result_type: "pay_invoice",
+      result: {
+        preimage: "nwc",
+        balance: newBalance,
+      },
+    })
+  );
+};
 const getWavlakeInvoice = async (paymentHash: string) => {
   log.info(`Checking if invoice is Wavlake invoice`);
 
-  const receiveRecord = await prisma.externalReceive.findMany({
+  const receiveRecord = await prisma.externalReceive.findFirst({
     where: { paymentHash: paymentHash },
   });
 
-  if (receiveRecord.length === 0) {
-    log.info(`Invoice not found in database`);
-    return null;
+  if (receiveRecord) {
+    log.info(`Found external receive record, id: ${receiveRecord.id}`);
+
+    return {
+      id: receiveRecord.id,
+      contentId: receiveRecord.trackId,
+      isWavlake: true,
+      isSettled: !receiveRecord.isPending && receiveRecord.preimage !== null,
+      preimage: receiveRecord.preimage,
+      type: IncomingInvoiceType.ExternalReceive,
+    };
   }
 
-  const isSettled =
-    !receiveRecord[0].isPending && receiveRecord[0].preimage !== null;
-  return {
-    id: receiveRecord[0].id,
-    contentId: receiveRecord[0].trackId,
-    isWavlake: true,
-    isSettled: isSettled,
-    preimage: receiveRecord[0].preimage,
-  };
+  const promoRecord = await prisma.promo.findFirst({
+    where: { paymentRequest: paymentHash },
+  });
+
+  if (promoRecord) {
+    log.info(`Found promo record, id: ${promoRecord.id}`);
+    return {
+      id: promoRecord.id,
+      contentId: null,
+      isWavlake: true,
+      isSettled: !promoRecord.isPending && promoRecord.paymentRequest !== null,
+      preimage: promoRecord.paymentRequest,
+      type: IncomingInvoiceType.Promo,
+    };
+  }
+
+  const ticketRecord = await prisma.ticket.findFirst({
+    where: { paymentRequest: paymentHash },
+  });
+
+  if (ticketRecord) {
+    log.info(`Found ticket record, id: ${ticketRecord.id}`);
+    return {
+      id: ticketRecord.id,
+      contentId: null,
+      isWavlake: true,
+      isSettled:
+        !ticketRecord.isPending && ticketRecord.paymentRequest !== null,
+      preimage: ticketRecord.paymentRequest,
+      type: IncomingInvoiceType.Ticket,
+    };
+  }
+
+  log.info(`Invoice not found in database for payment request ${paymentHash}`);
+  return null;
 };
 
 export const makeInvoice = async (event: Event, walletUser: WalletUser) => {
