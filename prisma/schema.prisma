@@ -702,12 +702,12 @@ model ticket {
   externalTransactionId String         @map("external_transaction_id")
   paymentRequest        String         @map("payment_request")
   count                 Int            @default(1)
-  created_at            DateTime?      @db.Timestamptz(6)
-  updated_at            DateTime?      @db.Timestamptz(6)
+  createdAt             DateTime?      @db.Timestamptz(6) @map("created_at")
+  updatedAt             DateTime?      @db.Timestamptz(6) @map("updated_at")
   nostr                 Json?
   ticketSecret          String?        @map("ticket_secret") @db.VarChar(255)
   usedAt                DateTime?      @map("used_at") @db.Timestamptz(6)
-  price_msat            Int?
+  priceMsat             Int?           @map("price_msat")
   ticketed_event        ticketed_event @relation(fields: [ticketedEventId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "ticket_ticketed_event_id_foreign")
 
   @@index([ticketedEventId], map: "ticket_ticketed_event_id_index")
