@@ -27,7 +27,7 @@ export const wasTransactionAlreadyLogged = async (
   const tableName = IncomingInvoiceTableMap[invoiceType];
   return db
     .knex(tableName)
-    .select("isPending as isPending")
+    .select("is_pending as isPending")
     .where("id", "=", invoiceId)
     .first()
     .then((data) => {
@@ -202,7 +202,7 @@ export const handleCompletedDeposit = async (
   return trx("transaction")
     .update({
       success: true,
-      isPending: false,
+      is_pending: false,
     })
     .where({ id: transactionId })
     .then(() => {
