@@ -27,7 +27,7 @@ export const wasTransactionAlreadyLogged = async (
   const tableName = IncomingInvoiceTableMap[invoiceType];
   return db
     .knex(tableName)
-    .select("is_pending as isPending")
+    .select("isPending as isPending")
     .where("id", "=", invoiceId)
     .first()
     .then((data) => {
@@ -100,7 +100,7 @@ export const handleCompletedTicketInvoice = async (
     // Find the ticketed event inside the transaction
     const ticketedEvent = await prismaTransaction.ticketed_event.findFirst({
       where: {
-        id: ticket.ticketed_event_id,
+        id: ticket.ticketedEventId,
       },
     });
 
@@ -117,13 +117,13 @@ export const handleCompletedTicketInvoice = async (
         id: ticket.id,
       },
       data: {
-        is_pending: false,
-        is_paid: true,
-        updated_at: new Date(),
-        price_msat: msatAmount,
-        payment_request: paymentRequest,
-        external_transaction_id: externalId,
-        ticket_secret: ticketSecret,
+        isPending: false,
+        isPaid: true,
+        updatedAt: new Date(),
+        priceMsat: msatAmount,
+        paymentRequest: paymentRequest,
+        externalTransactionId: externalId,
+        ticketSecret: ticketSecret,
       },
     });
 
@@ -155,7 +155,7 @@ export const handleCompletedDeposit = async (
   return trx("transaction")
     .update({
       success: true,
-      is_pending: false,
+      isPending: false,
     })
     .where({ id: transactionId })
     .then(() => {
