@@ -94,16 +94,11 @@ export const updateInvoiceIfNeeded = async (
           break;
         case IncomingInvoiceType.Promo:
           log.info(`Processing promo invoice for id ${invoiceId}`);
-          await handleCompletedPromoInvoice(invoiceId, msatAmount);
+          await handleCompletedPromoInvoice(invoiceId, msatAmount, false);
           break;
         case IncomingInvoiceType.Ticket:
           log.info(`Processing ticket invoice for id ${invoiceId}`);
-          await handleCompletedTicketInvoice(
-            invoiceId,
-            msatAmount,
-            paymentRequest,
-            externalId
-          );
+          await handleCompletedTicketInvoice(invoiceId, msatAmount, false);
           break;
         default:
           log.error(`Invalid invoiceType: ${invoiceType}`);
