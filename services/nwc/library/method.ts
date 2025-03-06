@@ -129,19 +129,12 @@ export const payInvoice = async (
         IncomingInvoiceType.ExternalReceive
       );
 
-      if (!zapRequestData) {
-        console.log(`No zap request found for invoice ${invoice}`);
-      }
-
-      const { pubkey, content, zapRequest } = zapRequestData;
       console.log(`Processing Wavlake invoice...`);
       await createInternalPayment({
-        zapRequest,
+        zapRequest: zapRequestData,
         invoiceId: wavlakeInvoiceInfo.id,
         paymentRequest: invoice,
         contentId: wavlakeInvoiceInfo.contentId,
-        pubkey,
-        content,
         userId,
         valueMsat,
         msatBalance,
@@ -223,30 +216,22 @@ const createExternalPayment = async (
   return;
 };
 
-interface ZapRequestEvent {
-  tags: [string, string][];
-}
-
 // Internal payment
 const createInternalPayment = async ({
   zapRequest,
   invoiceId,
   paymentRequest,
   contentId,
-  pubkey,
-  content,
   userId,
   valueMsat,
   msatBalance,
   event,
   type,
 }: {
-  zapRequest: ZapRequestEvent;
+  zapRequest?: Event;
   invoiceId: number;
   paymentRequest: string;
   contentId: string;
-  pubkey: string;
-  content?: string;
   userId: string;
   valueMsat;
   msatBalance;
@@ -254,25 +239,31 @@ const createInternalPayment = async ({
   type: IncomingInvoiceType;
 }) => {
   const newBalance = parseInt(msatBalance) - parseInt(valueMsat);
-
   const txId = randomUUID();
-  const [timestampTag, timestamp] =
-    zapRequest.tags.find((tag) => tag[0] === "timestamp") ?? [];
+  let payment;
 
-  const skipSplits = !zapRequest || !pubkey;
-  const payment = skipSplits
-    ? null
-    : await processSplits({
-        paymentType: 10,
-        contentTime: parseInt(timestamp),
-        contentId: contentId,
-        userId: userId,
-        npub: pubkey,
-        msatAmount: valueMsat,
-        comment: content,
-        isNostr: true,
-        externalTxId: txId,
-      });
+  if (!zapRequest) {
+    console.log(
+      `No zap request found for invoiceId: ${invoiceId} type: ${type}`
+    );
+  } else {
+    const [timestampTag, timestamp] =
+      zapRequest.tags.find((tag) => tag[0] === "timestamp") ?? [];
+
+    payment = !zapRequest
+      ? null
+      : await processSplits({
+          paymentType: 10,
+          contentTime: parseInt(timestamp),
+          contentId: contentId,
+          userId: userId,
+          npub: zapRequest.pubkey,
+          msatAmount: valueMsat,
+          comment: zapRequest.content,
+          isNostr: true,
+          externalTxId: txId,
+        });
+  }
 
   if (payment) {
     console.log(`Paid internal invoice with id ${invoiceId}, cancelling...`);
