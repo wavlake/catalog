@@ -131,24 +131,23 @@ export const payInvoice = async (
 
       if (!zapRequestData) {
         console.log(`No zap request found for invoice ${invoice}`);
-        return;
       }
 
       const { pubkey, content, zapRequest } = zapRequestData;
       console.log(`Processing Wavlake invoice...`);
-      await createInternalPayment(
+      await createInternalPayment({
         zapRequest,
-        wavlakeInvoiceInfo.id,
-        invoice,
-        wavlakeInvoiceInfo.contentId,
+        invoiceId: wavlakeInvoiceInfo.id,
+        paymentRequest: invoice,
+        contentId: wavlakeInvoiceInfo.contentId,
         pubkey,
         content,
         userId,
         valueMsat,
         msatBalance,
         event,
-        wavlakeInvoiceInfo.type
-      );
+        type: wavlakeInvoiceInfo.type,
+      });
       return;
     } else {
       console.log(`Wavlake invoice is closed, skipping.`);
@@ -229,35 +228,51 @@ interface ZapRequestEvent {
 }
 
 // Internal payment
-const createInternalPayment = async (
-  zapRequest: ZapRequestEvent,
-  invoiceId: number,
-  paymentRequest: string,
-  contentId: string,
-  pubkey: string,
-  content: string,
-  userId: string,
+const createInternalPayment = async ({
+  zapRequest,
+  invoiceId,
+  paymentRequest,
+  contentId,
+  pubkey,
+  content,
+  userId,
   valueMsat,
   msatBalance,
   event,
-  type: IncomingInvoiceType
-) => {
+  type,
+}: {
+  zapRequest: ZapRequestEvent;
+  invoiceId: number;
+  paymentRequest: string;
+  contentId: string;
+  pubkey: string;
+  content?: string;
+  userId: string;
+  valueMsat;
+  msatBalance;
+  event;
+  type: IncomingInvoiceType;
+}) => {
   const newBalance = parseInt(msatBalance) - parseInt(valueMsat);
 
   const txId = randomUUID();
   const [timestampTag, timestamp] =
     zapRequest.tags.find((tag) => tag[0] === "timestamp") ?? [];
-  const payment = await processSplits({
-    paymentType: 10,
-    contentTime: parseInt(timestamp),
-    contentId: contentId,
-    userId: userId,
-    npub: pubkey,
-    msatAmount: valueMsat,
-    comment: content,
-    isNostr: true,
-    externalTxId: txId,
-  });
+
+  const skipSplits = !zapRequest || !pubkey;
+  const payment = skipSplits
+    ? null
+    : await processSplits({
+        paymentType: 10,
+        contentTime: parseInt(timestamp),
+        contentId: contentId,
+        userId: userId,
+        npub: pubkey,
+        msatAmount: valueMsat,
+        comment: content,
+        isNostr: true,
+        externalTxId: txId,
+      });
 
   if (payment) {
     console.log(`Paid internal invoice with id ${invoiceId}, cancelling...`);
