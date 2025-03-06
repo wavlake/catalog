@@ -31,12 +31,11 @@ export const validateNostrZapRequest = ({
   let zapRequestEvent: Event;
   try {
     zapRequestEvent = JSON.parse(nostr);
+    if (!verifyEvent(zapRequestEvent) || zapRequestEvent.kind !== 9734) {
+      return { isValid: false, error: "Invalid zap request event" };
+    }
   } catch (e) {
-    return { isValid: false, error: "Invalid nostr object" };
-  }
-
-  if (!verifyEvent(zapRequestEvent) || zapRequestEvent.kind !== 9734) {
-    return { isValid: false, error: "Invalid zap request event" };
+    return { isValid: false, error: e || "Invalid nostr object" };
   }
 
   // https://github.com/nostr-protocol/nips/blob/master/57.md#appendix-a-zap-request-event
@@ -71,11 +70,19 @@ export const getZapPubkeyAndContent = async (
     .where("payment_hash", paymentHash)
     .first()
     .then((data) => {
-      return data.event;
+      return data?.event || null;
     })
     .catch((err) => {
       throw new Error(`Error getting zap pubkey and comment: ${err}`);
     });
+
+  if (!zapRequestEvent) {
+    console.log(
+      `No zap request found for invoiceId: ${invoiceId} type: ${invoiceType}`
+    );
+
+    return null;
+  }
 
   let parsedZap;
   try {
@@ -92,11 +99,6 @@ export const getZapPubkeyAndContent = async (
     timestamp: parsedZap.tags?.timestamp,
   };
 };
-
-interface ZapRequestEvent {
-  content: string;
-  tags: [string, string][];
-}
 
 export const publishPartyReceipt = async (trackId: string) => {
   const relay = await Relay.connect(WAVLAKE_RELAY);
@@ -117,7 +119,7 @@ export const publishPartyReceipt = async (trackId: string) => {
 };
 
 export const publishZapReceipt = async (
-  zapRequestEvent: ZapRequestEvent,
+  zapRequestEvent: Event,
   paymentRequest: string,
   preimage: string,
   txId: string

@@ -1,9 +1,7 @@
 import db from "@library/db";
-const log = require("loglevel");
-log.setlevel("trace");
 
 export async function getWalletUser(pubkey) {
-  // log.info(weeklySpend);
+  // console.info(weeklySpend);
 
   return db
     .knex("wallet_connection")
@@ -18,7 +16,7 @@ export async function getWalletUser(pubkey) {
     .first()
     .then((data) => data || null)
     .catch((err) => {
-      log.error(`Error finding user from pubkey ${err}`);
+      console.error(`Error finding user from pubkey ${err}`);
     });
 }
 
@@ -36,16 +34,16 @@ export async function updateWallet(pubkey, msatAmount: number) {
     })
     .then(trx.commit)
     .catch((err) => {
-      log.error(`Error updating wallet connection ${err}`);
+      console.error(`Error updating wallet connection ${err}`);
     });
 }
 
 export const walletHasRemainingBudget = async (
   walletPubkey,
   msatBudget,
-  valueMsat
+  valueMsatInt: number
 ) => {
-  log.info(`Getting budget remaining for NWC wallet: ${walletPubkey}`);
+  console.log(`Getting budget remaining for NWC wallet: ${walletPubkey}`);
 
   // if the max budget is 0 then the user has no budget, its unlimited
   if (msatBudget === 0) {
@@ -62,11 +60,11 @@ export const walletHasRemainingBudget = async (
     .then((data) => {
       // If there are no tx records then simply check if the budget is greater than the value
       if (data?.length === 0) {
-        return parseInt(msatBudget) > parseInt(valueMsat);
+        return parseInt(msatBudget) > valueMsatInt;
       }
-      return parseInt(msatBudget) - data.msatAmpTotal > parseInt(valueMsat);
+      return parseInt(msatBudget) - data.msatAmpTotal > valueMsatInt;
     })
     .catch((err) => {
-      log.error(`Error getting NWC wallet remaining budget ${err}`);
+      console.error(`Error getting NWC wallet remaining budget ${err}`);
     });
 };

@@ -15,3 +15,10 @@ export const DEFAULT_WRITE_RELAY_URIS = [
   "wss://relay.snort.social",
   "wss://nostr.mutinywallet.com",
 ];
+
+export interface ZapRequest {
+  amount: string;
+  nostr: string;
+  metadata: string;
+  lnurl: string;
+}
