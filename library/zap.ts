@@ -70,11 +70,19 @@ export const getZapPubkeyAndContent = async (
     .where("payment_hash", paymentHash)
     .first()
     .then((data) => {
-      return data.event;
+      return data?.event || null;
     })
     .catch((err) => {
       throw new Error(`Error getting zap pubkey and comment: ${err}`);
     });
+
+  if (!zapRequestEvent) {
+    console.log(
+      `No zap request found for invoiceId: ${invoiceId} type: ${invoiceType}`
+    );
+
+    return null;
+  }
 
   let parsedZap;
   try {
