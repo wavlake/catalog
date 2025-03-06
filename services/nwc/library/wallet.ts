@@ -1,5 +1,4 @@
 import db from "@library/db";
-import log from "@library/winston";
 
 export async function getWalletUser(pubkey) {
   // console.info(weeklySpend);
@@ -17,7 +16,7 @@ export async function getWalletUser(pubkey) {
     .first()
     .then((data) => data || null)
     .catch((err) => {
-      log.error(`Error finding user from pubkey ${err}`);
+      console.error(`Error finding user from pubkey ${err}`);
     });
 }
 
@@ -35,7 +34,7 @@ export async function updateWallet(pubkey, msatAmount: number) {
     })
     .then(trx.commit)
     .catch((err) => {
-      log.error(`Error updating wallet connection ${err}`);
+      console.error(`Error updating wallet connection ${err}`);
     });
 }
 
@@ -44,7 +43,7 @@ export const walletHasRemainingBudget = async (
   msatBudget,
   valueMsatInt: number
 ) => {
-  log.info(`Getting budget remaining for NWC wallet: ${walletPubkey}`);
+  console.log(`Getting budget remaining for NWC wallet: ${walletPubkey}`);
 
   // if the max budget is 0 then the user has no budget, its unlimited
   if (msatBudget === 0) {
@@ -66,6 +65,6 @@ export const walletHasRemainingBudget = async (
       return parseInt(msatBudget) - data.msatAmpTotal > valueMsatInt;
     })
     .catch((err) => {
-      log.error(`Error getting NWC wallet remaining budget ${err}`);
+      console.error(`Error getting NWC wallet remaining budget ${err}`);
     });
 };

@@ -2,7 +2,8 @@ require("dotenv").config();
 // SENTRY
 require("./library/instrument.js");
 
-import log from "@library/winston";
+import log, { LogLevelDesc } from "loglevel";
+log.setLevel(process.env.LOGLEVEL as LogLevelDesc);
 import {
   getPublicKey,
   Relay,
