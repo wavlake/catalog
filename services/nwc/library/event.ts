@@ -7,6 +7,7 @@ import {
 } from "nostr-tools";
 import { hexToBytes } from "@noble/hashes/utils"; // already an installed dependency
 import { getWalletUser } from "./wallet";
+import log from "@library/winston";
 
 const relayUrl = process.env.WAVLAKE_RELAY;
 const walletSk = hexToBytes(process.env.WALLET_SERVICE_SECRET);
@@ -17,7 +18,7 @@ export const validateEventAndGetUser = async (event) => {
   if (!isValid) return;
 
   const requesterPubkey = event.pubkey;
-  console.log(`Received valid event from ${requesterPubkey}`);
+  log.info(`Received valid event from ${requesterPubkey}`);
 
   const walletUser = await getWalletUser(requesterPubkey);
   return walletUser;
@@ -52,6 +53,6 @@ export const broadcastEventResponse = async (
   // Relay action
   const relay = await Relay.connect(relayUrl);
   await relay.publish(signedEvent);
-  console.log(`Published event response, id: ${signedEvent.id}`);
+  log.info(`Published event response, id: ${signedEvent.id}`);
   return;
 };
