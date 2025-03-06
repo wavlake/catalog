@@ -42,7 +42,7 @@ export async function updateWallet(pubkey, msatAmount: number) {
 export const walletHasRemainingBudget = async (
   walletPubkey,
   msatBudget,
-  valueMsat
+  valueMsatInt: number
 ) => {
   log.info(`Getting budget remaining for NWC wallet: ${walletPubkey}`);
 
@@ -61,9 +61,9 @@ export const walletHasRemainingBudget = async (
     .then((data) => {
       // If there are no tx records then simply check if the budget is greater than the value
       if (data?.length === 0) {
-        return parseInt(msatBudget) > parseInt(valueMsat);
+        return parseInt(msatBudget) > valueMsatInt;
       }
-      return parseInt(msatBudget) - data.msatAmpTotal > parseInt(valueMsat);
+      return parseInt(msatBudget) - data.msatAmpTotal > valueMsatInt;
     })
     .catch((err) => {
       log.error(`Error getting NWC wallet remaining budget ${err}`);

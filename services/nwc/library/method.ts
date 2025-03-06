@@ -63,11 +63,12 @@ export const payInvoice = async (
   }
 
   const { valueMsat } = decodedInvoice;
+  const valueMsatInt = parseInt(valueMsat);
   log.info(`Decoded invoice: ${invoice}`);
   log.info(`Value: ${valueMsat}`);
 
   // Check if payment amount exceeds max payment amount
-  if (parseInt(valueMsat) > maxMsatPaymentAmount) {
+  if (valueMsatInt > maxMsatPaymentAmount) {
     log.info(`Transaction for ${userId} exceeds max payment amount.`);
     sendErrorResponse(
       event,
@@ -82,8 +83,8 @@ export const payInvoice = async (
   const passedChecks = await runPaymentChecks(
     userId,
     invoice,
-    parseInt(valueMsat),
-    FEE_BUFFER * parseInt(valueMsat)
+    valueMsatInt,
+    FEE_BUFFER * valueMsatInt
   );
 
   if (!passedChecks.success) {
@@ -104,7 +105,7 @@ export const payInvoice = async (
   const hasRemainingBudget = await walletHasRemainingBudget(
     event.pubkey,
     msatBudget,
-    valueMsat
+    valueMsatInt
   );
   log.info(`Remaining budget for ${userId} is ${hasRemainingBudget}`);
   if (!hasRemainingBudget) {
@@ -137,7 +138,7 @@ export const payInvoice = async (
         paymentRequest: invoice,
         contentId: wavlakeInvoiceInfo.contentId,
         userId,
-        valueMsat,
+        valueMsatInt,
         msatBalance,
         event,
         type: wavlakeInvoiceInfo.type,
@@ -151,7 +152,13 @@ export const payInvoice = async (
 
   // If not Wavlake invoice, treat as an external payment
   log.info(`Processing external invoice...`);
-  await createExternalPayment(event, invoice, userId, valueMsat, msatBalance);
+  await createExternalPayment(
+    event,
+    invoice,
+    userId,
+    valueMsatInt,
+    msatBalance
+  );
   return;
 };
 
@@ -177,14 +184,14 @@ const createExternalPayment = async (
   event,
   invoice,
   userId,
-  valueMsat,
+  valueMsatInt,
   msatBalance
 ) => {
   const externalPaymentResult = await initiatePayment(
     null,
     userId,
     invoice,
-    parseInt(valueMsat),
+    valueMsatInt,
     FEE_BUFFER
   );
 
@@ -193,7 +200,7 @@ const createExternalPayment = async (
 
     const preimageString = externalPaymentResult.data.preimage; // Returned as string already
     const msatSpentIncludingFee =
-      parseInt(valueMsat) + parseInt(externalPaymentResult.data.fee);
+      valueMsatInt + parseInt(externalPaymentResult.data.fee);
 
     await updateWallet(event.pubkey, msatSpentIncludingFee);
 
@@ -224,7 +231,7 @@ const createInternalPayment = async ({
   paymentRequest,
   contentId,
   userId,
-  valueMsat,
+  valueMsatInt,
   msatBalance,
   event,
   type,
@@ -234,12 +241,12 @@ const createInternalPayment = async ({
   paymentRequest: string;
   contentId: string;
   userId: string;
-  valueMsat;
+  valueMsatInt: number;
   msatBalance;
   event;
   type: IncomingInvoiceType;
 }) => {
-  const newBalance = parseInt(msatBalance) - parseInt(valueMsat);
+  const newBalance = parseInt(msatBalance) - valueMsatInt;
   const txId = randomUUID();
   let payment;
 
@@ -258,7 +265,7 @@ const createInternalPayment = async ({
           contentId: contentId,
           userId: userId,
           npub: zapRequest.pubkey,
-          msatAmount: valueMsat,
+          msatAmount: valueMsatInt,
           comment: zapRequest.content,
           isNostr: true,
           externalTxId: txId,
@@ -283,7 +290,7 @@ const createInternalPayment = async ({
     // Broadcast response
 
     await broadcastPaymentResponse(event, newBalance);
-    await updateWallet(event.pubkey, valueMsat);
+    await updateWallet(event.pubkey, valueMsatInt);
     return;
   }
 
@@ -291,13 +298,13 @@ const createInternalPayment = async ({
     log.info(`Attempting to settle promo invoice`);
     const success = await handleCompletedPromoInvoice(
       invoiceId,
-      valueMsat,
+      valueMsatInt,
       true,
       userId
     );
     if (success) {
       await broadcastPaymentResponse(event, newBalance);
-      await updateWallet(event.pubkey, valueMsat);
+      await updateWallet(event.pubkey, valueMsatInt);
       return;
     }
   }
@@ -305,13 +312,13 @@ const createInternalPayment = async ({
     log.info(`Attempting to settle ticket invoice`);
     const success = await handleCompletedTicketInvoice(
       invoiceId,
-      valueMsat,
+      valueMsatInt,
       true,
       userId
     );
     if (success) {
       await broadcastPaymentResponse(event, newBalance);
-      await updateWallet(event.pubkey, valueMsat);
+      await updateWallet(event.pubkey, valueMsatInt);
       return;
     }
   }
