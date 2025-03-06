@@ -247,6 +247,7 @@ const createInternalPayment = async ({
       `No zap request found for invoiceId: ${invoiceId} type: ${type}`
     );
   } else {
+    console.log("Found zap request", zapRequest);
     const [timestampTag, timestamp] =
       zapRequest.tags.find((tag) => tag[0] === "timestamp") ?? [];
 
