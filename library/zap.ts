@@ -100,11 +100,6 @@ export const getZapPubkeyAndContent = async (
   };
 };
 
-interface ZapRequestEvent {
-  content: string;
-  tags: [string, string][];
-}
-
 export const publishPartyReceipt = async (trackId: string) => {
   const relay = await Relay.connect(WAVLAKE_RELAY);
   let event = {
@@ -124,7 +119,7 @@ export const publishPartyReceipt = async (trackId: string) => {
 };
 
 export const publishZapReceipt = async (
-  zapRequestEvent: ZapRequestEvent,
+  zapRequestEvent: Event,
   paymentRequest: string,
   preimage: string,
   txId: string

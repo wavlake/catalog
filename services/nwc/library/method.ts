@@ -1,7 +1,7 @@
 import prisma from "@prismalocal/client";
 const nlInvoice = require("@node-lightning/invoice");
 import { processSplits } from "@library/amp";
-const { getZapPubkeyAndContent, publishZapReceipt } = require("@library/zap");
+import { getZapPubkeyAndContent, publishZapReceipt } from "@library/zap";
 import { updateWallet, walletHasRemainingBudget } from "./wallet";
 import { initiatePayment, runPaymentChecks } from "@library/payments";
 const { broadcastEventResponse } = require("./event");
@@ -124,14 +124,14 @@ export const payInvoice = async (
   // If Wavlake invoice, treat as an internal amp payment
   if (wavlakeInvoiceInfo?.isWavlake) {
     if (!wavlakeInvoiceInfo.isSettled) {
-      const zapRequestData = await getZapPubkeyAndContent(
+      const { zapRequest } = await getZapPubkeyAndContent(
         wavlakeInvoiceInfo.id,
         IncomingInvoiceType.ExternalReceive
       );
 
       console.log(`Processing Wavlake invoice...`);
       await createInternalPayment({
-        zapRequest: zapRequestData,
+        zapRequest,
         invoiceId: wavlakeInvoiceInfo.id,
         paymentRequest: invoice,
         contentId: wavlakeInvoiceInfo.contentId,
