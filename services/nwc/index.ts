@@ -85,6 +85,7 @@ const applySoftRateLimit = async (npub) => {
 
 // Main process
 const monitorForNWCRequests = async () => {
+  console.log("NWC_MONITOR");
   log.info("monitorForNWCRequests");
   if (!walletSk) {
     throw new Error(
