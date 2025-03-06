@@ -1,6 +1,6 @@
 require("dotenv").config();
 // SENTRY
-require("./instrument.js");
+require("./library/instrument.js");
 
 import log, { LogLevelDesc } from "loglevel";
 log.setLevel(process.env.LOGLEVEL as LogLevelDesc);
@@ -94,7 +94,6 @@ const applySoftRateLimit = async (npub) => {
 
 // Main process
 const monitorForNWCRequests = async () => {
-  console.log("NWC_MONITOR");
   log.info("monitorForNWCRequests");
   if (!walletSk) {
     throw new Error(
