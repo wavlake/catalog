@@ -1,4 +1,5 @@
 import {
+  Event,
   SimplePool,
   finalizeEvent,
   useWebSocketImplementation,
@@ -36,7 +37,7 @@ const getTrackMetadata = async (trackId: string) => {
   return trackDetails;
 };
 
-export const handleConferenceZap = async (zapRequestEvent: ZapRequestEvent) => {
+export const handleConferenceZap = async (zapRequestEvent: Event) => {
   log.info("Handling conference zap request");
   try {
     // Parse zap request for track id and message

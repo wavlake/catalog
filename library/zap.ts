@@ -70,11 +70,19 @@ export const getZapPubkeyAndContent = async (
     .where("payment_hash", paymentHash)
     .first()
     .then((data) => {
-      return data.event;
+      return data?.event || null;
     })
     .catch((err) => {
       throw new Error(`Error getting zap pubkey and comment: ${err}`);
     });
+
+  if (!zapRequestEvent) {
+    console.log(
+      `No zap request found for invoiceId: ${invoiceId} type: ${invoiceType}`
+    );
+
+    return null;
+  }
 
   let parsedZap;
   try {
@@ -91,11 +99,6 @@ export const getZapPubkeyAndContent = async (
     timestamp: parsedZap.tags?.timestamp,
   };
 };
-
-interface ZapRequestEvent {
-  content: string;
-  tags: [string, string][];
-}
 
 export const publishPartyReceipt = async (trackId: string) => {
   const relay = await Relay.connect(WAVLAKE_RELAY);
@@ -116,7 +119,7 @@ export const publishPartyReceipt = async (trackId: string) => {
 };
 
 export const publishZapReceipt = async (
-  zapRequestEvent: ZapRequestEvent,
+  zapRequestEvent: Event,
   paymentRequest: string,
   preimage: string,
   txId: string
