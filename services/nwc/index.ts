@@ -1,4 +1,7 @@
 require("dotenv").config();
+// SENTRY
+require("./instrument.js");
+
 import log, { LogLevelDesc } from "loglevel";
 log.setLevel(process.env.LOGLEVEL as LogLevelDesc);
 import {
