@@ -258,6 +258,7 @@ const createInternalPayment = async (
     isNostr: true,
     externalTxId: txId,
   });
+
   if (payment) {
     console.log(`Paid internal invoice with id ${invoiceId}, cancelling...`);
 
@@ -380,7 +381,7 @@ const getWavlakeInvoice = async (invoice) => {
       contentId: null,
       isWavlake: true,
       isSettled: !promoRecord.isPending && promoRecord.paymentRequest !== null,
-      preimage: promoRecord.paymentRequest,
+      preimage: "nwc",
       type: IncomingInvoiceType.Promo,
     };
   }
@@ -397,7 +398,7 @@ const getWavlakeInvoice = async (invoice) => {
       isWavlake: true,
       isSettled:
         !ticketRecord.isPending && ticketRecord.paymentRequest !== null,
-      preimage: ticketRecord.paymentRequest,
+      preimage: "nwc",
       type: IncomingInvoiceType.Ticket,
     };
   }
