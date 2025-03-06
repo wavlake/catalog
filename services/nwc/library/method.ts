@@ -61,8 +61,9 @@ export const payInvoice = async (
     return;
   }
 
-  const { paymentHash, valueMsat, network } = decodedInvoice;
-  console.log(`Decoded invoice ${invoice}`);
+  const { valueMsat } = decodedInvoice;
+  console.log(`Decoded invoice: ${invoice}`);
+  console.log(`Value: ${valueMsat}`);
 
   // Check if payment amount exceeds max payment amount
   if (parseInt(valueMsat) > maxMsatPaymentAmount) {
@@ -117,8 +118,7 @@ export const payInvoice = async (
   }
 
   // Check if Wavlake created the invoice
-  const paymentHashStr = Buffer.from(paymentHash).toString("hex");
-  const wavlakeInvoiceInfo = await getWavlakeInvoice(paymentHashStr);
+  const wavlakeInvoiceInfo = await getWavlakeInvoice(invoice);
 
   console.log(`Wavlake invoice info: ${JSON.stringify(wavlakeInvoiceInfo)}`);
   // If Wavlake invoice, treat as an internal amp payment
@@ -130,7 +130,7 @@ export const payInvoice = async (
       );
 
       if (!zapRequestData) {
-        console.log(`No zap request found for invoice ${paymentHashStr}`);
+        console.log(`No zap request found for invoice ${invoice}`);
         return;
       }
 
@@ -339,11 +339,21 @@ const broadcastPaymentResponse = async (event: any, newBalance: number) => {
     })
   );
 };
-const getWavlakeInvoice = async (paymentHash: string) => {
-  console.log(`Checking if invoice is Wavlake invoice`);
+const getWavlakeInvoice = async (invoice) => {
+  console.log(`Checking if Wavlake invoice`);
+  let decodedInvoice;
+  try {
+    decodedInvoice = nlInvoice.decode(invoice);
+  } catch (err) {
+    console.error(`Error decoding invoice ${err}`);
+    return;
+  }
 
+  const { paymentHash } = decodedInvoice;
+  const paymentHashStr = Buffer.from(paymentHash).toString("hex");
+  console.log(`Payment hash: ${paymentHashStr}`);
   const receiveRecord = await prisma.externalReceive.findFirst({
-    where: { paymentHash: paymentHash },
+    where: { paymentHash: paymentHashStr },
   });
 
   if (receiveRecord) {
@@ -360,7 +370,7 @@ const getWavlakeInvoice = async (paymentHash: string) => {
   }
 
   const promoRecord = await prisma.promo.findFirst({
-    where: { paymentRequest: paymentHash },
+    where: { paymentRequest: invoice },
   });
 
   if (promoRecord) {
@@ -376,7 +386,7 @@ const getWavlakeInvoice = async (paymentHash: string) => {
   }
 
   const ticketRecord = await prisma.ticket.findFirst({
-    where: { paymentRequest: paymentHash },
+    where: { paymentRequest: invoice },
   });
 
   if (ticketRecord) {
