@@ -6,7 +6,14 @@ import { updateWallet, walletHasRemainingBudget } from "./wallet";
 import { initiatePayment, runPaymentChecks } from "@library/payments";
 const { broadcastEventResponse } = require("./event");
 const { webcrypto } = require("node:crypto");
-globalThis.crypto = webcrypto;
+if (!globalThis.crypto) {
+  // Only assign if it doesn't exist
+  Object.defineProperty(globalThis, "crypto", {
+    value: webcrypto,
+    writable: true,
+    configurable: true,
+  });
+}
 import { FEE_BUFFER } from "@library/constants";
 import { randomUUID } from "crypto";
 import { IncomingInvoiceType } from "@library/common";

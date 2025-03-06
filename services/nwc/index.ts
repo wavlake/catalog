@@ -20,8 +20,14 @@ import {
   lookupInvoice,
 } from "./library/method";
 const { webcrypto } = require("node:crypto");
-globalThis.crypto = webcrypto;
-
+if (!globalThis.crypto) {
+  // Only assign if it doesn't exist
+  Object.defineProperty(globalThis, "crypto", {
+    value: webcrypto,
+    writable: true,
+    configurable: true,
+  });
+}
 const relayUrl = process.env.WAVLAKE_RELAY;
 const walletSk = process.env.WALLET_SERVICE_SECRET;
 
