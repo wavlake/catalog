@@ -124,10 +124,10 @@ export const payInvoice = async (
   // If Wavlake invoice, treat as an internal amp payment
   if (wavlakeInvoiceInfo?.isWavlake) {
     if (!wavlakeInvoiceInfo.isSettled) {
-      const { zapRequest } = await getZapPubkeyAndContent(
+      const { zapRequest } = (await getZapPubkeyAndContent(
         wavlakeInvoiceInfo.id,
         IncomingInvoiceType.ExternalReceive
-      );
+      )) || { zapRequest: null };
 
       console.log(`Processing Wavlake invoice...`);
       await createInternalPayment({
