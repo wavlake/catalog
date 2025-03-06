@@ -702,8 +702,8 @@ model ticket {
   externalTransactionId String         @map("external_transaction_id")
   paymentRequest        String         @map("payment_request")
   count                 Int            @default(1)
-  createdAt             DateTime?      @db.Timestamptz(6) @map("created_at")
-  updatedAt             DateTime?      @db.Timestamptz(6) @map("updated_at")
+  createdAt             DateTime?      @map("created_at") @db.Timestamptz(6)
+  updatedAt             DateTime?      @map("updated_at") @db.Timestamptz(6)
   nostr                 Json?
   ticketSecret          String?        @map("ticket_secret") @db.VarChar(255)
   usedAt                DateTime?      @map("used_at") @db.Timestamptz(6)
@@ -718,13 +718,13 @@ model ticketed_event {
   name                   String    @db.VarChar(255)
   location               String    @db.VarChar(255)
   description            String    @db.VarChar(255)
-  price_msat             Int
+  price_msat             Int?
   total_tickets          Int
   max_tickets_per_person Int
   user_id                String    @db.VarChar(255)
   dt_start               DateTime  @db.Timestamptz(6)
   dt_end                 DateTime? @db.Timestamptz(6)
-  price_fiat             Decimal?  @db.Decimal(8, 2)
+  price_fiat             Decimal?  @db.Decimal(10, 2)
   currency               String?   @db.VarChar(3)
   ticket                 ticket[]
   user                   User      @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "ticketed_event_user_id_foreign")
