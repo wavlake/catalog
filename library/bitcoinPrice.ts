@@ -7,14 +7,20 @@ const EXCHANGE_RATE_URL =
 const SATS_PER_BTC = 100000000;
 const MSATS_PER_SAT = 1000;
 
-// Cache exchange rate to minimize API calls
-let bitcoinPriceCache: {
+interface BitcoinPriceCache {
   price: number;
   timestamp: number;
-} | null = null;
+}
+
+// Cache exchange rate to minimize API calls
+let bitcoinPriceCache: BitcoinPriceCache | null = null;
 
 // Cache expiration time (15 minutes)
 const CACHE_EXPIRATION_MS = 15 * 60 * 1000;
+
+interface ExpectedResponse {
+  data: { rates: Record<"BTC", string> };
+}
 
 /**
  * Fetch current Bitcoin price from Coinbase API
@@ -35,9 +41,7 @@ export const fetchBitcoinPrice = async (): Promise<number> => {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
 
-    const data = (await response.json()) as {
-      data: { rates: Record<"BTC", string> };
-    };
+    const data = (await response.json()) as ExpectedResponse;
 
     const btcRate = 1 / parseFloat(data.data.rates.BTC);
 
