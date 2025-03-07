@@ -1,9 +1,6 @@
-import {
-  Event,
-  SimplePool,
-  finalizeEvent,
-  useWebSocketImplementation,
-} from "nostr-tools";
+import { Event, SimplePool, finalizeEvent } from "nostr-tools";
+import { useWebSocketImplementation } from "nostr-tools/lib/types/pool";
+
 import log from "../winston";
 import db from "../db";
 const { encrypt } = require("nostr-tools/nip04");
