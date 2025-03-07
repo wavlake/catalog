@@ -1,16 +1,13 @@
-// nlInvoice is undefined when using import
-const nlInvoice = require("@node-lightning/invoice");
 import asyncHandler from "express-async-handler";
 import core from "express-serve-static-core";
 import log from "../../../library/winston";
 import { validateNostrZapRequest } from "@library/zap";
 import { ZapRequest } from "@library/nostr/common";
 import prisma from "@prismalocal/client";
-import { IncomingInvoiceType } from "@library/common";
-import { logZapRequest } from "@library/invoice";
 import crypto from "crypto";
 import { createCharge, InvoiceBasic } from "@library/zbd";
 import { TICKET_INVOICE_EXPIRATION_SECONDS } from "@library/constants";
+import { convertFiatToMsats } from "@library/bitcoinPrice";
 
 const getTicketInvoice = asyncHandler<
   core.ParamsDictionary,
@@ -23,14 +20,17 @@ const getTicketInvoice = asyncHandler<
   ZapRequest
 >(async (req, res, next) => {
   try {
-    const { amount, nostr, metadata, lnurl } = req.query;
+    const { nostr, metadata, amount } = req.query;
+    // No longer using amount from query parameters
     const zapRequestString = decodeURIComponent(nostr);
 
     log.info(`Processing ticket payment with zap request: ${zapRequestString}`);
 
+    // Since we're calculating the amount ourselves, pass null for amount validation
+    // We'll validate the zap request first, then calculate the proper amount
     const { isValid, error, zapRequestEvent } = validateNostrZapRequest({
       nostr: zapRequestString,
-      amount,
+      amount: amount,
       requireAOrETag: true,
     });
 
@@ -68,18 +68,58 @@ const getTicketInvoice = asyncHandler<
     }
 
     const intCount = parseInt(ticketcount);
-    const amountInt = parseInt(amount);
-    const grandTotal = intCount * ticketedEvent.price_msat;
-    if (grandTotal < amountInt) {
+
+    // Calculate the price in msats based on the pricing information in the database
+    let ticketPriceMsat: number;
+
+    if (ticketedEvent.price_msat !== null) {
+      // Direct msat pricing
+      ticketPriceMsat = ticketedEvent.price_msat;
       log.info(
-        `Payment for ticket order is too low. Total price: ${grandTotal} sats, zap amount: ${amountInt} sats, ticket quantity: ${intCount} tickets`
+        `Using direct msat pricing: ${ticketPriceMsat} msats per ticket`
       );
-      res.status(400).send({
+    } else if (
+      ticketedEvent.price_fiat !== null &&
+      ticketedEvent.currency !== null
+    ) {
+      // Convert from fiat to msats
+      try {
+        ticketPriceMsat = await convertFiatToMsats(
+          ticketedEvent.price_fiat,
+          ticketedEvent.currency
+        );
+        log.info(
+          `Converted fiat price ${ticketedEvent.price_fiat} ${ticketedEvent.currency} to ${ticketPriceMsat} msats`
+        );
+      } catch (e) {
+        log.error(`Error converting fiat to msats: ${e}`);
+        res.status(500).send({
+          success: false,
+          error: "Error calculating ticket price from fiat currency",
+        });
+        return;
+      }
+    } else {
+      // This shouldn't happen due to database constraints, but handle it anyway
+      log.error(
+        `Invalid pricing configuration for event ${eventId}. Neither price_msat nor price_fiat/currency are set.`
+      );
+      res.status(500).send({
         success: false,
-        error: `Not enough sats for ${intCount} tickets. Total order price: ${grandTotal} sats`,
+        error: "Event has invalid pricing configuration",
       });
       return;
     }
+
+    // Calculate the total amount in msats
+    const totalAmountMsats = intCount * ticketPriceMsat;
+
+    // Convert msats to sats for the invoice
+    const totalAmountSats = Math.ceil(totalAmountMsats / 1000);
+
+    log.info(
+      `Calculated total amount: ${totalAmountMsats} msats (${totalAmountSats} sats) for ${intCount} tickets`
+    );
 
     const ticketCount = await prisma.ticket.count({
       where: { ticketedEventId: ticketedEvent.id, isPaid: true },
@@ -169,6 +209,7 @@ const getTicketInvoice = asyncHandler<
         recipientPubkey: zapRequestEvent.pubkey,
         nostr: zapRequestEvent as any,
         count: intCount,
+        priceMsat: ticketPriceMsat,
       },
     });
     log.info(`Created new ticket, id: ${newTicket.id}`);
@@ -187,7 +228,7 @@ const getTicketInvoice = asyncHandler<
 
     const invoiceRequest = {
       // description: `Wavlake Ticket ID: ${newTicket.id}`,
-      amount: amount,
+      amount: totalAmountSats.toString(), // Use our calculated amount in sats
       expiresIn: TICKET_INVOICE_EXPIRATION_SECONDS,
       internalId: `ticket-${ticketId}`,
       // can't have both description and invoiceDescriptionHash
