@@ -1,5 +1,9 @@
-import { Event, SimplePool, finalizeEvent } from "nostr-tools";
-import { useWebSocketImplementation } from "nostr-tools/lib/types/pool";
+import {
+  Event,
+  SimplePool,
+  finalizeEvent,
+  useWebSocketImplementation,
+} from "nostr-tools";
 
 import log from "../winston";
 import db from "../db";

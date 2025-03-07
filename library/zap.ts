@@ -6,8 +6,8 @@ import {
   Relay,
   verifyEvent,
   Event,
+  useWebSocketImplementation,
 } from "nostr-tools";
-import { useWebSocketImplementation } from "nostr-tools/lib/types/pool";
 import { hexToBytes } from "@noble/hashes/utils";
 import { handleConferenceZap } from "./btc24/btc24";
 import { IncomingInvoiceTableMap, IncomingInvoiceType } from "./common";
