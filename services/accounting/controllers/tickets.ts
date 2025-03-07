@@ -5,23 +5,24 @@ import { validateNostrZapRequest } from "@library/zap";
 import { ZapRequest } from "@library/nostr/common";
 import prisma from "@prismalocal/client";
 import crypto from "crypto";
-import { createCharge, InvoiceBasic } from "@library/zbd";
+import { createCharge } from "@library/zbd";
 import { TICKET_INVOICE_EXPIRATION_SECONDS } from "@library/constants";
 import { convertFiatToMsats } from "@library/bitcoinPrice";
 
 const getTicketInvoice = asyncHandler<
   core.ParamsDictionary,
   {
-    success: boolean;
-    error?: string;
-    data?: InvoiceBasic;
+    // Update return type to match LUD-06 spec
+    pr?: string;
+    routes?: any[];
+    status?: string;
+    reason?: string;
   },
   any,
   ZapRequest
 >(async (req, res, next) => {
   try {
     const { nostr, metadata, amount } = req.query;
-    // No longer using amount from query parameters
     const zapRequestString = decodeURIComponent(nostr);
 
     log.info(`Processing ticket payment with zap request: ${zapRequestString}`);
@@ -36,7 +37,8 @@ const getTicketInvoice = asyncHandler<
 
     if (!isValid) {
       log.info(`Invalid ticket zap request: ${error}`);
-      res.status(400).send({ success: false, error });
+      // Update to LUD-06 error format
+      res.status(400).json({ status: "ERROR", reason: error });
       return;
     }
 
@@ -47,9 +49,10 @@ const getTicketInvoice = asyncHandler<
 
     if (!eventId) {
       log.info("Invalid zap request: missing event id");
-      res.status(400).send({
-        success: false,
-        error: "Zap request must reference a ticketed event using an e tag",
+      // Update to LUD-06 error format
+      res.status(400).json({
+        status: "ERROR",
+        reason: "Zap request must reference a ticketed event using an e tag",
       });
       return;
     }
@@ -60,9 +63,10 @@ const getTicketInvoice = asyncHandler<
 
     if (!ticketedEvent) {
       log.info(`Ticketed event not found for eventId: ${eventId}`);
-      res.status(400).send({
-        success: false,
-        error: "Event not found",
+      // Update to LUD-06 error format
+      res.status(400).json({
+        status: "ERROR",
+        reason: "Event not found",
       });
       return;
     }
@@ -93,9 +97,10 @@ const getTicketInvoice = asyncHandler<
         );
       } catch (e) {
         log.error(`Error converting fiat to msats: ${e}`);
-        res.status(500).send({
-          success: false,
-          error: "Error calculating ticket price from fiat currency",
+        // Update to LUD-06 error format
+        res.status(500).json({
+          status: "ERROR",
+          reason: "Error calculating ticket price from fiat currency",
         });
         return;
       }
@@ -104,9 +109,10 @@ const getTicketInvoice = asyncHandler<
       log.error(
         `Invalid pricing configuration for event ${eventId}. Neither price_msat nor price_fiat/currency are set.`
       );
-      res.status(500).send({
-        success: false,
-        error: "Event has invalid pricing configuration",
+      // Update to LUD-06 error format
+      res.status(500).json({
+        status: "ERROR",
+        reason: "Event has invalid pricing configuration",
       });
       return;
     }
@@ -127,9 +133,10 @@ const getTicketInvoice = asyncHandler<
     const isSoldOut = ticketedEvent.total_tickets <= ticketCount;
     if (isSoldOut) {
       log.info(`Event is sold out: ${ticketedEvent.id}`);
-      res.status(400).send({
-        success: false,
-        error: "Event is sold out",
+      // Update to LUD-06 error format
+      res.status(400).json({
+        status: "ERROR",
+        reason: "Event is sold out",
       });
       return;
     }
@@ -142,9 +149,9 @@ const getTicketInvoice = asyncHandler<
 
     if (pendingTickets >= num_of_pending_tickets_allowed_at_once) {
       log.info("Too many pending tickets");
-      res.status(400).send({
-        success: false,
-        error:
+      res.status(400).json({
+        status: "ERROR",
+        reason:
           "Event demand is too high and may sell out soon, please try again in a few minutes.",
       });
       return;
@@ -154,9 +161,9 @@ const getTicketInvoice = asyncHandler<
       log.info(
         `Ticket count exceeds max tickets per person: ${intCount} > ${ticketedEvent.max_tickets_per_person}`
       );
-      res.status(400).send({
-        success: false,
-        error: `Ticket count exceeds max tickets per person, max: ${ticketedEvent.max_tickets_per_person}`,
+      res.status(400).json({
+        status: "ERROR",
+        reason: `Ticket count exceeds max tickets per person, max: ${ticketedEvent.max_tickets_per_person}`,
       });
       return;
     }
@@ -166,9 +173,9 @@ const getTicketInvoice = asyncHandler<
       log.info(
         `Ticket count exceeds total tickets: ${intCount} > ${maxTicketsAvailable}`
       );
-      res.status(400).send({
-        success: false,
-        error: `Ticket count exceeds total tickets. You may only purchase ${maxTicketsAvailable} tickets.`,
+      res.status(400).json({
+        status: "ERROR",
+        reason: `Ticket count exceeds total tickets. You may only purchase ${maxTicketsAvailable} tickets.`,
       });
       return;
     }
@@ -189,9 +196,9 @@ const getTicketInvoice = asyncHandler<
       log.info(
         `User has already purchased ${ticketsIssuedForPubkey} tickets. Purchasing ${intCount} additional tickets would be greater than the max of ${ticketedEvent.max_tickets_per_person}`
       );
-      res.status(400).send({
-        success: false,
-        error: `Maximum number of tickets allowed per person: ${ticketedEvent.max_tickets_per_person}`,
+      res.status(400).json({
+        status: "ERROR",
+        reason: `Maximum number of tickets allowed per person: ${ticketedEvent.max_tickets_per_person}`,
       });
       return;
     }
@@ -253,9 +260,10 @@ const getTicketInvoice = asyncHandler<
         },
       });
 
-      res
-        .status(400)
-        .send({ success: false, error: `${invoiceResponse.message}` });
+      res.status(400).json({
+        status: "ERROR",
+        reason: invoiceResponse.message,
+      });
       return;
     }
 
@@ -281,24 +289,28 @@ const getTicketInvoice = asyncHandler<
 
     if (!updatedTicket) {
       log.error(`Error updating ticket: ${invoiceResponse.message}`);
-      res.status(500).send({
-        success: false,
-        error: "There has been an error generating a ticket invoice",
+      res.status(500).json({
+        status: "ERROR",
+        reason: "There has been an error generating a ticket invoice",
       });
       return;
     }
 
     log.info(`Updated ticket invoice: ${JSON.stringify(updatedTicket)}`);
 
-    res.send({
-      success: true,
-      data: { ...invoiceResponse.data.invoice },
+    // Update successful response to match LUD-06 spec format
+    res.json({
+      pr: invoiceResponse.data.invoice.request,
+      routes: [], // An empty array as specified in the LUD-06 spec
     });
+    return;
   } catch (e) {
     log.error(`Error generating ticket invoice: ${e}`);
-    res
-      .status(500)
-      .json({ success: false, error: "Error generating ticket invoice" });
+    res.status(500).json({
+      status: "ERROR",
+      reason: "Error generating ticket invoice",
+    });
+    return;
   }
 });
 
