@@ -3,13 +3,12 @@ import log from "./winston";
 import {
   SimplePool,
   finalizeEvent,
-  useWebSocketImplementation,
   Relay,
   verifyEvent,
   Event,
+  useWebSocketImplementation,
 } from "nostr-tools";
 import { hexToBytes } from "@noble/hashes/utils";
-useWebSocketImplementation(require("ws"));
 import { handleConferenceZap } from "./btc24/btc24";
 import { IncomingInvoiceTableMap, IncomingInvoiceType } from "./common";
 
@@ -17,6 +16,8 @@ const { DEFAULT_WRITE_RELAY_URIS } = require("./nostr/common");
 
 const WAVLAKE_RELAY = process.env.WAVLAKE_RELAY;
 const WAVLAKE_SECRET = hexToBytes(process.env.NOSTR_SECRET);
+
+useWebSocketImplementation(require("ws"));
 
 export const validateNostrZapRequest = ({
   nostr,

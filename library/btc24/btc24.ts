@@ -4,6 +4,7 @@ import {
   finalizeEvent,
   useWebSocketImplementation,
 } from "nostr-tools";
+
 import log from "../winston";
 import db from "../db";
 const { encrypt } = require("nostr-tools/nip04");
