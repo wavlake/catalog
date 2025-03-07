@@ -2,11 +2,7 @@ require("dotenv").config();
 import log, { LogLevelDesc } from "loglevel";
 log.setLevel(process.env.LOGLEVEL as LogLevelDesc);
 import { getPublicKey, finalizeEvent, UnsignedEvent } from "nostr-tools";
-import {
-  SimplePool,
-  useWebSocketImplementation,
-} from "nostr-tools/lib/types/pool";
-
+const { useWebSocketImplementation, SimplePool } = require("nostr-tools/pool");
 import {
   getContentFromId,
   getParentContentTypeAndId,
