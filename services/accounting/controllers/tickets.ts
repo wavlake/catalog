@@ -228,7 +228,8 @@ const getTicketInvoice = asyncHandler<
 
     const invoiceRequest = {
       // description: `Wavlake Ticket ID: ${newTicket.id}`,
-      amount: totalAmountSats.toString(), // Use our calculated amount in sats
+      // invoice amount is in msats
+      amount: totalAmountMsats.toString(),
       expiresIn: TICKET_INVOICE_EXPIRATION_SECONDS,
       internalId: `ticket-${ticketId}`,
       // can't have both description and invoiceDescriptionHash
