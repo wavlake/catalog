@@ -10,7 +10,7 @@ import {
   nip04,
   useWebSocketImplementation,
 } from "nostr-tools";
-import { hexToBytes } from "@noble/hashes/utils";
+import { hexToBytes } from "@noble/hashes/utils"; // already an installed dependency
 useWebSocketImplementation(require("ws"));
 import {
   validateEventAndGetUser,
@@ -24,34 +24,18 @@ import {
 } from "./library/method";
 const { webcrypto } = require("node:crypto");
 if (!globalThis.crypto) {
+  // Only assign if it doesn't exist
   Object.defineProperty(globalThis, "crypto", {
     value: webcrypto,
     writable: true,
     configurable: true,
   });
 }
-
-// Configuration constants
 const relayUrl = process.env.WAVLAKE_RELAY;
 const walletSk = process.env.WALLET_SERVICE_SECRET;
-const RECONNECT_INTERVAL = 10000; // 10 seconds between reconnection attempts
-const KEEPALIVE_INTERVAL = 30000; // 30 seconds heartbeat
-const MAX_RECONNECT_ATTEMPTS = 10; // Max reconnection attempts before increasing delay
-const RECONNECT_BACKOFF_FACTOR = 1.5; // Exponential backoff factor
-
-// Connection state
-let relay = null;
-let currentSubscription = null;
-let reconnectAttempts = 0;
-let reconnectTimer = null;
-let keepAliveTimer = null;
-let lastEventReceived = Date.now();
 
 const walletSkHex = hexToBytes(walletSk);
 const walletServicePubkey = getPublicKey(walletSkHex);
-
-// Store for tracking rate limit windows and backoff times
-const rateLimitStore = new Map();
 
 // Configurable constants for rate limiting and backoff
 const INITIAL_WINDOW_MS = 60 * 1000; // 60 seconds
@@ -59,6 +43,21 @@ const MAX_REQUESTS_PER_WINDOW = 12;
 const BACKOFF_FACTOR = 2;
 const MAX_BACKOFF_MS = 30 * 1000; // 30 seconds
 const BASE_DELAY_MS = 1000; // 1 second base delay for rate-limited requests
+
+// Store for tracking rate limit windows and backoff times
+const rateLimitStore = new Map();
+
+// Connection management constants
+const MAX_RECONNECT_ATTEMPTS = 10;
+const RECONNECT_DELAY_MS = 5000; // 5 seconds initial delay
+const HEARTBEAT_INTERVAL_MS = 30000; // 30 seconds
+
+// Global connection state tracking
+let isConnected = false;
+let relay = null;
+let sub = null;
+let reconnectAttempts = 0;
+let heartbeatInterval = null;
 
 const calculateDelay = (npub) => {
   const now = Date.now();
@@ -105,54 +104,152 @@ const applySoftRateLimit = async (npub) => {
   return delay;
 };
 
-// Keep-alive function to send a simple subscription and ensure connection is active
-const sendKeepAlive = async () => {
-  if (!relay || relay.status !== 1) {
-    // WebSocket.OPEN = 1
-    log.warn(
-      "Relay connection not open during keep-alive check, reconnecting..."
+// Function to establish connection to the relay
+const connectToRelay = async () => {
+  try {
+    // Close any existing connection first
+    if (relay) {
+      log.info("Closing existing relay connection before reconnecting");
+      try {
+        await relay.close();
+      } catch (err) {
+        log.warn(`Error closing existing relay: ${err}`);
+      }
+    }
+
+    log.info(`Connecting to relay at ${relayUrl}`);
+    relay = await Relay.connect(relayUrl);
+
+    // Set up event listeners for the relay
+    relay.on("connect", () => {
+      log.info(`Connected to relay at ${relayUrl}`);
+      isConnected = true;
+      reconnectAttempts = 0; // Reset reconnect attempts on successful connection
+    });
+
+    relay.on("disconnect", () => {
+      log.warn(`Disconnected from relay at ${relayUrl}`);
+      isConnected = false;
+      scheduleReconnect();
+    });
+
+    relay.on("error", (error) => {
+      log.error(`Relay error: ${error}`);
+      isConnected = false;
+      scheduleReconnect();
+    });
+
+    // Subscribe to events
+    log.info(`Listening for NWC requests for ${walletServicePubkey}`);
+    sub = relay.subscribe(
+      [
+        {
+          kinds: [23194],
+          ["#p"]: [walletServicePubkey],
+        },
+      ],
+      {
+        onevent(event) {
+          log.info(`Received event: ${event.id}`);
+          handleRequest(event);
+        },
+        oneose() {
+          log.info("End of stored events received");
+        },
+        onclose() {
+          log.warn("Subscription closed");
+          isConnected = false;
+          scheduleReconnect();
+        },
+      }
     );
-    await connectToRelay(); // Reconnect if needed
+
+    return true;
+  } catch (error) {
+    log.error(`Failed to connect to relay: ${error}`);
+    isConnected = false;
+    scheduleReconnect();
+    return false;
+  }
+};
+
+// Function to schedule reconnection attempts
+const scheduleReconnect = () => {
+  if (reconnectAttempts >= MAX_RECONNECT_ATTEMPTS) {
+    log.error(
+      `Maximum reconnection attempts (${MAX_RECONNECT_ATTEMPTS}) reached. Exiting so systemd can restart the service.`
+    );
+    process.exit(1); // Exit process to allow systemd to restart it
     return;
   }
 
-  // Create a simple temporary subscription to get the relays attention
-  try {
-    const pingStartTime = Date.now();
-    const keepAliveSub = relay.subscribe([{ kinds: [0], limit: 1 }]);
+  const delay = RECONNECT_DELAY_MS * Math.pow(1.5, reconnectAttempts);
+  reconnectAttempts++;
 
-    // Wait for EOSE as confirmation the connection is live
-    const pingTimeout = new Promise((_, reject) => {
-      setTimeout(() => reject(new Error("Keep-alive timeout")), 5000);
-    });
+  log.info(
+    `Scheduling reconnection attempt ${reconnectAttempts} in ${delay}ms`
+  );
+  setTimeout(connectToRelay, delay);
+};
 
-    const eosePromise = new Promise((resolve) => {
-      keepAliveSub.on("eose", () => {
-        resolve(true);
-      });
-    });
-
-    await Promise.race([eosePromise, pingTimeout]);
-
-    // Clean up the subscription
-    keepAliveSub.close();
-
-    const pingDuration = Date.now() - pingStartTime;
-    log.debug(`Keep-alive ping successful (${pingDuration}ms)`);
-
-    // Reset reconnection attempts on successful ping
-    reconnectAttempts = 0;
-  } catch (error) {
-    log.error(`Keep-alive check failed: ${error.message}`);
-    await connectToRelay(); // Try to reconnect
+// Implement a heartbeat to check connection health
+const startHeartbeat = () => {
+  // Clear any existing interval first
+  if (heartbeatInterval) {
+    clearInterval(heartbeatInterval);
   }
+
+  heartbeatInterval = setInterval(async () => {
+    log.debug("Running connection heartbeat check");
+
+    if (!isConnected || !relay) {
+      log.warn("Heartbeat detected disconnection. Attempting to reconnect...");
+      await connectToRelay();
+      return;
+    }
+
+    // Test connection by checking relay status
+    try {
+      // Check if the relay's WebSocket connection is open
+      if (relay.status !== 1 && relay.status !== WebSocket.OPEN) {
+        log.warn(
+          `Relay connection is not active (status: ${relay.status}). Attempting to reconnect...`
+        );
+        await connectToRelay();
+      } else {
+        log.debug("Heartbeat: Connection is healthy");
+      }
+    } catch (error) {
+      log.error(`Heartbeat error: ${error}`);
+      isConnected = false;
+      scheduleReconnect();
+    }
+  }, HEARTBEAT_INTERVAL_MS);
+
+  return heartbeatInterval;
+};
+
+// Main process
+const monitorForNWCRequests = async () => {
+  log.info("Starting NWC monitor service");
+  if (!walletSk) {
+    throw new Error(
+      "Unable to listen for NWC requests, no wallet service SK found"
+    );
+  }
+
+  // Initial connection
+  await connectToRelay();
+
+  // Start heartbeat monitoring
+  startHeartbeat();
+
+  // Log successful startup
+  log.info("NWC monitor service started successfully");
 };
 
 // Request handler
 const handleRequest = async (event) => {
-  // Update the last event timestamp
-  lastEventReceived = Date.now();
-
   log.info(`Received event: ${event.id}, authenticating...`);
 
   try {
@@ -203,216 +300,94 @@ const handleRequest = async (event) => {
         return lookupInvoice(event, params, walletUser);
       default:
         log.info(`No method found for ${method}`);
+        const content = JSON.stringify({
+          result_type: method,
+          error: {
+            code: "METHOD_NOT_FOUND",
+            message: `Method '${method}' not supported`,
+          },
+        });
+        broadcastEventResponse(event.pubkey, event.id, content);
     }
   } catch (err) {
-    log.error(`Error handling request ${err}`);
+    log.error(`Error handling request: ${err}`);
+    try {
+      // Try to send error response back to the client
+      const content = JSON.stringify({
+        result_type: "ERROR",
+        error: {
+          code: "SERVER_ERROR",
+          message: "Internal server error processing request",
+        },
+      });
+      broadcastEventResponse(event.pubkey, event.id, content);
+    } catch (responseErr) {
+      log.error(`Failed to send error response: ${responseErr}`);
+    }
     return;
   }
 };
 
-// Setup subscription to listen for NWC requests
-const setupSubscription = () => {
-  if (!relay) {
-    log.error("Cannot setup subscription: relay is not connected");
-    return false;
+// Add graceful shutdown handling
+process.on("SIGTERM", async () => {
+  log.info("SIGTERM received, shutting down gracefully");
+
+  // Clear heartbeat interval
+  if (heartbeatInterval) {
+    clearInterval(heartbeatInterval);
   }
 
-  try {
-    // Close any existing subscription to prevent duplicates
-    if (currentSubscription) {
-      currentSubscription.close();
-    }
-
-    log.info(
-      `Setting up subscription for NWC requests for ${walletServicePubkey}`
-    );
-
-    currentSubscription = relay.subscribe(
-      [
-        {
-          kinds: [23194],
-          // only listen for events tagged with our wallet public key
-          ["#p"]: [walletServicePubkey],
-        },
-      ],
-      {
-        onevent(event) {
-          log.info(`Received event: ${event.id}`);
-          handleRequest(event);
-        },
-      }
-    );
-
-    return true;
-  } catch (error) {
-    log.error(`Failed to setup subscription: ${error.message}`);
-    return false;
-  }
-};
-
-// Connect to relay with proper error handling and reconnection logic
-const connectToRelay = async () => {
-  // Clear any existing timers
-  if (reconnectTimer) {
-    clearTimeout(reconnectTimer);
-    reconnectTimer = null;
-  }
-
-  if (keepAliveTimer) {
-    clearInterval(keepAliveTimer);
-    keepAliveTimer = null;
-  }
-
-  // Close existing connection if it exists
+  // Close relay connection if it exists
   if (relay) {
     try {
+      log.info("Closing relay connection");
       await relay.close();
-    } catch (error) {
-      log.warn(`Error closing existing relay connection: ${error.message}`);
+    } catch (err) {
+      log.error(`Error closing relay connection: ${err}`);
     }
-    relay = null;
   }
 
-  if (!walletSk) {
-    throw new Error("Unable to connect to relay, no wallet service SK found");
+  log.info("Shutdown complete");
+  process.exit(0);
+});
+
+process.on("SIGINT", async () => {
+  log.info("SIGINT received, shutting down gracefully");
+
+  // Clear heartbeat interval
+  if (heartbeatInterval) {
+    clearInterval(heartbeatInterval);
   }
 
-  // Calculate backoff time based on reconnect attempts
-  const backoffTime =
-    reconnectAttempts > MAX_RECONNECT_ATTEMPTS
-      ? RECONNECT_INTERVAL *
-        Math.pow(
-          RECONNECT_BACKOFF_FACTOR,
-          reconnectAttempts - MAX_RECONNECT_ATTEMPTS
-        )
-      : RECONNECT_INTERVAL;
-
-  try {
-    log.info(`Connecting to relay ${relayUrl}...`);
-    relay = await Relay.connect(relayUrl);
-
-    // Setup connection event listeners
-    relay.on("connect", () => {
-      log.info(`Connected to relay ${relayUrl}`);
-      reconnectAttempts = 0; // Reset reconnect attempts on successful connection
-
-      // Setup subscription
-      if (setupSubscription()) {
-        log.info("Successfully set up subscription");
-      }
-
-      // Setup keep-alive interval
-      keepAliveTimer = setInterval(sendKeepAlive, KEEPALIVE_INTERVAL);
-    });
-
-    relay.on("error", (error) => {
-      log.error(`Relay error: ${error.message}`);
-    });
-
-    relay.on("disconnect", () => {
-      log.warn(`Disconnected from relay ${relayUrl}`);
-
-      // Clean up resources
-      if (keepAliveTimer) {
-        clearInterval(keepAliveTimer);
-        keepAliveTimer = null;
-      }
-
-      // Schedule reconnection
-      reconnectAttempts++;
-      reconnectTimer = setTimeout(connectToRelay, backoffTime);
-      log.info(
-        `Scheduled reconnection attempt ${reconnectAttempts} in ${Math.round(
-          backoffTime / 1000
-        )} seconds`
-      );
-    });
-
-    return relay;
-  } catch (error) {
-    log.error(`Failed to connect to relay: ${error.message}`);
-
-    // Schedule reconnection
-    reconnectAttempts++;
-    reconnectTimer = setTimeout(connectToRelay, backoffTime);
-    log.info(
-      `Scheduled reconnection attempt ${reconnectAttempts} in ${Math.round(
-        backoffTime / 1000
-      )} seconds`
-    );
-
-    return null;
-  }
-};
-
-// Check if we haven't received events for too long
-const checkEventActivity = () => {
-  const now = Date.now();
-  const timeSinceLastEvent = now - lastEventReceived;
-  const MAX_EVENT_SILENCE = 15 * 60 * 1000; // 15 minutes
-
-  if (timeSinceLastEvent > MAX_EVENT_SILENCE) {
-    log.warn(
-      `No events received in ${Math.floor(
-        timeSinceLastEvent / 60000
-      )} minutes, reconnecting...`
-    );
-    connectToRelay();
-  }
-};
-
-// Main monitoring process
-const monitorForNWCRequests = async () => {
-  log.info("Starting NWC monitor service");
-
-  // Initial connection
-  await connectToRelay();
-
-  // Setup periodic activity check every 5 minutes
-  setInterval(checkEventActivity, 5 * 60 * 1000);
-
-  // Handle graceful shutdown
-  process.on("SIGTERM", async () => {
-    log.info("Received SIGTERM, shutting down gracefully");
-
-    // Clear all timers
-    if (reconnectTimer) clearTimeout(reconnectTimer);
-    if (keepAliveTimer) clearInterval(keepAliveTimer);
-
-    // Close relay connection
-    if (relay) {
-      try {
-        await relay.close();
-      } catch (error) {
-        log.error(`Error during shutdown: ${error.message}`);
-      }
+  // Close relay connection if it exists
+  if (relay) {
+    try {
+      log.info("Closing relay connection");
+      await relay.close();
+    } catch (err) {
+      log.error(`Error closing relay connection: ${err}`);
     }
+  }
 
-    process.exit(0);
-  });
+  log.info("Shutdown complete");
+  process.exit(0);
+});
 
-  process.on("SIGINT", async () => {
-    log.info("Received SIGINT, shutting down gracefully");
+// Handle uncaught exceptions
+process.on("uncaughtException", (error) => {
+  log.error(`Uncaught exception: ${error}`);
+  log.error(error.stack);
+  // Keep running but log the error
+});
 
-    // Clear all timers
-    if (reconnectTimer) clearTimeout(reconnectTimer);
-    if (keepAliveTimer) clearInterval(keepAliveTimer);
+// Handle unhandled promise rejections
+process.on("unhandledRejection", (reason, promise) => {
+  log.error("Unhandled promise rejection", { reason, promise });
+  // Keep running but log the error
+});
 
-    // Close relay connection
-    if (relay) {
-      try {
-        await relay.close();
-      } catch (error) {
-        log.error(`Error during shutdown: ${error.message}`);
-      }
-    }
-
-    process.exit(0);
-  });
-};
-
-// Start the service
-monitorForNWCRequests().catch((error) => {
-  log.error(`Fatal error in NWC monitor: ${error.message}`);
-  process.exit(1);
+// Start the monitor
+monitorForNWCRequests().catch((err) => {
+  log.error(`Failed to start NWC monitor: ${err}`);
+  process.exit(1); // Exit with error so systemd can restart
 });
