@@ -99,29 +99,40 @@ const get_album_by_id = asyncHandler(async (req, res, next) => {
     return;
   }
 
-  const album = await prisma.album
-    .findFirstOrThrow({
-      where: { id: request.albumId },
-      // include artist.userId at the top level of the album
-      include: {
-        artist: {
-          select: {
-            userId: true,
-            name: true,
-          },
+  const album = await prisma.album.findUnique({
+    where: { id: request.albumId },
+    // include artist.userId at the top level of the album
+    include: {
+      artist: {
+        select: {
+          userId: true,
+          name: true,
+          deleted: true,
         },
       },
-    })
-    .catch((err) => {
-      // Prisma will throw an error if the uuid is not found or not a valid uuid
-      res.status(400).json({
-        success: false,
-        error: "No album found with that id",
-      });
-      return;
-    });
-
+    },
+  });
   if (!album) {
+    res.status(404).json({
+      success: false,
+      error: "Album not found",
+    });
+    return;
+  }
+
+  if (album.deleted) {
+    res.status(404).json({
+      success: false,
+      error: "This album has been deleted",
+    });
+    return;
+  }
+
+  if (album.artist.deleted) {
+    res.status(404).json({
+      success: false,
+      error: "This artist has been deleted",
+    });
     return;
   }
 
@@ -156,6 +167,26 @@ const get_albums_by_artist_id = asyncHandler(async (req, res, next) => {
     // sortBy: req.body.sortBy
   };
   const { unpublished } = req.query;
+
+  const artist = await prisma.artist.findUnique({
+    where: { id: request.artistId },
+  });
+
+  if (!artist) {
+    res.status(404).json({
+      success: false,
+      error: "Artist not found",
+    });
+    return;
+  }
+
+  if (artist.deleted) {
+    res.status(404).json({
+      success: false,
+      error: "This artist has been deleted",
+    });
+    return;
+  }
 
   const albums = await prisma.album.findMany({
     where: {

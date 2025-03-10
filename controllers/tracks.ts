@@ -70,31 +70,81 @@ const get_track = asyncHandler(async (req, res, next) => {
   if (!validate(trackId)) {
     res.status(400).json({
       success: false,
-      error: "Invalid trackId",
+      error: "Invalid trackId.",
     });
     return;
   }
 
-  prisma.trackInfo
-    .findFirstOrThrow({
+  try {
+    const trackInfo = await prisma.trackInfo.findFirst({
       where: { id: trackId },
-    })
-    .then((track) => {
-      // Add OP3 URL prefix to liveUrl
-      track.liveUrl = addOP3URLPrefix({
-        url: track.liveUrl,
-        albumId: track.albumId,
-      });
-      res.json({ success: true, data: track });
-    })
-    .catch((err) => {
-      // Prisma will throw an error if the uuid is not found or not a valid uuid
-      res.status(400).json({
+    });
+
+    if (!trackInfo) {
+      res.status(404).json({
         success: false,
-        error: "No track found with that id",
+        error: "Track not found.",
       });
       return;
+    }
+
+    const [album, artist] = await Promise.all([
+      prisma.album.findUnique({
+        where: { id: trackInfo.albumId },
+        select: { deleted: true },
+      }),
+      prisma.artist.findUnique({
+        where: { id: trackInfo.artistId },
+        select: { deleted: true },
+      }),
+    ]);
+
+    if (!album) {
+      res.status(404).json({
+        success: false,
+        error: "The album for this track was not found.",
+      });
+      return;
+    }
+
+    if (album.deleted) {
+      res.status(404).json({
+        success: false,
+        error: "The album for this track has been deleted.",
+      });
+      return;
+    }
+
+    if (!artist) {
+      res.status(404).json({
+        success: false,
+        error: "The artist for this track was not found.",
+      });
+      return;
+    }
+
+    if (artist.deleted) {
+      res.status(404).json({
+        success: false,
+        error: "The artist for this track has been deleted.",
+      });
+      return;
+    }
+
+    // Add OP3 URL prefix to liveUrl
+    trackInfo.liveUrl = addOP3URLPrefix({
+      url: trackInfo.liveUrl,
+      albumId: trackInfo.albumId,
     });
+
+    res.json({ success: true, data: trackInfo });
+  } catch (err) {
+    res.status(500).json({
+      success: false,
+      error: "Error fetching track data: " + err.message,
+    });
+    return;
+  }
 });
 
 const get_tracks_by_account = asyncHandler(async (req, res, next) => {
@@ -124,6 +174,26 @@ const get_tracks_by_album_id = asyncHandler(async (req, res, next) => {
     res.status(400).json({
       success: false,
       error: "Invalid albumId",
+    });
+    return;
+  }
+
+  const album = await prisma.album.findUnique({
+    where: { id: request.albumId },
+  });
+
+  if (!album) {
+    res.status(404).json({
+      success: false,
+      error: "Album not found",
+    });
+    return;
+  }
+
+  if (album.deleted) {
+    res.status(404).json({
+      success: false,
+      error: "Album has been deleted",
     });
     return;
   }
@@ -193,6 +263,26 @@ const get_tracks_by_artist_id = asyncHandler(async (req, res, next) => {
     return;
   }
 
+  const artist = await prisma.artist.findUnique({
+    where: { id: artistId },
+  });
+
+  if (!artist) {
+    res.status(404).json({
+      success: false,
+      error: "Artist not found",
+    });
+    return;
+  }
+
+  if (artist.deleted) {
+    res.status(404).json({
+      success: false,
+      error: "Artist has been deleted",
+    });
+    return;
+  }
+
   const limit = parseLimit(req.query.limit);
 
   const tracks = await prisma.trackInfo.findMany({
@@ -225,8 +315,13 @@ const get_random_tracks_by_genre_id = asyncHandler(async (req, res, next) => {
   const trackCount = await db
     .knex("track")
     .join("album", "album.id", "=", "track.album_id")
+    .join("artist", "artist.id", "=", "track.artist_id")
     .join("music_genre", "music_genre.id", "=", "album.genre_id")
     .where("music_genre.id", "=", genreId)
+    .andWhere("track.is_draft", "=", false)
+    .andWhere("track.is_processing", "=", false)
+    .andWhere("album.deleted", "=", false)
+    .andWhere("artist.deleted", "=", false)
     .andWhere("track.deleted", "=", false)
     .andWhere("track.duration", "is not", null)
     .count("track.id as count")
@@ -260,6 +355,10 @@ const get_random_tracks_by_genre_id = asyncHandler(async (req, res, next) => {
     .where("music_genre.id", "=", genreId)
     .andWhere("track.deleted", "=", false)
     .andWhere("track.duration", "is not", null)
+    .andWhere("track.is_draft", "=", false)
+    .andWhere("track.is_processing", "=", false)
+    .andWhere("album.deleted", "=", false)
+    .andWhere("artist.deleted", "=", false)
     .select(
       "track.id as id",
       "track.title as title",
