@@ -44,6 +44,7 @@ exports.getArtistFeed = handleErrorAsync(async (req, res, next) => {
     .where("artist.id", "=", feedId)
     .andWhere("album.deleted", false)
     .andWhere("album.is_draft", false)
+    .andWhere("artist.deleted", false)
     .catch((err) => {
       log.error(`Error querying albums table to generate artist feed: ${err}`);
       return [];
@@ -104,6 +105,9 @@ exports.getMusicFeed = handleErrorAsync(async (req, res, next) => {
     .andWhere("track.album_id", "=", feedId)
     .andWhere("track.is_draft", false)
     .andWhere("track.is_processing", false)
+    .andWhere("album.deleted", false)
+    .andWhere("album.is_draft", false)
+    .andWhere("artist.deleted", false)
     .catch((err) => {
       log.error(`Error querying tracks table to generate music feed: ${err}`);
       return [];
@@ -180,6 +184,8 @@ exports.getPodcastFeed = handleErrorAsync(async (req, res, next) => {
     .andWhere("podcast.id", "=", feedId)
     .andWhere("episode.is_draft", false)
     .andWhere("episode.is_processing", false)
+    .andWhere("podcast.deleted", false)
+    .andWhere("podcast.is_draft", false)
     .catch((err) => {
       log.error(`Error querying podcast table to generate feed: ${err}`);
       return [];
