@@ -18,6 +18,7 @@ import {
   getDepositDetail,
   getZapDetail,
   getTopUpDetail,
+  getTicketPayments,
 } from "../library/queries/transactions";
 import { TransactionType } from "../library/common";
 import asyncHandler from "express-async-handler";
@@ -388,6 +389,7 @@ const get_txs = asyncHandler(async (req, res, next) => {
           externalAmps(userId),
           pendingForwards(userId),
           promoEarnings(userId),
+          getTicketPayments(userId),
         ])
         .as("all_transactions")
     );
@@ -437,6 +439,11 @@ const get_txs = asyncHandler(async (req, res, next) => {
 
     if (activeFilters.includes(TransactionType.TOPUP)) {
       queryArray.push(promoEarnings(userId));
+    }
+
+    // Add the new filter for tickets
+    if (activeFilters.includes(TransactionType.TICKET)) {
+      queryArray.push(getTicketPayments(userId));
     }
 
     // Combine queries if any exist
