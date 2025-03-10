@@ -31,7 +31,7 @@ const calculateDelay = (npub) => {
     const excessFactor =
       (store.count - MAX_REQUESTS_PER_WINDOW) / MAX_REQUESTS_PER_WINDOW;
     const delay = Math.min(
-      BASE_DELAY_MS * Math.pow(BACKOFF_FACTOR, excessFactor),
+      BASE_DELAY_MS * (1 << Math.min(excessFactor, 4)), // Using bit shift for powers of 2
       MAX_BACKOFF_MS
     );
 
@@ -55,3 +55,34 @@ export const applySoftRateLimit = async (npub) => {
   }
   return delay;
 };
+
+const CLEANUP_INTERVAL_MS = 3600000; // 1 hour
+const MAX_STORE_SIZE = 10000;
+
+// Cleanup function
+const cleanupStore = () => {
+  const now = Date.now();
+  let entriesToDelete = [];
+
+  rateLimitStore.forEach((value, key) => {
+    if (now - value.windowStart > value.windowMs * 2) {
+      entriesToDelete.push(key);
+    }
+  });
+
+  entriesToDelete.forEach((key) => rateLimitStore.delete(key));
+
+  // If still too large, remove oldest entries
+  if (rateLimitStore.size > MAX_STORE_SIZE) {
+    const sortedEntries = [...rateLimitStore.entries()].sort(
+      (a, b) => a[1].windowStart - b[1].windowStart
+    );
+    const excessEntries = sortedEntries.slice(
+      0,
+      rateLimitStore.size - MAX_STORE_SIZE
+    );
+    excessEntries.forEach(([key]) => rateLimitStore.delete(key));
+  }
+};
+
+setInterval(cleanupStore, CLEANUP_INTERVAL_MS);

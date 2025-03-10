@@ -104,6 +104,7 @@ let reconnectAttempts = 0;
 // Connection management constants
 const MAX_RECONNECT_ATTEMPTS = 10;
 const RECONNECT_DELAY_MS = 5000; // 5 seconds initial delay
+const BACKOFF_MULTIPLIER = 1.5; // Grows delay by 50% each attempt
 
 const scheduleReconnect = () => {
   if (reconnectAttempts >= MAX_RECONNECT_ATTEMPTS) {
@@ -114,7 +115,12 @@ const scheduleReconnect = () => {
     return;
   }
 
-  const delay = RECONNECT_DELAY_MS * Math.pow(1.5, reconnectAttempts);
+  const MAX_RECONNECT_DELAY = 300000; // 5 minutes
+  const delay = Math.min(
+    RECONNECT_DELAY_MS * Math.pow(1.5, reconnectAttempts),
+    MAX_RECONNECT_DELAY
+  );
+
   reconnectAttempts++;
 
   log.info(
@@ -180,9 +186,11 @@ process.on("SIGTERM", async () => {
   process.exit(0);
 });
 
-process.on("SIGINT", async () => {
-  log.info("SIGINT received, shutting down gracefully");
-  // Close connections, etc.
+process.on("SIGTERM", async () => {
+  log.info("SIGTERM received, shutting down gracefully");
+  if (relay) {
+    await relay.close();
+  }
   process.exit(0);
 });
 
@@ -211,8 +219,12 @@ const monitorForNWCRequests = async () => {
   const connected = await connectToRelay();
 
   if (connected) {
-    // Log successful startup
-    log.info("NWC monitor service started successfully");
+    log.info("NWC monitor service started successfully", {
+      relayUrl,
+      walletServicePubkey,
+      maxReconnectAttempts: MAX_RECONNECT_ATTEMPTS,
+      reconnectDelay: RECONNECT_DELAY_MS,
+    });
   }
 };
 
