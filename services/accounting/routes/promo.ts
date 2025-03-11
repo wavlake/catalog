@@ -39,13 +39,13 @@ router.post(
   promoController.createPromoReward
 );
 
-router.post(
-  "/create",
-  isAuthorized,
-  limiter,
-  iplimiter,
-  promoController.createPromo
-);
+// router.post(
+//   "/create",
+//   isAuthorized,
+//   limiter,
+//   iplimiter,
+//   promoController.createPromo
+// );
 
 // Export router
 export default router;
