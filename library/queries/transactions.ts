@@ -505,3 +505,33 @@ export function getTicketPayments(userId) {
       db.knex.raw("NULL as zapEvent")
     );
 }
+
+export function getTicketDetail(userId, id) {
+  return db
+    .knex("ticket")
+    .join(
+      "ticketed_event",
+      "ticketed_event.id",
+      "=",
+      "ticket.ticketed_event_id"
+    )
+    .where("ticketed_event.user_id", "=", userId)
+    .andWhere("ticket.id", "=", id)
+    .select(
+      db.knex.raw("CAST(ticket.id as text) as paymentid"),
+      db.knex.raw("0 as feemsat"),
+      db.knex.raw("ticket.is_paid as success"),
+      db.knex.raw(`'${TransactionType.TICKET}' as type`),
+      db.knex.raw("ticketed_event.name as title"),
+      db.knex.raw("ticket.is_pending as ispending"),
+      db.knex.raw(
+        "CONCAT(ticketed_event.name, ' - ticket id: ', ticket.id) as comment"
+      ),
+      db.knex.raw("ticket.id as id"),
+      db.knex.raw("ticket.price_msat as msatAmount"),
+      db.knex.raw("'' as failureReason"),
+      db.knex.raw("ticket.created_at as created_at"),
+      db.knex.raw("NULL as zapEvent")
+    )
+    .first();
+}

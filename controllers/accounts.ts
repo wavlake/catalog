@@ -19,6 +19,7 @@ import {
   getZapDetail,
   getTopUpDetail,
   getTicketPayments,
+  getTicketDetail,
 } from "../library/queries/transactions";
 import { TransactionType } from "../library/common";
 import asyncHandler from "express-async-handler";
@@ -338,6 +339,9 @@ const get_tx_id = asyncHandler(async (req, res, next) => {
       break;
     case TransactionType.TOPUP:
       data = await getTopUpDetail(userId, id);
+      break;
+    case TransactionType.TICKET:
+      data = await getTicketDetail(userId, id);
       break;
     default:
       res.status(400).json({
