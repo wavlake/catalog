@@ -30,14 +30,14 @@ const iplimiter = rateLimit({
 
 //////// ROUTES ////////
 
-router.post(
-  "/reward",
-  isAuthorized,
-  limiter,
-  iplimiter,
-  isWalletVerified,
-  promoController.createPromoReward
-);
+// router.post(
+//   "/reward",
+//   isAuthorized,
+//   limiter,
+//   iplimiter,
+//   isWalletVerified,
+//   promoController.createPromoReward
+// );
 
 // router.post(
 //   "/create",
