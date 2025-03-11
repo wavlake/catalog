@@ -22,6 +22,7 @@ import {
   makeInvoice,
   lookupInvoice,
 } from "./library/method";
+import { applySoftRateLimit } from "library/rateLimit";
 const { webcrypto } = require("node:crypto");
 if (!globalThis.crypto) {
   // Only assign if it doesn't exist
@@ -36,91 +37,6 @@ const walletSk = process.env.WALLET_SERVICE_SECRET;
 
 const walletSkHex = hexToBytes(walletSk);
 const walletServicePubkey = getPublicKey(walletSkHex);
-
-// Configurable constants for rate limiting and backoff
-const INITIAL_WINDOW_MS = 60 * 1000; // 60 seconds
-const MAX_REQUESTS_PER_WINDOW = 12;
-const BACKOFF_FACTOR = 2;
-const MAX_BACKOFF_MS = 30 * 1000; // 30 seconds
-const BASE_DELAY_MS = 1000; // 1 second base delay for rate-limited requests
-
-// Store for tracking rate limit windows and backoff times
-const rateLimitStore = new Map();
-
-const calculateDelay = (npub) => {
-  const now = Date.now();
-  let store = rateLimitStore.get(npub);
-
-  if (!store || now - store.windowStart > store.windowMs) {
-    // Reset or initialize the store for this npub
-    store = {
-      windowStart: now,
-      windowMs: INITIAL_WINDOW_MS,
-      count: 0,
-    };
-  }
-
-  store.count++;
-
-  if (store.count > MAX_REQUESTS_PER_WINDOW) {
-    // Calculate delay based on how much the limit is exceeded
-    const excessFactor =
-      (store.count - MAX_REQUESTS_PER_WINDOW) / MAX_REQUESTS_PER_WINDOW;
-    const delay = Math.min(
-      BASE_DELAY_MS * Math.pow(BACKOFF_FACTOR, excessFactor),
-      MAX_BACKOFF_MS
-    );
-
-    // Increase the window size for the next cycle
-    store.windowMs = Math.min(store.windowMs * BACKOFF_FACTOR, MAX_BACKOFF_MS);
-
-    rateLimitStore.set(npub, store);
-    return delay;
-  }
-
-  rateLimitStore.set(npub, store);
-  return 0; // No delay if within rate limit
-};
-
-// Soft rate limiter function
-const applySoftRateLimit = async (npub) => {
-  const delay = calculateDelay(npub);
-  if (delay > 0) {
-    log.info(`Applying soft rate limit for ${npub}. Delaying by ${delay}ms`);
-    await new Promise((resolve) => setTimeout(resolve, delay));
-  }
-  return delay;
-};
-
-// Main process
-const monitorForNWCRequests = async () => {
-  log.info("monitorForNWCRequests");
-  if (!walletSk) {
-    throw new Error(
-      "Unable to listen for NWC requests, no wallet service SK found"
-    );
-  }
-
-  const relay = await Relay.connect(relayUrl);
-  log.info(`Listening for NWC requests for ${walletServicePubkey}`);
-  const sub = relay.subscribe(
-    [
-      {
-        kinds: [23194],
-        // only listen for events tagged with our wallet public key
-        ["#p"]: [walletServicePubkey],
-      },
-    ],
-    {
-      onevent(event) {
-        log.info(`Received event: ${event.id}`);
-        handleRequest(event);
-      },
-    }
-  );
-
-  // sub.on("event", handleRequest);
-};
 
 // Request handler
 const handleRequest = async (event) => {
@@ -181,4 +97,139 @@ const handleRequest = async (event) => {
   }
 };
 
-monitorForNWCRequests();
+let isConnected = false;
+let relay = null;
+let reconnectAttempts = 0;
+
+// Connection management constants
+const MAX_RECONNECT_ATTEMPTS = 10;
+const RECONNECT_DELAY_MS = 5000; // 5 seconds initial delay
+const BACKOFF_MULTIPLIER = 1.5; // Grows delay by 50% each attempt
+
+const scheduleReconnect = () => {
+  if (reconnectAttempts >= MAX_RECONNECT_ATTEMPTS) {
+    log.error(
+      `Maximum reconnection attempts (${MAX_RECONNECT_ATTEMPTS}) reached. Exiting so systemd can restart the service.`
+    );
+    process.exit(1); // Exit process to allow systemd to restart it
+    return;
+  }
+
+  const MAX_RECONNECT_DELAY = 300000; // 5 minutes
+  const delay = Math.min(
+    RECONNECT_DELAY_MS * Math.pow(1.5, reconnectAttempts),
+    MAX_RECONNECT_DELAY
+  );
+
+  reconnectAttempts++;
+
+  log.info(
+    `Scheduling reconnection attempt ${reconnectAttempts} in ${delay}ms`
+  );
+  setTimeout(connectToRelay, delay);
+};
+
+// Function to establish connection to the relay
+const connectToRelay = async () => {
+  try {
+    // Close any existing connection first
+    if (relay) {
+      log.info("Closing existing relay connection before reconnecting");
+      try {
+        await relay.close();
+      } catch (err) {
+        log.warn(`Error closing existing relay: ${err}`);
+      }
+    }
+
+    log.info(`Connecting to relay at ${relayUrl}`);
+    relay = await Relay.connect(relayUrl);
+
+    // Subscribe to events
+    log.info(`Listening for NWC requests for ${walletServicePubkey}`);
+    relay.subscribe(
+      [
+        {
+          kinds: [23194],
+          ["#p"]: [walletServicePubkey],
+        },
+      ],
+      {
+        onevent(event) {
+          log.info(`Received event: ${event.id}`);
+          handleRequest(event);
+        },
+        oneose() {
+          log.info("End of stored events received");
+        },
+        onclose() {
+          log.warn("Subscription closed");
+          isConnected = false;
+          scheduleReconnect();
+        },
+      }
+    );
+
+    return true;
+  } catch (error) {
+    log.error(`Failed to connect to relay: ${error}`);
+    isConnected = false;
+    scheduleReconnect();
+    return false;
+  }
+};
+
+// Add graceful shutdown handling
+process.on("SIGTERM", async () => {
+  log.info("SIGTERM received, shutting down gracefully");
+  // Close connections, etc.
+  process.exit(0);
+});
+
+process.on("SIGTERM", async () => {
+  log.info("SIGTERM received, shutting down gracefully");
+  if (relay) {
+    await relay.close();
+  }
+  process.exit(0);
+});
+
+// Handle uncaught exceptions
+process.on("uncaughtException", (error) => {
+  log.error(`Uncaught exception: ${error}`);
+  log.error(error.stack);
+  // Keep running but log the error
+});
+
+// Handle unhandled promise rejections
+process.on("unhandledRejection", (reason, promise) => {
+  log.error("Unhandled promise rejection", { reason, promise });
+  // Keep running but log the error
+});
+
+const monitorForNWCRequests = async () => {
+  log.info("Starting NWC monitor service");
+  if (!walletSk) {
+    throw new Error(
+      "Unable to listen for NWC requests, no wallet service SK found"
+    );
+  }
+
+  // Initial connection
+  const connected = await connectToRelay();
+
+  if (connected) {
+    log.info("NWC monitor service started successfully", {
+      relayUrl,
+      walletServicePubkey,
+      maxReconnectAttempts: MAX_RECONNECT_ATTEMPTS,
+      reconnectDelay: RECONNECT_DELAY_MS,
+    });
+  }
+};
+
+// Start the monitor
+monitorForNWCRequests().catch((err) => {
+  log.error(`Failed to start NWC monitor: ${err}`);
+  process.exit(1); // Exit with error so systemd can restart
+});
