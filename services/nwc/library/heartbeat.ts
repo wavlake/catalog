@@ -2,12 +2,13 @@
 import * as http from "http";
 import log from "loglevel";
 
-let isServiceHealthy = true; // Service starts as healthy
-let relayConnectionStatus = false; // Track relay connection
-let lastEventTime = Date.now(); // Track when we last processed an event
+let isServiceHealthy: boolean = true; // Service starts as healthy
+let relayConnectionStatus: boolean = false; // Track relay connection
+let lastEventTime: number = Date.now(); // Track when we last processed an event
+const DEFAULT_PORT = 8080;
 
 // Function to start the health check server
-export function startHeartbeat(port = 8080) {
+export function startHeartbeat(port = DEFAULT_PORT) {
   const server = http.createServer((req, res) => {
     if (req.url === "/health") {
       // Basic health check - just verifies the service is running
