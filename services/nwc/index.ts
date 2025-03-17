@@ -23,6 +23,14 @@ import {
   lookupInvoice,
 } from "./library/method";
 import { applySoftRateLimit } from "library/rateLimit";
+// Import health check module
+import {
+  startHeartbeat,
+  setServiceHealthy,
+  setRelayConnectionStatus,
+  updateLastEventTime,
+} from "./library/heartbeat";
+
 const { webcrypto } = require("node:crypto");
 if (!globalThis.crypto) {
   // Only assign if it doesn't exist
@@ -34,6 +42,10 @@ if (!globalThis.crypto) {
 }
 const relayUrl = process.env.WAVLAKE_RELAY;
 const walletSk = process.env.WALLET_SERVICE_SECRET;
+// Get health check port from env or use default
+const healthCheckPort = process.env.HEALTH_CHECK_PORT
+  ? parseInt(process.env.HEALTH_CHECK_PORT)
+  : 8080;
 
 const walletSkHex = hexToBytes(walletSk);
 const walletServicePubkey = getPublicKey(walletSkHex);
@@ -41,6 +53,9 @@ const walletServicePubkey = getPublicKey(walletSkHex);
 // Request handler
 const handleRequest = async (event) => {
   log.info(`Received event: ${event.id}, authenticating...`);
+
+  // Update last event time for health check
+  updateLastEventTime();
 
   try {
     // Apply soft rate limit
@@ -111,8 +126,8 @@ const scheduleReconnect = () => {
     log.error(
       `Maximum reconnection attempts (${MAX_RECONNECT_ATTEMPTS}) reached. Exiting so systemd can restart the service.`
     );
+    setServiceHealthy(false); // Update health check
     process.exit(1); // Exit process to allow systemd to restart it
-    return;
   }
 
   const MAX_RECONNECT_DELAY = 300000; // 5 minutes
@@ -142,8 +157,13 @@ const connectToRelay = async () => {
       }
     }
 
+    setRelayConnectionStatus(false); // Update health status during connection attempt
+
     log.info(`Connecting to relay at ${relayUrl}`);
     relay = await Relay.connect(relayUrl);
+
+    isConnected = true;
+    setRelayConnectionStatus(true); // Update health status after successful connection
 
     // Subscribe to events
     log.info(`Listening for NWC requests for ${walletServicePubkey}`);
@@ -165,6 +185,7 @@ const connectToRelay = async () => {
         onclose() {
           log.warn("Subscription closed");
           isConnected = false;
+          setRelayConnectionStatus(false); // Update health status when connection closes
           scheduleReconnect();
         },
       }
@@ -174,23 +195,25 @@ const connectToRelay = async () => {
   } catch (error) {
     log.error(`Failed to connect to relay: ${error}`);
     isConnected = false;
+    setRelayConnectionStatus(false); // Update health status on connection failure
     scheduleReconnect();
     return false;
   }
 };
 
-// Add graceful shutdown handling
+// Remove duplicate SIGTERM handler and improve the remaining one
 process.on("SIGTERM", async () => {
   log.info("SIGTERM received, shutting down gracefully");
-  // Close connections, etc.
-  process.exit(0);
-});
+  setServiceHealthy(false); // Update health status
 
-process.on("SIGTERM", async () => {
-  log.info("SIGTERM received, shutting down gracefully");
   if (relay) {
-    await relay.close();
+    try {
+      await relay.close();
+    } catch (err) {
+      log.error(`Error closing relay during shutdown: ${err}`);
+    }
   }
+
   process.exit(0);
 });
 
@@ -203,13 +226,21 @@ process.on("uncaughtException", (error) => {
 
 // Handle unhandled promise rejections
 process.on("unhandledRejection", (reason, promise) => {
-  log.error("Unhandled promise rejection", { reason, promise });
-  // Keep running but log the error
+  log.error(`Unhandled promise rejection: ${reason}`, {
+    reason: String(reason),
+    stack: reason instanceof Error ? reason.stack : "No stack trace",
+  });
 });
 
 const monitorForNWCRequests = async () => {
   log.info("Starting NWC monitor service");
+
+  // Start the health check server
+  startHeartbeat(healthCheckPort);
+  log.info(`Health check server started on port ${healthCheckPort}`);
+
   if (!walletSk) {
+    setServiceHealthy(false); // Update health status
     throw new Error(
       "Unable to listen for NWC requests, no wallet service SK found"
     );
@@ -231,5 +262,6 @@ const monitorForNWCRequests = async () => {
 // Start the monitor
 monitorForNWCRequests().catch((err) => {
   log.error(`Failed to start NWC monitor: ${err}`);
+  setServiceHealthy(false); // Update health status
   process.exit(1); // Exit with error so systemd can restart
 });
