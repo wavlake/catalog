@@ -1,32 +1,21 @@
-# Custom build image for running application
+# Custom build image for running application, invoked in app.yaml runtime config
 FROM node:20.17.0-slim
 
 WORKDIR /app
 
-RUN apt-get update -y && apt-get install -y
+RUN apt-get update -y && apt-get install -y openssl python3 python3-pip
 
-# Copy entire monorepo
+# Copy repo source and build takedown service
 COPY ./ /app/
-
-# Install and build takedown service
 WORKDIR /app/services/takedown
-RUN npm install --unsafe-perm || ((if [ -f npm-debug.log ]; then cat npm-debug.log; fi) && false)
+RUN npm install --unsafe-perm ||  ((if [ -f npm-debug.log ]; then cat npm-debug.log; fi) && false)
 
-# Generate Prisma client from repo root (if needed)
+# Generate Prisma client from repo root
 WORKDIR /app
-RUN npm install --unsafe-perm || ((if [ -f npm-debug.log ]; then cat npm-debug.log; fi) && false)
+RUN npm install --unsafe-perm ||  ((if [ -f npm-debug.log ]; then cat npm-debug.log; fi) && false)
 RUN npx tsc
 RUN npx prisma generate
 
-# Copy node_modules to root (helps with imports)
+# Return to services/takedown directory
 WORKDIR /app/services/takedown
-RUN cp -R node_modules /app/node_modules
-
-# Build the takedown service
-RUN npx tsc
-
-# Set environment variable for the port
-ENV PORT=8080
-
-# Return to services/takedown directory and start the service
 ENTRYPOINT ["npm", "start"]
