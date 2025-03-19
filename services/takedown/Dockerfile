@@ -1,26 +1,32 @@
-FROM node:18-slim
+# Custom build image for running application
+FROM node:20.17.0-slim
 
 WORKDIR /app
 
-# Copy package.json and package-lock.json
-COPY package*.json ./
+RUN apt-get update -y && apt-get install -y
 
-# Install dependencies
-RUN npm ci --only=production
+# Copy entire monorepo
+COPY ./ /app/
 
-# Copy local code to the container
-COPY . .
+# Install and build takedown service
+WORKDIR /app/services/takedown
+RUN npm install --unsafe-perm || ((if [ -f npm-debug.log ]; then cat npm-debug.log; fi) && false)
 
-# Copy library files from monorepo
-# This assumes you're building the Docker image from the root of your monorepo
-# If you build differently, you'll need to adjust these paths
-COPY ../../library ./library
-COPY ../../prisma ./prisma
-COPY ../../middlewares ./middlewares
-COPY ../../types ./types
+# Generate Prisma client from repo root (if needed)
+WORKDIR /app
+RUN npm install --unsafe-perm || ((if [ -f npm-debug.log ]; then cat npm-debug.log; fi) && false)
+RUN npx tsc
+RUN npx prisma generate
 
-# Build the application
-RUN npm run build
+# Copy node_modules to root (helps with imports)
+WORKDIR /app/services/takedown
+RUN cp -R node_modules /app/node_modules
 
-# Run the web service on container startup
-CMD [ "node", "dist/index.js" ]
+# Build the takedown service
+RUN npx tsc
+
+# Set environment variable for the port
+ENV PORT=8080
+
+# Return to services/takedown directory and start the service
+ENTRYPOINT ["npm", "start"]

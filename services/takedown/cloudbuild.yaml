@@ -1,7 +1,20 @@
 steps:
-  # Build the container image
+  # Log the current context
+  - name: "gcr.io/cloud-builders/gcloud"
+    entrypoint: "/bin/bash"
+    args: ["-c", 'pwd && ls -la && echo "Current directory content"']
+
+  # Build the container image from monorepo root
   - name: "gcr.io/cloud-builders/docker"
-    args: ["build", "-t", "gcr.io/$PROJECT_ID/takedown:$COMMIT_SHA", "."]
+    args:
+      [
+        "build",
+        "-t",
+        "gcr.io/$PROJECT_ID/takedown:$COMMIT_SHA",
+        "-f",
+        "services/takedown/Dockerfile",
+        ".",
+      ]
 
   # Push the container image to Container Registry
   - name: "gcr.io/cloud-builders/docker"
@@ -15,9 +28,12 @@ steps:
       - "deploy"
       - "takedown"
       - "--image=gcr.io/$PROJECT_ID/takedown:$COMMIT_SHA"
-      - "--region=us-central1" # Change this to your preferred region
+      - "--region=us-central1"
       - "--platform=managed"
-      - "--allow-unauthenticated" # Remove this if you want to require authentication
+      - "--allow-unauthenticated"
+      - "--memory=512Mi"
+      - "--cpu=1"
+      - "--set-env-vars=NODE_ENV=production"
 
 images:
   - "gcr.io/$PROJECT_ID/takedown:$COMMIT_SHA"
