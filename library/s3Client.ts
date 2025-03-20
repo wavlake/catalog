@@ -27,6 +27,44 @@ async function deleteFromS3(key) {
     .promise();
 }
 
+async function batchDeleteFromS3(keys) {
+  if (!keys || keys.length === 0) {
+    return Promise.resolve({ Deleted: [] });
+  }
+
+  // S3 batch delete requires Objects array with { Key: 'keyname' }
+  const objects = keys.map((key) => ({ Key: key }));
+
+  const params = {
+    Bucket: s3BucketName,
+    Delete: {
+      Objects: objects,
+      Quiet: false, // Set to true to return only errors
+    },
+  };
+
+  try {
+    const result = await s3.deleteObjects(params).promise();
+    log.info(
+      `Successfully batch deleted ${result.Deleted.length} objects from S3`
+    );
+
+    // Log any errors that occurred during batch deletion
+    if (result.Errors && result.Errors.length > 0) {
+      result.Errors.forEach((error) => {
+        log.error(
+          `Error deleting ${error.Key} from S3: ${error.Code} - ${error.Message}`
+        );
+      });
+    }
+
+    return result;
+  } catch (err) {
+    log.error(`Batch deletion error: ${err}`);
+    throw err;
+  }
+}
+
 async function uploadS3(sourcePath, key, type) {
   const object = {
     Bucket: s3BucketName,
@@ -64,6 +102,7 @@ async function generatePresignedUrl({ key, extension }) {
 export default {
   s3,
   deleteFromS3,
+  batchDeleteFromS3,
   generatePresignedUrl,
   uploadS3,
 };

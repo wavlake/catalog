@@ -105,47 +105,54 @@ const takedownContent = asyncHandler(async (req, res) => {
       }
     );
     log.info(`Takedown request completed: ${JSON.stringify(takedownRequest)}`);
+
     // if successful, clean up S3 and invalidate the cache
     if (takedownRequest.deletedTracks > 0 && trackIds.length > 0) {
       try {
-        // Delete processed MP3 files from S3
+        // Generate S3 keys for processed and raw MP3 files
         const processedS3Keys = trackIds.map(
           (id) => `${AWS_S3_TRACK_PREFIX}/${id}.mp3`
         );
 
-        // Delete raw files from S3
-        const rawS3Keys = tracksToDelete.map(
-          (track) => `${AWS_S3_RAW_PREFIX}/${track.id}.mp3`
+        const rawS3Keys = trackIds.map(
+          (id) => `${AWS_S3_RAW_PREFIX}/${id}.mp3`
         );
 
         // Combine all keys that need to be deleted
         const allS3Keys = [...processedS3Keys, ...rawS3Keys];
 
-        // Delete objects one by one (since deleteFromS3 only accepts a single key)
-        for (const key of allS3Keys) {
-          try {
-            await s3Client.deleteFromS3(key);
-          } catch (error) {
-            log.error(`Error deleting ${key} from S3: ${error}`);
-          }
+        // Use batch deletion instead of one-by-one
+        const s3DeleteResult = await s3Client.batchDeleteFromS3(allS3Keys);
+
+        log.info(`Batch deleted ${s3DeleteResult.Deleted.length} S3 objects`);
+
+        // Use type assertion to access the Errors property that TypeScript doesn't recognize
+        const awsResult = s3DeleteResult as {
+          Deleted: { Key: string }[];
+          Errors?: { Key: string; Code: string; Message: string }[];
+        };
+
+        // Check if there were any errors during batch deletion
+        if (awsResult.Errors && awsResult.Errors.length > 0) {
+          log.warn(`${awsResult.Errors.length} objects failed to delete`);
         }
 
-        log.info(`Deleted ${allS3Keys.length} S3 objects`);
-
-        // Invalidate CloudFront cache for each processed track
-        for (const key of processedS3Keys) {
-          try {
-            await cloudFrontClient.invalidateCdn(key);
-          } catch (error) {
-            log.error(`Failed to invalidate cache for ${key}: ${error}`);
-          }
-        }
-
-        log.info(
-          `Created CloudFront invalidations for ${processedS3Keys.length} paths`
+        // Batch invalidate CloudFront cache for processed tracks
+        const cloudFrontResult = await cloudFrontClient.batchInvalidateCdn(
+          processedS3Keys
         );
+
+        if (cloudFrontResult && cloudFrontResult.Invalidation) {
+          log.info(
+            `Created CloudFront batch invalidation with ID: ${cloudFrontResult.Invalidation.Id}`
+          );
+        } else {
+          log.info(`CloudFront batch invalidation completed successfully`);
+        }
       } catch (error) {
-        log.error(`Error cleaning up S3 or CloudFront: ${error}`);
+        log.error(
+          `Error in batch S3 deletion or CloudFront invalidation: ${error}`
+        );
         // Continue with the response even if cleanup fails
       }
     }
@@ -164,6 +171,7 @@ const takedownContent = asyncHandler(async (req, res) => {
   }
 });
 
+// Rest of the code remains the same
 const get_artists_by_user_id = asyncHandler(async (req, res, next) => {
   try {
     log.info("Getting artists by user ID");
