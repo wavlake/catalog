@@ -11,6 +11,7 @@ router.post(
   isAdmin,
   adminController.takedownContent
 );
+
 router.get(
   "/user/artists/:userId",
   isFirebaseAuthorized,

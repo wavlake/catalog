@@ -1,12 +1,10 @@
 import log from "../library/winston";
 import Sentry from "@sentry/node";
-import { PrismaClient } from "@prisma/client";
 import asyncHandler from "express-async-handler";
-
 import { formatError } from "../library/errors";
+import prisma from "../prisma/client";
 
-const prisma = new PrismaClient();
-
+const ADMIN_FLAG_ID = 1;
 /**
  * Middleware to check if a user has admin privileges
  * Works by checking if the user has a flag with value 1 in the user_flag table
@@ -21,7 +19,7 @@ export const isAdmin = asyncHandler(async (req, res, next) => {
     const adminFlag = await prisma.userFlag.findFirst({
       where: {
         userId: userId,
-        featureFlagId: 1, // Assuming feature flag with ID 1 represents admin status
+        featureFlagId: ADMIN_FLAG_ID,
       },
     });
 
