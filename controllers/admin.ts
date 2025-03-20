@@ -179,11 +179,15 @@ const get_artists_by_user_id = asyncHandler(async (req, res, next) => {
       });
     }
 
-    const artist = await prisma.artist.findMany({
+    const artists = await prisma.artist.findMany({
       where: { userId },
     });
 
-    res.json({ success: true, data: artist });
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+    });
+
+    res.json({ success: true, data: { artists, user } });
   } catch (err) {
     log.error(`get_artists_by_user_id error: ${err}`);
     res.status(500).json({
