@@ -124,7 +124,7 @@ app.use("/v1/refer", refer);
 app.use("/v1/social", social);
 app.use("/v1/promos", promos);
 
-app.use("/v1/admin", isFirebaseOrNostrAuthorized, isAdmin, admin);
+app.use("/v1/admin", admin);
 
 // The error handler must be registered before any other error middleware and after all controllers
 app.use(Sentry.Handlers.errorHandler());
