@@ -121,20 +121,16 @@ const takedownContent = asyncHandler(async (req, res) => {
         // Combine all keys that need to be deleted
         const allS3Keys = [...processedS3Keys, ...rawS3Keys];
 
-        // Delete objects in batches of 1000 (S3 limit for deleteObjects)
-        for (let i = 0; i < allS3Keys.length; i += 1000) {
-          const batch = allS3Keys.slice(i, i + 1000);
-
-          await s3Client.deleteFromS3({
-            Bucket: process.env.S3_BUCKET_NAME,
-            Delete: {
-              Objects: batch.map((key) => ({ Key: key })),
-              Quiet: true,
-            },
-          });
-
-          log.info(`Deleted batch of ${batch.length} S3 objects`);
+        // Delete objects one by one (since deleteFromS3 only accepts a single key)
+        for (const key of allS3Keys) {
+          try {
+            await s3Client.deleteFromS3(key);
+          } catch (error) {
+            log.error(`Error deleting ${key} from S3: ${error}`);
+          }
         }
+
+        log.info(`Deleted ${allS3Keys.length} S3 objects`);
 
         // Invalidate CloudFront cache for each processed track
         for (const key of processedS3Keys) {
