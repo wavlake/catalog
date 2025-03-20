@@ -2,7 +2,7 @@ import prisma from "../prisma/client";
 import db from "../library/db";
 import log from "../library/winston";
 import { randomUUID } from "crypto";
-import { invalidateCdn } from "../library/cloudfrontClient";
+import cloudFrontClient from "../library/cloudFrontClient";
 import s3Client from "../library/s3Client";
 import asyncHandler from "express-async-handler";
 import { isEpisodeOwner, isPodcastOwner } from "../library/userHelper";
@@ -144,7 +144,7 @@ export const delete_episode = asyncHandler(async (req, res, next) => {
 
   // Clean up S3 and CDN
   s3Client.deleteFromS3(`${AWS_S3_EPISODE_PREFIX}/${episodeId}.mp3`);
-  invalidateCdn(`${AWS_S3_EPISODE_PREFIX}/${episodeId}.mp3`);
+  cloudFrontClient.invalidateCdn(`${AWS_S3_EPISODE_PREFIX}/${episodeId}.mp3`);
 
   res.send({ success: true, data: deleteEpisodeData[0] });
 });
