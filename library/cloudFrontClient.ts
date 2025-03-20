@@ -11,7 +11,6 @@ const distributionId = `${process.env.AWS_CDN_ID}`;
 
 async function invalidateCdn(sourcePath) {
   log.info(`Invalidating content ${sourcePath}`);
-  // console.log(sourcePath)
   const params = {
     DistributionId: distributionId /* required */,
     InvalidationBatch: {
@@ -38,7 +37,41 @@ async function invalidateCdn(sourcePath) {
     .promise();
 }
 
+async function batchInvalidateCdn(sourcePaths) {
+  if (!sourcePaths || sourcePaths.length === 0) {
+    return Promise.resolve();
+  }
+
+  // CloudFront requires paths to start with /
+  const formattedPaths = sourcePaths.map((path) => `/${path}`);
+
+  log.info(`Batch invalidating ${formattedPaths.length} paths in CloudFront`);
+
+  const params = {
+    DistributionId: distributionId,
+    InvalidationBatch: {
+      CallerReference: `batch-${Math.floor(new Date().getTime() / 1000)}`,
+      Paths: {
+        Quantity: formattedPaths.length,
+        Items: formattedPaths,
+      },
+    },
+  };
+
+  try {
+    const result = await awsCdn.createInvalidation(params).promise();
+    log.info(
+      `Successfully created batch invalidation: ${result.Invalidation.Id}`
+    );
+    return result;
+  } catch (err) {
+    log.error(`Batch invalidation error: ${err}`);
+    throw err;
+  }
+}
+
 export default {
   awsCdn,
   invalidateCdn,
+  batchInvalidateCdn,
 };
