@@ -1,7 +1,8 @@
 import prisma from "../prisma/client";
 import log from "../library/winston";
+const asyncHandler = require("express-async-handler");
 
-const takedownContent = async (req, res) => {
+const takedownContent = asyncHandler(async (req, res) => {
   const { artistIds } = req.body;
 
   if (Array.isArray(artistIds) && artistIds.length === 0) {
@@ -91,8 +92,21 @@ const takedownContent = async (req, res) => {
       message: "Failed to takedown",
     });
   }
-};
+});
+
+const get_artists_by_user_id = asyncHandler(async (req, res, next) => {
+  const request = {
+    userId: req.params.userId,
+  };
+
+  const artist = await prisma.artist.findMany({
+    where: { userId: request.userId },
+  });
+
+  res.json({ success: true, data: artist });
+});
 
 export default {
   takedownContent,
+  get_artists_by_user_id,
 };
