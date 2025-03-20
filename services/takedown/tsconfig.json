@@ -5,6 +5,7 @@
     "target": "es2021",
     "module": "commonjs",
     "baseUrl": "./",
+    "rootDir": "./src",
     "paths": {
       "@prismalocal/*": ["../../prisma/*"],
       "@library/*": ["../../library/*"],

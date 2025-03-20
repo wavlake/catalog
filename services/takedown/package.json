@@ -4,10 +4,12 @@
   "description": "Service for processing artist takedowns",
   "main": "dist/index.js",
   "scripts": {
-    "build": "tsc",
+    "build": "tsc --project tsconfig.build.json",
     "start": "node dist/index.js",
-    "dev": "ts-node src/index.ts",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "dev": "ts-node -r tsconfig-paths/register src/index.ts",
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "preinstall": "echo 'Installing dependencies...'",
+    "postinstall": "echo 'Dependencies installed successfully'"
   },
   "author": "",
   "license": "ISC",
@@ -19,6 +21,7 @@
     "@types/express": "^4.17.17",
     "@types/node": "^20.4.2",
     "ts-node": "^10.9.1",
+    "tsconfig-paths": "^4.2.0",
     "typescript": "^5.1.6"
   }
 }
