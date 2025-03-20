@@ -12,7 +12,7 @@ router.post(
   adminController.takedownContent
 );
 router.get(
-  "/user/:userId",
+  "/user/artists/:userId",
   isFirebaseAuthorized,
   isAdmin,
   adminController.get_artists_by_user_id
