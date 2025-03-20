@@ -96,6 +96,7 @@ import publish from "./routes/publish";
 import refer from "./routes/refer";
 import social from "./routes/social";
 import promos from "./routes/promos";
+import admin from "./routes/admin";
 
 app.use(cors(corsOptions));
 
@@ -120,6 +121,7 @@ app.use("/v1/publish", publish);
 app.use("/v1/refer", refer);
 app.use("/v1/social", social);
 app.use("/v1/promos", promos);
+app.use("/v1/admin", admin);
 
 // The error handler must be registered before any other error middleware and after all controllers
 app.use(Sentry.Handlers.errorHandler());
