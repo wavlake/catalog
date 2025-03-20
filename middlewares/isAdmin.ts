@@ -10,6 +10,7 @@ const ADMIN_FLAG_ID = 1;
  * Works by checking if the user has a flag with value 1 in the user_flag table
  */
 export const isAdmin = asyncHandler(async (req, res, next) => {
+  log.info("Checking if user is an admin");
   const userId = req["uid"];
   try {
     // First, verify the user is authenticated using Firebase

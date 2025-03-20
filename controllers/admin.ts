@@ -6,17 +6,17 @@ import { AWS_S3_TRACK_PREFIX, AWS_S3_RAW_PREFIX } from "../library/constants";
 const asyncHandler = require("express-async-handler");
 
 const takedownContent = asyncHandler(async (req, res) => {
-  const { artistIds } = req.body;
-
-  if (Array.isArray(artistIds) && artistIds.length === 0) {
-    return res.status(400).json({
-      message: "No artist IDs provided",
-    });
-  }
-
-  log.info(`Received takedown request for artists`);
-  log.info(artistIds);
   try {
+    const { artistIds } = req.body;
+
+    if (Array.isArray(artistIds) && artistIds.length === 0) {
+      return res.status(400).json({
+        message: "No artist IDs provided",
+      });
+    }
+
+    log.info(`Received takedown request for artists`);
+    log.info(artistIds);
     const artistsWithUsers = await prisma.artist.findMany({
       where: {
         id: {
@@ -169,15 +169,27 @@ const takedownContent = asyncHandler(async (req, res) => {
 });
 
 const get_artists_by_user_id = asyncHandler(async (req, res, next) => {
-  const request = {
-    userId: req.params.userId,
-  };
+  try {
+    log.info("Getting artists by user ID");
+    const userId = req["uid"];
 
-  const artist = await prisma.artist.findMany({
-    where: { userId: request.userId },
-  });
+    if (!userId) {
+      return res.status(401).json({
+        message: "Authentication failed",
+      });
+    }
 
-  res.json({ success: true, data: artist });
+    const artist = await prisma.artist.findMany({
+      where: { userId },
+    });
+
+    res.json({ success: true, data: artist });
+  } catch (err) {
+    log.error(`get_artists_by_user_id error: ${err}`);
+    res.status(500).json({
+      message: "Failed to get artists by user ID",
+    });
+  }
 });
 
 export default {
