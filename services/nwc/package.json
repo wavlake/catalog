@@ -11,7 +11,8 @@
     "build": "tsc && tsc-alias && npm run sentry:sourcemaps",
     "start": "node -r tsconfig-paths/register -r ts-node/register ./index.ts",
     "dev": "NODE_ENV=dev DEBUG=express:router concurrently \"npx tsc --watch\" \"nodemon dist/index.js --watch\"",
-    "sentry:sourcemaps": "sentry-cli sourcemaps inject --org wavlake --project nwc ./dist && sentry-cli sourcemaps upload --org wavlake --project nwc ./dist"
+    "sentry:sourcemaps": "sentry-cli sourcemaps inject --org wavlake --project nwc ./dist && sentry-cli sourcemaps upload --org wavlake --project nwc ./dist",
+    "health-check": "curl -s http://localhost:8080/health || echo 'Health check failed'"
   },
   "author": "",
   "license": "MIT",
