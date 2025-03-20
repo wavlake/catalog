@@ -171,7 +171,7 @@ const takedownContent = asyncHandler(async (req, res) => {
 const get_artists_by_user_id = asyncHandler(async (req, res, next) => {
   try {
     log.info("Getting artists by user ID");
-    const userId = req["uid"];
+    const userId = req.params.userId;
 
     if (!userId) {
       return res.status(401).json({
