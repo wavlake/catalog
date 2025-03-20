@@ -1,9 +1,8 @@
 import prisma from "../prisma/client";
 import db from "../library/db";
 import log from "../library/winston";
-import { Event } from "nostr-tools";
 import { randomUUID } from "crypto";
-import { invalidateCdn } from "../library/cloudfrontClient";
+import cloudFrontClient from "../library/cloudFrontClient";
 import s3Client from "../library/s3Client";
 import { isAlbumOwner, isTrackOwner } from "../library/userHelper";
 import { validate } from "uuid";
@@ -445,7 +444,9 @@ const delete_track = asyncHandler(async (req, res, next) => {
 
   // Clean up S3 and CDN
   s3Client.deleteFromS3(`${AWS_S3_TRACK_PREFIX}/${request.trackId}.mp3`);
-  invalidateCdn(`${AWS_S3_TRACK_PREFIX}/${request.trackId}.mp3`);
+  cloudFrontClient.invalidateCdn(
+    `${AWS_S3_TRACK_PREFIX}/${request.trackId}.mp3`
+  );
 
   res.send({ success: true, data: deleteTrackData[0] });
 });

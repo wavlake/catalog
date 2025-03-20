@@ -1,6 +1,6 @@
-const AWS = require("aws-sdk");
-const fs = require("fs");
-const log = require("loglevel");
+import AWS from "aws-sdk";
+import fs from "fs";
+import log from "loglevel";
 
 const s3 = new AWS.S3({
   accessKeyId: process.env.AWS_ACCESS_KEY_ID,
@@ -61,7 +61,7 @@ async function generatePresignedUrl({ key, extension }) {
   });
 }
 
-module.exports = {
+export default {
   s3,
   deleteFromS3,
   generatePresignedUrl,

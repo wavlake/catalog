@@ -196,6 +196,17 @@ const get_albums_by_artist_id = asyncHandler(async (req, res, next) => {
         ? {}
         : { isDraft: false, publishedAt: { lte: new Date() } }),
     },
+    include: {
+      track: {
+        select: {
+          id: true,
+          title: true,
+          isDraft: true,
+          publishedAt: true,
+          isProcessing: true,
+        },
+      },
+    },
   });
 
   res.json({ success: true, data: albums });

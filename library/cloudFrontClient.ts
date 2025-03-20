@@ -1,5 +1,5 @@
-const AWS = require("aws-sdk");
-const log = require("loglevel");
+import AWS from "aws-sdk";
+import log from "loglevel";
 
 const awsCdn = new AWS.CloudFront({
   accessKeyId: process.env.AWS_ACCESS_KEY_ID,
@@ -38,7 +38,7 @@ async function invalidateCdn(sourcePath) {
     .promise();
 }
 
-module.exports = {
+export default {
   awsCdn,
   invalidateCdn,
 };
