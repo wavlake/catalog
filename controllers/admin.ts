@@ -121,34 +121,34 @@ const takedownContent = asyncHandler(async (req, res) => {
         // Combine all keys that need to be deleted
         const allS3Keys = [...processedS3Keys, ...rawS3Keys];
 
-        // Use batch deletion instead of one-by-one
+        // Use batch deletion instead of one-by-one, automatically handles large batches
         const s3DeleteResult = await s3Client.batchDeleteFromS3(allS3Keys);
 
-        log.info(`Batch deleted ${s3DeleteResult.Deleted.length} S3 objects`);
+        log.info(
+          `S3 cleanup summary: ${s3DeleteResult.Deleted.length} objects deleted successfully`
+        );
 
-        // Use type assertion to access the Errors property that TypeScript doesn't recognize
-        const awsResult = s3DeleteResult as {
+        // Use type assertion for s3DeleteResult to handle the TypeScript error
+        const typedS3Result = s3DeleteResult as {
           Deleted: { Key: string }[];
           Errors?: { Key: string; Code: string; Message: string }[];
         };
 
         // Check if there were any errors during batch deletion
-        if (awsResult.Errors && awsResult.Errors.length > 0) {
-          log.warn(`${awsResult.Errors.length} objects failed to delete`);
+        if (typedS3Result.Errors && typedS3Result.Errors.length > 0) {
+          log.warn(`S3 deletion had ${typedS3Result.Errors.length} failures`);
         }
 
-        // Batch invalidate CloudFront cache for processed tracks
+        // Batch invalidate CloudFront cache for processed tracks, automatically handles large batches
         const cloudFrontResult = await cloudFrontClient.batchInvalidateCdn(
           processedS3Keys
         );
 
-        if (cloudFrontResult && cloudFrontResult.Invalidation) {
-          log.info(
-            `Created CloudFront batch invalidation with ID: ${cloudFrontResult.Invalidation.Id}`
-          );
-        } else {
-          log.info(`CloudFront batch invalidation completed successfully`);
-        }
+        log.info(
+          `CloudFront cache invalidation initiated: ${JSON.stringify(
+            cloudFrontResult
+          )}`
+        );
       } catch (error) {
         log.error(
           `Error in batch S3 deletion or CloudFront invalidation: ${error}`
