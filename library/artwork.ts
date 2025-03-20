@@ -3,7 +3,7 @@ import fs from "fs";
 import { AWS_S3_IMAGE_PREFIX } from "../library/constants";
 import s3Client from "../library/s3Client";
 import log from "./winston";
-import cloudFrount from "./cloudFrontClient";
+import cloudFront from "./cloudFrontClient";
 
 const localConvertPath = process.env.LOCAL_CONVERT_PATH;
 const cdnDomain = `${process.env.AWS_CDN_DOMAIN}`;
@@ -61,7 +61,7 @@ const upload_image = async (
       "artwork"
     );
 
-    cloudFrount.invalidateCdn(s3Key);
+    cloudFront.invalidateCdn(s3Key);
 
     log.info(
       `Artwork for ${type}: ${contentId} uploaded to S3 ${s3UploadResult.Location}`
