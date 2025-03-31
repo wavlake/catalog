@@ -73,8 +73,6 @@ const createDeposit = asyncHandler(async (req, res: any, next) => {
     const invoiceResponse = await createCharge(invoiceRequest);
 
     if (!invoiceResponse.success) {
-      // The ZBD API call failed
-      // Using type assertion to access our extended properties
       const errorMsg =
         (invoiceResponse as any).error ||
         invoiceResponse.message ||
@@ -258,7 +256,7 @@ const createDepositLNURL = asyncHandler(async (req, res: any, next) => {
           );
         });
 
-      return res.status(500).json(invoiceResponse);
+      return res.status(500).send({ success: false, error: errorMsg });
     }
 
     log.info(
