@@ -251,6 +251,10 @@ const getTicketInvoice = asyncHandler<
     const invoiceResponse = await createCharge(invoiceRequest);
 
     if (!invoiceResponse.success) {
+      const errorMsg =
+        (invoiceResponse as any).error ||
+        invoiceResponse.message ||
+        "Unknown error";
       log.error(`Error creating ticket invoice: ${invoiceResponse.message}`);
       await prisma.ticket.update({
         where: { id: ticketId },
@@ -262,7 +266,7 @@ const getTicketInvoice = asyncHandler<
 
       res.status(400).json({
         status: "ERROR",
-        reason: invoiceResponse.message,
+        reason: errorMsg,
       });
       return;
     }

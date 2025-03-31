@@ -1,16 +1,20 @@
-// These interfaces are used to define the response of the ZBD API
-
+// responseInterfaces.ts
 import { ChargeStatus, PaymentStatus, TransactionStatus } from "./constants";
 
-// Terminology:
-// ZBD charge = lightning invoice
-// ZBD Static Charge = LNURL Pay
+// Base response interfaces using discriminated union pattern
+export interface ZBDSuccessResponse<T> {
+  success: true;
+  message?: string;
+  data: T;
+}
 
-interface BaseResponse {
+export interface ZBDErrorResponse {
+  success: false;
   message?: string;
 }
 
-interface CommonDataFields {
+// Common type for fields shared across multiple response types
+export interface CommonDataFields {
   id: string;
   unit: string;
   createdAt: string;
@@ -21,115 +25,123 @@ interface CommonDataFields {
   status: PaymentStatus | ChargeStatus;
 }
 
+// Invoice types
 export interface InvoiceBasic {
   request: string;
   uri: string;
 }
 
-interface InvoiceExtended extends InvoiceBasic {
+export interface InvoiceExtended extends InvoiceBasic {
   fastRequest?: string;
   fastUri?: string;
 }
 
-export interface ZBDCreateStaticChargeResponse extends BaseResponse {
-  data: CommonDataFields & {
-    slots: number;
-    minAmount: string;
-    maxAmount: string;
-    allowedSlots: number;
-    successMessage: string;
-    invoice: InvoiceBasic;
-  };
-}
+// Specific response type definitions
+export type ZBDCreateStaticChargeResponse =
+  | ZBDSuccessResponse<
+      CommonDataFields & {
+        slots: number;
+        minAmount: string;
+        maxAmount: string;
+        allowedSlots: number;
+        successMessage: string;
+        invoice: InvoiceBasic;
+      }
+    >
+  | ZBDErrorResponse;
 
-export interface ZBDCreateWithdrawalRequestResponse extends BaseResponse {
-  success: boolean;
-  data: CommonDataFields & {
-    amount: string;
-    fee: null;
-    invoice: InvoiceExtended;
-  };
-}
+export type ZBDCreateWithdrawalRequestResponse =
+  | ZBDSuccessResponse<
+      CommonDataFields & {
+        amount: string;
+        fee: null;
+        invoice: InvoiceExtended;
+      }
+    >
+  | ZBDErrorResponse;
 
-export interface ZBDSendKeysendPaymentResponse extends BaseResponse {
-  success: boolean;
-  data: {
-    keysendId: string;
-    paymentId: string;
-    transaction: {
-      id: string;
-      walletId: string;
-      type: string;
-      totalAmount: string;
-      fee: string;
-      amount: string;
-      description: string;
-      status: TransactionStatus;
-      confirmedAt: string | null;
-    };
-  };
-}
+export type ZBDSendKeysendPaymentResponse =
+  | ZBDSuccessResponse<{
+      keysendId: string;
+      paymentId: string;
+      transaction: {
+        id: string;
+        walletId: string;
+        type: string;
+        totalAmount: string;
+        fee: string;
+        amount: string;
+        description: string;
+        status: TransactionStatus;
+        confirmedAt: string | null;
+      };
+    }>
+  | ZBDErrorResponse;
 
-export interface ZBDCreateChargeLightningResponse extends BaseResponse {
-  success: boolean;
-  data: CommonDataFields & {
-    amount: string;
-    confirmedAt: null;
-    invoice: InvoiceBasic;
-  };
-}
+export type ZBDCreateChargeLightningResponse =
+  | ZBDSuccessResponse<
+      CommonDataFields & {
+        amount: string;
+        confirmedAt: null;
+        invoice: InvoiceBasic;
+      }
+    >
+  | ZBDErrorResponse;
 
-export interface ZBDCreateChargeResponse extends BaseResponse {
-  success: boolean;
-  data: CommonDataFields & {
-    amount: string;
-    invoiceRequest: string;
-    invoiceExpiresAt: string;
-    invoiceDescriptionHash: string | null;
-  };
-}
+export type ZBDCreateChargeResponse =
+  | ZBDSuccessResponse<
+      CommonDataFields & {
+        amount: string;
+        invoiceRequest: string;
+        invoiceExpiresAt: string;
+        invoiceDescriptionHash: string | null;
+      }
+    >
+  | ZBDErrorResponse;
 
-export interface ZBDGetChargeResponse extends BaseResponse {
-  success: boolean;
-  data: CommonDataFields & {
-    amount: string;
-    confirmedAt: string | null;
-    invoice: InvoiceBasic;
-  };
-}
+export type ZBDGetChargeResponse =
+  | ZBDSuccessResponse<
+      CommonDataFields & {
+        amount: string;
+        confirmedAt: string | null;
+        invoice: InvoiceBasic;
+      }
+    >
+  | ZBDErrorResponse;
 
-export interface ZBDPayToLightningAddressResponse extends BaseResponse {
-  success: boolean;
-  data: CommonDataFields & {
-    fee: string;
-    amount: string;
-    invoice: string;
-    preimage: string | null;
-    walletId: string;
-    transactionId: string;
-    comment: string;
-    processedAt: string;
-  };
-}
+export type ZBDPayToLightningAddressResponse =
+  | ZBDSuccessResponse<
+      CommonDataFields & {
+        fee: string;
+        amount: string;
+        invoice: string;
+        preimage: string | null;
+        walletId: string;
+        transactionId: string;
+        comment: string;
+        processedAt: string;
+      }
+    >
+  | ZBDErrorResponse;
 
-export interface ZBDSendPaymentResponse extends BaseResponse {
-  success: boolean;
-  data: CommonDataFields & {
-    fee: string;
-    amount: string;
-    invoice: string;
-    preimage: string;
-    processedAt: string;
-    confirmedAt: string;
-  };
-}
+export type ZBDSendPaymentResponse =
+  | ZBDSuccessResponse<
+      CommonDataFields & {
+        fee: string;
+        amount: string;
+        invoice: string;
+        preimage: string;
+        processedAt: string;
+        confirmedAt: string;
+      }
+    >
+  | ZBDErrorResponse;
 
-export interface ZBDIsSupportedRegionResponse extends BaseResponse {
-  success: boolean;
-  data: {
-    ipAddress?: string;
-    isSupported: boolean;
-    ipCountry?: string;
-    ipRegion?: string;
-  };
-}
+export type ZBDIsSupportedRegionResponse =
+  | ZBDSuccessResponse<{
+      ipAddress?: string;
+      isSupported: boolean;
+      ipCountry?: string;
+      ipRegion?: string;
+    }>
+  | ZBDErrorResponse;
