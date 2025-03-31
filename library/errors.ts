@@ -1,7 +1,13 @@
 // errorHandling.ts
 import log from "./winston";
-import { AxiosError } from "axios";
 import { ZBDErrorResponse } from "./zbd/responseInterfaces";
+
+export const formatError = (status: number, message: string): Error => {
+  const error = new Error(message);
+  // @ts-ignore
+  error.status = status;
+  return error;
+};
 
 /**
  * Helper to extract readable message from ZBD API errors
