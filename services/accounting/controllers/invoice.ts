@@ -146,9 +146,14 @@ const createZapInvoice = asyncHandler<
 
   // call ZBD api to create an invoice
   const invoiceResponse = await createCharge(invoiceRequest);
-
   if (!invoiceResponse.success) {
-    log.error(`Error creating invoice: ${invoiceResponse.message}`);
+    // Using type assertion to access our extended properties
+    const errorMsg =
+      (invoiceResponse as any).error ||
+      invoiceResponse.message ||
+      "Unknown error";
+
+    log.error(`Error creating ZAP invoice: ${errorMsg}`);
     await prisma.externalReceive
       .update({
         where: { id: invoice.id },
@@ -162,9 +167,7 @@ const createZapInvoice = asyncHandler<
         log.error(`Error updating invoice: ${e}`);
         return null;
       });
-    res
-      .status(400)
-      .send({ success: false, error: `${invoiceResponse.message}` });
+    res.status(500).send({ success: false, error: errorMsg });
     return;
   }
 
