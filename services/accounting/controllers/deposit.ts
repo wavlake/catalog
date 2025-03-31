@@ -92,7 +92,10 @@ const createDeposit = asyncHandler(async (req, res: any, next) => {
           );
         });
 
-      return res.status(500).json(invoiceResponse);
+      return res.status(500).json({
+        success: false,
+        error: errorMsg,
+      });
     }
 
     log.info(
