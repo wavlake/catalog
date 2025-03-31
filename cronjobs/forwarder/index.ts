@@ -206,6 +206,13 @@ const handleReconciliation = async (uniqueExternalPaymentIds: string[]) => {
     await new Promise((resolve) => setTimeout(resolve, TIME_BETWEEN_REQUESTS));
     // Check the status of the payment with ZBD
     const response = await getPaymentStatus(externalPaymentId);
+    if (response.success === false) {
+      log.error(
+        `Error checking payment status for ${externalPaymentId}: ${response.message}`
+      );
+      continue;
+    }
+
     // If the payment is completed, update the forward record to per status
     const { id, status, amount, fee, preimage } = response.data;
     await handleCompletedForward({
