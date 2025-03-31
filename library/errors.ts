@@ -1,4 +1,3 @@
-// errorHandling.ts
 import log from "./winston";
 import { ZBDErrorResponse } from "./zbd/responseInterfaces";
 
