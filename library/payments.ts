@@ -71,6 +71,15 @@ async function handleCompletedPayment(
   paymentRecordId: number,
   paymentData: ZBDSendPaymentResponse
 ) {
+  if (paymentData.success === false) {
+    log.error(
+      `handleCompletedPayment called with unsuccessful paymentData: ${JSON.stringify(
+        paymentData
+      )}`
+    );
+    throw new Error(paymentData.message);
+  }
+
   const totalAmount = msatAmount + parseInt(paymentData.data.fee);
   const userBalance = await getUserBalance(userId);
   // Check if the payment amount + final fee is greater than the user's balance
@@ -272,7 +281,7 @@ export const initiatePayment = async (
     }-${paymentRecordId.toString()}`,
   });
 
-  if (!paymentResponse.data) {
+  if (!paymentResponse.success) {
     log.error(`Error sending payment: ${paymentResponse.message}`);
     await handleFailedPayment(res, userId, paymentRecordId, paymentResponse);
     return;
@@ -280,10 +289,9 @@ export const initiatePayment = async (
   // Wrap in a try/catch to handle timeouts
   try {
     // Payment failed
-    if (
-      !paymentResponse.success &&
-      paymentResponse.data.status === PaymentStatus.Error
-    ) {
+    if (paymentResponse.data.status === PaymentStatus.Error) {
+      log.error(`Send payment error status: ${paymentResponse.message}`);
+
       await handleFailedPayment(res, userId, paymentRecordId, paymentResponse);
       return;
     } else {

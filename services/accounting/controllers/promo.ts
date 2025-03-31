@@ -374,10 +374,15 @@ const createPromo = asyncHandler<
   const invoiceResponse = await createCharge(invoiceRequest);
 
   if (!invoiceResponse.success) {
+    const errorMsg =
+      (invoiceResponse as any).error ||
+      invoiceResponse.message ||
+      "Unknown error";
     log.error(`Error creating promo invoice: ${invoiceResponse.message}`);
-    res.status(500).send({
+
+    res.status(500).json({
       success: false,
-      error: "There has been an error generating an invoice",
+      error: errorMsg,
     });
     return;
   }

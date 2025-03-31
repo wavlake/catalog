@@ -1,3 +1,4 @@
+// zbdClient.ts
 import {
   CreateInvoiceRequest,
   SendKeysendRequest,
@@ -11,8 +12,10 @@ import {
   ZBDIsSupportedRegionResponse,
   ZBDSendKeysendPaymentResponse,
   ZBDSendPaymentResponse,
+  ZBDErrorResponse,
 } from "./responseInterfaces";
 import axios, { AxiosError } from "axios";
+import { handleZbdApiError } from "../errors";
 
 // Create ZBD instance
 const zbdApiKey = process.env.ZBD_API_KEY;
@@ -21,142 +24,149 @@ const accountingCallbackUrl = `${process.env.ACCOUNTING_CALLBACK_URL}`;
 const client = axios.create({
   baseURL: "https://api.zebedee.io/v0",
   headers: { apikey: zbdApiKey },
+  timeout: 10000, // Add reasonable timeout
 });
 
 export async function getPaymentStatus(
   paymentId: string
 ): Promise<ZBDSendPaymentResponse> {
-  return client
-    .get(`https://api.zebedee.io/v0/payments/${paymentId}`)
-    .then((res) => {
-      return res.data;
-    })
-    .catch((err) => {
-      log.error(err);
-      return err.response;
-    });
+  try {
+    const res = await client.get(`/payments/${paymentId}`);
+    return res.data;
+  } catch (err) {
+    return handleZbdApiError(err, `getPaymentStatus(${paymentId})`);
+  }
 }
 
-export async function getProductionIps(): Promise<Array<string>> {
-  const { data } = await client
-    .get("https://api.zebedee.io/v0/prod-ips")
-    .catch((err) => {
-      log.error(err);
-      return err.response;
-    });
-
-  return data.data.ips;
+export async function getProductionIps(): Promise<
+  string[] | (ZBDErrorResponse & { error: string })
+> {
+  try {
+    const { data } = await client.get("/prod-ips");
+    return data.data.ips;
+  } catch (err) {
+    return handleZbdApiError(err, "getProductionIps()");
+  }
 }
 
 export async function isSupportedRegion(ipAddress: string): Promise<boolean> {
-  return client
-    .get<ZBDIsSupportedRegionResponse>(
-      `https://api.zebedee.io/v0/is-supported-region/${ipAddress}`
-    )
-    .then((res) => {
+  try {
+    const res = await client.get<ZBDIsSupportedRegionResponse>(
+      `/is-supported-region/${ipAddress}`
+    );
+
+    // Check if response is successful and has expected format
+    if (res.data.success && "isSupported" in res.data.data) {
       log.info(`ZBD is-supported-region response: ${JSON.stringify(res.data)}`);
       return res.data.data.isSupported;
-    })
-    .catch((err) => {
-      log.error(err);
-      return false;
-    });
+    }
+
+    log.warn(
+      `Unexpected response format from is-supported-region: ${JSON.stringify(
+        res.data
+      )}`
+    );
+    return false;
+  } catch (err) {
+    log.error(`Error checking region support for IP ${ipAddress}:`, err);
+    return false;
+  }
 }
 
-export async function sendKeysend(request: SendKeysendRequest) {
-  return client
-    .post<ZBDSendKeysendPaymentResponse>(
-      `https://api.zebedee.io/v0/keysend-payment`,
+export async function sendKeysend(
+  request: SendKeysendRequest
+): Promise<ZBDSendKeysendPaymentResponse> {
+  try {
+    const res = await client.post<ZBDSendKeysendPaymentResponse>(
+      `/keysend-payment`,
       {
         callbackUrl: `${accountingCallbackUrl}/send/keysend`,
         ...request,
       }
-    )
-    .then((res) => {
+    );
+
+    if (res.data.success) {
       log.info(`ZBD send keysend response: ${JSON.stringify(res.data)}`);
-      return res.data;
-    })
-    .catch((err) => {
-      log.error(err);
-      return;
-    });
+    }
+
+    return res.data;
+  } catch (err) {
+    return handleZbdApiError(err, `sendKeysend(${JSON.stringify(request)})`);
+  }
 }
 
 export async function createCharge(
   request: CreateInvoiceRequest
 ): Promise<ZBDCreateChargeLightningResponse> {
-  const { data } = await client
-    .post(`https://api.zebedee.io/v0/charges`, {
+  try {
+    const res = await client.post(`/charges`, {
       callbackUrl: `${accountingCallbackUrl}/receive/invoice`,
       ...request,
-    })
-    .catch((err) => {
-      log.error(err);
-      return err.response;
     });
-  return data;
+    return res.data;
+  } catch (err) {
+    return handleZbdApiError(err, `createCharge(${JSON.stringify(request)})`);
+  }
 }
 
 export async function getCharge(
   paymentId: string
 ): Promise<ZBDGetChargeResponse> {
-  const { data } = await client
-    .get(`https://api.zebedee.io/v0/charges/${paymentId}`)
-    .catch((err) => {
-      log.error(err);
-      return err.response;
-    });
-  return data;
+  try {
+    const res = await client.get(`/charges/${paymentId}`);
+    return res.data;
+  } catch (err) {
+    return handleZbdApiError(err, `getCharge(${paymentId})`);
+  }
 }
 
 export async function sendPayment(
   request: SendPaymentRequest
 ): Promise<ZBDSendPaymentResponse> {
-  const { data } = await client
-    .post(`https://api.zebedee.io/v0/payments`, {
+  try {
+    const res = await client.post(`/payments`, {
       callbackUrl: `${accountingCallbackUrl}/send/invoice`,
       ...request,
-    })
-    .catch((err) => {
-      log.error(err);
-      return err.response;
     });
-  return data;
+    return res.data;
+  } catch (err) {
+    return handleZbdApiError(err, `sendPayment(${JSON.stringify(request)})`);
+  }
 }
 
 export async function payToLightningAddress(
   request: LightningAddressPaymentRequest
-): Promise<ZBDSendPaymentResponse | AxiosError<unknown, any>> {
+): Promise<ZBDSendPaymentResponse> {
   try {
-    const { data } = await client.post(
-      `https://api.zebedee.io/v0/ln-address/send-payment`,
-      {
-        callbackUrl: `${accountingCallbackUrl}/send/invoice`,
-        ...request,
-      }
-    );
-    return data;
+    const res = await client.post(`/ln-address/send-payment`, {
+      callbackUrl: `${accountingCallbackUrl}/send/invoice`,
+      ...request,
+    });
+    return res.data;
   } catch (err) {
-    log.error(err);
-    if (axios.isAxiosError(err)) {
-      return err as AxiosError;
-    } else {
-      // Just a stock error
-      return err;
-    }
+    return handleZbdApiError(
+      err,
+      `payToLightningAddress(${JSON.stringify(request)})`
+    );
   }
 }
 
 export async function validateLightningAddress(
   lightningAddress: string
 ): Promise<boolean> {
-  return client
-    .get(`https://api.zebedee.io/v0/ln-address/validate/${lightningAddress}`)
-    .then((res) => {
+  try {
+    const res = await client.get(`/ln-address/validate/${lightningAddress}`);
+    if (res.data.success && res.data.data.valid !== undefined) {
       return res.data.data.valid;
-    })
-    .catch((err) => {
-      log.error(err);
-      return false;
-    });
+    }
+    log.warn(
+      `Unexpected response format from validate-lightning-address: ${JSON.stringify(
+        res.data
+      )}`
+    );
+    return false;
+  } catch (err) {
+    log.error(`Error validating lightning address ${lightningAddress}:`, err);
+    return false;
+  }
 }
