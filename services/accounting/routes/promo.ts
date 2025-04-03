@@ -48,7 +48,7 @@ const iplimiter = rateLimit({
 //   promoController.createPromo
 // );
 
-router.get("/battery", isAuthorized, promoController.getBatteryInfo);
+router.get("/battery", promoController.getBatteryInfo);
 
 router.post(
   "/battery",
