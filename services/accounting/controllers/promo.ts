@@ -19,8 +19,11 @@ import {
   DEFAULT_EXPIRATION_SECONDS,
   MAX_INVOICE_AMOUNT,
 } from "@library/constants";
-import { createCharge } from "@library/zbd";
+import { createCharge, ZBDWalletResponse } from "@library/zbd";
 import { validate } from "uuid";
+import zbdBatteryClient from "@library/zbd/zbdBatteryClient";
+import { PaymentStatus } from "@library/zbd/constants";
+
 const { createHash } = require("crypto");
 
 const createPromoReward = asyncHandler<
@@ -418,4 +421,234 @@ const createPromo = asyncHandler<
   }
 });
 
-export default { createPromoReward, createPromo };
+const hoursWindow = 24; // Check for last 24 hours
+const maxMsats = 1000000; // Max 1000 sats in the last 24 hours
+
+const createBatteryReward = asyncHandler<
+  {},
+  ResponseObject<{}>,
+  { msatAmount: number; ip: string; userId: string }
+>(async (req, res, next) => {
+  try {
+    const userId = req.body.userId;
+    const ipAddress = req.body.ip;
+    const msatAmount = req.body.msatAmount;
+
+    if (!userId || !ipAddress || !msatAmount) {
+      res.status(400).json({
+        success: false,
+        error: "userId, ip, and msatAmount are required",
+      });
+      return;
+    }
+    if (isNaN(req.body.msatAmount) || req.body.msatAmount < 0) {
+      res.status(400).json({
+        success: false,
+        error: "msatAmount must be a postivive number",
+      });
+      return;
+    }
+
+    // Check if user is eligible for reward
+    // Calculate the timestamp for X hours ago
+    const hoursAgo = new Date(Date.now() - hoursWindow * 60 * 60 * 1000);
+
+    // Check if user has earned more than maxSats in the last Y hours
+    const userRecentRewards = await await prisma.battery_reward.aggregate({
+      where: {
+        user_id: userId,
+        created_at: {
+          gt: hoursAgo,
+        },
+        is_pending: false,
+      },
+      _sum: {
+        msat_amount: true,
+      },
+    });
+
+    if (isNaN(userRecentRewards._sum.msat_amount)) {
+      res.status(400).json({
+        success: false,
+        error: "Error calculating user rewards",
+      });
+      return;
+    }
+
+    const totalMsats = userRecentRewards._sum.msat_amount;
+    if (totalMsats >= maxMsats) {
+      log.info(
+        `User has earned ${totalMsats} sats in the last ${hoursWindow} hours, exceeding limit of ${maxMsats}`
+      );
+
+      res.status(400).json({
+        success: false,
+        error: `User has already earned ${totalMsats} msats in the last ${hoursWindow} hours`,
+      });
+      return;
+    }
+
+    // Check if user has already redeemed a promo
+    const recentIPRewards = await prisma.battery_reward.aggregate({
+      where: {
+        ip: req.body.ip,
+        created_at: {
+          gt: hoursAgo,
+        },
+        is_pending: false,
+      },
+      _sum: {
+        msat_amount: true,
+      },
+    });
+    if (isNaN(recentIPRewards._sum.msat_amount)) {
+      res.status(400).json({
+        success: false,
+        error: "Error calculating user rewards",
+      });
+      return;
+    }
+    const totalIPMsats = recentIPRewards._sum.msat_amount;
+    if (totalIPMsats >= maxMsats) {
+      log.info(
+        `IP has earned ${totalIPMsats} sats in the last ${hoursWindow} hours, exceeding limit of ${maxMsats}`
+      );
+      res.status(400).json({
+        success: false,
+        error: `IP has already earned ${totalIPMsats} msats in the last ${hoursWindow} hours`,
+      });
+      return;
+    }
+
+    const user = await prisma.user.findFirst({
+      where: {
+        id: userId,
+      },
+    });
+
+    if (!user.profileUrl) {
+      res.status(400).json({
+        success: false,
+        error: "Failed to find user LNURL",
+      });
+      return;
+    }
+
+    const balanceInfo = await zbdBatteryClient.balanceInfo();
+    if (!balanceInfo.success) {
+      res.status(400).json({
+        success: false,
+        error: "Error getting wallet balance info",
+      });
+      return;
+    }
+
+    const walletBalance = parseInt(balanceInfo.data.balance);
+    log.info(
+      `Wallet balance: ${walletBalance} msats, requested amount: ${msatAmount} msats`
+    );
+    if (walletBalance < msatAmount) {
+      res.status(400).json({
+        success: false,
+        error: `Unable to process payment, wallet balance is too low.`,
+      });
+      return;
+    }
+
+    // create battery reward record
+    const newReward = await prisma.battery_reward.create({
+      data: {
+        user_id: userId,
+        msat_amount: msatAmount,
+        is_pending: true,
+        fee: 0,
+        updated_at: new Date(),
+        ip: ipAddress,
+      },
+    });
+
+    log.info(`Created battery reward: ${newReward.id}`);
+
+    const lnurl = `${user.profileUrl}@wavlake.com`;
+    log.info(`Sending battery reward to ${lnurl}`);
+
+    const zbdresponse = await zbdBatteryClient.payToLNURL({
+      lnAddress: `${user.profileUrl}@wavlake.com`,
+      amount: req.body.msatAmount.toString(),
+      comment: "Shy Kids Battery",
+      internalId: `battery-${newReward.id}`,
+    });
+
+    if (!zbdresponse.success) {
+      log.error(`Error sending battery payment: ${zbdresponse.message}`);
+      await prisma.battery_reward.update({
+        where: {
+          id: newReward.id,
+        },
+        data: {
+          is_pending: false,
+          status: "failed",
+        },
+      });
+
+      res.status(500).json({
+        success: false,
+        error: zbdresponse.message,
+      });
+      return;
+    }
+
+    const fee = parseInt(zbdresponse.data.fee) ?? 0;
+    const amount = parseInt(zbdresponse.data.amount) ?? 0;
+
+    await prisma.battery_reward.update({
+      where: {
+        id: newReward.id,
+      },
+      data: {
+        is_pending: zbdresponse.data.status === PaymentStatus.Pending,
+        status: zbdresponse.data.status,
+        fee: fee,
+        msat_amount: amount,
+      },
+    });
+
+    res.status(200).json({
+      success: true,
+      data: {
+        message: `Battery reward of ${req.body.msatAmount} msats sent to ${lnurl}`,
+      },
+    });
+  } catch (error) {
+    log.error(error);
+    res.status(500).json({
+      success: false,
+      error: "Error creating reward",
+    });
+    return;
+  }
+});
+
+const getBatteryInfo = asyncHandler(async (req, res, next) => {
+  const info = await zbdBatteryClient.balanceInfo();
+
+  if (!info.success) {
+    res.status(400).json({
+      success: false,
+      error: "Error getting battery info",
+    });
+    return;
+  }
+
+  res.status(200).json({
+    success: true,
+    data: info.data,
+  });
+});
+
+export default {
+  createPromoReward,
+  createBatteryReward,
+  createPromo,
+  getBatteryInfo,
+};
