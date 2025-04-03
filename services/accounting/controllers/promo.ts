@@ -547,6 +547,13 @@ const createBatteryReward = asyncHandler<
     log.info(
       `Wallet balance: ${walletBalance} msats, requested amount: ${msatAmount} msats`
     );
+
+    await prisma.battery_balance.create({
+      data: {
+        msat_balance: walletBalance,
+      },
+    });
+
     if (walletBalance < msatAmount) {
       res.status(400).json({
         success: false,
@@ -629,9 +636,28 @@ const createBatteryReward = asyncHandler<
   }
 });
 
+const balanceStaleTime = 5 * 1000; // 5 min
 const getBatteryInfo = asyncHandler(async (req, res, next) => {
-  const info = await zbdBatteryClient.balanceInfo();
+  const latestBalance = await prisma.battery_balance.findFirst({
+    orderBy: {
+      created_at: "desc",
+    },
+  });
 
+  const balanceIsStale =
+    latestBalance.created_at.getTime() + balanceStaleTime < Date.now();
+  if (latestBalance && !balanceIsStale) {
+    res.status(200).json({
+      success: true,
+      data: {
+        balance: latestBalance.msat_balance,
+        lastUpdated: latestBalance.created_at,
+      },
+    });
+    return;
+  }
+
+  const info = await zbdBatteryClient.balanceInfo();
   if (!info.success) {
     res.status(400).json({
       success: false,
@@ -640,9 +666,18 @@ const getBatteryInfo = asyncHandler(async (req, res, next) => {
     return;
   }
 
+  const newBalance = await prisma.battery_balance.create({
+    data: {
+      msat_balance: parseInt(info.data.balance),
+    },
+  });
+
   res.status(200).json({
     success: true,
-    data: info.data,
+    data: {
+      balance: newBalance.msat_balance,
+      lastUpdated: newBalance.created_at,
+    },
   });
 });
 

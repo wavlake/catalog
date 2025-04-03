@@ -745,6 +745,12 @@ model battery_reward {
   @@index([user_id], map: "idx_battery_reward_user_id")
 }
 
+model battery_balance {
+  id           Int       @id @default(autoincrement())
+  msat_balance Int
+  created_at   DateTime? @default(now()) @db.Timestamptz(6)
+}
+
 view TrackInfo {
   id              String          @unique @db.Uuid
   title           String?         @db.VarChar(255)
