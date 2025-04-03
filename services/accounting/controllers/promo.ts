@@ -548,12 +548,6 @@ const createBatteryReward = asyncHandler<
       `Wallet balance: ${walletBalance} msats, requested amount: ${msatAmount} msats`
     );
 
-    await prisma.battery_balance.create({
-      data: {
-        msat_balance: walletBalance,
-      },
-    });
-
     if (walletBalance < msatAmount) {
       res.status(400).json({
         success: false,
@@ -620,6 +614,12 @@ const createBatteryReward = asyncHandler<
       },
     });
 
+    await prisma.battery_balance.create({
+      data: {
+        msat_balance: walletBalance,
+      },
+    });
+
     res.status(200).json({
       success: true,
       data: {
@@ -636,7 +636,7 @@ const createBatteryReward = asyncHandler<
   }
 });
 
-const balanceStaleTime = 5 * 1000; // 5 min
+const balanceStaleTime = 5 * 60 * 1000; // 5 min
 const getBatteryInfo = asyncHandler(async (req, res, next) => {
   const latestBalance = await prisma.battery_balance.findFirst({
     orderBy: {
