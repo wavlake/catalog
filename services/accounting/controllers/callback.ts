@@ -17,6 +17,8 @@ import {
   handleCompletedWithdrawal,
 } from "@library/withdraw";
 import { IncomingInvoiceType } from "@library/common";
+import prisma from "@prismalocal/client";
+import { PaymentStatus } from "@library/zbd/constants";
 
 const jsonParser = (jsonString?: string) => {
   if (!jsonString) return;
@@ -229,9 +231,55 @@ const processOutgoingInvoice = asyncHandler<
   res.status(200).send({ succes: true });
 });
 
+const processOutgoingBatteryInvoice = asyncHandler<
+  core.ParamsDictionary,
+  any,
+  ZBDPaymentCallbackRequest
+>(async (req, res, next) => {
+  log.info(
+    `Received outgoing battery invoice callback: ${JSON.stringify(req.body)}`
+  );
+
+  const { id, status, internalId, fee, preimage, amount } = req.body;
+
+  const [invoiceType, internalIdString] = internalId.split("-");
+  if (invoiceType !== "battery") {
+    log.error(`Invalid internalId type: ${invoiceType}`);
+    res.status(400).send({
+      success: false,
+      error: `Expected internalId to be of type: battery`,
+    });
+    return;
+  }
+
+  const intId = parseInt(internalIdString);
+  const isSuccess = await prisma.battery_reward.update({
+    where: {
+      id: intId,
+    },
+    data: {
+      status: status,
+      is_pending: status === PaymentStatus.Pending,
+      fee: parseInt(fee) || 0,
+      msat_amount: parseInt(amount),
+    },
+  });
+
+  if (!isSuccess) {
+    log.error(`Error updating invoice id ${intId} with status ${status}`);
+    res.status(500).send({
+      success: false,
+      error: "Withdrawal update failed",
+    });
+    return;
+  }
+  res.status(200).send({ succes: true });
+});
+
 export default {
   processIncomingKeysend,
   processOutgoingKeysend,
   processIncomingInvoice,
   processOutgoingInvoice,
+  processOutgoingBatteryInvoice,
 };
