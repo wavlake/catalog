@@ -253,6 +253,17 @@ const processOutgoingBatteryInvoice = asyncHandler<
   }
 
   const intId = parseInt(internalIdString);
+  if (typeof fee !== "string" || isNaN(Number(fee))) {
+    log.error(`Invalid fee value: ${fee}`);
+    res.status(400).send({ success: false, error: "Invalid fee value" });
+    return;
+  }
+  if (typeof amount !== "string" || isNaN(Number(amount))) {
+    log.error(`Invalid amount value: ${amount}`);
+    res.status(400).send({ success: false, error: "Invalid amount value" });
+    return;
+  }
+
   const isSuccess = await prisma.battery_reward.update({
     where: {
       id: intId,

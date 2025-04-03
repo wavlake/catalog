@@ -17,6 +17,9 @@ import axios from "axios";
 import { handleZbdApiError } from "../errors";
 
 // Create ZBD instance
+if (!process.env.ZBD_BATTERY_API_KEY) {
+  throw new Error("ZBD_BATTERY_API_KEY environment variable is not set");
+}
 const zbdApiKey = process.env.ZBD_BATTERY_API_KEY;
 const accountingCallbackUrl = `${process.env.ACCOUNTING_CALLBACK_URL}`;
 
@@ -42,7 +45,13 @@ async function getProductionIps(): Promise<
 > {
   try {
     const { data } = await client.get("/prod-ips");
-    return data.data.ips;
+    if (data?.data?.ips) {
+      return data.data.ips;
+    }
+    return handleZbdApiError(
+      "zbd prod-ips not properly formatted",
+      "battery-getProductionIps()"
+    );
   } catch (err) {
     return handleZbdApiError(err, "battery-getProductionIps()");
   }

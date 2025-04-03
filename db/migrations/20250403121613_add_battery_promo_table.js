@@ -7,6 +7,7 @@ exports.up = function (knex) {
       .index("idx_battery_reward_user_id");
     table.integer("msat_amount").notNullable();
     table.integer("fee").notNullable();
+    table.check("fee >= 0", [], "battery_reward_fee_check");
     table.check("msat_amount > 0", [], "battery_reward_amount_check");
     table.boolean("is_pending").notNullable().defaultTo(true);
     table.string("status");
