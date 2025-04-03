@@ -145,3 +145,10 @@ export type ZBDIsSupportedRegionResponse =
       ipRegion?: string;
     }>
   | ZBDErrorResponse;
+
+export type ZBDWalletResponse =
+  | ZBDSuccessResponse<{
+      unit: string;
+      balance: string;
+    }>
+  | ZBDErrorResponse;
