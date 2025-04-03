@@ -423,11 +423,7 @@ const createPromo = asyncHandler<
 
 const hoursWindow = 24; // Check for last 24 hours
 const maxMsats = 1000000; // Max 1000 sats in the last 24 hours
-/**
- * Create a promo reward for a user who has redeemed an invite code
- * This controller handles the specific case where users need an invite code
- * to qualify for a promotional reward
- */
+
 const createBatteryReward = asyncHandler<
   {},
   ResponseObject<{}>,
