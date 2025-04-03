@@ -426,7 +426,7 @@ const maxMsats = 1000000; // Max 1000 sats in the last 24 hours
 
 const createBatteryReward = asyncHandler<
   {},
-  ResponseObject<{}>,
+  ResponseObject<{ message: string }>,
   { msatAmount: number; ip: string; userId: string }
 >(async (req, res, next) => {
   try {
