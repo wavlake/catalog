@@ -284,6 +284,10 @@ const processOutgoingBatteryInvoice = asyncHandler<
     });
     return;
   }
+
+  log.info(
+    `Updated battery reward ${intId} with status ${status} and fee ${fee}`
+  );
   res.status(200).send({ succes: true });
 });
 
