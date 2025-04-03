@@ -534,6 +534,27 @@ const createBatteryReward = asyncHandler<
       return;
     }
 
+    const balanceInfo = await zbdBatteryClient.balanceInfo();
+    if (!balanceInfo.success) {
+      res.status(400).json({
+        success: false,
+        error: "Error getting wallet balance info",
+      });
+      return;
+    }
+
+    const walletBalance = parseInt(balanceInfo.data.balance);
+    log.info(
+      `Wallet balance: ${walletBalance} msats, requested amount: ${msatAmount} msats`
+    );
+    if (walletBalance < msatAmount) {
+      res.status(400).json({
+        success: false,
+        error: `Unable to process payment, wallet balance is too low.`,
+      });
+      return;
+    }
+
     // create battery reward record
     const newReward = await prisma.battery_reward.create({
       data: {
@@ -608,24 +629,22 @@ const createBatteryReward = asyncHandler<
   }
 });
 
-const getBatteryInfo = asyncHandler<{}, ResponseObject<ZBDWalletResponse>, {}>(
-  async (req, res, next) => {
-    const info = await zbdBatteryClient.balanceInfo();
+const getBatteryInfo = asyncHandler(async (req, res, next) => {
+  const info = await zbdBatteryClient.balanceInfo();
 
-    if (!info) {
-      res.status(400).json({
-        success: false,
-        error: "Error getting battery info",
-      });
-      return;
-    }
-
-    res.status(200).json({
-      success: true,
-      data: info,
+  if (!info.success) {
+    res.status(400).json({
+      success: false,
+      error: "Error getting battery info",
     });
+    return;
   }
-);
+
+  res.status(200).json({
+    success: true,
+    data: info.data,
+  });
+});
 
 export default {
   createPromoReward,
