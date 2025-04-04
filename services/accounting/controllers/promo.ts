@@ -427,11 +427,13 @@ const maxMsats = 1000000; // Max 1000 sats in the last 24 hours
 const createBatteryReward = asyncHandler<
   {},
   ResponseObject<{ message: string }>,
-  { msatAmount: number; ip: string; userId: string }
+  { msatAmount: number }
 >(async (req, res, next) => {
   try {
-    const userId = req.body.userId;
-    const ipAddress = req.body.ip;
+    const userId = req["uid"];
+    const rawIpAddress = req.ip;
+    // hash ip address
+    const ipAddress = createHash("MD5").update(rawIpAddress).digest("hex");
     const msatAmount = req.body.msatAmount;
 
     if (!userId || !ipAddress || !msatAmount) {
@@ -491,7 +493,7 @@ const createBatteryReward = asyncHandler<
     // Check if user has already redeemed a promo
     const recentIPRewards = await prisma.battery_reward.aggregate({
       where: {
-        ip: req.body.ip,
+        ip: ipAddress,
         created_at: {
           gt: hoursAgo,
         },
