@@ -24,8 +24,7 @@ export async function checkUserInviteStatus(
 ): Promise<InviteStatus> {
   try {
     // Get user email from Firebase
-    const userRecord = await auth().getUser(firebaseUid);
-    const userEmail = userRecord.email;
+    const userEmail = await getUserEmail(firebaseUid);
 
     if (!userEmail) {
       return { isInvited: false, listName: null };
@@ -140,8 +139,7 @@ export async function checkUserMultipleListMembership(
 ): Promise<string[]> {
   try {
     // Get user email from Firebase
-    const userRecord = await auth().getUser(firebaseUid);
-    const userEmail = userRecord.email;
+    const userEmail = await getUserEmail(firebaseUid);
 
     if (!userEmail || !listNames.length) {
       return [];
@@ -166,4 +164,9 @@ export async function checkUserMultipleListMembership(
 
 function normalizeEmail(email: string): string {
   return email.toLowerCase().trim();
+}
+
+async function getUserEmail(firebaseUid: string): Promise<string | null> {
+  const userRecord = await auth().getUser(firebaseUid);
+  return userRecord.email || null;
 }
