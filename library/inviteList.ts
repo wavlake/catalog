@@ -53,7 +53,7 @@ export async function isEmailInvited(
     return { isInvited: false, listName: null };
   }
 
-  const normalizedEmail = email.toLowerCase().trim();
+  const normalizedEmail = normalizeEmail(email);
 
   // Build query
   const query = db
@@ -88,7 +88,7 @@ export async function addEmailToInviteList(
     throw new Error("Email and list name are required");
   }
 
-  const normalizedEmail = email.toLowerCase().trim();
+  const normalizedEmail = normalizeEmail(email);
 
   try {
     // Get or create the list
@@ -147,7 +147,7 @@ export async function checkUserMultipleListMembership(
       return [];
     }
 
-    const normalizedEmail = userEmail.toLowerCase().trim();
+    const normalizedEmail = normalizeEmail(userEmail);
 
     // Check which of the specified lists the user is on
     const results = await db
@@ -162,4 +162,8 @@ export async function checkUserMultipleListMembership(
     console.error("Error checking multiple list membership:", error);
     throw error;
   }
+}
+
+function normalizeEmail(email: string): string {
+  return email.toLowerCase().trim();
 }
