@@ -24,6 +24,8 @@ import { validate } from "uuid";
 import zbdBatteryClient from "@library/zbd/zbdBatteryClient";
 import { PaymentStatus } from "@library/zbd/constants";
 import { createApiErrorResponse } from "@library/errors";
+import { auth } from "firebase-admin";
+import { checkUserInviteStatus } from "@library/inviteList";
 const nlInvoice = require("@node-lightning/invoice");
 
 const { createHash } = require("crypto");
@@ -425,6 +427,7 @@ const createPromo = asyncHandler<
 
 const REWARD_WINDOW = 24; // Check for last 24 hours
 const MAX_REWARD = 1000000; // Max 1000 sats in the last 24 hours
+const INVITE_LIST = "shykids-battery"; // Invite list name
 
 const createBatteryReward = asyncHandler<
   {},
@@ -449,6 +452,20 @@ const createBatteryReward = asyncHandler<
       res.status(400).json({
         success: false,
         error: "msatAmount must be a postivive number",
+      });
+      return;
+    }
+
+    // validate user invite status
+    const { isInvited, listName } = await checkUserInviteStatus(
+      userId,
+      INVITE_LIST
+    );
+
+    if (!isInvited) {
+      res.status(400).json({
+        success: false,
+        error: "User is not eligible for battery rewards",
       });
       return;
     }
