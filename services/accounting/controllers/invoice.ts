@@ -43,7 +43,10 @@ const createZapInvoice = asyncHandler<
   });
 
   if (!validationResult.isValid) {
-    res.status(400).send({ success: false, error: validationResult.error });
+    res.status(400).send({
+      success: false,
+      error: validationResult.error,
+    });
     return;
   }
 
