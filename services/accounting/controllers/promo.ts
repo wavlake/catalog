@@ -19,10 +19,12 @@ import {
   DEFAULT_EXPIRATION_SECONDS,
   MAX_INVOICE_AMOUNT,
 } from "@library/constants";
-import { createCharge, ZBDWalletResponse } from "@library/zbd";
+import { createCharge } from "@library/zbd";
 import { validate } from "uuid";
 import zbdBatteryClient from "@library/zbd/zbdBatteryClient";
 import { PaymentStatus } from "@library/zbd/constants";
+import { createApiErrorResponse } from "@library/errors";
+const nlInvoice = require("@node-lightning/invoice");
 
 const { createHash } = require("crypto");
 
@@ -421,8 +423,8 @@ const createPromo = asyncHandler<
   }
 });
 
-const hoursWindow = 24; // Check for last 24 hours
-const maxMsats = 1000000; // Max 1000 sats in the last 24 hours
+const REWARD_WINDOW = 24; // Check for last 24 hours
+const MAX_REWARD = 1000000; // Max 1000 sats in the last 24 hours
 
 const createBatteryReward = asyncHandler<
   {},
@@ -453,7 +455,7 @@ const createBatteryReward = asyncHandler<
 
     // Check if user is eligible for reward
     // Calculate the timestamp for X hours ago
-    const hoursAgo = new Date(Date.now() - hoursWindow * 60 * 60 * 1000);
+    const hoursAgo = new Date(Date.now() - REWARD_WINDOW * 60 * 60 * 1000);
 
     // Check if user has earned more than maxSats in the last Y hours
     const userRecentRewards = await await prisma.battery_reward.aggregate({
@@ -478,14 +480,14 @@ const createBatteryReward = asyncHandler<
     }
 
     const totalMsats = userRecentRewards._sum.msat_amount;
-    if (totalMsats >= maxMsats) {
+    if (totalMsats >= MAX_REWARD) {
       log.info(
-        `User has earned ${totalMsats} sats in the last ${hoursWindow} hours, exceeding limit of ${maxMsats}`
+        `User has earned ${totalMsats} sats in the last ${REWARD_WINDOW} hours, exceeding limit of ${MAX_REWARD}`
       );
 
       res.status(400).json({
         success: false,
-        error: `User has already earned ${totalMsats} msats in the last ${hoursWindow} hours`,
+        error: `User has already earned ${totalMsats} msats in the last ${REWARD_WINDOW} hours`,
       });
       return;
     }
@@ -511,13 +513,13 @@ const createBatteryReward = asyncHandler<
       return;
     }
     const totalIPMsats = recentIPRewards._sum.msat_amount;
-    if (totalIPMsats >= maxMsats) {
+    if (totalIPMsats >= MAX_REWARD) {
       log.info(
-        `IP has earned ${totalIPMsats} sats in the last ${hoursWindow} hours, exceeding limit of ${maxMsats}`
+        `IP has earned ${totalIPMsats} sats in the last ${REWARD_WINDOW} hours, exceeding limit of ${MAX_REWARD}`
       );
       res.status(400).json({
         success: false,
-        error: `IP has already earned ${totalIPMsats} msats in the last ${hoursWindow} hours`,
+        error: `IP has already earned ${totalIPMsats} msats in the last ${REWARD_WINDOW} hours`,
       });
       return;
     }
@@ -683,9 +685,148 @@ const getBatteryInfo = asyncHandler(async (req, res, next) => {
   });
 });
 
+const getStaticInvoice = asyncHandler(async (req, res, next) => {
+  const { id } = req.params;
+
+  if (!id) {
+    res
+      .status(400)
+      .json(
+        createApiErrorResponse("Static Charge ID is required", "INVALID_ID")
+      );
+    return;
+  }
+
+  try {
+    const response = await zbdBatteryClient.getStaticCharge(id);
+
+    if (!response.success) {
+      const errorMsg =
+        (response as any).error || response.message || "Unknown error";
+      log.error(`Error from ZBD when getting static charge: ${errorMsg}`);
+      res.status(404).json({
+        success: false,
+        error: errorMsg,
+      });
+      return;
+    }
+
+    res.json({
+      success: true,
+      data: response.data,
+    });
+    return;
+  } catch (error) {
+    log.error(`Error in getStaticChargeHandler: ${error.message}`, error);
+    res
+      .status(500)
+      .json(
+        createApiErrorResponse(
+          "An error occurred while retrieving the static charge",
+          "SERVER_ERROR",
+          { message: error.message }
+        )
+      );
+    return;
+  }
+});
+
+const createStaticCharge = asyncHandler(async (req, res: any, next) => {
+  const userId = req["uid"];
+
+  try {
+    const {
+      minAmount,
+      maxAmount,
+      description,
+      successMessage,
+      allowedSlots,
+      identifier,
+    } = req.body;
+
+    if (!minAmount || !maxAmount || !description) {
+      res
+        .status(400)
+        .json(
+          createApiErrorResponse(
+            "minAmount, maxAmount, and description are required fields",
+            "MISSING_REQUIRED_FIELDS"
+          )
+        );
+      return;
+    }
+
+    const staticChargeRequest = {
+      minAmount,
+      maxAmount,
+      description,
+      successMessage,
+      allowedSlots,
+      identifier,
+      internalId: `user-${userId}-${Date.now()}`,
+    };
+
+    log.info(
+      `Creating static charge with request: ${JSON.stringify(
+        staticChargeRequest
+      )}`
+    );
+
+    const response = await zbdBatteryClient.createStaticCharge(
+      staticChargeRequest
+    );
+
+    if (!response.success) {
+      const errorMsg =
+        (response as any).error || response.message || "Unknown error";
+      log.error(`Error from ZBD when creating static charge: ${errorMsg}`);
+      res.status(400).json({
+        success: false,
+        error: errorMsg,
+      });
+      return;
+    }
+
+    log.info(`Successfully created static charge with ID: ${response.data.id}`);
+
+    res.json({
+      success: true,
+      data: response.data,
+    });
+    return;
+  } catch (error) {
+    log.error(`Error in createStaticChargeHandler: ${error.message}`, error);
+    res
+      .status(500)
+      .json(
+        createApiErrorResponse(
+          "An error occurred while processing your request",
+          "SERVER_ERROR",
+          { message: error.message }
+        )
+      );
+    return;
+  }
+});
+
 export default {
   createPromoReward,
   createBatteryReward,
   createPromo,
   getBatteryInfo,
+  createStaticCharge,
+  getStaticInvoice,
+};
+
+const getPaymentHash = (invoice: string) => {
+  let decodedInvoice;
+  try {
+    decodedInvoice = nlInvoice.decode(invoice);
+  } catch (err) {
+    log.error(`Error decoding invoice ${err}`);
+    return;
+  }
+  const { paymentHash } = decodedInvoice;
+
+  return Buffer.from(paymentHash).toString("hex");
 };

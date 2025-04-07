@@ -291,10 +291,23 @@ const processOutgoingBatteryInvoice = asyncHandler<
   res.status(200).send({ succes: true });
 });
 
+const processIncomingStaticInvoice = asyncHandler<
+  core.ParamsDictionary,
+  any,
+  any
+>(async (req, res, next) => {
+  log.info(`Incoming static invoice callback`);
+  log.info(req.body);
+
+  res.status(200).send({ succes: true });
+});
+
+// the invoice status is expected to change from pending to success or fail
 export default {
   processIncomingKeysend,
   processOutgoingKeysend,
   processIncomingInvoice,
   processOutgoingInvoice,
   processOutgoingBatteryInvoice,
+  processIncomingStaticInvoice,
 };

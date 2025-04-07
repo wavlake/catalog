@@ -12,6 +12,8 @@ import {
   ZBDSendPaymentResponse,
   ZBDErrorResponse,
   ZBDWalletResponse,
+  ZBDCreateStaticChargeResponse,
+  ZBDGetStaticChargeResponse,
 } from "./responseInterfaces";
 import axios from "axios";
 import { handleZbdApiError } from "../errors";
@@ -170,7 +172,44 @@ async function balanceInfo(): Promise<ZBDWalletResponse> {
   }
 }
 
+interface CreateStaticChargeRequest {
+  minAmount: string;
+  maxAmount: string;
+  description: string;
+  successMessage: string;
+  allowedSlots: number;
+  internalId: string;
+  identifier: string;
+}
+
+export async function createStaticCharge(
+  request: CreateStaticChargeRequest
+): Promise<ZBDCreateStaticChargeResponse> {
+  try {
+    const res = await client.post(`/static-charges`, {
+      callbackUrl: `${accountingCallbackUrl}/receive/static-charge`,
+      ...request,
+    });
+    return res.data;
+  } catch (err) {
+    return handleZbdApiError(err, `createStaticCharge()`);
+  }
+}
+
+export async function getStaticCharge(
+  chargeId: string
+): Promise<ZBDGetStaticChargeResponse> {
+  try {
+    const res = await client.get(`/static-charges/${chargeId}`);
+    return res.data;
+  } catch (err) {
+    return handleZbdApiError(err, `getStaticCharge(${chargeId})`);
+  }
+}
+
 export default {
   payToLNURL: payToLightningAddress,
   balanceInfo: balanceInfo,
+  createStaticCharge,
+  getStaticCharge,
 };

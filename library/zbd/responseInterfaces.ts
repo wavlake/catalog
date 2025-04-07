@@ -152,3 +152,16 @@ export type ZBDWalletResponse =
       balance: string;
     }>
   | ZBDErrorResponse;
+
+export type ZBDGetStaticChargeResponse =
+  | ZBDSuccessResponse<
+      CommonDataFields & {
+        slots: number;
+        minAmount: string;
+        maxAmount: string;
+        allowedSlots: number;
+        successMessage: string;
+        invoice: InvoiceBasic;
+      }
+    >
+  | ZBDErrorResponse;
