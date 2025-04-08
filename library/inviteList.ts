@@ -10,6 +10,7 @@ interface InviteStatus {
 interface ListRow {
   id: number;
   list_name: string;
+  is_locked: boolean;
 }
 
 /**
@@ -90,31 +91,25 @@ export async function addEmailToInviteList(
   const normalizedEmail = normalizeEmail(email);
 
   try {
-    // Get or create the list
+    // Get the list
     const list = await db
       .knex<ListRow>("invite_lists")
       .where("list_name", listName)
       .first();
 
-    let listId: number;
-
     if (!list) {
-      // Create new list
-      const newList = await db
-        .knex<ListRow>("invite_lists")
-        .insert({ list_name: listName })
-        .returning("id");
+      throw new Error(`Invite list "${listName}" not found`);
+    }
 
-      listId = newList[0].id;
-    } else {
-      listId = list.id;
+    if (list.is_locked) {
+      throw new Error("This list is locked and cannot be modified");
     }
 
     // Add email to list (ignore if already exists)
     await db
       .knex("invite_emails")
       .insert({
-        list_id: listId,
+        list_id: list.id,
         email: normalizedEmail,
       })
       .onConflict(["list_id", "email"])
