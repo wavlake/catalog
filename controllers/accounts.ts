@@ -1403,7 +1403,7 @@ const get_invite_list_status = asyncHandler(async (req, res, next) => {
     log.error("Error fetching invite list status", err);
     res.status(500).send({
       success: false,
-      error: "Error fetching invite list status",
+      error: err.message,
     });
     return;
   }
@@ -1416,7 +1416,7 @@ const add_to_invite_list = asyncHandler(async (req, res, next) => {
   if (!listName) {
     res.status(400).json({
       success: false,
-      error: "inviteCode is required",
+      error: "listName is required",
     });
     return;
   }
@@ -1431,7 +1431,7 @@ const add_to_invite_list = asyncHandler(async (req, res, next) => {
     log.error("Error adding to invite list", err);
     res.status(500).send({
       success: false,
-      error: "Error adding to invite list",
+      error: err.message,
     });
     return;
   }
