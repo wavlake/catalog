@@ -759,9 +759,10 @@ const getBatteryInvoice = asyncHandler(async (req, res, next) => {
       `Received create invoice response: ${JSON.stringify(invoiceResponse)}`
     );
 
+    // Update successful response to match LUD-06 spec format
     res.json({
-      success: true,
-      data: { ...invoiceResponse.data.invoice },
+      pr: invoiceResponse.data.invoice.request,
+      routes: [], // An empty array as specified in the LUD-06 spec
     });
     return;
   } catch (e) {
