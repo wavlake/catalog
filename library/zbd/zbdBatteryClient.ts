@@ -166,6 +166,7 @@ async function validateLightningAddress(
 async function balanceInfo(): Promise<ZBDWalletResponse> {
   try {
     const res = await client.get(`/wallet`);
+    log.info(`ZBD balanceInfo response: ${JSON.stringify(res.data)}`);
     return res.data;
   } catch (err) {
     return handleZbdApiError(err, `battery-balanceInfo()`);
