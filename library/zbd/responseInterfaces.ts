@@ -141,7 +141,7 @@ export type ZBDWalletResponse =
     }>
   | ZBDErrorResponse;
 
-export type ZBDGetStaticChargeResponse =
+export type ZBDGetStaticChargeResponse = Omit<
   | ZBDSuccessResponse<
       CommonDataFields & {
         slots: number;
@@ -152,6 +152,8 @@ export type ZBDGetStaticChargeResponse =
         invoice: InvoiceBasic;
       }
     >
-  | ZBDErrorResponse;
+  | ZBDErrorResponse,
+  "success"
+>;
 
 export type ZBDCreateStaticChargeResponse = ZBDGetStaticChargeResponse;

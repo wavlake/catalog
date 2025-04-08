@@ -35,9 +35,9 @@ router.post(
 );
 
 router.post(
-  "/battery/receive/static-invoice",
+  "/battery/receive/invoice",
   isZbdIp,
-  callbackController.processIncomingStaticInvoice
+  callbackController.processIncomingBatteryInvoice
 );
 // Export router
 export default router;
