@@ -224,11 +224,11 @@ const processOutgoingInvoice = asyncHandler<
       });
       return;
     }
-    res.status(200).send({ succes: true });
+    res.status(200).send({ success: true });
     return;
   }
 
-  res.status(200).send({ succes: true });
+  res.status(200).send({ success: true });
 });
 
 const processOutgoingBatteryInvoice = asyncHandler<
@@ -288,18 +288,41 @@ const processOutgoingBatteryInvoice = asyncHandler<
   log.info(
     `Updated battery reward ${intId} with status ${status} and fee ${fee}`
   );
-  res.status(200).send({ succes: true });
+  res.status(200).send({ success: true });
 });
 
 const processIncomingBatteryInvoice = asyncHandler<
   core.ParamsDictionary,
   any,
-  any
+  ZBDChargeCallbackRequest
 >(async (req, res, next) => {
   log.info(`Incoming battery invoice callback`);
-  log.info(req.body);
+  // log the incoming request to the transaction table
+  try {
+    const { internalId, createdAt, status, invoice, amount, description } =
+      req.body;
 
-  res.status(200).send({ succes: true });
+    console.log(`Incoming battery invoice callback: ${internalId}`);
+    // log the incoming request to the battery_deposit table
+    const newDeposit = await prisma.battery_deposit.create({
+      data: {
+        status: status,
+        msat_amount: parseInt(amount),
+        description: description,
+        payment_request: invoice.request,
+        created_at: createdAt,
+        payment_hash: invoice.preimage,
+      },
+    });
+    res.status(200).send({ success: true });
+  } catch (error) {
+    log.error(`Error processing incoming battery invoice: ${error}`);
+    res.status(500).send({
+      success: false,
+      error: "Error processing incoming battery invoice",
+    });
+    return;
+  }
 });
 
 // the invoice status is expected to change from pending to success or fail

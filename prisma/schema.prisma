@@ -769,6 +769,16 @@ model invite_lists {
   invite_emails invite_emails[]
 }
 
+model battery_deposit {
+  id              Int       @id @default(autoincrement())
+  payment_request String    @db.VarChar(700)
+  payment_hash    String    @db.VarChar(255)
+  msat_amount     BigInt
+  created_at      DateTime? @default(now()) @db.Timestamptz(6)
+  status          String?   @db.VarChar(255)
+  description     String?   @db.VarChar(500)
+}
+
 view TrackInfo {
   id              String          @unique @db.Uuid
   title           String?         @db.VarChar(255)

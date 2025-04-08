@@ -703,7 +703,6 @@ const getBatteryInfo = asyncHandler(async (req, res, next) => {
 
 const getBatteryInvoice = asyncHandler(async (req, res, next) => {
   try {
-    const userId = req["uid"];
     const request = {
       msatAmount: req.body.msatAmount,
     };
@@ -728,7 +727,7 @@ const getBatteryInvoice = asyncHandler(async (req, res, next) => {
       description: `Battery Charge`,
       amount: request.msatAmount.toString(),
       expiresIn: DEFAULT_EXPIRATION_SECONDS,
-      internalId: `$battery-user-${userId}-${Date.now()}`,
+      internalId: `battery-${Date.now()}`,
     };
 
     log.info(
@@ -738,7 +737,9 @@ const getBatteryInvoice = asyncHandler(async (req, res, next) => {
     );
 
     // call ZBD api to create an invoice
-    const invoiceResponse = await createCharge(invoiceRequest);
+    const invoiceResponse = await zbdBatteryClient.createInvoice(
+      invoiceRequest
+    );
 
     if (!invoiceResponse.success) {
       const errorMsg =
@@ -785,17 +786,4 @@ export default {
   createPromo,
   getBatteryInfo,
   getBatteryInvoice,
-};
-
-const getPaymentHash = (invoice: string) => {
-  let decodedInvoice;
-  try {
-    decodedInvoice = nlInvoice.decode(invoice);
-  } catch (err) {
-    log.error(`Error decoding invoice ${err}`);
-    return;
-  }
-  const { paymentHash } = decodedInvoice;
-
-  return Buffer.from(paymentHash).toString("hex");
 };
