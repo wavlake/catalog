@@ -302,7 +302,7 @@ const processIncomingBatteryInvoice = asyncHandler<
     const { internalId, createdAt, status, invoice, amount, description } =
       req.body;
 
-    console.log(`Incoming battery invoice callback: ${internalId}`);
+    log.info(`Incoming battery invoice callback: ${internalId}`);
     // log the incoming request to the battery_deposit table
     const newDeposit = await prisma.battery_deposit.create({
       data: {
