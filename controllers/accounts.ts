@@ -41,6 +41,10 @@ import {
   validateAndGenerateUsername,
   validateUsername,
 } from "../library/userHelper";
+import {
+  addEmailToInviteList,
+  checkUserInviteStatus,
+} from "../library/inviteList";
 
 const get_account = asyncHandler(async (req, res, next) => {
   const request = {
@@ -1376,6 +1380,63 @@ const put_inbox_lastread = asyncHandler(async (req, res, next) => {
   }
 });
 
+const get_invite_list_status = asyncHandler(async (req, res, next) => {
+  const userId = req["uid"];
+  const listName = req.params.listname;
+
+  if (!listName) {
+    res.status(400).json({
+      success: false,
+      error: "inviteCode is required",
+    });
+    return;
+  }
+
+  try {
+    const status = await checkUserInviteStatus(userId, listName);
+
+    res.send({
+      success: true,
+      data: status,
+    });
+  } catch (err) {
+    log.error("Error fetching invite list status", err);
+    res.status(500).send({
+      success: false,
+      error: err.message,
+    });
+    return;
+  }
+});
+
+const add_to_invite_list = asyncHandler(async (req, res, next) => {
+  const userId = req["uid"];
+  const listName = req.params.listname;
+
+  if (!listName) {
+    res.status(400).json({
+      success: false,
+      error: "listName is required",
+    });
+    return;
+  }
+
+  try {
+    await addEmailToInviteList(userId, listName);
+
+    res.send({
+      success: true,
+    });
+  } catch (err) {
+    log.error("Error adding to invite list", err);
+    res.status(500).send({
+      success: false,
+      error: err.message,
+    });
+    return;
+  }
+});
+
 export default {
   check_user_verified,
   create_update_lnaddress,
@@ -1406,4 +1467,6 @@ export default {
   disable_user,
   get_inbox_lastread,
   put_inbox_lastread,
+  get_invite_list_status,
+  add_to_invite_list,
 };
