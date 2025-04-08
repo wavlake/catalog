@@ -58,8 +58,7 @@ router.post(
   promoController.createBatteryReward
 );
 
-router.get("/battery/static", promoController.getStaticInvoice);
-router.post("/battery/static", promoController.createStaticCharge);
+router.post("/battery/charge", promoController.getBatteryInvoice);
 
 // Export router
 export default router;

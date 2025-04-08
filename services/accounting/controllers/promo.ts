@@ -24,7 +24,6 @@ import { validate } from "uuid";
 import zbdBatteryClient from "@library/zbd/zbdBatteryClient";
 import { PaymentStatus } from "@library/zbd/constants";
 import { createApiErrorResponse } from "@library/errors";
-import { auth } from "firebase-admin";
 import { checkUserInviteStatus } from "@library/inviteList";
 const nlInvoice = require("@node-lightning/invoice");
 
@@ -702,124 +701,79 @@ const getBatteryInfo = asyncHandler(async (req, res, next) => {
   });
 });
 
-const getStaticInvoice = asyncHandler(async (req, res, next) => {
-  const { id } = req.params;
-
-  if (!id) {
-    res
-      .status(400)
-      .json(
-        createApiErrorResponse("Static Charge ID is required", "INVALID_ID")
-      );
-    return;
-  }
-
+const getBatteryInvoice = asyncHandler(async (req, res, next) => {
   try {
-    const response = await zbdBatteryClient.getStaticCharge(id);
+    const request = {
+      msatAmount: req.body.msatAmount,
+    };
 
-    if (!response.success) {
-      const errorMsg =
-        (response as any).error || response.message || "Unknown error";
-      log.error(`Error from ZBD when getting static charge: ${errorMsg}`);
-      res.status(404).json({
-        success: false,
-        error: errorMsg,
-      });
-      return;
-    }
-
-    res.json({
-      success: true,
-      data: response.data,
-    });
-    return;
-  } catch (error) {
-    log.error(`Error in getStaticChargeHandler: ${error.message}`, error);
-    res
-      .status(500)
-      .json(
-        createApiErrorResponse(
-          "An error occurred while retrieving the static charge",
-          "SERVER_ERROR",
-          { message: error.message }
-        )
-      );
-    return;
-  }
-});
-
-const createStaticCharge = asyncHandler(async (req, res: any, next) => {
-  const userId = req["uid"];
-
-  try {
-    const {
-      minAmount,
-      maxAmount,
-      description,
-      successMessage,
-      allowedSlots,
-      identifier,
-    } = req.body;
-
-    if (!minAmount || !maxAmount || !description) {
+    if (
+      isNaN(request.msatAmount) ||
+      request.msatAmount < 1000 ||
+      request.msatAmount > MAX_INVOICE_AMOUNT
+    ) {
       res
         .status(400)
         .json(
           createApiErrorResponse(
-            "minAmount, maxAmount, and description are required fields",
-            "MISSING_REQUIRED_FIELDS"
+            `Amount must be a number between 1000 and ${MAX_INVOICE_AMOUNT} (msats)`,
+            "INVALID_AMOUNT"
           )
         );
       return;
     }
 
-    const staticChargeRequest = {
-      minAmount,
-      maxAmount,
-      description,
-      successMessage,
-      allowedSlots,
-      identifier,
-      internalId: `user-${userId}-${Date.now()}`,
+    const invoiceRequest = {
+      description: `Battery Charge`,
+      amount: request.msatAmount.toString(),
+      expiresIn: DEFAULT_EXPIRATION_SECONDS,
+      internalId: `battery-${Date.now()}`,
     };
 
     log.info(
-      `Creating static charge with request: ${JSON.stringify(
-        staticChargeRequest
+      `Sending create invoice request for battery charge: ${JSON.stringify(
+        invoiceRequest
       )}`
     );
 
-    const response = await zbdBatteryClient.createStaticCharge(
-      staticChargeRequest
+    // call ZBD api to create an invoice
+    const invoiceResponse = await zbdBatteryClient.createInvoice(
+      invoiceRequest
     );
 
-    if (!response.success) {
+    if (!invoiceResponse.success) {
       const errorMsg =
-        (response as any).error || response.message || "Unknown error";
-      log.error(`Error from ZBD when creating static charge: ${errorMsg}`);
-      res.status(400).json({
+        (invoiceResponse as any).error ||
+        invoiceResponse.message ||
+        "Unknown error";
+      log.error(`Error creating battery invoice: ${errorMsg}`);
+
+      res.status(500).json({
         success: false,
         error: errorMsg,
       });
       return;
     }
 
-    log.info(`Successfully created static charge with ID: ${response.data.id}`);
+    log.info(
+      `Received create invoice response: ${JSON.stringify(invoiceResponse)}`
+    );
 
     res.json({
       success: true,
-      data: response.data,
+      data: { ...invoiceResponse.data.invoice },
     });
     return;
-  } catch (error) {
-    log.error(`Error in createStaticChargeHandler: ${error.message}`, error);
+  } catch (e) {
+    log.error(`Error in createDeposit: ${e.message}`, e);
+
     res
       .status(500)
       .json(
         createApiErrorResponse(
           "An error occurred while processing your request",
           "SERVER_ERROR",
-          { message: error.message }
+          { message: e.message }
         )
       );
     return;
@@ -831,19 +785,5 @@ export default {
   createBatteryReward,
   createPromo,
   getBatteryInfo,
-  createStaticCharge,
-  getStaticInvoice,
-};
-
-const getPaymentHash = (invoice: string) => {
-  let decodedInvoice;
-  try {
-    decodedInvoice = nlInvoice.decode(invoice);
-  } catch (err) {
-    log.error(`Error decoding invoice ${err}`);
-    return;
-  }
-  const { paymentHash } = decodedInvoice;
-
-  return Buffer.from(paymentHash).toString("hex");
+  getBatteryInvoice,
 };

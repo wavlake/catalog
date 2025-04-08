@@ -182,7 +182,7 @@ interface CreateStaticChargeRequest {
   identifier: string;
 }
 
-export async function createStaticCharge(
+async function createStaticCharge(
   request: CreateStaticChargeRequest
 ): Promise<ZBDCreateStaticChargeResponse> {
   try {
@@ -196,7 +196,7 @@ export async function createStaticCharge(
   }
 }
 
-export async function getStaticCharge(
+async function getStaticCharge(
   chargeId: string
 ): Promise<ZBDGetStaticChargeResponse> {
   try {
@@ -207,9 +207,25 @@ export async function getStaticCharge(
   }
 }
 
+const createInvoice = async (
+  request: CreateInvoiceRequest
+): Promise<ZBDCreateChargeLightningResponse> => {
+  try {
+    const res = await client.post(`/charges`, {
+      callbackUrl: `${accountingCallbackUrl}/battery/receive/invoice`,
+      ...request,
+    });
+    return res.data;
+  } catch (err) {
+    return handleZbdApiError(
+      err,
+      `battery-createInvoice(${JSON.stringify(request)})`
+    );
+  }
+};
+
 export default {
   payToLNURL: payToLightningAddress,
   balanceInfo: balanceInfo,
-  createStaticCharge,
-  getStaticCharge,
+  createInvoice,
 };
