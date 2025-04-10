@@ -2,6 +2,7 @@ import asyncHandler from "express-async-handler";
 import log from "../library/winston";
 import { isSupportedRegion } from "../library/zbd";
 import { isRegionVerified } from "../library/userHelper";
+import { logOutboundIpAddress } from "../library/ipLogger";
 
 const environment = process.env.NODE_ENV;
 const ZBD_IPS = ["3.225.112.64"];
@@ -38,6 +39,8 @@ export const isZbdRegion = asyncHandler(async (req, res, next) => {
     next();
     return;
   } else {
+    await logOutboundIpAddress();
+
     res.status(403).send({ success: false, error: "Not supported region" });
     return;
   }

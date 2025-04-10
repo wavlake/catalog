@@ -45,7 +45,6 @@ import {
   addEmailToInviteList,
   checkUserInviteStatus,
 } from "../library/inviteList";
-import { logOutboundIpAddress } from "../library/ipLogger";
 
 const get_account = asyncHandler(async (req, res, next) => {
   const request = {
@@ -508,7 +507,6 @@ const get_txs = asyncHandler(async (req, res, next) => {
 });
 
 const get_check_region = asyncHandler(async (req, res, next) => {
-  await logOutboundIpAddress();
   // Respond with 200 if request gets past middleware
   res.send(200);
 });
