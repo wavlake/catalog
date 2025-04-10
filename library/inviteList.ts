@@ -80,14 +80,14 @@ export async function isEmailInvited(
  * @param listName - Name of the invite list
  * @returns Promise with success status
  */
-export async function addEmailToInviteList(
-  email: string,
+export async function addUserToInviteList(
+  userId: string,
   listName: string
 ): Promise<boolean> {
-  if (!email || !listName) {
+  if (!userId || !listName) {
     throw new Error("Email and list name are required");
   }
-
+  const email = await getUserEmail(userId);
   const normalizedEmail = normalizeEmail(email);
 
   try {

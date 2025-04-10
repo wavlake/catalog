@@ -42,7 +42,7 @@ import {
   validateUsername,
 } from "../library/userHelper";
 import {
-  addEmailToInviteList,
+  addUserToInviteList,
   checkUserInviteStatus,
 } from "../library/inviteList";
 
@@ -1422,7 +1422,7 @@ const add_to_invite_list = asyncHandler(async (req, res, next) => {
   }
 
   try {
-    await addEmailToInviteList(userId, listName);
+    await addUserToInviteList(userId, listName);
 
     res.send({
       success: true,
