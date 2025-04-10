@@ -25,6 +25,7 @@ import zbdBatteryClient from "@library/zbd/zbdBatteryClient";
 import { PaymentStatus } from "@library/zbd/constants";
 import { createApiErrorResponse } from "@library/errors";
 import { checkUserInviteStatus } from "@library/inviteList";
+import { logOutboundIpAddress } from "@library/ipLogger";
 const nlInvoice = require("@node-lightning/invoice");
 
 const { createHash } = require("crypto");
@@ -658,6 +659,7 @@ const createBatteryReward = asyncHandler<
 
 const balanceStaleTime = 5 * 60 * 1000; // 5 min
 const getBatteryInfo = asyncHandler(async (req, res, next) => {
+  logOutboundIpAddress();
   const latestBalance = await prisma.battery_balance.findFirst({
     orderBy: {
       created_at: "desc",
