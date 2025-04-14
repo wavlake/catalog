@@ -14,7 +14,7 @@ import {
   ZBDSendPaymentResponse,
   ZBDErrorResponse,
 } from "./responseInterfaces";
-import axios, { AxiosError } from "axios";
+import axios from "axios";
 import { handleZbdApiError } from "../errors";
 
 // Create ZBD instance

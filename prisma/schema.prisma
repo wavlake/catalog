@@ -730,6 +730,59 @@ model ticketed_event {
   user                   User      @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "ticketed_event_user_id_foreign")
 }
 
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model battery_reward {
+  id          Int       @id @default(autoincrement())
+  user_id     String    @db.VarChar(64)
+  msat_amount Int
+  fee         Int
+  is_pending  Boolean   @default(true)
+  status      String?   @db.VarChar(255)
+  created_at  DateTime? @default(now()) @db.Timestamptz(6)
+  updated_at  DateTime? @default(now()) @db.Timestamptz(6)
+  ip          String?
+
+  @@index([user_id], map: "idx_battery_reward_user_id")
+}
+
+model battery_balance {
+  id           Int       @id @default(autoincrement())
+  msat_balance BigInt
+  created_at   DateTime? @default(now()) @db.Timestamptz(6)
+}
+
+model invite_emails {
+  id           Int          @id @default(autoincrement())
+  list_id      Int
+  email        String       @db.VarChar(255)
+  added_at     DateTime?    @default(now()) @db.Timestamptz(6)
+  pubkey       String?      @db.VarChar(255)
+  user_id      String?      @db.VarChar(255)
+  invite_lists invite_lists @relation(fields: [list_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "invite_emails_list_id_foreign")
+
+  @@unique([list_id, email], map: "invite_emails_list_id_email_unique")
+  @@index([email], map: "idx_invite_emails_email")
+  @@index([user_id], map: "idx_invite_user_id")
+}
+
+model invite_lists {
+  id            Int             @id @default(autoincrement())
+  list_name     String          @unique(map: "invite_lists_list_name_unique") @db.VarChar(100)
+  created_at    DateTime?       @default(now()) @db.Timestamptz(6)
+  is_locked     Boolean?        @default(false)
+  invite_emails invite_emails[]
+}
+
+model battery_deposit {
+  id              Int       @id @default(autoincrement())
+  payment_request String    @db.VarChar(700)
+  payment_hash    String    @db.VarChar(255)
+  msat_amount     BigInt
+  created_at      DateTime? @default(now()) @db.Timestamptz(6)
+  status          String?   @db.VarChar(255)
+  description     String?   @db.VarChar(500)
+}
+
 view TrackInfo {
   id              String          @unique @db.Uuid
   title           String?         @db.VarChar(255)

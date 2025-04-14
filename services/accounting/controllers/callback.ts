@@ -17,6 +17,8 @@ import {
   handleCompletedWithdrawal,
 } from "@library/withdraw";
 import { IncomingInvoiceType } from "@library/common";
+import prisma from "@prismalocal/client";
+import { PaymentStatus } from "@library/zbd/constants";
 
 const jsonParser = (jsonString?: string) => {
   if (!jsonString) return;
@@ -222,16 +224,113 @@ const processOutgoingInvoice = asyncHandler<
       });
       return;
     }
-    res.status(200).send({ succes: true });
+    res.status(200).send({ success: true });
     return;
   }
 
-  res.status(200).send({ succes: true });
+  res.status(200).send({ success: true });
 });
 
+const processOutgoingBatteryInvoice = asyncHandler<
+  core.ParamsDictionary,
+  any,
+  ZBDPaymentCallbackRequest
+>(async (req, res, next) => {
+  log.info(
+    `Received outgoing battery invoice callback: ${JSON.stringify(req.body)}`
+  );
+
+  const { id, status, internalId, fee, preimage, amount } = req.body;
+
+  const [invoiceType, internalIdString] = internalId.split("-");
+  if (invoiceType !== "battery") {
+    log.error(`Invalid internalId type: ${invoiceType}`);
+    res.status(400).send({
+      success: false,
+      error: `Expected internalId to be of type: battery`,
+    });
+    return;
+  }
+
+  const intId = parseInt(internalIdString);
+  if (typeof fee !== "string" || isNaN(Number(fee))) {
+    log.error(`Invalid fee value: ${fee}`);
+    res.status(400).send({ success: false, error: "Invalid fee value" });
+    return;
+  }
+  if (typeof amount !== "string" || isNaN(Number(amount))) {
+    log.error(`Invalid amount value: ${amount}`);
+    res.status(400).send({ success: false, error: "Invalid amount value" });
+    return;
+  }
+
+  const isSuccess = await prisma.battery_reward.update({
+    where: {
+      id: intId,
+    },
+    data: {
+      status: status,
+      is_pending: status === PaymentStatus.Pending,
+      fee: parseInt(fee) || 0,
+      msat_amount: parseInt(amount),
+    },
+  });
+
+  if (!isSuccess) {
+    log.error(`Error updating invoice id ${intId} with status ${status}`);
+    res.status(500).send({
+      success: false,
+      error: "Withdrawal update failed",
+    });
+    return;
+  }
+
+  log.info(
+    `Updated battery reward ${intId} with status ${status} and fee ${fee}`
+  );
+  res.status(200).send({ success: true });
+});
+
+const processIncomingBatteryInvoice = asyncHandler<
+  core.ParamsDictionary,
+  any,
+  ZBDChargeCallbackRequest
+>(async (req, res, next) => {
+  log.info(`Incoming battery invoice callback`);
+  // log the incoming request to the transaction table
+  try {
+    const { internalId, createdAt, status, invoice, amount, description } =
+      req.body;
+
+    log.info(`Incoming battery invoice callback: ${internalId}`);
+    // log the incoming request to the battery_deposit table
+    const newDeposit = await prisma.battery_deposit.create({
+      data: {
+        status: status,
+        msat_amount: parseInt(amount),
+        description: description,
+        payment_request: invoice.request,
+        created_at: createdAt,
+        payment_hash: invoice.preimage,
+      },
+    });
+    res.status(200).send({ success: true });
+  } catch (error) {
+    log.error(`Error processing incoming battery invoice: ${error}`);
+    res.status(500).send({
+      success: false,
+      error: "Error processing incoming battery invoice",
+    });
+    return;
+  }
+});
+
+// the invoice status is expected to change from pending to success or fail
 export default {
   processIncomingKeysend,
   processOutgoingKeysend,
   processIncomingInvoice,
   processOutgoingInvoice,
+  processOutgoingBatteryInvoice,
+  processIncomingBatteryInvoice,
 };

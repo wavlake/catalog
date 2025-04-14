@@ -37,18 +37,6 @@ export interface InvoiceExtended extends InvoiceBasic {
 }
 
 // Specific response type definitions
-export type ZBDCreateStaticChargeResponse =
-  | ZBDSuccessResponse<
-      CommonDataFields & {
-        slots: number;
-        minAmount: string;
-        maxAmount: string;
-        allowedSlots: number;
-        successMessage: string;
-        invoice: InvoiceBasic;
-      }
-    >
-  | ZBDErrorResponse;
 
 export type ZBDCreateWithdrawalRequestResponse =
   | ZBDSuccessResponse<
@@ -145,3 +133,27 @@ export type ZBDIsSupportedRegionResponse =
       ipRegion?: string;
     }>
   | ZBDErrorResponse;
+
+export type ZBDWalletResponse =
+  | ZBDSuccessResponse<{
+      unit: string;
+      balance: string;
+    }>
+  | ZBDErrorResponse;
+
+export type ZBDGetStaticChargeResponse = Omit<
+  | ZBDSuccessResponse<
+      CommonDataFields & {
+        slots: number;
+        minAmount: string;
+        maxAmount: string;
+        allowedSlots: number;
+        successMessage: string;
+        invoice: InvoiceBasic;
+      }
+    >
+  | ZBDErrorResponse,
+  "success"
+>;
+
+export type ZBDCreateStaticChargeResponse = ZBDGetStaticChargeResponse;

@@ -132,5 +132,16 @@ router.post(
 router.get("/promos", isAuthorized, accountsController.get_track_promos);
 router.put("/disable", isAuthorized, accountsController.disable_user);
 
+router.get(
+  "/invite/:listname",
+  isAuthorized,
+  accountsController.get_invite_list_status
+);
+router.put(
+  "/invite/:listname",
+  isAuthorized,
+  accountsController.add_to_invite_list
+);
+
 // Export router
 export default router;

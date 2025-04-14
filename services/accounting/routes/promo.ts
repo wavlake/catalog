@@ -1,6 +1,7 @@
 import express from "express";
 const { isAuthorized } = require("@middlewares/auth");
 import promoController from "../controllers/promo";
+import { isZbdRegion } from "@middlewares/zbdChecks";
 const { isWalletVerified } = require("@middlewares/zbdChecks");
 const { rateLimit } = require("express-rate-limit");
 
@@ -46,6 +47,18 @@ const iplimiter = rateLimit({
 //   iplimiter,
 //   promoController.createPromo
 // );
+
+router.get("/battery", promoController.getBatteryInfo);
+
+router.post(
+  "/battery",
+  isAuthorized,
+  isWalletVerified,
+  isZbdRegion,
+  promoController.createBatteryReward
+);
+
+router.post("/battery/charge", promoController.getBatteryInvoice);
 
 // Export router
 export default router;
