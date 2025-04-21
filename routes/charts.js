@@ -10,6 +10,7 @@ const router = express.Router();
 /// MUSIC CHARTS ///
 
 router.get("/music/top", chartsController.get_top_forty); // TOP 40
+router.get("/music/beta_top", chartsController.get_beta_top_forty); // BETA TOP 40
 router.get("/music/custom", chartsController.get_custom_chart); // CUSTOM CHART
 
 // Export router
