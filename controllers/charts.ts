@@ -269,6 +269,10 @@ const get_custom_chart = asyncHandler(async (req, res, next) => {
   res.json({ success: true, data: tracks });
 });
 
+/**
+ * Get beta top forty tracks based on advanced scoring algorithm
+ * This version uses the factored-out service functions
+ */
 const get_beta_top_forty = asyncHandler(
   async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
@@ -279,10 +283,9 @@ const get_beta_top_forty = asyncHandler(
         weightAmount: req.query.weightAmount as string,
         weightRecency: req.query.weightRecency as string,
         weightUniqueSupporters: req.query.weightUniqueSupporters as string,
-        weightKeysend: req.query.weightKeysend as string,
         recencyDecay: req.query.recencyDecay as string,
         decayHalfLife: req.query.decayHalfLife as string,
-        minZaps: req.query.minPayments as string,
+        minPayments: req.query.minPayments as string,
         applyActivityBonus: req.query.applyActivityBonus as string | boolean,
         activityBonus: req.query.activityBonus as string,
         normalizeScores: req.query.normalizeScores as string | boolean,

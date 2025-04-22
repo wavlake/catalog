@@ -34,10 +34,9 @@ export interface ChartQueryParams {
   weightAmount?: string;
   weightRecency?: string;
   weightUniqueSupporters?: string;
-  weightKeysend?: string;
   recencyDecay?: string;
   decayHalfLife?: string;
-  minZaps?: string;
+  minPayments?: string;
   applyActivityBonus?: string | boolean;
   activityBonus?: string;
   normalizeScores?: string | boolean;
@@ -46,7 +45,7 @@ export interface ChartQueryParams {
 
 export interface Payment {
   trackId: string;
-  msatAmount: number;
+  satAmount: number;
   createdAt: Date;
   pubkey?: string;
 }
@@ -55,7 +54,7 @@ export interface TrackPaymentData {
   trackId: string;
   payments: Payment[];
   uniqueSupporters: Set<string>;
-  msatsReceived: number;
+  totalAmount: number;
   latestPayment: number;
 }
 
@@ -63,7 +62,7 @@ export interface TrackScore {
   trackId: string;
   score: number;
   normalizedScore?: number;
-  totalMsatsReceived: number;
+  totalAmount: number;
   uniqueSupporters: number;
   paymentCount: number;
   latestPayment: number;
@@ -175,20 +174,20 @@ export function groupPaymentsByTrack(
   const trackPayments: Record<string, TrackPaymentData> = {};
 
   payments.forEach((payment: Payment) => {
-    const { trackId, msatAmount, createdAt, pubkey } = payment;
+    const { trackId, satAmount, createdAt, pubkey } = payment;
 
     if (!trackPayments[trackId]) {
       trackPayments[trackId] = {
         trackId,
         payments: [],
         uniqueSupporters: new Set<string>(),
-        msatsReceived: 0,
+        totalAmount: 0,
         latestPayment: 0,
       };
     }
 
     trackPayments[trackId].payments.push(payment);
-    trackPayments[trackId].msatsReceived += msatAmount;
+    trackPayments[trackId].totalAmount += satAmount;
 
     // Add pubkey to unique supporters if available
     if (pubkey) {
@@ -218,20 +217,19 @@ export function calculateTrackScores(
     weightAmount = "1.0",
     weightRecency = "0.5",
     weightUniqueSupporters = "2.0",
-    weightKeysend = "1.0",
     recencyDecay = "exponential",
     decayHalfLife = "3",
-    minZaps = "3",
+    minPayments = "3",
     applyActivityBonus = true,
     activityBonus = "1.2",
   } = params;
 
   const tracksWithScores: TrackScore[] = Object.values(trackPayments)
     // Filter out tracks that don't meet the minimum payment threshold
-    .filter((track) => track.payments.length >= parseInt(minZaps))
+    .filter((track) => track.payments.length >= parseInt(minPayments))
     .map((track) => {
       // Calculate base score from total amount
-      let score: number = track.msatsReceived * parseFloat(weightAmount);
+      let score: number = track.totalAmount * parseFloat(weightAmount);
 
       // Calculate recency score
       let recencyScore: number = 0;
@@ -252,20 +250,13 @@ export function calculateTrackScores(
           decay = 1; // No decay
         }
 
-        recencyScore += payment.msatAmount * decay;
+        recencyScore += payment.satAmount * decay;
       });
 
       score += recencyScore * parseFloat(weightRecency);
 
       // Add score for unique supporters
       score += track.uniqueSupporters.size * parseFloat(weightUniqueSupporters);
-
-      // Calculate keysend ratio and apply keysend weight
-      const keysendPayments: number = track.payments.filter(
-        (p) => !p.pubkey
-      ).length;
-      const keysendRatio: number = keysendPayments / track.payments.length;
-      score *= 1 + keysendRatio * (parseFloat(weightKeysend) - 1);
 
       // Apply activity bonus if enabled
       if (applyActivityBonus === "true" || applyActivityBonus === true) {
@@ -275,7 +266,7 @@ export function calculateTrackScores(
       return {
         trackId: track.trackId,
         score,
-        totalMsatsReceived: track.msatsReceived,
+        totalAmount: track.totalAmount,
         uniqueSupporters: track.uniqueSupporters.size,
         paymentCount: track.payments.length,
         latestPayment: track.latestPayment,
@@ -492,7 +483,6 @@ export async function generateChartData(
           amount: parseFloat(params.weightAmount || "1.0"),
           recency: parseFloat(params.weightRecency || "0.5"),
           uniqueSupporters: parseFloat(params.weightUniqueSupporters || "2.0"),
-          keysend: parseFloat(params.weightKeysend || "1.0"),
         },
       },
     };
