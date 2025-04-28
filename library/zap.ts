@@ -197,7 +197,7 @@ export const publishAnonZapReceipt = async ({
   description,
 }: {
   paymentRequest: string;
-  preimage: any;
+  preimage: string;
   amount: string;
   description: string;
 }): Promise<boolean> => {
@@ -231,7 +231,9 @@ export const publishAnonZapReceipt = async ({
   let relays = DEFAULT_WRITE_RELAY_URIS;
   try {
     await Promise.any(pool.publish(relays, signedZapReceipt));
-    log.info(`Published anon zap receipt for ${paymentRequest}`);
+    log.info(
+      `Published anon zap receipt id: ${signedZapReceipt.id} for ${paymentRequest}`
+    );
     return true;
   } catch (e) {
     log.error(`Error issuing zap receipt: ${e}`);
