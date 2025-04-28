@@ -296,7 +296,8 @@ function makeZapReceipt({
     content: "",
     tags: [
       ...tagsFromZapRequest,
-      ["P", zr.pubkey],
+      // TODO - fix this, having issues with the P tag
+      // ["P", zr.pubkey],
       ["bolt11", bolt11],
       ["description", zapRequest],
     ],
