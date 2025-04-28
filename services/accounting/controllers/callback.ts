@@ -315,14 +315,17 @@ const processIncomingBatteryInvoice = asyncHandler<
         payment_hash: invoice.preimage,
       },
     });
+    log.info("Created new battery deposit", newDeposit);
+
     const success = await publishAnonZapReceipt({
       paymentRequest: invoice.request,
       amount: amount,
       preimage: invoice.preimage,
       description: description,
     });
+    log.info(success ? "Zap receipt published" : "Zap receipt not published");
 
-    res.status(200).send({ success });
+    res.status(200).send({ success: true });
   } catch (error) {
     log.error(`Error processing incoming battery invoice: ${error}`);
     res.status(500).send({
