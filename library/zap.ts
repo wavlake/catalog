@@ -7,10 +7,13 @@ import {
   verifyEvent,
   Event,
   useWebSocketImplementation,
+  generateSecretKey,
+  getPublicKey,
 } from "nostr-tools";
 import { hexToBytes } from "@noble/hashes/utils";
 import { handleConferenceZap } from "./btc24/btc24";
 import { IncomingInvoiceTableMap, IncomingInvoiceType } from "./common";
+import { makeZapReceipt, makeZapRequest } from "nostr-tools/lib/types/nip57";
 
 const { DEFAULT_WRITE_RELAY_URIS } = require("./nostr/common");
 
@@ -185,5 +188,56 @@ export const publishZapReceipt = async (
     log.error(`Error issuing zap receipt: ${e}`);
     return;
   }
-  return;
+};
+
+export const publishAnonZapReceipt = async ({
+  paymentRequest,
+  preimage,
+  amount,
+  description,
+}: {
+  paymentRequest: string;
+  preimage: string;
+  amount: string;
+  description: string;
+}): Promise<boolean> => {
+  log.info(
+    `Publishing anon zap receipt for ${JSON.stringify({
+      paymentRequest,
+      preimage,
+      amount,
+      description,
+    })}`
+  );
+  const anonKey = generateSecretKey();
+  const anonPubkey = getPublicKey(anonKey);
+  const anonZapRequest = makeZapRequest({
+    profile: anonPubkey,
+    amount: parseInt(amount),
+    comment: description,
+    relays: [],
+    event: null,
+  });
+  const zapReceipt = makeZapReceipt({
+    zapRequest: JSON.stringify(anonZapRequest),
+    bolt11: preimage,
+    paidAt: new Date(),
+  });
+
+  const signedZapReceipt = finalizeEvent(zapReceipt, WAVLAKE_SECRET);
+
+  // publish zap receipt to nostr
+  const pool = new SimplePool();
+  let relays = DEFAULT_WRITE_RELAY_URIS;
+  try {
+    await Promise.any(pool.publish(relays, signedZapReceipt));
+    log.info(
+      `Published anon zap receipt id: ${signedZapReceipt.id} for ${paymentRequest}`
+    );
+    return true;
+  } catch (e) {
+    log.error(`Error issuing zap receipt: ${e}`);
+    return false;
+  }
+  // Log zap receipt event id
 };
