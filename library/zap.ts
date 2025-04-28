@@ -222,8 +222,9 @@ export const publishAnonZapReceipt = async ({
   log.info("Anon zap request: ", anonZapRequest);
   const zapReceipt = makeZapReceipt({
     zapRequest: JSON.stringify(anonZapRequest),
-    bolt11: preimage,
+    bolt11: paymentRequest,
     paidAt: new Date(),
+    preimage: preimage,
   });
   const signedZapReceipt = finalizeEvent(zapReceipt, WAVLAKE_SECRET);
   log.info("Zap receipt: ", signedZapReceipt);
