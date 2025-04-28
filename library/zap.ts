@@ -9,11 +9,11 @@ import {
   useWebSocketImplementation,
   generateSecretKey,
   getPublicKey,
+  EventTemplate,
 } from "nostr-tools";
 import { hexToBytes } from "@noble/hashes/utils";
 import { handleConferenceZap } from "./btc24/btc24";
 import { IncomingInvoiceTableMap, IncomingInvoiceType } from "./common";
-import { makeZapReceipt, makeZapRequest } from "nostr-tools/lib/types/nip57";
 
 const { DEFAULT_WRITE_RELAY_URIS } = require("./nostr/common");
 
@@ -241,3 +241,68 @@ export const publishAnonZapReceipt = async ({
   }
   // Log zap receipt event id
 };
+
+function makeZapRequest({
+  profile,
+  event,
+  amount,
+  relays,
+  comment = "",
+}: {
+  profile: string;
+  event: string | Event | null;
+  amount: number;
+  comment: string;
+  relays: string[];
+}): EventTemplate {
+  if (!amount) throw new Error("amount not given");
+  if (!profile) throw new Error("profile not given");
+
+  let zr: EventTemplate = {
+    kind: 9734,
+    created_at: Math.round(Date.now() / 1000),
+    content: comment,
+    tags: [
+      ["p", profile],
+      ["amount", amount.toString()],
+      ["relays", ...relays],
+    ],
+  };
+
+  return zr;
+}
+
+function makeZapReceipt({
+  zapRequest,
+  preimage,
+  bolt11,
+  paidAt,
+}: {
+  zapRequest: string;
+  preimage?: string;
+  bolt11: string;
+  paidAt: Date;
+}): EventTemplate {
+  let zr: Event = JSON.parse(zapRequest);
+  let tagsFromZapRequest = zr.tags.filter(
+    ([t]) => t === "e" || t === "p" || t === "a"
+  );
+
+  let zap: EventTemplate = {
+    kind: 9735,
+    created_at: Math.round(paidAt.getTime() / 1000),
+    content: "",
+    tags: [
+      ...tagsFromZapRequest,
+      ["P", zr.pubkey],
+      ["bolt11", bolt11],
+      ["description", zapRequest],
+    ],
+  };
+
+  if (preimage) {
+    zap.tags.push(["preimage", preimage]);
+  }
+
+  return zap;
+}
