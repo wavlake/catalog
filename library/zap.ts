@@ -211,6 +211,7 @@ export const publishAnonZapReceipt = async ({
   );
   const anonKey = generateSecretKey();
   const anonPubkey = getPublicKey(anonKey);
+  log.info("Anon pubkey: ", anonPubkey);
   const anonZapRequest = makeZapRequest({
     profile: anonPubkey,
     amount: parseInt(amount),
@@ -218,6 +219,7 @@ export const publishAnonZapReceipt = async ({
     relays: [],
     event: null,
   });
+  log.info("Anon zap request: ", anonZapRequest);
   const zapReceipt = makeZapReceipt({
     zapRequest: JSON.stringify(anonZapRequest),
     bolt11: preimage,
