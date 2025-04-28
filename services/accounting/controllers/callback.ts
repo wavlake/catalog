@@ -20,6 +20,7 @@ import { IncomingInvoiceType } from "@library/common";
 import prisma from "@prismalocal/client";
 import { ChargeStatus, PaymentStatus } from "@library/zbd/constants";
 import { publishAnonZapReceipt } from "@library/zap";
+import zbdBatteryClient from "@library/zbd/zbdBatteryClient";
 
 const jsonParser = (jsonString?: string) => {
   if (!jsonString) return;
@@ -316,6 +317,16 @@ const processIncomingBatteryInvoice = asyncHandler<
       },
     });
     log.info("Created new battery deposit", newDeposit);
+    const balanceInfo = await zbdBatteryClient.balanceInfo();
+    if (balanceInfo.success) {
+      const walletBalance = parseInt(balanceInfo.data.balance);
+      log.info(`Battery wallet balance: ${walletBalance} msats`);
+      await prisma.battery_balance.create({
+        data: {
+          msat_balance: walletBalance,
+        },
+      });
+    }
 
     if (status === ChargeStatus.Completed) {
       const success = await publishAnonZapReceipt({
