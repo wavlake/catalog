@@ -19,6 +19,7 @@ import {
 import { IncomingInvoiceType } from "@library/common";
 import prisma from "@prismalocal/client";
 import { PaymentStatus } from "@library/zbd/constants";
+import { publishAnonZapReceipt } from "@library/zap";
 
 const jsonParser = (jsonString?: string) => {
   if (!jsonString) return;
@@ -314,7 +315,14 @@ const processIncomingBatteryInvoice = asyncHandler<
         payment_hash: invoice.preimage,
       },
     });
-    res.status(200).send({ success: true });
+    const success = await publishAnonZapReceipt({
+      paymentRequest: invoice.request,
+      amount: amount,
+      preimage: invoice.preimage,
+      description: description,
+    });
+
+    res.status(200).send({ success });
   } catch (error) {
     log.error(`Error processing incoming battery invoice: ${error}`);
     res.status(500).send({
