@@ -223,9 +223,9 @@ export const publishAnonZapReceipt = async ({
     bolt11: preimage,
     paidAt: new Date(),
   });
-
   const signedZapReceipt = finalizeEvent(zapReceipt, WAVLAKE_SECRET);
-
+  log.info("Zap receipt: ", signedZapReceipt);
+  log.info("Publishing to relays: ", DEFAULT_WRITE_RELAY_URIS);
   // publish zap receipt to nostr
   const pool = new SimplePool();
   let relays = DEFAULT_WRITE_RELAY_URIS;
