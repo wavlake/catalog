@@ -113,7 +113,7 @@ export async function addUserToInviteList(
         email: normalizedEmail,
         user_id: userId,
       })
-      .onConflict(["list_id", "email"])
+      .onConflict("invite_emails_list_id_email_unique")
       .ignore();
 
     return true;
