@@ -1,3 +1,4 @@
+import prisma from "../prisma/client";
 import db from "./db";
 import { auth } from "./firebaseService";
 
@@ -87,15 +88,17 @@ export async function addUserToInviteList(
   if (!userId || !listName) {
     throw new Error("Email and list name are required");
   }
+
   const email = await getUserEmail(userId);
   const normalizedEmail = normalizeEmail(email);
 
   try {
     // Get the list
-    const list = await db
-      .knex<ListRow>("invite_lists")
-      .where("list_name", listName)
-      .first();
+    const list = await prisma.invite_lists.findUnique({
+      where: {
+        list_name: listName,
+      },
+    });
 
     if (!list) {
       throw new Error(`Invite list "${listName}" not found`);
@@ -105,16 +108,24 @@ export async function addUserToInviteList(
       throw new Error("This list is locked and cannot be modified");
     }
 
-    // Add email to list (ignore if already exists)
-    await db
-      .knex("invite_emails")
-      .insert({
+    // Add email to list using Prisma's upsert
+    // This handles the unique constraint automatically
+    await prisma.invite_emails.upsert({
+      where: {
+        list_id_email: {
+          // This references the unique constraint
+          list_id: list.id,
+          email: normalizedEmail,
+        },
+      },
+      update: {}, // Do nothing if it exists
+      create: {
+        // Create if it doesn't exist
         list_id: list.id,
         email: normalizedEmail,
         user_id: userId,
-      })
-      .onConflict("invite_emails_list_id_email_unique")
-      .ignore();
+      },
+    });
 
     return true;
   } catch (error) {
