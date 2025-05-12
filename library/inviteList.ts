@@ -76,6 +76,16 @@ export async function isUserInvited({
       return { isInvited: false, listName: null };
     }
 
+    // Get email FIRST if userId is provided (before building the query)
+    let userEmail: string | null = null;
+    if (userId) {
+      try {
+        userEmail = await getUserEmail(userId);
+      } catch (error) {
+        // Silently continue if email retrieval fails
+      }
+    }
+
     // Build base query
     const query = db
       .knex("invite_emails")
@@ -87,18 +97,10 @@ export async function isUserInvited({
       query.where(function () {
         this.where("pubkey", pubkey).orWhere("user_id", userId);
 
-        // Also try to check by email if userId is provided
-        if (userId) {
-          getUserEmail(userId)
-            .then((email) => {
-              if (email) {
-                const normalizedEmail = normalizeEmail(email);
-                this.orWhere("email", normalizedEmail);
-              }
-            })
-            .catch(() => {
-              // Silently continue if email retrieval fails
-            });
+        // Now we can include the email condition directly in the query
+        if (userEmail) {
+          const normalizedEmail = normalizeEmail(userEmail);
+          this.orWhere("email", normalizedEmail);
         }
       });
     } else if (pubkey) {
@@ -109,17 +111,11 @@ export async function isUserInvited({
       query.where(function () {
         this.where("user_id", userId);
 
-        // Try to get and check email
-        getUserEmail(userId)
-          .then((email) => {
-            if (email) {
-              const normalizedEmail = normalizeEmail(email);
-              this.orWhere("email", normalizedEmail);
-            }
-          })
-          .catch(() => {
-            // Silently continue if email retrieval fails
-          });
+        // Include email directly in the query
+        if (userEmail) {
+          const normalizedEmail = normalizeEmail(userEmail);
+          this.orWhere("email", normalizedEmail);
+        }
       });
     }
 
@@ -193,8 +189,14 @@ export async function addUserToInviteList({
 
     // Add email if firebaseUid is provided
     if (firebaseUid) {
-      const email = await getUserEmail(firebaseUid);
-      insertData.email = normalizeEmail(email);
+      try {
+        const email = await getUserEmail(firebaseUid);
+        if (email) {
+          insertData.email = normalizeEmail(email);
+        }
+      } catch (error) {
+        // Silently continue if email retrieval fails
+      }
     }
 
     // Add pubkey if provided
@@ -244,6 +246,19 @@ export async function checkUserMultipleListMembership({
       return [];
     }
 
+    // Get email FIRST if firebaseUid is provided (before building the query)
+    let userEmail: string | null = null;
+    if (firebaseUid) {
+      try {
+        userEmail = await getUserEmail(firebaseUid);
+        if (userEmail) {
+          userEmail = normalizeEmail(userEmail);
+        }
+      } catch (error) {
+        // Silently continue if email retrieval fails
+      }
+    }
+
     // Build the base query
     const query = db
       .knex("invite_emails")
@@ -253,15 +268,13 @@ export async function checkUserMultipleListMembership({
 
     // Apply filters based on identification method
     if (firebaseUid) {
-      // Check by user ID directly
-      query.where(async (builder) => {
-        builder.where("user_id", firebaseUid);
+      // Check by user ID directly and by email if available
+      query.where(function () {
+        this.where("user_id", firebaseUid);
 
-        // Also check by email if available
-        const userEmail = getUserEmail(firebaseUid).catch(() => null);
+        // Include email directly in the query if available
         if (userEmail) {
-          const normalizedEmail = normalizeEmail(await userEmail);
-          builder.orWhere("email", normalizedEmail);
+          this.orWhere("email", userEmail);
         }
       });
     } else if (pubkey) {
@@ -277,10 +290,20 @@ export async function checkUserMultipleListMembership({
   }
 }
 
+/**
+ * Normalizes an email address by converting to lowercase and trimming whitespace
+ * @param email - Email address to normalize
+ * @returns Normalized email address
+ */
 function normalizeEmail(email: string): string {
   return email.toLowerCase().trim();
 }
 
+/**
+ * Gets a user's email address from Firebase Auth using their UID
+ * @param firebaseUid - Firebase UID of the user
+ * @returns Promise with the user's email or null if not found
+ */
 async function getUserEmail(firebaseUid: string): Promise<string | null> {
   const userRecord = await auth().getUser(firebaseUid);
   return userRecord.email || null;
