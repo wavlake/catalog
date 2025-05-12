@@ -30,22 +30,11 @@ export const validateNostrEvent = async (req, res) => {
   if (!eventIsValid) {
     throw "Invalid event";
   }
-
-  updateNpubMetadata(nostrEvent.pubkey)
-    .then(({ success }) => {
-      log.info(
-        `${success ? "Updated" : "Failed to update"} nostr metadata for: ${
-          nostrEvent.pubkey
-        }`
-      );
-    })
-    .catch((err) => {
-      log.error("Error updating npub metadata: ", err);
-    });
-
+  log.info("Nostr event is valid", nostrEvent);
   // successfull auth'd, add the event to res.locals so other middleware can use it
   // https://expressjs.com/en/api.html#res.locals
   res.locals.authEvent = nostrEvent;
+  return;
 };
 
 export const isNostrAuthorized = asyncHandler(async (req, res, next) => {

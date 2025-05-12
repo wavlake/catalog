@@ -13,12 +13,17 @@ export const isFirebaseOrNostrAuthorized = (req, res, next) => {
         responses[1].status === "rejected"
       ) {
         log.info("Unauthorized request");
-        log.info("Firebase auth:", responses[0].reason);
-        log.info("Nostr auth:", responses[1].reason);
+        log.info(responses);
         res.status(401).json({ error: "Unauthorized" });
 
         return;
       } else {
+        const isFirebaseAuthorized =
+          responses[0].status === "fulfilled" && responses[0].value !== null;
+        const isNostrAuthorized =
+          responses[1].status === "fulfilled" && responses[1].value !== null;
+        log.info("Firebase authorized:", isFirebaseAuthorized);
+        log.info("Nostr authorized:", isNostrAuthorized);
         // Proceed to the next middleware
         next();
       }
