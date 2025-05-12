@@ -450,6 +450,19 @@ const createBatteryReward = asyncHandler<
     return;
   }
 
+  // validate msatAmount
+  if (
+    isNaN(msatAmount) ||
+    msatAmount < 1000 ||
+    msatAmount > MAX_INVOICE_AMOUNT
+  ) {
+    res.status(400).json({
+      success: false,
+      error: `msatAmount must be a number more than 1000 (msats)`,
+    });
+    return;
+  }
+
   // Get user LNURL
   const user = await prisma.user.findFirst({
     where: {
@@ -507,6 +520,19 @@ const createBatteryNostrReward = asyncHandler<
     res.status(400).json({
       success: false,
       error: "pubkey is required",
+    });
+    return;
+  }
+
+  // validate msatAmount
+  if (
+    isNaN(msatAmount) ||
+    msatAmount < 1000 ||
+    msatAmount > MAX_INVOICE_AMOUNT
+  ) {
+    res.status(400).json({
+      success: false,
+      error: `msatAmount must be a number more than 1000 (msats)`,
     });
     return;
   }
