@@ -18,10 +18,6 @@ import {
 import axios from "axios";
 import { handleZbdApiError } from "../errors";
 
-// Create ZBD instance
-if (!process.env.ZBD_BATTERY_API_KEY) {
-  throw new Error("ZBD_BATTERY_API_KEY environment variable is not set");
-}
 const zbdApiKey = process.env.ZBD_BATTERY_API_KEY;
 const accountingCallbackUrl = `${process.env.ACCOUNTING_CALLBACK_URL}`;
 
