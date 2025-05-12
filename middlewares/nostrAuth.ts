@@ -7,12 +7,12 @@ import { updateNpubMetadata } from "../library/nostr/nostr";
 // This middleware is used to authenticate requests from Nostr
 // It follows the NIP-98 spec - https://github.com/nostr-protocol/nips/blob/master/98.md
 export const validateNostrEvent = async (req, res) => {
-  const { authorization } = req.headers;
-  if (!authorization) {
+  const authHeader = req.headers.authorization || req.headers.Authorization;
+  if (!authHeader) {
     throw "Missing authorization header";
   }
 
-  const nostrEvent = await nip98.unpackEventFromToken(authorization);
+  const nostrEvent = await nip98.unpackEventFromToken(authHeader);
 
   const host = req.get("host");
   // req.protocol may be "http" when express is behind a proxy or load balancer

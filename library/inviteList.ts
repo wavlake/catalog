@@ -1,5 +1,6 @@
 import db from "./db";
 import { auth } from "./firebaseService";
+import log from "./winston";
 
 // Define types
 interface InviteStatus {
@@ -14,84 +15,158 @@ interface ListRow {
 }
 
 /**
- * Check if a user is on a specific invite list based on their Firebase UID
- * @param firebaseUid - Firebase user ID
- * @param listName - Name of the invite list to check
+ * Check if a user is on a specific invite list based on their Firebase UID or pubkey
+ * @param params - Object containing either firebaseUid or pubkey, and listName
  * @returns Promise with invite status
  */
-export async function checkUserInviteStatus(
-  firebaseUid: string,
-  listName: string
-): Promise<InviteStatus> {
+export async function checkUserInviteStatus({
+  firebaseUid,
+  pubkey,
+  listName,
+}: {
+  firebaseUid?: string;
+  pubkey?: string;
+  listName: string;
+}): Promise<InviteStatus> {
   try {
-    // Get user email from Firebase
-    const userEmail = await getUserEmail(firebaseUid);
+    // Validate input parameters
+    if (!listName) {
+      throw new Error("List name is required");
+    }
 
-    if (!userEmail) {
+    if (!firebaseUid && !pubkey) {
+      throw new Error("Either firebaseUid or pubkey must be provided");
+    }
+
+    // Use the isUserInvited function which now supports both identification methods
+    return await isUserInvited({
+      userId: firebaseUid, // Pass firebaseUid as userId
+      pubkey,
+      listName,
+    });
+  } catch (error) {
+    log.error("Error checking invite status:", error, {
+      firebaseUid,
+      pubkey,
+      listName,
+    });
+
+    // Return a safe default value rather than propagating the error
+    return { isInvited: false, listName: null };
+  }
+}
+
+/**
+ * Check if a pubkey or user is on a specific invite list
+ * @param params - Object containing either pubkey or userId, and optional listName
+ * @returns Promise with invite status
+ */
+export async function isUserInvited({
+  pubkey,
+  userId,
+  listName,
+}: {
+  pubkey?: string;
+  userId?: string;
+  listName?: string;
+}): Promise<InviteStatus> {
+  try {
+    // Validate input - at least one identifier is required
+    if (!pubkey && !userId) {
       return { isInvited: false, listName: null };
     }
 
-    // Check if email is on the specified invite list
-    return await isEmailInvited(userEmail, listName);
-  } catch (error) {
-    console.error("Error checking invite status:", error);
-    throw error;
-  }
-}
+    // Build base query
+    const query = db
+      .knex("invite_emails")
+      .join("invite_lists", "invite_emails.list_id", "invite_lists.id");
 
-/**
- * Check if an email is on a specific invite list
- * @param email - Email address to check
- * @param listName - Optional name of specific list to check
- * @returns Promise with invite status
- */
-export async function isEmailInvited(
-  email: string,
-  listName?: string
-): Promise<InviteStatus> {
-  if (!email) {
+    // Apply identification filters
+    if (pubkey && userId) {
+      // Check by either pubkey or userId/email
+      query.where(function () {
+        this.where("pubkey", pubkey).orWhere("user_id", userId);
+
+        // Also try to check by email if userId is provided
+        if (userId) {
+          getUserEmail(userId)
+            .then((email) => {
+              if (email) {
+                const normalizedEmail = normalizeEmail(email);
+                this.orWhere("email", normalizedEmail);
+              }
+            })
+            .catch(() => {
+              // Silently continue if email retrieval fails
+            });
+        }
+      });
+    } else if (pubkey) {
+      // Check by pubkey only
+      query.where("pubkey", pubkey);
+    } else if (userId) {
+      // Check by userId and email
+      query.where(function () {
+        this.where("user_id", userId);
+
+        // Try to get and check email
+        getUserEmail(userId)
+          .then((email) => {
+            if (email) {
+              const normalizedEmail = normalizeEmail(email);
+              this.orWhere("email", normalizedEmail);
+            }
+          })
+          .catch(() => {
+            // Silently continue if email retrieval fails
+          });
+      });
+    }
+
+    // Add list name filter if provided
+    if (listName) {
+      query.where("invite_lists.list_name", listName);
+    }
+
+    // Get the first matching result
+    const result = await query.select("list_name").first();
+
+    return {
+      isInvited: !!result,
+      listName: result ? result.list_name : null,
+    };
+  } catch (error) {
+    console.error("Error checking user invite status:", error);
+    // Return not invited on error to fail safe
     return { isInvited: false, listName: null };
   }
-
-  const normalizedEmail = normalizeEmail(email);
-
-  // Build query
-  const query = db
-    .knex("invite_emails")
-    .join("invite_lists", "invite_emails.list_id", "invite_lists.id")
-    .where("email", normalizedEmail);
-
-  // Add list name filter if provided
-  if (listName) {
-    query.where("invite_lists.list_name", listName);
-  }
-
-  const result = await query.select("list_name").first();
-
-  return {
-    isInvited: !!result,
-    listName: result ? result.list_name : null,
-  };
 }
 
 /**
- * Add a single email to an invite list
- * @param email - Email to add
- * @param listName - Name of the invite list
+ * Add a user to an invite list using either userId (which resolves to email) or pubkey
+ * @param params - Object containing userId or pubkey, and listName
  * @returns Promise with success status
  */
-export async function addUserToInviteList(
-  userId: string,
-  listName: string
-): Promise<boolean> {
-  if (!userId || !listName) {
-    throw new Error("Email and list name are required");
-  }
-  const email = await getUserEmail(userId);
-  const normalizedEmail = normalizeEmail(email);
-
+export async function addUserToInviteList({
+  firebaseUid,
+  listName,
+  pubkey,
+}: {
+  firebaseUid?: string;
+  listName: string;
+  pubkey?: string;
+}): Promise<boolean> {
   try {
-    // Get the list
+    // Validate required parameters
+    if (!listName) {
+      throw new Error("List name is required");
+    }
+
+    if (!firebaseUid && !pubkey) {
+      throw new Error("Either firebaseUid or pubkey must be provided");
+    }
+
+    // Get the list once - no need to query it twice
     const list = await db
       .knex<ListRow>("invite_lists")
       .where("list_name", listName)
@@ -105,52 +180,96 @@ export async function addUserToInviteList(
       throw new Error("This list is locked and cannot be modified");
     }
 
-    // Add email to list (ignore if already exists)
+    // Prepare the insertion data
+    const insertData: {
+      list_id: number;
+      email?: string;
+      pubkey?: string;
+      user_id?: string;
+    } = {
+      list_id: list.id,
+      user_id: firebaseUid,
+    };
+
+    // Add email if firebaseUid is provided
+    if (firebaseUid) {
+      const email = await getUserEmail(firebaseUid);
+      insertData.email = normalizeEmail(email);
+    }
+
+    // Add pubkey if provided
+    if (pubkey) {
+      insertData.pubkey = pubkey;
+    }
+
+    // Determine which columns might conflict
+    const conflictColumns =
+      firebaseUid && pubkey
+        ? ["list_id", "email", "pubkey"]
+        : firebaseUid
+        ? ["list_id", "email"]
+        : ["list_id", "pubkey"];
+
+    // Add to invite list (ignore if already exists)
     await db
       .knex("invite_emails")
-      .insert({
-        list_id: list.id,
-        email: normalizedEmail,
-        user_id: userId,
-      })
-      .onConflict(["list_id", "email"])
+      .insert(insertData)
+      .onConflict(conflictColumns)
       .ignore();
 
     return true;
   } catch (error) {
-    console.error("Error adding email to invite list:", error);
+    console.error("Error adding user to invite list:", error);
     throw error;
   }
 }
 
 /**
  * Check if a user is on multiple specific invite lists
- * @param firebaseUid - Firebase user ID
- * @param listNames - Array of list names to check
+ * @param params - Object containing either firebaseUid or pubkey, and array of list names
  * @returns Promise with array of lists the user is on
  */
-export async function checkUserMultipleListMembership(
-  firebaseUid: string,
-  listNames: string[]
-): Promise<string[]> {
+export async function checkUserMultipleListMembership({
+  firebaseUid,
+  pubkey,
+  listNames,
+}: {
+  firebaseUid?: string;
+  pubkey?: string;
+  listNames: string[];
+}): Promise<string[]> {
   try {
-    // Get user email from Firebase
-    const userEmail = await getUserEmail(firebaseUid);
-
-    if (!userEmail || !listNames.length) {
+    // Validate input parameters
+    if ((!firebaseUid && !pubkey) || !listNames.length) {
       return [];
     }
 
-    const normalizedEmail = normalizeEmail(userEmail);
-
-    // Check which of the specified lists the user is on
-    const results = await db
+    // Build the base query
+    const query = db
       .knex("invite_emails")
       .join("invite_lists", "invite_emails.list_id", "invite_lists.id")
-      .where("email", normalizedEmail)
       .whereIn("invite_lists.list_name", listNames)
       .select("list_name");
 
+    // Apply filters based on identification method
+    if (firebaseUid) {
+      // Check by user ID directly
+      query.where(async (builder) => {
+        builder.where("user_id", firebaseUid);
+
+        // Also check by email if available
+        const userEmail = getUserEmail(firebaseUid).catch(() => null);
+        if (userEmail) {
+          const normalizedEmail = normalizeEmail(await userEmail);
+          builder.orWhere("email", normalizedEmail);
+        }
+      });
+    } else if (pubkey) {
+      // Check by pubkey
+      query.where("pubkey", pubkey);
+    }
+
+    const results = await query;
     return results.map((item) => item.list_name);
   } catch (error) {
     console.error("Error checking multiple list membership:", error);
