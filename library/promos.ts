@@ -3,6 +3,9 @@ import log, { LogLevelDesc } from "loglevel";
 log.setLevel((process.env.LOG_LEVEL as LogLevelDesc) || "info");
 import db from "./db";
 import prisma from "../prisma/client";
+import zbdBatteryClient from "./zbd/zbdBatteryClient";
+import { checkUserInviteStatus } from "./inviteList";
+import { PaymentStatus } from "./zbd/constants";
 
 const MAX_DAILY_USER_REWARDS = 500000;
 export const EARNING_INTERVAL = 60; // seconds;
@@ -17,7 +20,7 @@ export const identifyActivePromosWithBudgetRemaining = async (): Promise<
       "msat_budget as msatBudget",
       "msat_payout_amount as msatPayoutAmount",
       "content_id as contentId",
-      "content_type as contentType",
+      "content_type as contentType"
     )
     .where("is_active", true)
     .andWhere("is_pending", false)
@@ -33,14 +36,14 @@ export const identifyActivePromosWithBudgetRemaining = async (): Promise<
     .sum("msat_amount as msatTotal")
     .whereIn(
       "promo_id",
-      activePromos.map((promo) => promo.id),
+      activePromos.map((promo) => promo.id)
     )
     .andWhere("is_pending", false)
     .groupBy("promo_id");
 
   return activePromos.filter((promo) => {
     const promoRewardTotal = activePromosRewardTotals.find(
-      (total) => total.promo_id === promo.id,
+      (total) => total.promo_id === promo.id
     )?.msatTotal;
 
     // If no rewards have been issued for this promo, it has budget remaining
@@ -53,7 +56,7 @@ export const identifyActivePromosWithBudgetRemaining = async (): Promise<
 };
 
 export const identifyPromosWhereUserEarnedToday = async (
-  accountId: string,
+  accountId: string
 ): Promise<any[]> => {
   const today = new Date();
   today.setHours(0, 0, 0, 0); // Set to start of day
@@ -66,7 +69,7 @@ export const identifyPromosWhereUserEarnedToday = async (
       "promo.msat_budget as msatBudget",
       "promo.msat_payout_amount as msatPayoutAmount",
       "promo.content_id as contentId",
-      "promo.content_type as contentType",
+      "promo.content_type as contentType"
     )
     .where("promo_reward.user_id", accountId)
     .andWhere("promo_reward.created_at", ">=", today)
@@ -75,7 +78,7 @@ export const identifyPromosWhereUserEarnedToday = async (
       "promo.id",
       "promo.msat_payout_amount",
       "promo.content_id",
-      "promo.content_type",
+      "promo.content_type"
     );
 
   return userPromos;
@@ -124,7 +127,7 @@ const getTotalSettledRewards = async (promoId: number): Promise<number> => {
 
 const getContentDuration = async (
   contentType: string,
-  contentId: string,
+  contentId: string
 ): Promise<number> => {
   const content = await db
     .knex(contentType)
@@ -139,7 +142,7 @@ const getContentDuration = async (
 
 export const isPromoActive = async (
   promoId: number,
-  msatBudget: number,
+  msatBudget: number
 ): Promise<boolean> => {
   const totalSettledRewards = await getTotalSettledRewards(promoId);
 
@@ -155,7 +158,7 @@ export const isPromoActive = async (
 export const isUserEligibleForPromo = async (
   userId: string,
   ip: string,
-  promoId: number,
+  promoId: number
 ) => {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -167,7 +170,7 @@ export const isUserEligibleForPromo = async (
       "promo.msat_payout_amount as msat_payout_amount",
       "promo.content_type as content_type",
       "promo.content_id as content_id",
-      "promo_reward.user_id as user_id",
+      "promo_reward.user_id as user_id"
     )
     .sum("msat_amount as total")
     .where({ "promo.id": promoId, "promo_reward.user_id": userId })
@@ -178,7 +181,7 @@ export const isUserEligibleForPromo = async (
       "promo.msat_payout_amount",
       "promo.content_type",
       "promo.content_id",
-      "promo_reward.user_id",
+      "promo_reward.user_id"
     )
     .first();
 
@@ -196,7 +199,7 @@ export const isUserEligibleForPromo = async (
           "promo.msat_payout_amount as msat_payout_amount",
           "promo.content_type as content_type",
           "promo.content_id as content_id",
-          "promo_reward.ip as ip",
+          "promo_reward.ip as ip"
         )
         .sum("msat_amount as total")
         .where({ "promo.id": promoId, "promo_reward.ip": ip })
@@ -207,7 +210,7 @@ export const isUserEligibleForPromo = async (
           "promo.msat_payout_amount",
           "promo.content_type",
           "promo.content_id",
-          "promo_reward.ip",
+          "promo_reward.ip"
         )
         .first()
     : null;
@@ -219,7 +222,7 @@ export const isUserEligibleForPromo = async (
 
   const contentDuration = await getContentDuration(
     userDailyContentRewards.content_type,
-    userDailyContentRewards.content_id,
+    userDailyContentRewards.content_id
   );
 
   const durationRounded = Math.floor(contentDuration / EARNING_INTERVAL);
@@ -248,7 +251,7 @@ export const isUserEligibleForReward = async (
   userId: string,
   promoId: number,
   ip: string,
-  ignoreTime = false,
+  ignoreTime = false
 ): Promise<boolean> => {
   // Set datetime to 58 seconds ago
   const now = new Date(Date.now() - 58000);
@@ -335,7 +338,7 @@ export const isUserEligibleForReward = async (
     const userIsEligibleForPromo = await isUserEligibleForPromo(
       userId,
       ip,
-      promoId,
+      promoId
     );
 
     if (!userIsEligibleForPromo) {
@@ -377,7 +380,7 @@ export const getPromoByContentId = async (contentId: string): Promise<any> => {
 
   const isActive = await isPromoActive(
     mostRecentPromo.id,
-    mostRecentPromo.msatBudget,
+    mostRecentPromo.msatBudget
   );
 
   return { ...mostRecentPromo, isPromoActive: isActive };
@@ -385,7 +388,7 @@ export const getPromoByContentId = async (contentId: string): Promise<any> => {
 
 export const getTotalPromoEarnedByUser = async (
   userId: string,
-  promoId: number,
+  promoId: number
 ): Promise<number> => {
   const userTotalMsatEarned = await db
     .knex("promo_reward")
@@ -404,7 +407,7 @@ export const getTotalPromoEarnedByUser = async (
 // TODO - This uses UTC time, need to convert to local time
 export const getTotalPromoEarnedByUserToday = async (
   userId: string,
-  promoId: number,
+  promoId: number
 ): Promise<number> => {
   const today = new Date();
   today.setHours(0, 0, 0, 0); // Set to start of day
@@ -429,7 +432,7 @@ export const getTotalPromoEarnedByUserToday = async (
 
 export const getTotalPossibleEarningsForPromoForUser = async (
   contentDuration: number,
-  msatPayoutAmount: number,
+  msatPayoutAmount: number
 ): Promise<number> => {
   if (contentDuration < EARNING_INTERVAL) {
     // set a floor of 1 earning period
@@ -447,7 +450,7 @@ export const getTotalRewardsForUser = async (
     startDate?: Date;
     endDate?: Date;
     includePending?: boolean;
-  } = {},
+  } = {}
 ): Promise<number> => {
   try {
     const { startDate, endDate = new Date(), includePending = false } = options;
@@ -484,7 +487,7 @@ export const getTotalRewardsForUser = async (
 // Helper function to get daily rewards
 export const getTotalDailyRewardsForUser = async (
   userId: string,
-  includePending: boolean = false,
+  includePending: boolean = false
 ): Promise<number> => {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -493,4 +496,227 @@ export const getTotalDailyRewardsForUser = async (
     startDate: today,
     includePending,
   });
+};
+
+const REWARD_WINDOW = 24; // Check for last 24 hours
+const MAX_REWARD = 1000000; // Max 1000 sats in the last 24 hours
+const INVITE_LIST = "shykids-battery"; // Invite list name
+
+export const processBatteryReward = async ({
+  userId = null,
+  pubkey = null,
+  ipAddress,
+  msatAmount,
+  lnUrl,
+  req,
+  res,
+}) => {
+  try {
+    if (!ipAddress || !msatAmount || !(userId || pubkey) || !lnUrl) {
+      return {
+        success: false,
+        status: 400,
+        error: "User identifier, ip, lnUrl, and msatAmount are required",
+      };
+    }
+
+    if (isNaN(msatAmount) || msatAmount < 0) {
+      return {
+        success: false,
+        status: 400,
+        error: "msatAmount must be a postivive number",
+      };
+    }
+
+    // validate user invite status
+    const { isInvited } = await checkUserInviteStatus({
+      firebaseUid: userId,
+      pubkey,
+      listName: INVITE_LIST,
+    });
+
+    if (!isInvited) {
+      return {
+        success: false,
+        status: 400,
+        error: "User is not eligible for battery rewards",
+      };
+    }
+
+    // Check if user is eligible for reward
+    // Calculate the timestamp for X hours ago
+    const hoursAgo = new Date(Date.now() - REWARD_WINDOW * 60 * 60 * 1000);
+
+    // Check if user has earned more than maxSats in the last Y hours
+    const userRecentRewards = await prisma.battery_reward.aggregate({
+      where: {
+        ...(userId ? { user_id: userId } : { pubkey }),
+        created_at: {
+          gt: hoursAgo,
+        },
+        is_pending: false,
+      },
+      _sum: {
+        msat_amount: true,
+      },
+    });
+
+    if (isNaN(userRecentRewards._sum.msat_amount)) {
+      return {
+        success: false,
+        status: 400,
+        error: "Error calculating user rewards",
+      };
+    }
+
+    const totalMsats = userRecentRewards._sum.msat_amount;
+    if (totalMsats >= MAX_REWARD) {
+      log.info("User exceeded reward limit", {
+        totalMsats,
+        rewardWindow: REWARD_WINDOW,
+        maxReward: MAX_REWARD,
+        timestamp: new Date().toISOString(),
+      });
+
+      return {
+        success: false,
+        status: 400,
+        error: `User has already earned ${totalMsats} msats in the last ${REWARD_WINDOW} hours`,
+      };
+    }
+
+    // Check if user has already redeemed a promo from this IP
+    const recentIPRewards = await prisma.battery_reward.aggregate({
+      where: {
+        ip: ipAddress,
+        created_at: {
+          gt: hoursAgo,
+        },
+        is_pending: false,
+      },
+      _sum: {
+        msat_amount: true,
+      },
+    });
+
+    if (isNaN(recentIPRewards._sum.msat_amount)) {
+      return {
+        success: false,
+        status: 400,
+        error: "Error calculating user rewards",
+      };
+    }
+
+    const totalIPMsats = recentIPRewards._sum.msat_amount;
+    if (totalIPMsats >= MAX_REWARD) {
+      log.info(
+        `IP has earned ${totalIPMsats} sats in the last ${REWARD_WINDOW} hours, exceeding limit of ${MAX_REWARD}`
+      );
+
+      return {
+        success: false,
+        status: 400,
+        error: `IP has already earned ${totalIPMsats} msats in the last ${REWARD_WINDOW} hours`,
+      };
+    }
+
+    const balanceInfo = await zbdBatteryClient.balanceInfo();
+    if (!balanceInfo.success) {
+      return {
+        success: false,
+        status: 400,
+        error: "Error getting wallet balance info",
+      };
+    }
+
+    const walletBalance = parseInt(balanceInfo.data.balance);
+    log.info(
+      `Wallet balance: ${walletBalance} msats, requested amount: ${msatAmount} msats`
+    );
+
+    if (walletBalance < msatAmount) {
+      return {
+        success: false,
+        status: 400,
+        error: `Unable to process payment, wallet balance is too low.`,
+      };
+    }
+
+    // create battery reward record
+    const newReward = await prisma.battery_reward.create({
+      data: {
+        ...(userId ? { user_id: userId } : { pubkey }),
+        msat_amount: msatAmount,
+        is_pending: true,
+        fee: 0,
+        updated_at: new Date(),
+        ip: ipAddress,
+      },
+    });
+
+    log.info(`Created battery reward: ${newReward.id}`);
+    log.info(`Sending battery reward to ${lnUrl}`);
+
+    const zbdresponse = await zbdBatteryClient.payToLNURL({
+      lnAddress: lnUrl,
+      amount: msatAmount.toString(),
+      comment: "Shy Kids Battery",
+      internalId: `battery-${newReward.id}`,
+    });
+
+    if (!zbdresponse.success) {
+      log.error(`Error sending battery payment: ${zbdresponse.message}`);
+      await prisma.battery_reward.update({
+        where: {
+          id: newReward.id,
+        },
+        data: {
+          is_pending: false,
+          status: "failed",
+        },
+      });
+
+      return {
+        success: false,
+        status: 500,
+        error: zbdresponse.message,
+      };
+    }
+
+    const fee = parseInt(zbdresponse.data.fee) ?? 0;
+    const amount = parseInt(zbdresponse.data.amount) ?? 0;
+
+    await prisma.battery_reward.update({
+      where: {
+        id: newReward.id,
+      },
+      data: {
+        is_pending: zbdresponse.data.status === PaymentStatus.Pending,
+        status: zbdresponse.data.status,
+        fee: fee,
+        msat_amount: amount,
+      },
+    });
+
+    await prisma.battery_balance.create({
+      data: {
+        msat_balance: walletBalance,
+      },
+    });
+
+    return {
+      success: true,
+      status: 200,
+      data: {
+        message: `Battery reward of ${msatAmount} msats sent to ${lnUrl}`,
+      },
+    };
+  } catch (error) {
+    log.error(error);
+    return {
+      success: false,
+      status: 500,
+      error: "Error creating reward",
+    };
+  }
 };
