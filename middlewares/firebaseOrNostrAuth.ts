@@ -22,8 +22,8 @@ export const isFirebaseOrNostrAuthorized = (req, res, next) => {
           responses[0].status === "fulfilled" && responses[0].value !== null;
         const isNostrAuthorized =
           responses[1].status === "fulfilled" && responses[1].value !== null;
-        log.info("Firebase authorized:", isFirebaseAuthorized);
-        log.info("Nostr authorized:", isNostrAuthorized);
+        isFirebaseAuthorized && log.info("Request is Firebase authorized");
+        isNostrAuthorized && log.info("Request is Nostr authorized");
         // Proceed to the next middleware
         next();
       }
