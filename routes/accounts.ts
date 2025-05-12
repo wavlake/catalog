@@ -20,6 +20,7 @@ import { isAuthorized } from "../middlewares/auth";
 import { isNostrAuthorized } from "../middlewares/nostrAuth";
 import { isAPITokenAuthorized } from "../middlewares/isAPITokenAuthorized";
 import rateLimit from "express-rate-limit";
+import { isFirebaseOrNostrAuthorized } from "../middlewares/firebaseOrNostrAuth";
 
 // Create router
 const router = express.Router();
@@ -134,12 +135,12 @@ router.put("/disable", isAuthorized, accountsController.disable_user);
 
 router.get(
   "/invite/:listname",
-  isAuthorized,
+  isFirebaseOrNostrAuthorized,
   accountsController.get_invite_list_status
 );
 router.put(
   "/invite/:listname",
-  isAuthorized,
+  isFirebaseOrNostrAuthorized,
   accountsController.add_to_invite_list
 );
 

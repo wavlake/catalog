@@ -1381,7 +1381,9 @@ const put_inbox_lastread = asyncHandler(async (req, res, next) => {
 });
 
 const get_invite_list_status = asyncHandler(async (req, res, next) => {
-  const userId = req["uid"];
+  const firebaseUid = req["uid"];
+  const pubkey = res.locals?.authEvent?.pubkey;
+
   const listName = req.params.listname;
 
   if (!listName) {
@@ -1393,7 +1395,11 @@ const get_invite_list_status = asyncHandler(async (req, res, next) => {
   }
 
   try {
-    const status = await checkUserInviteStatus(userId, listName);
+    const status = await checkUserInviteStatus({
+      firebaseUid,
+      pubkey,
+      listName,
+    });
 
     res.send({
       success: true,
@@ -1410,7 +1416,8 @@ const get_invite_list_status = asyncHandler(async (req, res, next) => {
 });
 
 const add_to_invite_list = asyncHandler(async (req, res, next) => {
-  const userId = req["uid"];
+  const firebaseUid = req["uid"];
+  const pubkey = res.locals?.authEvent?.pubkey;
   const listName = req.params.listname;
 
   if (!listName) {
@@ -1422,7 +1429,11 @@ const add_to_invite_list = asyncHandler(async (req, res, next) => {
   }
 
   try {
-    await addUserToInviteList(userId, listName);
+    await addUserToInviteList({
+      firebaseUid,
+      pubkey,
+      listName,
+    });
 
     res.send({
       success: true,
