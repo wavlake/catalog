@@ -763,6 +763,7 @@ model invite_emails {
   invite_lists invite_lists @relation(fields: [list_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "invite_emails_list_id_foreign")
 
   @@unique([list_id, email], map: "invite_emails_list_id_email_unique")
+  @@unique([list_id, pubkey], map: "invite_emails_list_id_pubkey_unique")
   @@index([email], map: "idx_invite_emails_email")
   @@index([user_id], map: "idx_invite_user_id")
   @@index([pubkey], map: "idx_invite_emails_pubkey")
