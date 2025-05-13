@@ -34,6 +34,7 @@ export async function checkUserHasSufficientSats(
     .sum("fee_msat as totalFee")
     .where("is_pending", "=", true)
     .andWhere("user_id", "=", userId)
+    .andWhere("withdraw", "=", true)
     .groupBy("user_id")
     .first();
 

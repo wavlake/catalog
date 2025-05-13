@@ -18,7 +18,9 @@ import {
 } from "@library/withdraw";
 import { IncomingInvoiceType } from "@library/common";
 import prisma from "@prismalocal/client";
-import { PaymentStatus } from "@library/zbd/constants";
+import { ChargeStatus, PaymentStatus } from "@library/zbd/constants";
+import { publishAnonZapReceipt } from "@library/zap";
+import zbdBatteryClient from "@library/zbd/zbdBatteryClient";
 
 const jsonParser = (jsonString?: string) => {
   if (!jsonString) return;
@@ -309,11 +311,32 @@ const processIncomingBatteryInvoice = asyncHandler<
         status: status,
         msat_amount: parseInt(amount),
         description: description,
-        payment_request: invoice.request,
+        payment_request: invoice.request ?? "",
         created_at: createdAt,
-        payment_hash: invoice.preimage,
+        payment_hash: invoice.preimage ?? "",
       },
     });
+    log.info("Created new battery deposit", newDeposit);
+    const balanceInfo = await zbdBatteryClient.balanceInfo();
+    if (balanceInfo.success) {
+      const walletBalance = parseInt(balanceInfo.data.balance);
+      log.info(`Battery wallet balance: ${walletBalance} msats`);
+      await prisma.battery_balance.create({
+        data: {
+          msat_balance: walletBalance,
+        },
+      });
+    }
+
+    if (status === ChargeStatus.Completed) {
+      const success = await publishAnonZapReceipt({
+        paymentRequest: invoice.request,
+        amount: amount,
+        preimage: invoice.preimage,
+        description: description,
+      });
+      log.info(success ? "Zap receipt published" : "Zap receipt not published");
+    }
     res.status(200).send({ success: true });
   } catch (error) {
     log.error(`Error processing incoming battery invoice: ${error}`);

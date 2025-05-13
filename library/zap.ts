@@ -7,6 +7,9 @@ import {
   verifyEvent,
   Event,
   useWebSocketImplementation,
+  generateSecretKey,
+  getPublicKey,
+  EventTemplate,
 } from "nostr-tools";
 import { hexToBytes } from "@noble/hashes/utils";
 import { handleConferenceZap } from "./btc24/btc24";
@@ -185,5 +188,125 @@ export const publishZapReceipt = async (
     log.error(`Error issuing zap receipt: ${e}`);
     return;
   }
-  return;
 };
+
+export const publishAnonZapReceipt = async ({
+  paymentRequest,
+  preimage,
+  amount,
+  description,
+}: {
+  paymentRequest: string;
+  preimage: string;
+  amount: string;
+  description: string;
+}): Promise<boolean> => {
+  log.info(
+    `Publishing anon zap receipt for ${JSON.stringify({
+      paymentRequest,
+      preimage,
+      amount,
+      description,
+    })}`
+  );
+  const anonKey = generateSecretKey();
+  const anonPubkey = getPublicKey(anonKey);
+  log.info("Anon pubkey: ", anonPubkey);
+  const anonZapRequest = makeZapRequest({
+    profile: anonPubkey,
+    amount: parseInt(amount),
+    comment: description,
+    relays: [],
+    event: null,
+  });
+  log.info("Anon zap request: ", anonZapRequest);
+  const zapReceipt = makeZapReceipt({
+    zapRequest: JSON.stringify(anonZapRequest),
+    bolt11: paymentRequest,
+    paidAt: new Date(),
+    preimage: preimage,
+  });
+  const signedZapReceipt = finalizeEvent(zapReceipt, WAVLAKE_SECRET);
+  log.info("Zap receipt: ", signedZapReceipt);
+  log.info("Publishing to relays: ", DEFAULT_WRITE_RELAY_URIS);
+  // publish zap receipt to nostr
+  const pool = new SimplePool();
+  let relays = DEFAULT_WRITE_RELAY_URIS;
+  try {
+    await Promise.any(pool.publish(relays, signedZapReceipt));
+    log.info(
+      `Published anon zap receipt id: ${signedZapReceipt.id} for ${paymentRequest}`
+    );
+    return true;
+  } catch (e) {
+    log.error(`Error issuing zap receipt: ${e}`);
+    return false;
+  }
+  // Log zap receipt event id
+};
+
+function makeZapRequest({
+  profile,
+  event,
+  amount,
+  relays,
+  comment = "",
+}: {
+  profile: string;
+  event: string | Event | null;
+  amount: number;
+  comment: string;
+  relays: string[];
+}): EventTemplate {
+  if (!amount) throw new Error("amount not given");
+  if (!profile) throw new Error("profile not given");
+
+  let zr: EventTemplate = {
+    kind: 9734,
+    created_at: Math.round(Date.now() / 1000),
+    content: comment,
+    tags: [
+      ["p", profile],
+      ["amount", amount.toString()],
+      ["relays", ...relays],
+    ],
+  };
+
+  return zr;
+}
+
+function makeZapReceipt({
+  zapRequest,
+  preimage,
+  bolt11,
+  paidAt,
+}: {
+  zapRequest: string;
+  preimage?: string;
+  bolt11: string;
+  paidAt: Date;
+}): EventTemplate {
+  let zr: Event = JSON.parse(zapRequest);
+  let tagsFromZapRequest = zr.tags.filter(
+    ([t]) => t === "e" || t === "p" || t === "a"
+  );
+
+  let zap: EventTemplate = {
+    kind: 9735,
+    created_at: Math.round(paidAt.getTime() / 1000),
+    content: "",
+    tags: [
+      ...tagsFromZapRequest,
+      // TODO - fix this, having issues with the P tag
+      // ["P", zr.pubkey],
+      ["bolt11", bolt11],
+      ["description", zapRequest],
+    ],
+  };
+
+  if (preimage) {
+    zap.tags.push(["preimage", preimage]);
+  }
+
+  return zap;
+}
