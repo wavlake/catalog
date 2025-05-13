@@ -1,4 +1,3 @@
-import prisma from "../prisma/client";
 import db from "./db";
 import { auth } from "./firebaseService";
 import log from "./winston";
