@@ -187,6 +187,8 @@ export const publishZapReceipt = async (
       });
   } catch (e) {
     log.error(`Error issuing zap receipt: ${e}`);
+    // logger needs to be setup for VM contexts
+    console.error(`Error issuing zap receipt: ${e}`);
     return;
   }
 };
