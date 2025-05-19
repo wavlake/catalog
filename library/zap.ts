@@ -128,49 +128,50 @@ export const publishZapReceipt = async (
   preimage: string,
   txId: string
 ) => {
-  // const aTag = zapRequestEventObj.tags.find((x) => x[0] === "a");
-
-  const eTag = zapRequestEvent.tags.find((x) => x[0] === "e");
-  const aTag = zapRequestEvent.tags.find((x) => x[0] === "a");
-  const pTag = zapRequestEvent.tags.find((x) => x[0] === "p");
-  const iTags = zapRequestEvent.tags.filter((x) => x[0] === "i");
-  ///////// TEMPORARY /////////
-
-  ///////// TEMPORARY - REMOVE AFTER 240728 /////////
-  const hashtag = zapRequestEvent.tags.find((x) => x[0] === "t");
-  const btc24Tag = hashtag && hashtag[1] === "btc24jukebox";
-
-  if (btc24Tag) {
-    handleConferenceZap(zapRequestEvent);
-  }
-  //////////
-
-  if (!aTag && !eTag) {
-    log.error("No e or a tag found");
-  }
-
-  let zapReceipt = {
-    kind: 9735,
-    created_at: Math.round(Date.now() / 1000),
-    tags: [
-      ["bolt11", paymentRequest],
-      ["description", JSON.stringify(zapRequestEvent)],
-      ["preimage", preimage],
-      ...(pTag ? [pTag] : []),
-      ...(aTag ? [aTag] : []),
-      ...(eTag ? [eTag] : []),
-      ...(hashtag ? [hashtag] : []),
-      ...(iTags.length > 0 ? iTags : []),
-    ],
-    content: "",
-  };
-
-  const signedEvent = finalizeEvent(zapReceipt, WAVLAKE_SECRET);
-
-  // Publish to all relays
-  const pool = new SimplePool();
-  let relays = DEFAULT_WRITE_RELAY_URIS;
   try {
+    log.info("Publishing zap receipt for zap request ID: ", zapRequestEvent);
+    // const aTag = zapRequestEventObj.tags.find((x) => x[0] === "a");
+
+    const eTag = zapRequestEvent.tags.find((x) => x[0] === "e");
+    const aTag = zapRequestEvent.tags.find((x) => x[0] === "a");
+    const pTag = zapRequestEvent.tags.find((x) => x[0] === "p");
+    const iTags = zapRequestEvent.tags.filter((x) => x[0] === "i");
+    ///////// TEMPORARY /////////
+
+    ///////// TEMPORARY - REMOVE AFTER 240728 /////////
+    const hashtag = zapRequestEvent.tags.find((x) => x[0] === "t");
+    const btc24Tag = hashtag && hashtag[1] === "btc24jukebox";
+
+    if (btc24Tag) {
+      handleConferenceZap(zapRequestEvent);
+    }
+    //////////
+
+    if (!aTag && !eTag) {
+      log.error("No e or a tag found");
+    }
+
+    let zapReceipt = {
+      kind: 9735,
+      created_at: Math.round(Date.now() / 1000),
+      tags: [
+        ["bolt11", paymentRequest],
+        ["description", JSON.stringify(zapRequestEvent)],
+        ["preimage", preimage],
+        ...(pTag ? [pTag] : []),
+        ...(aTag ? [aTag] : []),
+        ...(eTag ? [eTag] : []),
+        ...(hashtag ? [hashtag] : []),
+        ...(iTags.length > 0 ? iTags : []),
+      ],
+      content: "",
+    };
+
+    const signedEvent = finalizeEvent(zapReceipt, WAVLAKE_SECRET);
+    log.info("Zap receipt event: ", signedEvent);
+    // Publish to all relays
+    const pool = new SimplePool();
+    let relays = DEFAULT_WRITE_RELAY_URIS;
     await Promise.any(pool.publish(relays, signedEvent));
     log.info(`Published zap receipt for ${paymentRequest}`);
     // Log zap receipt event id
@@ -182,7 +183,7 @@ export const publishZapReceipt = async (
         log.info(`Logged zap receipt event id for txId: ${txId}`);
       })
       .catch((e) => {
-        log.error(`Error logging zap receipt event id: ${e}`);
+        log.error(`Error saving zap receipt event id to comment table: ${e}`);
       });
   } catch (e) {
     log.error(`Error issuing zap receipt: ${e}`);
