@@ -170,7 +170,7 @@ export const publishZapReceipt = async (
     };
 
     const signedEvent = finalizeEvent(zapReceipt, WAVLAKE_SECRET);
-    logger.info(`Zap receipt event: ${JSON.stringify(signedEvent, null, 2)}`);
+    logger.info('Zap receipt event:', signedEvent);
 
     // Publish to all relays
     const pool = new SimplePool();
