@@ -126,11 +126,13 @@ export const publishZapReceipt = async (
   zapRequestEvent: Event,
   paymentRequest: string,
   preimage: string,
-  txId: string
+  txId: string,
+  useConsoleLogging: boolean = false
 ) => {
+  const logger = useConsoleLogging ? console : log;
+
   try {
-    log.info("Publishing zap receipt for zap request ID: ", zapRequestEvent);
-    // const aTag = zapRequestEventObj.tags.find((x) => x[0] === "a");
+    logger.info("Publishing zap receipt for zap request ID: ", zapRequestEvent);
 
     const eTag = zapRequestEvent.tags.find((x) => x[0] === "e");
     const aTag = zapRequestEvent.tags.find((x) => x[0] === "a");
@@ -148,7 +150,7 @@ export const publishZapReceipt = async (
     //////////
 
     if (!aTag && !eTag) {
-      log.error("No e or a tag found");
+      logger.error("No e or a tag found");
     }
 
     let zapReceipt = {
@@ -168,27 +170,29 @@ export const publishZapReceipt = async (
     };
 
     const signedEvent = finalizeEvent(zapReceipt, WAVLAKE_SECRET);
-    log.info("Zap receipt event: ", signedEvent);
+    logger.info('Zap receipt event:', signedEvent);
+
     // Publish to all relays
     const pool = new SimplePool();
     let relays = DEFAULT_WRITE_RELAY_URIS;
     await Promise.any(pool.publish(relays, signedEvent));
-    log.info(`Published zap receipt for ${paymentRequest}`);
+    logger.info(`Published zap receipt for ${paymentRequest}`);
+
     // Log zap receipt event id
     return db
       .knex("comment")
       .where({ tx_id: txId })
       .update({ zap_event_id: signedEvent.id })
       .then(() => {
-        log.info(`Logged zap receipt event id for txId: ${txId}`);
+        logger.info(`Logged zap receipt event id for txId: ${txId}`);
       })
       .catch((e) => {
-        log.error(`Error saving zap receipt event id to comment table: ${e}`);
+        logger.error(
+          `Error saving zap receipt event id to comment table: ${e}`
+        );
       });
   } catch (e) {
-    log.error(`Error issuing zap receipt: ${e}`);
-    // logger needs to be setup for VM contexts
-    console.error(`Error issuing zap receipt: ${e}`);
+    logger.error(`Error issuing zap receipt: ${e}`);
     return;
   }
 };

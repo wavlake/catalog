@@ -287,7 +287,7 @@ const createInternalPayment = async ({
     // NOTE: We use "nwc" as the preimage value to share in zap receipts
     // because we do not have access to the actual preimage and it is not
     // a true, verifiable proof of payment
-    await publishZapReceipt(zapRequest, paymentRequest, "nwc", txId);
+    await publishZapReceipt(zapRequest, paymentRequest, "nwc", txId, true);
     // Broadcast response
 
     await broadcastPaymentResponse(event, newBalance);
