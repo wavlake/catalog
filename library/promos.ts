@@ -524,11 +524,11 @@ export const processBatteryReward = async ({
       return {
         success: false,
         status: 400,
-        error: "msatAmount must be a postivive number",
+        error: "msatAmount must be a positive number",
       };
     }
 
-    // validate user invite status
+    // validate user invite status (outside transaction since it's read-only)
     const { isInvited } = await checkUserInviteStatus({
       firebaseUid: userId,
       pubkey,
@@ -543,83 +543,7 @@ export const processBatteryReward = async ({
       };
     }
 
-    // Check if user is eligible for reward
-    // Calculate the timestamp for X hours ago
-    const hoursAgo = new Date(Date.now() - REWARD_WINDOW * 60 * 60 * 1000);
-
-    // Check if user has earned more than maxSats in the last Y hours
-    const userRecentRewards = await prisma.battery_reward.aggregate({
-      where: {
-        ...(userId ? { user_id: userId } : { pubkey }),
-        created_at: {
-          gt: hoursAgo,
-        },
-        is_pending: false,
-      },
-      _sum: {
-        msat_amount: true,
-      },
-    });
-
-    if (isNaN(userRecentRewards._sum.msat_amount)) {
-      return {
-        success: false,
-        status: 400,
-        error: "Error calculating user rewards",
-      };
-    }
-
-    const totalMsats = userRecentRewards._sum.msat_amount;
-    if (totalMsats >= MAX_REWARD) {
-      log.info("User exceeded reward limit", {
-        totalMsats,
-        rewardWindow: REWARD_WINDOW,
-        maxReward: MAX_REWARD,
-        timestamp: new Date().toISOString(),
-      });
-
-      return {
-        success: false,
-        status: 400,
-        error: `User has already earned ${totalMsats} msats in the last ${REWARD_WINDOW} hours`,
-      };
-    }
-
-    // Check if user has already redeemed a promo from this IP
-    const recentIPRewards = await prisma.battery_reward.aggregate({
-      where: {
-        ip: ipAddress,
-        created_at: {
-          gt: hoursAgo,
-        },
-        is_pending: false,
-      },
-      _sum: {
-        msat_amount: true,
-      },
-    });
-
-    if (isNaN(recentIPRewards._sum.msat_amount)) {
-      return {
-        success: false,
-        status: 400,
-        error: "Error calculating user rewards",
-      };
-    }
-
-    const totalIPMsats = recentIPRewards._sum.msat_amount;
-    if (totalIPMsats >= MAX_REWARD) {
-      log.info(
-        `IP has earned ${totalIPMsats} sats in the last ${REWARD_WINDOW} hours, exceeding limit of ${MAX_REWARD}`
-      );
-
-      return {
-        success: false,
-        status: 400,
-        error: `IP has already earned ${totalIPMsats} msats in the last ${REWARD_WINDOW} hours`,
-      };
-    }
-
+    // Check wallet balance (outside transaction)
     const balanceInfo = await zbdBatteryClient.balanceInfo();
     if (!balanceInfo.success) {
       return {
@@ -642,21 +566,111 @@ export const processBatteryReward = async ({
       };
     }
 
-    // create battery reward record
-    const newReward = await prisma.battery_reward.create({
-      data: {
-        ...(userId ? { user_id: userId } : { pubkey }),
-        msat_amount: msatAmount,
-        is_pending: true,
-        fee: 0,
-        updated_at: new Date(),
-        ip: ipAddress,
-      },
+    // **CRITICAL: Wrap validation and reward creation in transaction**
+    const newReward = await prisma.$transaction(async (tx) => {
+      // Calculate the timestamp for X hours ago
+      const hoursAgo = new Date(Date.now() - REWARD_WINDOW * 60 * 60 * 1000);
+
+      // Check if user has earned more than maxSats in the last Y hours
+      const userRecentRewards = await tx.battery_reward.aggregate({
+        where: {
+          ...(userId ? { user_id: userId } : { pubkey }),
+          created_at: {
+            gt: hoursAgo,
+          },
+        },
+        _sum: {
+          msat_amount: true,
+        },
+      });
+
+      const totalMsats = userRecentRewards._sum.msat_amount || 0; // Handle null case
+
+      // Add detailed logging before validation
+      log.info("Battery reward validation check", {
+        userId: userId || pubkey,
+        ipAddress,
+        requestedAmount: msatAmount,
+        currentTotal: totalMsats,
+        rewardWindow: REWARD_WINDOW,
+        maxReward: MAX_REWARD,
+        wouldExceedLimit: totalMsats + msatAmount > MAX_REWARD,
+        timestamp: new Date().toISOString(),
+      });
+
+      // Validate user limit within transaction
+      if (totalMsats + msatAmount > MAX_REWARD) {
+        log.warn("User would exceed reward limit", {
+          userId: userId || pubkey,
+          totalMsats,
+          requestedAmount: msatAmount,
+          combinedAmount: totalMsats + msatAmount,
+          maxReward: MAX_REWARD,
+          rewardWindow: REWARD_WINDOW,
+        });
+
+        throw new Error(
+          `Request would exceed daily limit. Current: ${totalMsats} msats, requested: ${msatAmount} msats, limit: ${MAX_REWARD} msats`
+        );
+      }
+
+      // Check if IP has already redeemed rewards
+      const recentIPRewards = await tx.battery_reward.aggregate({
+        where: {
+          ip: ipAddress,
+          created_at: {
+            gt: hoursAgo,
+          },
+        },
+        _sum: {
+          msat_amount: true,
+        },
+      });
+
+      const totalIPMsats = recentIPRewards._sum.msat_amount || 0; // Handle null case
+
+      // Add IP validation logging
+      log.info("IP reward validation check", {
+        ipAddress,
+        requestedAmount: msatAmount,
+        currentIPTotal: totalIPMsats,
+        wouldExceedLimit: totalIPMsats + msatAmount > MAX_REWARD,
+        timestamp: new Date().toISOString(),
+      });
+
+      // Validate IP limit within transaction
+      if (totalIPMsats + msatAmount > MAX_REWARD) {
+        log.warn("IP would exceed reward limit", {
+          ipAddress,
+          totalIPMsats,
+          requestedAmount: msatAmount,
+          combinedAmount: totalIPMsats + msatAmount,
+          maxReward: MAX_REWARD,
+          rewardWindow: REWARD_WINDOW,
+        });
+
+        throw new Error(
+          `IP would exceed daily limit. Current: ${totalIPMsats} msats, requested: ${msatAmount} msats, limit: ${MAX_REWARD} msats`
+        );
+      }
+
+      // Create battery reward record within transaction - this locks the validation
+      return await tx.battery_reward.create({
+        data: {
+          ...(userId ? { user_id: userId } : { pubkey }),
+          msat_amount: msatAmount,
+          is_pending: true,
+          fee: 0,
+          updated_at: new Date(),
+          ip: ipAddress,
+        },
+      });
     });
 
     log.info(`Created battery reward: ${newReward.id}`);
     log.info(`Sending battery reward to ${lnUrl}`);
 
+    // Process payment (outside transaction since it's external)
     const zbdresponse = await zbdBatteryClient.payToLNURL({
       lnAddress: lnUrl,
       amount: msatAmount.toString(),
@@ -712,7 +726,17 @@ export const processBatteryReward = async ({
       },
     };
   } catch (error) {
-    log.error(error);
+    log.error("Error in processBatteryReward:", error);
+
+    // Handle transaction validation errors specifically
+    if (error.message && error.message.includes("exceed daily limit")) {
+      return {
+        success: false,
+        status: 400,
+        error: error.message,
+      };
+    }
+
     return {
       success: false,
       status: 500,
