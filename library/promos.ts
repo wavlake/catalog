@@ -560,27 +560,31 @@ export const processBatteryReward = async ({
       },
     });
 
-    if (isNaN(userRecentRewards._sum.msat_amount)) {
-      return {
-        success: false,
-        status: 400,
-        error: "Error calculating user rewards",
-      };
-    }
+    const totalMsats = userRecentRewards._sum.msat_amount || 0; // Handle null case
 
-    const totalMsats = userRecentRewards._sum.msat_amount;
-    if (totalMsats >= MAX_REWARD) {
-      log.info("User exceeded reward limit", {
+    // Add detailed logging before validation
+    log.info("Battery reward validation check", {
+      userId: userId || pubkey,
+      ipAddress,
+      requestedAmount: msatAmount,
+      currentTotal: totalMsats,
+      rewardWindow: REWARD_WINDOW,
+      maxReward: MAX_REWARD,
+      wouldExceedLimit: totalMsats + msatAmount > MAX_REWARD,
+      timestamp: new Date().toISOString(),
+    });
+
+    // Replace the NaN check and validation:
+    if (totalMsats + msatAmount > MAX_REWARD) {
+      log.warn("User would exceed reward limit", {
         totalMsats,
-        rewardWindow: REWARD_WINDOW,
-        maxReward: MAX_REWARD,
-        timestamp: new Date().toISOString(),
+        combinedAmount: totalMsats + msatAmount,
       });
 
       return {
         success: false,
         status: 400,
-        error: `User has already earned ${totalMsats} msats in the last ${REWARD_WINDOW} hours`,
+        error: `Request would exceed daily limit. Current: ${totalMsats} msats, requested: ${msatAmount} msats, limit: ${MAX_REWARD} msats`,
       };
     }
 
@@ -597,24 +601,29 @@ export const processBatteryReward = async ({
       },
     });
 
-    if (isNaN(recentIPRewards._sum.msat_amount)) {
+    const totalIPMsats = recentIPRewards._sum.msat_amount || 0; // Handle null case
+
+    // Add IP validation logging
+    log.info("IP reward validation check", {
+      ipAddress,
+      requestedAmount: msatAmount,
+      currentIPTotal: totalIPMsats,
+      wouldExceedLimit: totalIPMsats + msatAmount > MAX_REWARD,
+      timestamp: new Date().toISOString(),
+    });
+
+    // Replace the IP validation:
+    if (totalIPMsats + msatAmount > MAX_REWARD) {
+      log.warn("IP would exceed reward limit", {
+        combinedAmount: totalIPMsats + msatAmount,
+        maxReward: MAX_REWARD,
+        rewardWindow: REWARD_WINDOW,
+      });
+
       return {
         success: false,
         status: 400,
-        error: "Error calculating user rewards",
-      };
-    }
-
-    const totalIPMsats = recentIPRewards._sum.msat_amount;
-    if (totalIPMsats >= MAX_REWARD) {
-      log.info(
-        `IP has earned ${totalIPMsats} sats in the last ${REWARD_WINDOW} hours, exceeding limit of ${MAX_REWARD}`
-      );
-
-      return {
-        success: false,
-        status: 400,
-        error: `IP has already earned ${totalIPMsats} msats in the last ${REWARD_WINDOW} hours`,
+        error: `IP would exceed daily limit. Current: ${totalIPMsats} msats, requested: ${msatAmount} msats, limit: ${MAX_REWARD} msats`,
       };
     }
 
