@@ -554,7 +554,6 @@ export const processBatteryReward = async ({
         created_at: {
           gt: hoursAgo,
         },
-        is_pending: false,
       },
       _sum: {
         msat_amount: true,
@@ -592,7 +591,6 @@ export const processBatteryReward = async ({
         created_at: {
           gt: hoursAgo,
         },
-        is_pending: false,
       },
       _sum: {
         msat_amount: true,
