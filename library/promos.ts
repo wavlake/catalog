@@ -499,7 +499,7 @@ export const getTotalDailyRewardsForUser = async (
 };
 
 const REWARD_WINDOW = 24; // Check for last 24 hours
-const MAX_REWARD = 1000000; // Max 1000 sats in the last 24 hours
+const MAX_REWARD = 1620000; // Max 1620 sats in the last 24 hours
 const INVITE_LIST = "shykids-battery"; // Invite list name
 
 export const processBatteryReward = async ({
@@ -516,7 +516,7 @@ export const processBatteryReward = async ({
       return {
         success: false,
         status: 400,
-        error: "User identifier, ip, lnUrl, and msatAmount are required",
+        error: "Missing required parameters",
       };
     }
 
@@ -562,7 +562,7 @@ export const processBatteryReward = async ({
       return {
         success: false,
         status: 400,
-        error: `Unable to process payment, wallet balance is too low.`,
+        error: `Unable to process payment, battery charge is too low.`,
       };
     }
 
@@ -609,9 +609,7 @@ export const processBatteryReward = async ({
           rewardWindow: REWARD_WINDOW,
         });
 
-        throw new Error(
-          `Request would exceed daily limit. Current: ${totalMsats} msats, requested: ${msatAmount} msats, limit: ${MAX_REWARD} msats`
-        );
+        throw new Error(`User would exceed daily limit.`);
       }
 
       // Check if IP has already redeemed rewards
@@ -649,9 +647,7 @@ export const processBatteryReward = async ({
           rewardWindow: REWARD_WINDOW,
         });
 
-        throw new Error(
-          `IP would exceed daily limit. Current: ${totalIPMsats} msats, requested: ${msatAmount} msats, limit: ${MAX_REWARD} msats`
-        );
+        throw new Error(`IP would exceed daily limit.`);
       }
 
       // Create battery reward record within transaction - this locks the validation
@@ -693,7 +689,7 @@ export const processBatteryReward = async ({
       return {
         success: false,
         status: 500,
-        error: zbdresponse.message,
+        error: "Error sending payment",
       };
     }
 
@@ -740,7 +736,7 @@ export const processBatteryReward = async ({
     return {
       success: false,
       status: 500,
-      error: "Error creating reward",
+      error: "Something went wrong while processing the battery reward",
     };
   }
 };
