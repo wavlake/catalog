@@ -499,7 +499,7 @@ export const getTotalDailyRewardsForUser = async (
 };
 
 const REWARD_WINDOW = 24; // Check for last 24 hours
-const MAX_REWARD = 1620000; // Max 1620 sats in the last 24 hours
+const MAX_REWARD = 2100000;
 const INVITE_LIST = "shykids-battery"; // Invite list name
 
 export const processBatteryReward = async ({
