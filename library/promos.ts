@@ -769,14 +769,23 @@ export const processBatteryReward = async ({
       return {
         success: false,
         status: 400,
-        error: error.message,
+        error: "Please try again later.",
+      };
+    }
+
+    // if its the global limit error, return a specific message
+    if (error.message && error.message.includes("Global hourly reward limit")) {
+      return {
+        success: false,
+        status: 400,
+        error: "Please try again later.",
       };
     }
 
     return {
       success: false,
       status: 500,
-      error: "Something went wrong while processing the battery reward",
+      error: "Something went wrong.",
     };
   }
 };
