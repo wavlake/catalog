@@ -572,6 +572,45 @@ export const processBatteryReward = async ({
       // Calculate the timestamp for X hours ago
       const hoursAgo = new Date(Date.now() - REWARD_WINDOW * 60 * 60 * 1000);
 
+      // **NEW: Check global hourly limit first**
+      const globalRecentRewards = await tx.battery_reward.aggregate({
+        where: {
+          created_at: {
+            gt: hoursAgo,
+          },
+        },
+        _sum: {
+          msat_amount: true,
+        },
+      });
+
+      const GLOBAL_HOURLY_LIMIT = 21000000; // msats
+      const totalGlobalMsats = globalRecentRewards._sum.msat_amount || 0;
+
+      log.info("Global hourly limit check", {
+        currentGlobalTotal: totalGlobalMsats,
+        requestedAmount: msatAmount,
+        globalLimit: GLOBAL_HOURLY_LIMIT,
+        wouldExceedGlobalLimit:
+          totalGlobalMsats + msatAmount > GLOBAL_HOURLY_LIMIT,
+        timestamp: new Date().toISOString(),
+      });
+
+      // Validate global limit within transaction
+      if (totalGlobalMsats + msatAmount > GLOBAL_HOURLY_LIMIT) {
+        log.warn("Request would exceed global hourly limit", {
+          totalGlobalMsats,
+          requestedAmount: msatAmount,
+          combinedAmount: totalGlobalMsats + msatAmount,
+          globalLimit: GLOBAL_HOURLY_LIMIT,
+          rewardWindow: REWARD_WINDOW,
+        });
+
+        throw new Error(
+          `Global hourly reward limit reached. Please try again later.`
+        );
+      }
+
       // Check if user has earned more than maxSats in the last Y hours
       const userRecentRewards = await tx.battery_reward.aggregate({
         where: {
