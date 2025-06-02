@@ -508,8 +508,7 @@ export const processBatteryReward = async ({
   ipAddress,
   msatAmount,
   lnUrl,
-  req,
-  res,
+  skipInviteCheck = false,
 }) => {
   try {
     if (!ipAddress || !msatAmount || !(userId || pubkey) || !lnUrl) {
@@ -529,18 +528,20 @@ export const processBatteryReward = async ({
     }
 
     // validate user invite status (outside transaction since it's read-only)
-    const { isInvited } = await checkUserInviteStatus({
-      firebaseUid: userId,
-      pubkey,
-      listName: INVITE_LIST,
-    });
+    if (!skipInviteCheck) {
+      const { isInvited } = await checkUserInviteStatus({
+        firebaseUid: userId,
+        pubkey,
+        listName: INVITE_LIST,
+      });
 
-    if (!isInvited) {
-      return {
-        success: false,
-        status: 400,
-        error: "User is not eligible for battery rewards",
-      };
+      if (!isInvited) {
+        return {
+          success: false,
+          status: 400,
+          error: "User is not eligible for battery rewards",
+        };
+      }
     }
 
     // Check wallet balance (outside transaction)
@@ -570,6 +571,45 @@ export const processBatteryReward = async ({
     const newReward = await prisma.$transaction(async (tx) => {
       // Calculate the timestamp for X hours ago
       const hoursAgo = new Date(Date.now() - REWARD_WINDOW * 60 * 60 * 1000);
+
+      // **NEW: Check global hourly limit first**
+      const globalRecentRewards = await tx.battery_reward.aggregate({
+        where: {
+          created_at: {
+            gt: hoursAgo,
+          },
+        },
+        _sum: {
+          msat_amount: true,
+        },
+      });
+
+      const GLOBAL_HOURLY_LIMIT = 21000000; // msats
+      const totalGlobalMsats = globalRecentRewards._sum.msat_amount || 0;
+
+      log.info("Global hourly limit check", {
+        currentGlobalTotal: totalGlobalMsats,
+        requestedAmount: msatAmount,
+        globalLimit: GLOBAL_HOURLY_LIMIT,
+        wouldExceedGlobalLimit:
+          totalGlobalMsats + msatAmount > GLOBAL_HOURLY_LIMIT,
+        timestamp: new Date().toISOString(),
+      });
+
+      // Validate global limit within transaction
+      if (totalGlobalMsats + msatAmount > GLOBAL_HOURLY_LIMIT) {
+        log.warn("Request would exceed global hourly limit", {
+          totalGlobalMsats,
+          requestedAmount: msatAmount,
+          combinedAmount: totalGlobalMsats + msatAmount,
+          globalLimit: GLOBAL_HOURLY_LIMIT,
+          rewardWindow: REWARD_WINDOW,
+        });
+
+        throw new Error(
+          `Global hourly reward limit reached. Please try again later.`
+        );
+      }
 
       // Check if user has earned more than maxSats in the last Y hours
       const userRecentRewards = await tx.battery_reward.aggregate({
