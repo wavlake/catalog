@@ -486,8 +486,7 @@ const createBatteryReward = asyncHandler<
     ipAddress,
     msatAmount,
     lnUrl,
-    req,
-    res,
+    skipInviteCheck: true,
   });
 
   res
@@ -570,8 +569,7 @@ const createBatteryNostrReward = asyncHandler<
     ipAddress,
     msatAmount,
     lnUrl,
-    req,
-    res,
+    skipInviteCheck: true,
   });
 
   res

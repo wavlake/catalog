@@ -508,8 +508,7 @@ export const processBatteryReward = async ({
   ipAddress,
   msatAmount,
   lnUrl,
-  req,
-  res,
+  skipInviteCheck = false,
 }) => {
   try {
     if (!ipAddress || !msatAmount || !(userId || pubkey) || !lnUrl) {
@@ -529,18 +528,20 @@ export const processBatteryReward = async ({
     }
 
     // validate user invite status (outside transaction since it's read-only)
-    const { isInvited } = await checkUserInviteStatus({
-      firebaseUid: userId,
-      pubkey,
-      listName: INVITE_LIST,
-    });
+    if (!skipInviteCheck) {
+      const { isInvited } = await checkUserInviteStatus({
+        firebaseUid: userId,
+        pubkey,
+        listName: INVITE_LIST,
+      });
 
-    if (!isInvited) {
-      return {
-        success: false,
-        status: 400,
-        error: "User is not eligible for battery rewards",
-      };
+      if (!isInvited) {
+        return {
+          success: false,
+          status: 400,
+          error: "User is not eligible for battery rewards",
+        };
+      }
     }
 
     // Check wallet balance (outside transaction)
