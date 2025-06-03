@@ -1,5 +1,5 @@
 import db from "./db";
-import log from "./winston";
+import log from "./logger";
 import {
   SimplePool,
   finalizeEvent,
@@ -170,7 +170,7 @@ export const publishZapReceipt = async (
     };
 
     const signedEvent = finalizeEvent(zapReceipt, WAVLAKE_SECRET);
-    logger.info('Zap receipt event:', signedEvent);
+    logger.info("Zap receipt event:", signedEvent);
 
     // Publish to all relays
     const pool = new SimplePool();

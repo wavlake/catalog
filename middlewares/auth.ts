@@ -1,4 +1,4 @@
-import log from "../library/winston";
+import log from "../library/logger";
 import { auth } from "../library/firebaseService";
 import Sentry from "@sentry/node";
 

@@ -1,4 +1,4 @@
-import log from "./winston";
+import log from "./logger";
 
 import { hexToBytes } from "@noble/hashes/utils";
 import { randomInt } from "crypto";

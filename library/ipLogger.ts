@@ -1,5 +1,5 @@
 import axios from "axios";
-import log from "./winston";
+import log from "./logger";
 
 export async function logOutboundIpAddress() {
   try {

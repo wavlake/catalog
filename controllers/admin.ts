@@ -1,5 +1,5 @@
 import prisma from "../prisma/client";
-import log from "../library/winston";
+import log from "../library/logger";
 import s3Client from "../library/s3Client";
 import cloudFrontClient from "../library/cloudFrontClient";
 import { AWS_S3_TRACK_PREFIX, AWS_S3_RAW_PREFIX } from "../library/constants";

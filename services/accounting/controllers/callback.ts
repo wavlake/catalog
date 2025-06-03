@@ -1,4 +1,4 @@
-import log from "../../../library/winston";
+import log from "../../../library/logger";
 import asyncHandler from "express-async-handler";
 import { validate } from "uuid";
 import core from "express-serve-static-core";

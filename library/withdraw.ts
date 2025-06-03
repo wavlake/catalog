@@ -1,6 +1,6 @@
 import { getUserIdFromTransactionId } from "./deposit";
 import { PaymentStatus } from "./zbd/constants";
-import log from "./winston";
+import log from "./logger";
 import db from "./db";
 
 export const handleCompletedForward = async ({

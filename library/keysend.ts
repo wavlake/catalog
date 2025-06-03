@@ -1,4 +1,4 @@
-import log from "./winston";
+import log from "./logger";
 import db from "./db";
 import { getUserName } from "./userHelper";
 import { randomUUID } from "crypto";

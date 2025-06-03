@@ -1,5 +1,5 @@
 // depositController.ts
-import log from "../../../library/winston";
+import log from "../../../library/logger";
 import asyncHandler from "express-async-handler";
 import prisma from "@prismalocal/client";
 import { getUserBalance } from "@library/userHelper";
