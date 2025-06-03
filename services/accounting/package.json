@@ -14,7 +14,6 @@
   "author": "",
   "license": "MIT",
   "dependencies": {
-    "@google-cloud/logging-winston": "^6.0.0",
     "@node-lightning/invoice": "^0.28.0",
     "@prisma/client": "^5.20.0",
     "@sentry/node": "^7.60.0",
@@ -24,7 +23,6 @@
     "loglevel": "^1.7.1",
     "nostr-tools": "^2.5.2",
     "websocket-polyfill": "^0.0.3",
-    "winston": "^3.17.0",
     "ws": "^8.18.1"
   },
   "devDependencies": {

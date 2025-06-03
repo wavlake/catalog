@@ -1,6 +1,6 @@
 import prisma from "../prisma/client";
 import db from "../library/db";
-import log from "../library/winston";
+import log from "../library/logger";
 import { randomUUID } from "crypto";
 import cloudFrontClient from "../library/cloudFrontClient";
 import s3Client from "../library/s3Client";

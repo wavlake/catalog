@@ -1,6 +1,6 @@
 import db from "./db";
 import { auth } from "./firebaseService";
-import log from "./winston";
+import log from "./logger";
 
 // Define types
 interface InviteStatus {
