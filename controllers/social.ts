@@ -204,10 +204,38 @@ const runQueries = async (pubkeys: any[] | null) => {
 ////// FUNCTIONS //////
 
 const getNpubs = async (hexList: string[]) => {
-  let npubs: string[] = [];
-  hexList.forEach(async (hex) => {
-    npubs.push(nip19.npubEncode(hex));
-  });
+  const npubs: string[] = [];
+
+  for (const hex of hexList) {
+    try {
+      // Validate hex string format
+      if (!hex || typeof hex !== "string") {
+        log.warn(`Invalid hex value: ${hex}`);
+        continue;
+      }
+
+      // Check if it's a valid hex string (only contains 0-9, a-f, A-F)
+      if (!/^[0-9a-fA-F]+$/.test(hex)) {
+        log.warn(`Invalid hex format: ${hex}`);
+        continue;
+      }
+
+      // Check if it's the correct length (64 characters for a pubkey)
+      if (hex.length !== 64) {
+        log.warn(
+          `Invalid hex length: ${hex} (length: ${hex.length}, expected: 64)`
+        );
+        continue;
+      }
+
+      const npub = nip19.npubEncode(hex);
+      npubs.push(npub);
+    } catch (error) {
+      log.error(`Failed to encode hex to npub: ${hex}`, error);
+      // Continue processing other hex values instead of failing completely
+    }
+  }
+
   return npubs;
 };
 
