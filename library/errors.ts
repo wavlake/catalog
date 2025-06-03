@@ -1,4 +1,4 @@
-import log from "./winston";
+import log from "./logger";
 import { ZBDErrorResponse } from "./zbd/responseInterfaces";
 
 export const formatError = (status: number, message: string): Error => {

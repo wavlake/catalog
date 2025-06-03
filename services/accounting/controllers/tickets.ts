@@ -1,6 +1,6 @@
 import asyncHandler from "express-async-handler";
 import core from "express-serve-static-core";
-import log from "../../../library/winston";
+import log from "../../../library/logger";
 import { validateNostrZapRequest } from "@library/zap";
 import { ZapRequest } from "@library/nostr/common";
 import prisma from "@prismalocal/client";

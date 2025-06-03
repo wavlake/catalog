@@ -1,4 +1,4 @@
-import log from "../library/winston";
+import log from "../library/logger";
 import { isFirebaseAuthorized } from "./auth";
 import { validateNostrEvent } from "./nostrAuth";
 

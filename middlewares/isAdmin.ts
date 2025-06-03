@@ -1,4 +1,4 @@
-import log from "../library/winston";
+import log from "../library/logger";
 import Sentry from "@sentry/node";
 import asyncHandler from "express-async-handler";
 import { formatError } from "../library/errors";

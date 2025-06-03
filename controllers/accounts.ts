@@ -24,7 +24,7 @@ import {
 import { TransactionType } from "../library/common";
 import asyncHandler from "express-async-handler";
 import prisma from "../prisma/client";
-import log from "../library/winston";
+import log from "../library/logger";
 import { auth } from "../library/firebaseService";
 import { validateLightningAddress } from "../library/zbd/zbdClient";
 import { urlFriendly } from "../library/format";

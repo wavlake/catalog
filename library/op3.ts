@@ -2,7 +2,7 @@ import { OP3_PREFIX, podcastNamespace, feedPath } from "./rssUtils";
 const { v5 } = require("uuid");
 import axios, { AxiosError } from "axios";
 import { getType } from "./content";
-import log from "./winston";
+import log from "./logger";
 
 // Constants
 const OP3_API = "https://op3.dev/api/1";

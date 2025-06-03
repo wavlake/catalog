@@ -1,4 +1,4 @@
-import log from "../library/winston";
+import log from "../library/logger";
 import db from "../library/db";
 import { randomUUID } from "crypto";
 import multer from "multer";

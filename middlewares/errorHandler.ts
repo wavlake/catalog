@@ -1,4 +1,4 @@
-import log from "../library/winston";
+import log from "../library/logger";
 import { NextFunction, Response, Request } from "express";
 import { Prisma } from "@prisma/client";
 import { FirebaseError } from "firebase-admin";

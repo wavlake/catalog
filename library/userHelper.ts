@@ -1,6 +1,6 @@
 import prisma from "../prisma/client";
 import db from "./db";
-import log from "./winston";
+import log from "./logger";
 import Sentry from "@sentry/node";
 import { upload_image } from "./artwork";
 import { urlFriendly } from "./format";

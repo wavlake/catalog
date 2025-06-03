@@ -1,6 +1,6 @@
 import { Decimal } from "@prisma/client/runtime/library";
 import fetch from "node-fetch";
-import log from "./winston";
+import log from "./logger";
 
 const EXCHANGE_RATE_URL =
   "https://api.coinbase.com/v2/exchange-rates?currency=USD";
