@@ -53,7 +53,12 @@ const serviceMetadata = {
 };
 
 // Current log level from environment
-const LOG_LEVEL = (process.env.LOG_LEVEL || "info").toLowerCase() as LogLevel;
+const isValidLogLevel = (level: string): level is LogLevel => {
+  return ['trace', 'debug', 'info', 'warn', 'error'].includes(level);
+}
+
+const envLogLevel = (process.env.LOG_LEVEL || 'info').toLowerCase();
+const LOG_LEVEL = isValidLogLevel(envLogLevel) ? envLogLevel : 'info' as LogLevel;
 const logLevelPriority: Record<LogLevel, number> = {
   trace: 0,
   debug: 1,
