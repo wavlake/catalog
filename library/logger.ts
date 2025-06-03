@@ -2,12 +2,38 @@
 
 type LogLevel = "trace" | "debug" | "info" | "warn" | "error";
 
+interface ErrorDetails {
+  message: string;
+  stack?: string;
+  name: string;
+}
+
+interface HttpRequestDetails {
+  requestMethod: string;
+  requestUrl: string;
+  status: number;
+  latency: string;
+  userAgent?: string;
+  remoteIp?: string;
+}
+
+interface SourceLocation {
+  file?: string;
+  line?: number;
+  function?: string;
+}
+
 interface LogEntry {
   severity: string;
   message: string;
   timestamp: string;
   labels?: Record<string, string>;
-  [key: string]: any;
+  error?: ErrorDetails;
+  httpRequest?: HttpRequestDetails;
+  additionalArgs?: any[];
+  context?: Record<string, any>;
+  "logging.googleapis.com/trace"?: string;
+  "logging.googleapis.com/sourceLocation"?: SourceLocation;
 }
 
 // Map log levels to Google Cloud Logging severities
@@ -41,12 +67,33 @@ class SimpleLogger {
     return logLevelPriority[level] >= logLevelPriority[LOG_LEVEL];
   }
 
-  private log(level: LogLevel, message: any, ...args: any[]) {
+  private extractTraceId(req?: any): string | undefined {
+    if (!req?.headers) return undefined;
+
+    const traceHeader = req.headers["x-cloud-trace-context"];
+    if (traceHeader && process.env.GOOGLE_CLOUD_PROJECT) {
+      const traceId = traceHeader.split("/")[0];
+      return `projects/${process.env.GOOGLE_CLOUD_PROJECT}/traces/${traceId}`;
+    }
+    return undefined;
+  }
+
+  private log(
+    level: LogLevel,
+    message: any,
+    context?: Record<string, any> | any,
+    req?: any
+  ) {
     if (!this.shouldLog(level)) return;
 
     // For development, use console methods
     if (process.env.NODE_ENV === "development") {
-      console[level === "trace" ? "debug" : level](message, ...args);
+      const consoleMethod = level === "trace" ? "debug" : level;
+      if (context) {
+        console[consoleMethod](message, context);
+      } else {
+        console[consoleMethod](message);
+      }
       return;
     }
 
@@ -58,17 +105,15 @@ class SimpleLogger {
       labels: serviceMetadata,
     };
 
-    // Handle additional arguments
-    if (args.length > 0) {
-      if (args[0] && typeof args[0] === "object" && !Array.isArray(args[0])) {
-        // Merge object arguments
-        Object.assign(logEntry, args[0]);
-        if (args.length > 1) {
-          logEntry.additionalArgs = args.slice(1);
-        }
-      } else {
-        logEntry.additionalArgs = args;
-      }
+    // Add trace ID if available
+    const traceId = this.extractTraceId(req);
+    if (traceId) {
+      logEntry["logging.googleapis.com/trace"] = traceId;
+    }
+
+    // Add context if provided
+    if (context) {
+      logEntry.context = context;
     }
 
     // Handle errors specially
@@ -78,12 +123,6 @@ class SimpleLogger {
         message: message.message,
         stack: message.stack,
         name: message.name,
-      };
-    } else if (args[0] instanceof Error) {
-      logEntry.error = {
-        message: args[0].message,
-        stack: args[0].stack,
-        name: args[0].name,
       };
     }
 
@@ -96,51 +135,133 @@ class SimpleLogger {
     }
   }
 
-  trace(message: any, ...args: any[]) {
-    this.log("trace", message, ...args);
+  trace(message: any, context?: Record<string, any> | any, req?: any) {
+    this.log("trace", message, context, req);
   }
 
-  debug(message: any, ...args: any[]) {
-    this.log("debug", message, ...args);
+  debug(message: any, context?: Record<string, any> | any, req?: any) {
+    this.log("debug", message, context, req);
   }
 
-  info(message: any, ...args: any[]) {
-    this.log("info", message, ...args);
+  info(message: any, context?: Record<string, any> | any, req?: any) {
+    this.log("info", message, context, req);
   }
 
-  warn(message: any, ...args: any[]) {
-    this.log("warn", message, ...args);
+  warn(message: any, context?: Record<string, any> | any, req?: any) {
+    this.log("warn", message, context, req);
   }
 
-  error(message: any, ...args: any[]) {
-    this.log("error", message, ...args);
+  error(message: any, context?: Record<string, any> | any, req?: any) {
+    this.log("error", message, context, req);
   }
 
   // Helper for HTTP requests (useful for Cloud Run)
   httpRequest(req: any, res: any, latency: number) {
-    this.info("HTTP Request", {
+    const logEntry: LogEntry = {
+      severity: "INFO",
+      message: "HTTP Request",
+      timestamp: new Date().toISOString(),
+      labels: serviceMetadata,
       httpRequest: {
         requestMethod: req.method,
         requestUrl: req.url,
         status: res.statusCode,
         latency: `${latency}ms`,
-        userAgent: req.headers["user-agent"],
+        userAgent: req.headers?.["user-agent"],
         remoteIp:
-          req.headers["x-forwarded-for"] || req.connection?.remoteAddress,
+          req.headers?.["x-forwarded-for"] || req.connection?.remoteAddress,
       },
-    });
+    };
+
+    // Add trace ID for request correlation
+    const traceId = this.extractTraceId(req);
+    if (traceId) {
+      logEntry["logging.googleapis.com/trace"] = traceId;
+    }
+
+    const output = JSON.stringify(logEntry);
+    process.stdout.write(output + "\n");
   }
 
-  // Helper for structured errors
-  errorWithContext(message: string, error: Error, context?: any) {
-    this.error(message, {
+  // Helper for structured errors with better typing
+  errorWithContext(
+    message: string,
+    error: Error,
+    context?: Record<string, any>,
+    req?: any
+  ) {
+    const logEntry: LogEntry = {
+      severity: "ERROR",
+      message,
+      timestamp: new Date().toISOString(),
+      labels: serviceMetadata,
       error: {
         message: error.message,
         stack: error.stack,
         name: error.name,
       },
-      ...context,
-    });
+    };
+
+    // Add trace ID if available
+    const traceId = this.extractTraceId(req);
+    if (traceId) {
+      logEntry["logging.googleapis.com/trace"] = traceId;
+    }
+
+    // Add context if provided
+    if (context) {
+      logEntry.context = context;
+    }
+
+    // Add source location for errors (basic implementation)
+    if (error.stack) {
+      const stackLines = error.stack.split("\n");
+      const callerLine = stackLines[1]; // First line after error message
+      if (callerLine) {
+        const match = callerLine.match(/at\s+(.+?)\s+\((.+):(\d+):(\d+)\)/);
+        if (match) {
+          logEntry["logging.googleapis.com/sourceLocation"] = {
+            file: match[2],
+            line: parseInt(match[3]),
+            function: match[1],
+          };
+        }
+      }
+    }
+
+    const output = JSON.stringify(logEntry);
+    process.stderr.write(output + "\n");
+  }
+
+  // Utility method to create a child logger with persistent context
+  child(context: Record<string, any>) {
+    return {
+      trace: (
+        message: any,
+        additionalContext?: Record<string, any>,
+        req?: any
+      ) => this.trace(message, { ...context, ...additionalContext }, req),
+      debug: (
+        message: any,
+        additionalContext?: Record<string, any>,
+        req?: any
+      ) => this.debug(message, { ...context, ...additionalContext }, req),
+      info: (
+        message: any,
+        additionalContext?: Record<string, any>,
+        req?: any
+      ) => this.info(message, { ...context, ...additionalContext }, req),
+      warn: (
+        message: any,
+        additionalContext?: Record<string, any>,
+        req?: any
+      ) => this.warn(message, { ...context, ...additionalContext }, req),
+      error: (
+        message: any,
+        additionalContext?: Record<string, any>,
+        req?: any
+      ) => this.error(message, { ...context, ...additionalContext }, req),
+    };
   }
 }
 
