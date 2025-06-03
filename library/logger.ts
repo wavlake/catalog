@@ -52,7 +52,6 @@ const serviceMetadata = {
   configuration: process.env.K_CONFIGURATION || "unknown-configuration",
 };
 
-// Current log level from environment
 const isValidLogLevel = (level: string): level is LogLevel => {
   return ['trace', 'debug', 'info', 'warn', 'error'].includes(level);
 }
