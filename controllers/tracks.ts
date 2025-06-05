@@ -339,13 +339,14 @@ const get_random_tracks_by_genre_id = asyncHandler(async (req, res, next) => {
   const numberOfTracks = trackCount.count as number;
 
   // sample size can range from 0 - 100%
-  const sampleSize =
-    // if we have more than 100 tracks, we can take a sample
+  const sampleSize = Math.min(
+    100, // Cap at 100%
     numberOfTracks > sampleSizeTarget
       ? // calculate the sample size % based on the target and buffer
         sampleSizeBuffer + (100 * sampleSizeTarget) / numberOfTracks
       : // return 100% of the tracks since there arent enough to meet the target
-        100;
+        100
+  );
 
   db.knex(db.knex.raw(`track TABLESAMPLE BERNOULLI(${sampleSize})`))
     .join("album", "album.id", "=", "track.album_id")
