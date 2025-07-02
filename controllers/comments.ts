@@ -81,9 +81,9 @@ const update_event_id = asyncHandler(async (req, res, next) => {
     .knex("zap_request")
     .select(
       db.knex.raw(
-        "split_part(payment_hash, '-', 2)::int as external_receive_id"
+        "split_part(payment_hash, '-', 2)::int as external_receive_id",
       ),
-      "event_id"
+      "event_id",
     )
     .where("event_id", "=", zapRequestEventId)
     .first();
@@ -111,6 +111,11 @@ const update_event_id = asyncHandler(async (req, res, next) => {
     .knex("comment")
     .where("comment.tx_id", "=", tx.external_id)
     .first();
+
+  if (!comment) {
+    res.status(404).json({ success: false, error: "Comment not found" });
+    return;
+  }
 
   // Check if user is authorized to update comment
   if (pubkey !== comment.user_id) {
