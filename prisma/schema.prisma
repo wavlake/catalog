@@ -277,6 +277,7 @@ model User {
   user_pubkey         UserPubkey[]
   user_verification   UserVerification?
   wallet_connection   WalletConnection[]
+  ramp_widget_session RampWidgetSession[]
 
   @@index([profileUrl], map: "idx_profile_url")
   @@map("user")
@@ -845,4 +846,26 @@ view EpisodeInfo {
   compressorError Boolean?
 
   @@map("episode_info")
+}
+
+model RampWidgetSession {
+  id           String    @id @unique @db.VarChar(255)
+  userId       String    @map("user_id") @db.VarChar(64)
+  email        String    @db.VarChar(255)
+  amount       Decimal?  @db.Decimal(16, 8)
+  currency     String?   @db.VarChar(10)
+  referenceId  String    @unique @map("reference_id") @db.VarChar(255)
+  sessionToken String    @map("session_token") @db.VarChar(255)
+  widgetUrl    String    @map("widget_url") @db.Text
+  status       String    @default("pending") @db.VarChar(50)
+  expiresAt    DateTime  @map("expires_at") @db.Timestamptz(6)
+  callbackData Json?     @map("callback_data")
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime  @default(now()) @map("updated_at") @db.Timestamptz(6)
+  user         User      @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "ramp_widget_session_user_id_foreign")
+
+  @@index([userId], map: "idx_ramp_widget_session_user_id")
+  @@index([referenceId], map: "idx_ramp_widget_session_reference_id")
+  @@index([status], map: "idx_ramp_widget_session_status")
+  @@map("ramp_widget_session")
 }

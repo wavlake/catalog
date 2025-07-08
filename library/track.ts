@@ -24,7 +24,7 @@ export const getShufflePlaylistTracks = async (limit?: number) => {
  */
 export const getRandomTracks = async (
   limit = 100,
-  randomSampleSize = process.env.RANDOM_SAMPLE_SIZE ?? 10
+  randomSampleSize = process.env.RANDOM_SAMPLE_SIZE ?? 10,
 ) => {
   if (isNaN(limit)) {
     throw new Error("Limit must be an integer");
@@ -44,7 +44,7 @@ export const getRandomTracks = async (
       "album.color_info as colorInfo",
       "album.title as albumTitle",
       "track.live_url as liveUrl",
-      "track.duration as duration"
+      "track.duration as duration",
     )
     .from(db.knex.raw(`track TABLESAMPLE BERNOULLI(${randomSampleSize})`))
     .join("amp", "amp.track_id", "=", "track.id")
@@ -57,6 +57,7 @@ export const getRandomTracks = async (
     .andWhere("album.published_at", "<", new Date())
     .andWhere("album.is_draft", "=", false)
     .andWhere("track.duration", "is not", null)
+    .orderBy("track.id") // Add ORDER BY for consistent results
     .limit(limit)
     .catch((err) => {
       log.error(`Error querying track table for random: ${err}`);
@@ -86,7 +87,7 @@ export const getNewTracks = async (limit?: number): Promise<any[]> => {
     .select(
       "track.id as id",
       "track.album_id as albumId",
-      "artist.id as artistId"
+      "artist.id as artistId",
     )
     .join("artist", "track.artist_id", "=", "artist.id")
     .join("album", "album.id", "=", "track.album_id")
@@ -94,8 +95,8 @@ export const getNewTracks = async (limit?: number): Promise<any[]> => {
     .rank("ranking", "track.id", "track.album_id")
     .select(
       db.knex.raw(
-        `CASE WHEN promos.id IS NOT NULL then true ELSE false END as "hasPromo"`
-      )
+        `CASE WHEN promos.id IS NOT NULL then true ELSE false END as "hasPromo"`,
+      ),
     )
     .min("track.title as title")
     .min("artist.name as artist")
@@ -104,8 +105,8 @@ export const getNewTracks = async (limit?: number): Promise<any[]> => {
     .min("album.artwork_url as artworkUrl")
     .select(
       db.knex.raw(
-        `COALESCE((ARRAY_AGG(album.color_info) FILTER (WHERE album.color_info IS NOT NULL))[1], NULL) as "colorInfo"`
-      )
+        `COALESCE((ARRAY_AGG(album.color_info) FILTER (WHERE album.color_info IS NOT NULL))[1], NULL) as "colorInfo"`,
+      ),
     )
     .min("album.title as albumTitle")
     .min("track.live_url as liveUrl")
@@ -181,7 +182,7 @@ export const getUserRecentTracks = async (pubkey: string): Promise<any[]> => {
 
   // Create a track ID map for efficient ordering later
   const trackIdToOrder = new Map(
-    userTracks.map((track, index) => [track.trackId, index])
+    userTracks.map((track, index) => [track.trackId, index]),
   );
   return (
     tracks
@@ -196,7 +197,7 @@ export const getUserRecentTracks = async (pubkey: string): Promise<any[]> => {
       // order by amp createdAt desc
       .sort(
         (a, b) =>
-          (trackIdToOrder.get(a.id) ?? 0) - (trackIdToOrder.get(b.id) ?? 0)
+          (trackIdToOrder.get(a.id) ?? 0) - (trackIdToOrder.get(b.id) ?? 0),
       )
       // filter out tracks that aren't defined
       .filter((track) => Boolean(track))

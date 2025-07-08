@@ -66,6 +66,7 @@ import withdraw from "./routes/withdraw";
 import callback from "./routes/callback";
 import promo from "./routes/promo";
 import tickets from "./routes/tickets";
+import rampWidget from "./routes/ramp-widget";
 
 app.use(cors(corsOptions));
 
@@ -77,6 +78,7 @@ app.use("/v1/withdraw", withdraw);
 app.use("/v1/callback", callback);
 app.use("/v1/promo", promo);
 app.use("/v1/tickets", tickets);
+app.use("/v1/ramp-widget", rampWidget);
 
 // The error handler must be registered before any other error middleware and after all controllers
 app.use(Sentry.Handlers.errorHandler());
