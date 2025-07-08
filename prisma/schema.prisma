@@ -852,7 +852,7 @@ model RampWidgetSession {
   id           String    @id @unique @db.VarChar(255)
   userId       String    @map("user_id") @db.VarChar(64)
   email        String    @db.VarChar(255)
-  amount       Float?
+  amount       Decimal?  @db.Decimal(16, 8)
   currency     String?   @db.VarChar(10)
   referenceId  String    @unique @map("reference_id") @db.VarChar(255)
   sessionToken String    @map("session_token") @db.VarChar(255)

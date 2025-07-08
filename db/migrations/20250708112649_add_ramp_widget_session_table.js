@@ -9,7 +9,7 @@ exports.up = function (knex) {
       .notNullable()
       .index("idx_ramp_widget_session_user_id");
     table.string("email", 255).notNullable();
-    table.double("amount").nullable();
+    table.decimal("amount", 16, 8).nullable();
     table.string("currency", 10).nullable();
     table
       .string("reference_id", 255)
@@ -38,9 +38,6 @@ exports.up = function (knex) {
   });
 };
 
-/**
- * Rollback migration
- */
 exports.down = function (knex) {
   return knex.schema.dropTable("ramp_widget_session");
 };

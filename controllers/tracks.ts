@@ -342,10 +342,10 @@ const get_random_tracks_by_genre_id = asyncHandler(async (req, res, next) => {
   const sampleSize = Math.min(
     100, // Cap at 100%
     numberOfTracks > sampleSizeTarget
-      ? // calculate the sample size % based on the target and buffer
-        sampleSizeBuffer + (100 * sampleSizeTarget) / numberOfTracks
+      ? // Use more gradual scaling for better efficiency
+        Math.max(sampleSizeBuffer, (100 * sampleSizeTarget) / numberOfTracks)
       : // return 100% of the tracks since there arent enough to meet the target
-        100
+        100,
   );
 
   db.knex(db.knex.raw(`track TABLESAMPLE BERNOULLI(${sampleSize})`))
@@ -371,7 +371,7 @@ const get_random_tracks_by_genre_id = asyncHandler(async (req, res, next) => {
       "album.title as albumTitle",
       "track.live_url as liveUrl",
       "track.duration as duration",
-      "artist.id as artistId"
+      "artist.id as artistId",
     )
     .limit(100)
     .then((data) => {
@@ -446,7 +446,7 @@ const delete_track = asyncHandler(async (req, res, next) => {
   // Clean up S3 and CDN
   s3Client.deleteFromS3(`${AWS_S3_TRACK_PREFIX}/${request.trackId}.mp3`);
   cloudFrontClient.invalidateCdn(
-    `${AWS_S3_TRACK_PREFIX}/${request.trackId}.mp3`
+    `${AWS_S3_TRACK_PREFIX}/${request.trackId}.mp3`,
   );
 
   res.send({ success: true, data: deleteTrackData[0] });
@@ -541,7 +541,7 @@ const create_track = asyncHandler(async (req, res, next) => {
         is_draft: true,
         is_explicit: request.isExplicit,
       },
-      ["*"]
+      ["*"],
     )
     .then(async (data) => {
       const updatedAt = new Date();

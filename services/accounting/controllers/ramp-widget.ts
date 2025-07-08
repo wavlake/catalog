@@ -5,6 +5,7 @@ import prisma from "@prismalocal/client";
 import { createRampWidget } from "@library/zbd/zbdClient";
 import { createApiErrorResponse } from "@library/errors";
 import { randomUUID } from "crypto";
+import { encryptSessionToken, decryptSessionToken } from "@library/encryption";
 
 /**
  * Create a new ZBD Pay ramp widget session
@@ -118,7 +119,7 @@ const createRampSession = asyncHandler(async (req, res: any, next) => {
     const updatedSession = await prisma.rampWidgetSession.update({
       where: { id: sessionId },
       data: {
-        sessionToken: zbdResponse.data.session_token,
+        sessionToken: encryptSessionToken(zbdResponse.data.session_token),
         widgetUrl: zbdResponse.data.widget_url,
         expiresAt: new Date(zbdResponse.data.expires_at),
       },
@@ -134,7 +135,7 @@ const createRampSession = asyncHandler(async (req, res: any, next) => {
       success: true,
       data: {
         sessionId: sessionId,
-        sessionToken: zbdResponse.data.session_token,
+        sessionToken: zbdResponse.data.session_token, // Return original token to client
         widgetUrl: zbdResponse.data.widget_url,
         expiresAt: zbdResponse.data.expires_at,
       },
@@ -192,12 +193,18 @@ const getRampSession = asyncHandler(async (req, res: any, next) => {
     const isExpired = new Date() > session.expiresAt;
     const status = isExpired ? "expired" : session.status;
 
-    // Update status to expired if needed
+    // Update status to expired asynchronously if needed
     if (isExpired && session.status !== "expired") {
-      await prisma.rampWidgetSession.update({
-        where: { id: sessionId },
-        data: { status: "expired" },
-      });
+      prisma.rampWidgetSession
+        .update({
+          where: { id: sessionId },
+          data: { status: "expired" },
+        })
+        .catch((error) => {
+          log.error(
+            `Failed to update session expiry status for ${sessionId}: ${error.message}`,
+          );
+        });
     }
 
     return res.status(200).json({
