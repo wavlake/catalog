@@ -188,7 +188,7 @@ CREATE TABLE ramp_widget_session (
   id VARCHAR(255) PRIMARY KEY,
   user_id VARCHAR(64) NOT NULL,
   email VARCHAR(255) NOT NULL,
-  amount DOUBLE PRECISION,
+  amount NUMERIC(16,8),
   currency VARCHAR(10),
   reference_id VARCHAR(255) UNIQUE NOT NULL,
   session_token VARCHAR(255) NOT NULL,
