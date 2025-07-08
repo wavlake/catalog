@@ -25,6 +25,17 @@ export interface CommonDataFields {
   status: PaymentStatus | ChargeStatus;
 }
 
+// Ramp widget types
+export interface RampWidgetData {
+  session_token: string;
+  widget_url: string;
+  expires_at: string;
+}
+
+export type ZBDRampWidgetResponse =
+  | ZBDSuccessResponse<RampWidgetData>
+  | ZBDErrorResponse;
+
 // Invoice types
 export interface InvoiceBasic {
   request: string;
