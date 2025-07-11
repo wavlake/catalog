@@ -17,7 +17,7 @@ export const handleCompletedForward = async ({
   preimage: string;
 }): Promise<boolean> => {
   log.info(
-    `Received forward callback for ${externalPaymentId}, status: ${status}`
+    `Received forward callback for ${externalPaymentId}, status: ${status}`,
   );
   const trx = await db.knex.transaction();
   return (
@@ -49,14 +49,27 @@ export const handleCompletedForward = async ({
         }
       })
       .then(() => {
-        // Store payment details
-        return trx("forward_detail").insert({
-          external_payment_id: externalPaymentId,
-          msat_amount: msatAmount,
-          fee_msat: fee,
-          success: status === PaymentStatus.Completed,
-          preimage: preimage,
-        });
+        // Check if forward_detail record already exists to prevent duplicates
+        return trx("forward_detail")
+          .where({ external_payment_id: externalPaymentId })
+          .first()
+          .then((existingRecord) => {
+            if (existingRecord) {
+              log.warn(
+                `Forward detail already exists for ${externalPaymentId}, skipping insert`,
+              );
+              return existingRecord;
+            }
+
+            // Store payment details
+            return trx("forward_detail").insert({
+              external_payment_id: externalPaymentId,
+              msat_amount: msatAmount,
+              fee_msat: fee,
+              success: status === PaymentStatus.Completed,
+              preimage: preimage,
+            });
+          });
       })
       .then(trx.commit)
       .then(() => {
@@ -65,7 +78,7 @@ export const handleCompletedForward = async ({
       })
       .catch((err) => {
         log.error(
-          `Error updating forward table on handleCompletedForward: ${err}`
+          `Error updating forward table on handleCompletedForward: ${err}`,
         );
         return false;
       })
@@ -110,7 +123,7 @@ export const handleCompletedWithdrawal = async ({
   const isPending = await checkWithdrawalStatus(transactionId);
   if (!isPending) {
     log.info(
-      `Withdrawal already processed for ${transactionId}, skipping update.`
+      `Withdrawal already processed for ${transactionId}, skipping update.`,
     );
     return true;
   }
@@ -138,13 +151,13 @@ export const handleCompletedWithdrawal = async ({
       .then(trx.commit)
       .then(() => {
         log.info(
-          `Successfully logged withdrawal of ${msatAmount} for ${userId}`
+          `Successfully logged withdrawal of ${msatAmount} for ${userId}`,
         );
         return true;
       })
       .catch((err) => {
         log.error(
-          `Error updating transaction table on handleCompletedWithdrawal: ${err}`
+          `Error updating transaction table on handleCompletedWithdrawal: ${err}`,
         );
         return false;
       });
@@ -163,7 +176,7 @@ export const handleCompletedWithdrawal = async ({
       })
       .catch((err) => {
         log.error(
-          `Error updating transaction table on handleCompletedWithdrawal: ${err}`
+          `Error updating transaction table on handleCompletedWithdrawal: ${err}`,
         );
         return false;
       });

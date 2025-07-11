@@ -594,7 +594,7 @@ model Forward {
 
 model ForwardDetail {
   id                Int       @id @default(autoincrement())
-  externalPaymentId String    @map("external_payment_id")
+  externalPaymentId String    @unique(map: "forward_detail_external_payment_id_unique") @map("external_payment_id")
   msatAmount        Int       @map("msat_amount")
   feeMsat           Int       @map("fee_msat")
   preimage          String

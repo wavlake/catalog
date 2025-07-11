@@ -109,7 +109,7 @@ const handlePayments = async (groupedForwards: groupedForwards) => {
   ] of Object.entries(groupedForwards)) {
     const remainderMsats = msatAmount % 1000;
     const amountToSend = msatAmount - remainderMsats;
-    const internalId = `forward-${ids[0]}`;
+    const internalId = `forward-${ids[0]}-${Date.now()}`;
     if (!lightningAddress) {
       continue;
     }
@@ -124,11 +124,11 @@ const handlePayments = async (groupedForwards: groupedForwards) => {
       isOldEnoughAndMeetsMinimum
     ) {
       log.info(
-        `Processing payment for lightning address: ${lightningAddress} with msat amount: ${amountToSend}`
+        `Processing payment for lightning address: ${lightningAddress} with msat amount: ${amountToSend}`,
       );
       // Add sleep to avoid rate limiting
       await new Promise((resolve) =>
-        setTimeout(resolve, TIME_BETWEEN_REQUESTS)
+        setTimeout(resolve, TIME_BETWEEN_REQUESTS),
       );
       // Send payment request to ZBD
       const request: LightningAddressPaymentRequest = {
@@ -178,21 +178,38 @@ const handlePayments = async (groupedForwards: groupedForwards) => {
           });
         }
       } else {
+        const isTimeoutError =
+          response.message && response.message.includes("timeout");
         log.error(
-          `Error making payment request for forward: ${response.message}`
+          `Error making payment request for forward: ${response.message}${isTimeoutError ? " (TIMEOUT - payment may have succeeded)" : ""}`,
         );
-        await prisma.forward.updateMany({
-          where: {
-            id: { in: ids },
-          },
-          data: {
-            attemptCount: {
-              increment: 1,
+
+        // For timeout errors, mark as in_flight=true to trigger reconciliation
+        // For other errors, increment attempt count and mark as failed
+        if (isTimeoutError) {
+          await prisma.forward.updateMany({
+            where: {
+              id: { in: ids },
             },
-            inFlight: false,
-            error: response.message,
-          },
-        });
+            data: {
+              inFlight: true, // Keep in_flight=true for timeout, reconciliation will handle it
+              error: `${response.message} - marked for reconciliation`,
+            },
+          });
+        } else {
+          await prisma.forward.updateMany({
+            where: {
+              id: { in: ids },
+            },
+            data: {
+              attemptCount: {
+                increment: 1,
+              },
+              inFlight: false,
+              error: response.message,
+            },
+          });
+        }
       }
       // DONE
     }
@@ -204,17 +221,21 @@ const handleReconciliation = async (uniqueExternalPaymentIds: string[]) => {
   for (const externalPaymentId of uniqueExternalPaymentIds) {
     // Add sleep to avoid rate limiting
     await new Promise((resolve) => setTimeout(resolve, TIME_BETWEEN_REQUESTS));
+    log.info(`Reconciling payment status for ${externalPaymentId}`);
+
     // Check the status of the payment with ZBD
     const response = await getPaymentStatus(externalPaymentId);
     if (response.success === false) {
       log.error(
-        `Error checking payment status for ${externalPaymentId}: ${response.message}`
+        `Error checking payment status for ${externalPaymentId}: ${response.message}`,
       );
       continue;
     }
 
     // If the payment is completed, update the forward record to per status
     const { id, status, amount, fee, preimage } = response.data;
+    log.info(`Payment ${id} status: ${status}, amount: ${amount}, fee: ${fee}`);
+
     await handleCompletedForward({
       externalPaymentId: id,
       status: status as PaymentStatus,
