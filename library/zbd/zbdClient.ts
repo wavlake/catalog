@@ -24,11 +24,11 @@ const accountingCallbackUrl = `${process.env.ACCOUNTING_CALLBACK_URL}`;
 const client = axios.create({
   baseURL: "https://api.zebedee.io/v0",
   headers: { apikey: zbdApiKey },
-  timeout: 10000, // Add reasonable timeout
+  timeout: 30000, // Increased timeout for payment processing
 });
 
 export async function getPaymentStatus(
-  paymentId: string
+  paymentId: string,
 ): Promise<ZBDSendPaymentResponse> {
   try {
     const res = await client.get(`/payments/${paymentId}`);
@@ -52,7 +52,7 @@ export async function getProductionIps(): Promise<
 export async function isSupportedRegion(ipAddress: string): Promise<boolean> {
   try {
     const res = await client.get<ZBDIsSupportedRegionResponse>(
-      `/is-supported-region/${ipAddress}`
+      `/is-supported-region/${ipAddress}`,
     );
 
     // Check if response is successful and has expected format
@@ -63,8 +63,8 @@ export async function isSupportedRegion(ipAddress: string): Promise<boolean> {
 
     log.warn(
       `Unexpected response format from is-supported-region: ${JSON.stringify(
-        res.data
-      )}`
+        res.data,
+      )}`,
     );
     return false;
   } catch (err) {
@@ -74,7 +74,7 @@ export async function isSupportedRegion(ipAddress: string): Promise<boolean> {
 }
 
 export async function sendKeysend(
-  request: SendKeysendRequest
+  request: SendKeysendRequest,
 ): Promise<ZBDSendKeysendPaymentResponse> {
   try {
     const res = await client.post<ZBDSendKeysendPaymentResponse>(
@@ -82,7 +82,7 @@ export async function sendKeysend(
       {
         callbackUrl: `${accountingCallbackUrl}/send/keysend`,
         ...request,
-      }
+      },
     );
 
     if (res.data.success) {
@@ -96,7 +96,7 @@ export async function sendKeysend(
 }
 
 export async function createCharge(
-  request: CreateInvoiceRequest
+  request: CreateInvoiceRequest,
 ): Promise<ZBDCreateChargeLightningResponse> {
   try {
     const res = await client.post(`/charges`, {
@@ -110,7 +110,7 @@ export async function createCharge(
 }
 
 export async function getCharge(
-  paymentId: string
+  paymentId: string,
 ): Promise<ZBDGetChargeResponse> {
   try {
     const res = await client.get(`/charges/${paymentId}`);
@@ -121,7 +121,7 @@ export async function getCharge(
 }
 
 export async function sendPayment(
-  request: SendPaymentRequest
+  request: SendPaymentRequest,
 ): Promise<ZBDSendPaymentResponse> {
   try {
     const res = await client.post(`/payments`, {
@@ -135,7 +135,7 @@ export async function sendPayment(
 }
 
 export async function payToLightningAddress(
-  request: LightningAddressPaymentRequest
+  request: LightningAddressPaymentRequest,
 ): Promise<ZBDSendPaymentResponse> {
   try {
     const res = await client.post(`/ln-address/send-payment`, {
@@ -146,13 +146,13 @@ export async function payToLightningAddress(
   } catch (err) {
     return handleZbdApiError(
       err,
-      `payToLightningAddress(${JSON.stringify(request)})`
+      `payToLightningAddress(${JSON.stringify(request)})`,
     );
   }
 }
 
 export async function validateLightningAddress(
-  lightningAddress: string
+  lightningAddress: string,
 ): Promise<boolean> {
   try {
     const res = await client.get(`/ln-address/validate/${lightningAddress}`);
@@ -161,8 +161,8 @@ export async function validateLightningAddress(
     }
     log.warn(
       `Unexpected response format from validate-lightning-address: ${JSON.stringify(
-        res.data
-      )}`
+        res.data,
+      )}`,
     );
     return false;
   } catch (err) {
