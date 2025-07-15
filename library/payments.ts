@@ -22,16 +22,18 @@ async function checkUserHasPendingTx(userId: string): Promise<boolean> {
     })
     .catch((err) => {
       log.info(
-        `Error in checkUserHasPendingTx querying transaction table: ${err}`
+        `Error in checkUserHasPendingTx querying transaction table: ${err}`,
       );
       return false;
     });
 }
 
+// DEPRECATED: This function is replaced by atomic payment record creation
+// in initiatePaymentAtomic to prevent race conditions
 async function createPaymentRecord(
   userId: string,
   invoice: string,
-  valueMsat: number
+  valueMsat: number,
 ): Promise<number> {
   const userBalance = await getUserBalance(userId);
   return db
@@ -45,12 +47,12 @@ async function createPaymentRecord(
         withdraw: true,
         is_pending: true,
       },
-      ["id"]
+      ["id"],
     )
     .then((data) => {
       if (!data[0]?.id) {
         log.error(
-          `Error inserting new payment record into transaction table: ${data}`
+          `Error inserting new payment record into transaction table: ${data}`,
         );
         return null;
       }
@@ -58,7 +60,7 @@ async function createPaymentRecord(
     })
     .catch((err) => {
       log.info(
-        `Error inserting new payment record into transaction table: ${err}`
+        `Error inserting new payment record into transaction table: ${err}`,
       );
       return null;
     });
@@ -69,13 +71,13 @@ async function handleCompletedPayment(
   userId: string,
   msatAmount: number,
   paymentRecordId: number,
-  paymentData: ZBDSendPaymentResponse
+  paymentData: ZBDSendPaymentResponse,
 ) {
   if (paymentData.success === false) {
     log.error(
       `handleCompletedPayment called with unsuccessful paymentData: ${JSON.stringify(
-        paymentData
-      )}`
+        paymentData,
+      )}`,
     );
     throw new Error(paymentData.message);
   }
@@ -86,10 +88,10 @@ async function handleCompletedPayment(
   let substituteFeeAmount;
   if (parseInt(userBalance) < totalAmount) {
     log.info(
-      `Total transaction amount exceeds user balance for ${userId} with ${userBalance} msats`
+      `Total transaction amount exceeds user balance for ${userId} with ${userBalance} msats`,
     );
     log.info(
-      `Transaction total: ${msatAmount} msats + ${paymentData.data.fee} msats`
+      `Transaction total: ${msatAmount} msats + ${paymentData.data.fee} msats`,
     );
     substituteFeeAmount = Math.abs(parseInt(userBalance) - totalAmount);
   }
@@ -136,7 +138,7 @@ async function handleCompletedPayment(
     })
     .catch((err) => {
       log.error(
-        `Error updating transaction table on handleCompletedPayment: ${err}`
+        `Error updating transaction table on handleCompletedPayment: ${err}`,
       );
       return res
         ? res.status(500).send("Payment succeeded but update failed")
@@ -148,7 +150,7 @@ async function handleFailedPayment(
   res: any, // TODO: Use express response type
   userId: string,
   paymentRecordId: number,
-  paymentData: ZBDSendPaymentResponse
+  paymentData: ZBDSendPaymentResponse,
 ) {
   const trx = await db.knex.transaction();
   // Update transaction table and user status
@@ -174,7 +176,7 @@ async function handleFailedPayment(
     })
     .catch((err) => {
       log.error(
-        `Error updating transaction table on handleFailedPayment: ${err}`
+        `Error updating transaction table on handleFailedPayment: ${err}`,
       );
       return res
         ? res.status(500).send("Update failed on failed payment")
@@ -200,7 +202,7 @@ export const runPaymentChecks = async (
   userId: string,
   invoice: string,
   msatAmount: number,
-  msatMaxFee: number
+  msatMaxFee: number,
 ): Promise<{
   success: boolean;
   error?: { message: string };
@@ -208,7 +210,7 @@ export const runPaymentChecks = async (
   const userHasPending = await checkUserHasPendingTx(userId);
   if (userHasPending) {
     log.info(
-      `Withdraw request canceled for user: ${userId} another tx is pending`
+      `Withdraw request canceled for user: ${userId} another tx is pending`,
     );
     return {
       success: false,
@@ -222,7 +224,7 @@ export const runPaymentChecks = async (
     const isDupe = await isDuplicatePayRequest(invoice);
     if (isDupe) {
       log.info(
-        `Withdraw request canceled for user: ${userId} duplicate payment request`
+        `Withdraw request canceled for user: ${userId} duplicate payment request`,
       );
       return {
         success: false,
@@ -236,7 +238,7 @@ export const runPaymentChecks = async (
   const totalAmount = msatAmount + msatMaxFee;
   const userHasSufficientSats = await checkUserHasSufficientSats(
     userId,
-    totalAmount
+    totalAmount,
   );
 
   if (!userHasSufficientSats) {
@@ -251,25 +253,187 @@ export const runPaymentChecks = async (
   return { success: true };
 };
 
+/**
+ * Atomically validates user balance and locks user to prevent race conditions
+ * This replaces the separate balance check and user locking operations
+ */
+export const initiatePaymentAtomic = async (
+  userId: string,
+  invoice: string,
+  msatAmount: number,
+  msatMaxFee: number,
+): Promise<{
+  success: boolean;
+  paymentRecordId?: number;
+  error?: { message: string };
+}> => {
+  const totalAmount = msatAmount + msatMaxFee;
+
+  const trx = await db.knex.transaction();
+  try {
+    // Check for duplicate payment request first (outside of user lock)
+    if (invoice) {
+      const isDupe = await trx("transaction")
+        .select("payment_request")
+        .where("payment_request", "=", invoice)
+        .first();
+
+      if (isDupe) {
+        log.info(
+          `Withdraw request canceled for user: ${userId} duplicate payment request`,
+        );
+        await trx.rollback();
+        return {
+          success: false,
+          error: {
+            message: "Unable to process payment, duplicate payment request",
+          },
+        };
+      }
+    }
+
+    // Atomically check balance, pending transactions, and lock user
+    const user = await trx("user")
+      .select("msat_balance", "is_locked")
+      .where("id", userId)
+      .forUpdate()
+      .first();
+
+    if (!user) {
+      await trx.rollback();
+      return {
+        success: false,
+        error: { message: "User not found" },
+      };
+    }
+
+    if (user.is_locked) {
+      await trx.rollback();
+      return {
+        success: false,
+        error: {
+          message: "Another transaction is pending, please try again later",
+        },
+      };
+    }
+
+    // Check for pending transactions
+    const pendingTx = await trx("transaction")
+      .select("id")
+      .where("user_id", userId)
+      .andWhere("withdraw", true)
+      .andWhere("is_pending", true)
+      .first();
+
+    if (pendingTx) {
+      await trx.rollback();
+      return {
+        success: false,
+        error: {
+          message: "Another transaction is pending, please try again later",
+        },
+      };
+    }
+
+    // Calculate total in-flight amounts
+    const inflightKeysends = await trx("external_payment")
+      .sum("msat_amount as totalAmount")
+      .sum("fee_msat as totalFee")
+      .where("is_pending", true)
+      .andWhere("user_id", userId)
+      .first();
+
+    const inflightTransactions = await trx("transaction")
+      .sum("msat_amount as totalAmount")
+      .sum("fee_msat as totalFee")
+      .where("is_pending", true)
+      .andWhere("user_id", userId)
+      .andWhere("withdraw", true)
+      .first();
+
+    const inFlightSats =
+      parseInt(inflightKeysends?.totalAmount || 0) +
+      parseInt(inflightKeysends?.totalFee || 0) +
+      parseInt(inflightTransactions?.totalAmount || 0) +
+      parseInt(inflightTransactions?.totalFee || 0);
+
+    // Check if user has sufficient balance
+    const availableBalance = parseInt(user.msat_balance) - inFlightSats;
+    if (availableBalance < totalAmount) {
+      await trx.rollback();
+      return {
+        success: false,
+        error: {
+          message: "Insufficient funds to cover payment and transaction fees",
+        },
+      };
+    }
+
+    // Lock user and create transaction record atomically
+    await trx("user").update({ is_locked: true }).where("id", userId);
+
+    const [paymentRecord] = await trx("transaction")
+      .insert({
+        user_id: userId,
+        pre_tx_balance: user.msat_balance,
+        payment_request: invoice,
+        msat_amount: msatAmount,
+        withdraw: true,
+        is_pending: true,
+      })
+      .returning("id");
+
+    await trx.commit();
+
+    log.info(
+      `Atomically validated and locked user ${userId} for payment of ${msatAmount} msats`,
+    );
+
+    return {
+      success: true,
+      paymentRecordId: paymentRecord.id,
+    };
+  } catch (err) {
+    await trx.rollback();
+    log.error(`Error in atomic payment initiation: ${err}`);
+    return {
+      success: false,
+      error: { message: "Failed to initiate payment" },
+    };
+  }
+};
+
 export const initiatePayment = async (
   res: any, // TODO: Use express response types
   userId: string,
   invoice: string,
   msatAmount: number,
-  msatMaxFee: number
+  msatMaxFee: number,
 ) => {
   log.info(
-    `Initiating payment of ${msatAmount} msats for ${userId} with max fee ${msatMaxFee} msats`
+    `Initiating payment of ${msatAmount} msats for ${userId} with max fee ${msatMaxFee} msats`,
   );
 
-  // Lock user
-  await db.knex("user").where("id", "=", userId).update({ is_locked: true });
-
-  const paymentRecordId = await createPaymentRecord(
+  // Use atomic balance validation and user locking
+  const atomicResult = await initiatePaymentAtomic(
     userId,
     invoice,
-    msatAmount
+    msatAmount,
+    msatMaxFee,
   );
+
+  if (!atomicResult.success) {
+    log.info(
+      `Payment initiation failed for ${userId}: ${atomicResult.error?.message}`,
+    );
+    return res
+      ? res
+          .status(400)
+          .send(`Invalid payment request: ${atomicResult.error?.message}`)
+      : { success: false, error: atomicResult.error?.message };
+  }
+
+  const paymentRecordId = atomicResult.paymentRecordId!;
 
   // Attempt payment
   const paymentResponse = await sendPayment({
@@ -302,7 +466,7 @@ export const initiatePayment = async (
           userId,
           msatAmount,
           paymentRecordId,
-          paymentResponse
+          paymentResponse,
         );
       }
       return { success: true, data: { ...paymentResponse.data } };
