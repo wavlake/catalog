@@ -293,11 +293,11 @@ describe("Extended Withdrawal Security Tests", () => {
     });
 
     test("should handle boundary values for security limits", async () => {
-      // Test exactly at the per-transaction limit
+      // Test exactly at the per-transaction limit (amount + fee must be <= 100M millisats)
       const exactLimitResult = await initiatePaymentAtomic(
         TEST_CONFIG.TEST_USER_LEGITIMATE,
         "exact-limit-test",
-        99999999, // Just under 100k limit
+        99999000, // 99.999k sats, so with 1000 fee = exactly 100M millisats
         1000,
       );
 
