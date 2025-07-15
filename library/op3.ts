@@ -96,14 +96,14 @@ const handleOP3Error = (error: unknown, context: string) => {
 const rateLimit = async <T>(
   fn: () => Promise<T>,
   context: string
-): Promise<T> => {
+): Promise<T | null> => {
   try {
     const result = await fn();
     await delay(RATE_LIMIT_MS);
     return result;
   } catch (error) {
     handleOP3Error(error, context);
-    return;
+    return null;
   }
 };
 
@@ -147,7 +147,7 @@ export const addOP3URLPrefix = ({
 export const getContentStats = async (
   contentId: string,
   startDate?: string
-) => {
+): Promise<OP3CombinedData> => {
   try {
     log.info("Fetching content stats", { contentId, startDate });
 
@@ -172,8 +172,14 @@ export const getContentStats = async (
 
     return statsWithShowInfo;
   } catch (error) {
-    handleOP3Error(error, "getContentStats");
-    return;
+    log.error("Error in getContentStats", { contentId, error });
+    // Return a default structure instead of undefined
+    return {
+      rows: [],
+      count: 0,
+      statsPageUrl: "",
+      releaseTitle: "Unknown Content",
+    };
   }
 };
 
@@ -205,7 +211,7 @@ export const getOp3ShowInfo = async (op3Id: string): Promise<OP3ShowInfo> => {
     "getOp3ShowInfo"
   );
 
-  if (!response.data) {
+  if (!response?.data) {
     log.error("No show data found", { op3Id });
     throw new Error("No show found");
   }
