@@ -5,8 +5,12 @@ import { sendPayment } from "./zbd";
 import { ZBDSendPaymentResponse } from "./zbd/responseInterfaces";
 import { PaymentStatus } from "./zbd/constants";
 import { IncomingInvoiceType } from "./common";
+import { isDuplicatePaymentRequest } from "./transactionValidation";
 
 // AGGRESSIVE WITHDRAWAL SECURITY CONFIGURATION
+// These limits were implemented to prevent wallet overdraw vulnerabilities discovered
+// during the race condition incident. Each limit serves as a defense layer against
+// different attack vectors: rapid attempts, large withdrawals, new account abuse, etc.
 const WITHDRAWAL_SECURITY_CONFIG = {
   MIN_TIME_BETWEEN_ATTEMPTS: 30000, // 30 seconds
   MAX_ATTEMPTS_PER_MINUTE: 3,
@@ -195,6 +199,8 @@ async function handleFailedPayment(
     });
 }
 
+// DEPRECATED: Replaced by transactionValidation.isDuplicatePaymentRequest
+// This function is kept for backward compatibility with runPaymentChecks
 async function isDuplicatePayRequest(invoice: string): Promise<boolean> {
   return db
     .knex("transaction")
@@ -204,7 +210,10 @@ async function isDuplicatePayRequest(invoice: string): Promise<boolean> {
       return data.length > 0;
     })
     .catch((e) => {
-      log.error(`Error looking up invoice: ${e}`);
+      log.error(`Error looking up invoice: ${e}`, {
+        invoice,
+        validationRule: "duplicate_payment_request_legacy",
+      });
       return null;
     });
 }
@@ -266,7 +275,13 @@ export const runPaymentChecks = async (
 
 /**
  * Atomically validates user balance and locks user to prevent race conditions
- * This replaces the separate balance check and user locking operations
+ *
+ * WHY: The original separate balance check and user locking operations created a race condition
+ * window where multiple withdrawal requests could pass validation simultaneously, leading to
+ * wallet overdraw. This atomic approach ensures only one withdrawal can proceed per user.
+ *
+ * SECURITY IMPACT: Prevents the exact vulnerability that allowed users to withdraw more
+ * than their balance by initiating multiple rapid withdrawal requests.
  */
 export const initiatePaymentAtomic = async (
   userId: string,
@@ -284,14 +299,16 @@ export const initiatePaymentAtomic = async (
   try {
     // Check for duplicate payment request first (outside of user lock)
     if (invoice) {
-      const isDupe = await trx("transaction")
-        .select("payment_request")
-        .where("payment_request", "=", invoice)
-        .first();
+      const isDupe = await isDuplicatePaymentRequest(invoice, trx);
 
       if (isDupe) {
-        log.info(
-          `Withdraw request canceled for user: ${userId} duplicate payment request`,
+        log.warn(
+          `Withdraw request canceled for user: ${userId} duplicate payment request - validation failed: duplicate invoice`,
+          {
+            userId,
+            invoice,
+            validationRule: "duplicate_payment_request",
+          },
         );
         await trx.rollback();
         return {
@@ -339,7 +356,14 @@ export const initiatePaymentAtomic = async (
     if (pendingTx) {
       await trx.rollback();
       log.warn(
-        `User ${userId} attempted withdrawal with pending transaction ${pendingTx.id}`,
+        `User ${userId} attempted withdrawal with pending transaction ${pendingTx.id} - validation failed: multiple pending withdrawals not allowed`,
+        {
+          userId,
+          pendingTransactionId: pendingTx.id,
+          requestedAmount: msatAmount,
+          requestedFee: msatMaxFee,
+          validationRule: "single_pending_withdrawal_per_user",
+        },
       );
       return {
         success: false,
@@ -369,7 +393,16 @@ export const initiatePaymentAtomic = async (
       ) {
         await trx.rollback();
         log.warn(
-          `User ${userId} attempted withdrawal too quickly. Last attempt: ${timeSinceLastAttempt}ms ago`,
+          `User ${userId} attempted withdrawal too quickly. Last attempt: ${timeSinceLastAttempt}ms ago - validation failed: rate limiting`,
+          {
+            userId,
+            timeSinceLastAttempt,
+            requiredWaitTime:
+              WITHDRAWAL_SECURITY_CONFIG.MIN_TIME_BETWEEN_ATTEMPTS,
+            requestedAmount: msatAmount,
+            requestedFee: msatMaxFee,
+            validationRule: "min_time_between_attempts",
+          },
         );
         return {
           success: false,
@@ -388,7 +421,16 @@ export const initiatePaymentAtomic = async (
       ) {
         await trx.rollback();
         log.warn(
-          `User ${userId} made ${recentWithdrawals.length} withdrawal attempts in last minute - blocking`,
+          `User ${userId} made ${recentWithdrawals.length} withdrawal attempts in last minute - validation failed: excessive attempts`,
+          {
+            userId,
+            attemptsInLastMinute: recentWithdrawals.length,
+            maxAllowedAttempts:
+              WITHDRAWAL_SECURITY_CONFIG.MAX_ATTEMPTS_PER_MINUTE,
+            requestedAmount: msatAmount,
+            requestedFee: msatMaxFee,
+            validationRule: "max_attempts_per_minute",
+          },
         );
         return {
           success: false,
@@ -424,7 +466,17 @@ export const initiatePaymentAtomic = async (
       log.warn(
         `User ${userId} exceeded daily withdrawal limit: ${
           dailyWithdrawnAmount + totalAmount
-        } > ${WITHDRAWAL_SECURITY_CONFIG.DAILY_WITHDRAWAL_LIMIT}`,
+        } > ${WITHDRAWAL_SECURITY_CONFIG.DAILY_WITHDRAWAL_LIMIT} - validation failed: daily limit`,
+        {
+          userId,
+          dailyWithdrawnAmount,
+          requestedAmount: msatAmount,
+          requestedFee: msatMaxFee,
+          totalRequestedAmount: totalAmount,
+          dailyLimit: WITHDRAWAL_SECURITY_CONFIG.DAILY_WITHDRAWAL_LIMIT,
+          projectedDailyTotal: dailyWithdrawnAmount + totalAmount,
+          validationRule: "daily_withdrawal_limit",
+        },
       );
       return {
         success: false,
@@ -438,7 +490,16 @@ export const initiatePaymentAtomic = async (
     if (totalAmount > WITHDRAWAL_SECURITY_CONFIG.MAX_AMOUNT_PER_WITHDRAWAL) {
       await trx.rollback();
       log.warn(
-        `User ${userId} attempted withdrawal exceeding per-transaction limit: ${totalAmount} > ${WITHDRAWAL_SECURITY_CONFIG.MAX_AMOUNT_PER_WITHDRAWAL}`,
+        `User ${userId} attempted withdrawal exceeding per-transaction limit: ${totalAmount} > ${WITHDRAWAL_SECURITY_CONFIG.MAX_AMOUNT_PER_WITHDRAWAL} - validation failed: per-transaction limit`,
+        {
+          userId,
+          requestedAmount: msatAmount,
+          requestedFee: msatMaxFee,
+          totalRequestedAmount: totalAmount,
+          perTransactionLimit:
+            WITHDRAWAL_SECURITY_CONFIG.MAX_AMOUNT_PER_WITHDRAWAL,
+          validationRule: "per_transaction_limit",
+        },
       );
       return {
         success: false,
@@ -459,7 +520,18 @@ export const initiatePaymentAtomic = async (
       ) {
         await trx.rollback();
         log.warn(
-          `User ${userId} attempted large withdrawal with new account: age=${accountAge}ms, amount=${totalAmount}`,
+          `User ${userId} attempted large withdrawal with new account: age=${accountAge}ms, amount=${totalAmount} - validation failed: account age restriction`,
+          {
+            userId,
+            accountAge,
+            requestedAmount: msatAmount,
+            requestedFee: msatMaxFee,
+            totalRequestedAmount: totalAmount,
+            minAccountAge:
+              WITHDRAWAL_SECURITY_CONFIG.MIN_ACCOUNT_AGE_FOR_LARGE_WITHDRAWALS,
+            largeWithdrawalThreshold: LARGE_WITHDRAWAL_THRESHOLD,
+            validationRule: "account_age_for_large_withdrawals",
+          },
         );
         return {
           success: false,
@@ -486,7 +558,16 @@ export const initiatePaymentAtomic = async (
     ) {
       await trx.rollback();
       log.error(
-        `User ${userId} flagged for suspicious activity: ${failureCount} failed withdrawals in past hour`,
+        `User ${userId} flagged for suspicious activity: ${failureCount} failed withdrawals in past hour - validation failed: suspicious activity threshold`,
+        {
+          userId,
+          failureCount,
+          suspiciousActivityThreshold:
+            WITHDRAWAL_SECURITY_CONFIG.SUSPICIOUS_ACTIVITY_THRESHOLD,
+          requestedAmount: msatAmount,
+          requestedFee: msatMaxFee,
+          validationRule: "suspicious_activity_detection",
+        },
       );
       return {
         success: false,
@@ -527,7 +608,17 @@ export const initiatePaymentAtomic = async (
     if (availableBalance < totalAmount) {
       await trx.rollback();
       log.warn(
-        `Insufficient funds for user ${userId}: available=${availableBalance}, required=${totalAmount}, balance=${currentBalance}, inFlight=${inFlightSats}`,
+        `Insufficient funds for user ${userId}: available=${availableBalance}, required=${totalAmount}, balance=${currentBalance}, inFlight=${inFlightSats} - validation failed: insufficient funds`,
+        {
+          userId,
+          currentBalance,
+          inFlightSats,
+          availableBalance,
+          requestedAmount: msatAmount,
+          requestedFee: msatMaxFee,
+          totalRequestedAmount: totalAmount,
+          validationRule: "insufficient_funds",
+        },
       );
       return {
         success: false,
@@ -542,7 +633,16 @@ export const initiatePaymentAtomic = async (
     if (projectedBalance < 0) {
       await trx.rollback();
       log.error(
-        `Transaction would cause negative balance for user ${userId}: current=${currentBalance}, amount=${totalAmount}, projected=${projectedBalance}`,
+        `Transaction would cause negative balance for user ${userId}: current=${currentBalance}, amount=${totalAmount}, projected=${projectedBalance} - validation failed: negative balance protection`,
+        {
+          userId,
+          currentBalance,
+          requestedAmount: msatAmount,
+          requestedFee: msatMaxFee,
+          totalRequestedAmount: totalAmount,
+          projectedBalance,
+          validationRule: "negative_balance_protection",
+        },
       );
       return {
         success: false,
