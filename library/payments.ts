@@ -497,27 +497,28 @@ export const initiatePaymentAtomic = async (
       };
     }
 
-    // Calculate total in-flight amounts
-    const inflightKeysends = await trx("external_payment")
-      .sum("msat_amount as totalAmount")
-      .sum("fee_msat as totalFee")
-      .where("is_pending", true)
-      .andWhere("user_id", userId)
-      .first();
-
-    const inflightTransactions = await trx("transaction")
-      .sum("msat_amount as totalAmount")
-      .sum("fee_msat as totalFee")
-      .where("is_pending", true)
-      .andWhere("user_id", userId)
-      .andWhere("withdraw", true)
-      .first();
+    // Calculate total in-flight amounts with single optimized query
+    const inflightAmounts = await trx.raw(
+      `
+      SELECT 
+        COALESCE(SUM(msat_amount), 0) as total_amount,
+        COALESCE(SUM(fee_msat), 0) as total_fee
+      FROM (
+        SELECT msat_amount, fee_msat 
+        FROM external_payment 
+        WHERE is_pending = true AND user_id = ?
+        UNION ALL
+        SELECT msat_amount, fee_msat 
+        FROM "transaction" 
+        WHERE is_pending = true AND user_id = ? AND withdraw = true
+      ) combined_pending
+    `,
+      [userId, userId],
+    );
 
     const inFlightSats =
-      parseInt(inflightKeysends?.totalAmount || 0) +
-      parseInt(inflightKeysends?.totalFee || 0) +
-      parseInt(inflightTransactions?.totalAmount || 0) +
-      parseInt(inflightTransactions?.totalFee || 0);
+      parseInt(inflightAmounts.rows[0]?.total_amount || 0) +
+      parseInt(inflightAmounts.rows[0]?.total_fee || 0);
 
     // Check if user has sufficient balance with detailed validation
     const currentBalance = parseInt(user.msat_balance);
