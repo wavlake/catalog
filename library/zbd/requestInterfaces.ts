@@ -39,6 +39,16 @@ export interface LightningAddressPaymentRequest {
   internalId: string;
 }
 
+export interface CreateRampWidgetRequest {
+  email: string;
+  webhook_url: string;
+  quote_currency?: string;
+  base_currency?: string;
+  destination?: string;
+  reference_id?: string;
+  metadata?: Record<string, any>;
+}
+
 export interface ZBDKeysendCallbackRequest {
   transaction: {
     id: string;
