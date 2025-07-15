@@ -12,6 +12,7 @@ describe("Extended Withdrawal Security Tests", () => {
     TEST_USER_LEGITIMATE: "test-user-legitimate",
     SMALL_AMOUNT: 1000000, // 1k sats
     MEDIUM_AMOUNT: 50000000, // 50k sats
+    LARGE_AMOUNT: 150000000, // 150k sats (exceeds 100k limit)
   };
 
   beforeAll(async () => {

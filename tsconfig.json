@@ -114,6 +114,7 @@
     "./dist/**/*",
     "node_modules/**/*",
     "test-*.js",
-    "validate-*.js"
+    "validate-*.js",
+    "coverage-*/**/*"
   ]
 }
