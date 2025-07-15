@@ -112,6 +112,8 @@
     "services/**/*",
     "cronjobs/**/*",
     "./dist/**/*",
-    "node_modules/**/*"
+    "node_modules/**/*",
+    "test-*.js",
+    "validate-*.js"
   ]
 }
