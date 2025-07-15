@@ -19,9 +19,15 @@ exports.up = function (knex) {
         SELECT COUNT(*) INTO duplicate_count
         FROM "transaction" t
         WHERE t.id NOT IN (
-          SELECT MIN(id) FROM "transaction" 
-          WHERE withdraw = true AND is_pending = true
-          GROUP BY user_id
+          SELECT t2.id FROM "transaction" t2
+          INNER JOIN (
+            SELECT user_id, MIN(created_at) as earliest_created_at
+            FROM "transaction" 
+            WHERE withdraw = true AND is_pending = true
+            GROUP BY user_id
+          ) earliest ON t2.user_id = earliest.user_id 
+            AND t2.created_at = earliest.earliest_created_at
+          WHERE t2.withdraw = true AND t2.is_pending = true
         )
         AND t.withdraw = true AND t.is_pending = true;
         
@@ -45,9 +51,15 @@ exports.up = function (knex) {
       SELECT t.* 
       FROM "transaction" t
       WHERE t.id NOT IN (
-        SELECT MIN(id) FROM "transaction" 
-        WHERE withdraw = true AND is_pending = true
-        GROUP BY user_id
+        SELECT t2.id FROM "transaction" t2
+        INNER JOIN (
+          SELECT user_id, MIN(created_at) as earliest_created_at
+          FROM "transaction" 
+          WHERE withdraw = true AND is_pending = true
+          GROUP BY user_id
+        ) earliest ON t2.user_id = earliest.user_id 
+          AND t2.created_at = earliest.earliest_created_at
+        WHERE t2.withdraw = true AND t2.is_pending = true
       )
       AND t.withdraw = true AND t.is_pending = true
     ),
@@ -180,18 +192,43 @@ exports.down = function (knex) {
     -- Step 3: Drop the unique index constraint
     DROP INDEX IF EXISTS unique_pending_withdrawal_per_user;
     
-    -- Step 4: Restore archived transactions (DANGEROUS - only for testing)
+    -- Step 4: Restore archived transactions with balance validation (DANGEROUS - only for testing)
     -- WARNING: This restores the race condition vulnerability
-    UPDATE "transaction" 
-    SET 
-      is_pending = true, 
-      success = NULL, 
-      failure_reason = NULL,
-      updated_at = now()
-    WHERE id IN (
-      SELECT id FROM transaction_race_condition_archive
-      WHERE archive_reason = 'race_condition_cleanup_2025_07_15'
-    );
+    DO $$
+    DECLARE
+      restoration_record RECORD;
+      user_balance BIGINT;
+      total_pending_amount BIGINT;
+    BEGIN
+      -- Iterate through archived transactions and validate before restoration
+      FOR restoration_record IN 
+        SELECT t.id, t.user_id, t.msat_amount, t.fee_msat, u.msat_balance
+        FROM transaction_race_condition_archive t
+        JOIN "user" u ON t.user_id = u.id
+        WHERE t.archive_reason = 'race_condition_cleanup_2025_07_15'
+      LOOP
+        user_balance := restoration_record.msat_balance;
+        total_pending_amount := restoration_record.msat_amount + COALESCE(restoration_record.fee_msat, 0);
+        
+        -- Only restore transaction if user has sufficient balance
+        IF user_balance >= total_pending_amount THEN
+          UPDATE "transaction" 
+          SET 
+            is_pending = true, 
+            success = NULL, 
+            failure_reason = NULL,
+            updated_at = now()
+          WHERE id = restoration_record.id;
+          
+          RAISE NOTICE 'Restored transaction % for user % (amount: %, balance: %)', 
+            restoration_record.id, restoration_record.user_id, total_pending_amount, user_balance;
+        ELSE
+          RAISE WARNING 'Cannot restore transaction % for user % - insufficient balance (required: %, available: %)', 
+            restoration_record.id, restoration_record.user_id, total_pending_amount, user_balance;
+        END IF;
+      END LOOP;
+    END
+    $$;
     
     -- Step 5: Clean up archive table
     DELETE FROM transaction_race_condition_archive 
