@@ -6,7 +6,15 @@
 import { initiatePayment, initiatePaymentAtomic } from "../library/payments";
 import db from "../library/db";
 
+// Check if we're in a CI environment without database access
+const isCI = process.env.CI === "true" && !process.env.DATABASE_URL;
+const skipDatabaseTests = isCI || process.env.SKIP_DATABASE_TESTS === "true";
+
 describe("Extended Withdrawal Security Tests", () => {
+  if (skipDatabaseTests) {
+    test.skip("Skipping database tests in CI environment without database access", () => {});
+    return;
+  }
   const TEST_CONFIG = {
     TEST_USER_ATTACKER: "test-user-attacker",
     TEST_USER_LEGITIMATE: "test-user-legitimate",
