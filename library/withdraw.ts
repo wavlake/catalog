@@ -85,6 +85,8 @@ export const handleCompletedForward = async ({
   );
 };
 
+// DEPRECATED: This function is replaced by atomic transaction processing
+// in handleCompletedWithdrawal to prevent race conditions
 async function checkWithdrawalStatus(transactionId: number) {
   // Add delay to prevent checking status before it is intially updated
   await new Promise((resolve) => setTimeout(resolve, 3000));
@@ -120,69 +122,85 @@ export const handleCompletedWithdrawal = async ({
     log.error(`Error getting userId from transactionId: ${transactionId}`);
     return false;
   }
-  const isPending = await checkWithdrawalStatus(transactionId);
-  if (!isPending) {
-    log.info(
-      `Withdrawal already processed for ${transactionId}, skipping update.`,
-    );
-    return true;
-  }
+
   const trx = await db.knex.transaction();
-  if (status === PaymentStatus.Completed) {
-    // Update transaction table and user balance in one tx
-    return trx("transaction")
-      .update({
-        success: status === PaymentStatus.Completed,
-        is_pending: false,
-        updated_at: db.knex.fn.now(),
-        fee_msat: fee,
-        preimage: preimage,
-      })
+  try {
+    // Atomically check if transaction is still pending and lock it
+    const transaction = await trx("transaction")
+      .select("is_pending", "success", "user_id")
       .where({ id: transactionId })
-      .then(() => {
-        // Decrement user balance and unlock user
-        return trx("user")
-          .decrement({
-            msat_balance: msatAmount + fee,
-          })
-          .update({ updated_at: db.knex.fn.now(), is_locked: false })
-          .where({ id: userId });
-      })
-      .then(trx.commit)
-      .then(() => {
-        log.info(
-          `Successfully logged withdrawal of ${msatAmount} for ${userId}`,
-        );
-        return true;
-      })
-      .catch((err) => {
-        log.error(
-          `Error updating transaction table on handleCompletedWithdrawal: ${err}`,
-        );
-        return false;
-      });
-  } else if (status === PaymentStatus.Error) {
-    return trx("transaction")
-      .update({
-        success: false,
-        is_pending: false,
-        updated_at: db.knex.fn.now(),
-      })
-      .where({ id: transactionId })
-      .then(trx.commit)
-      .then(() => {
-        log.info(`Logged withdrawal with error for ${userId}`);
-        return true;
-      })
-      .catch((err) => {
-        log.error(
-          `Error updating transaction table on handleCompletedWithdrawal: ${err}`,
-        );
-        return false;
-      });
-  }
-  // If status is not completed or error, do nothing
-  else {
-    return true;
+      .forUpdate()
+      .first();
+
+    if (!transaction) {
+      log.error(`Transaction ${transactionId} not found`);
+      await trx.rollback();
+      return false;
+    }
+
+    // Idempotent check - if already processed, return success
+    if (!transaction.is_pending) {
+      log.info(
+        `Transaction ${transactionId} already processed (is_pending: false), skipping update.`,
+      );
+      await trx.rollback();
+      return true;
+    }
+
+    if (status === PaymentStatus.Completed) {
+      // Update transaction table
+      await trx("transaction")
+        .update({
+          success: true,
+          is_pending: false,
+          updated_at: db.knex.fn.now(),
+          fee_msat: fee,
+          preimage: preimage,
+        })
+        .where({ id: transactionId });
+
+      // Decrement user balance and unlock user
+      await trx("user")
+        .decrement({
+          msat_balance: msatAmount + fee,
+        })
+        .update({ updated_at: db.knex.fn.now(), is_locked: false })
+        .where({ id: userId });
+
+      await trx.commit();
+      log.info(`Successfully logged withdrawal of ${msatAmount} for ${userId}`);
+      return true;
+    } else if (status === PaymentStatus.Error) {
+      // Update transaction table for error case
+      await trx("transaction")
+        .update({
+          success: false,
+          is_pending: false,
+          updated_at: db.knex.fn.now(),
+        })
+        .where({ id: transactionId });
+
+      // Unlock user (no balance change for failed payment)
+      await trx("user")
+        .update({ updated_at: db.knex.fn.now(), is_locked: false })
+        .where({ id: userId });
+
+      await trx.commit();
+      log.info(`Logged withdrawal with error for ${userId}`);
+      return true;
+    } else {
+      // Unknown status - rollback and return success
+      await trx.rollback();
+      log.info(
+        `Unknown payment status ${status} for transaction ${transactionId}`,
+      );
+      return true;
+    }
+  } catch (err) {
+    await trx.rollback();
+    log.error(
+      `Error updating transaction table on handleCompletedWithdrawal: ${err}`,
+    );
+    return false;
   }
 };

@@ -24,11 +24,11 @@ const accountingCallbackUrl = `${process.env.ACCOUNTING_CALLBACK_URL}`;
 const client = axios.create({
   baseURL: "https://api.zebedee.io/v0",
   headers: { apikey: zbdApiKey },
-  timeout: 10000, // Add reasonable timeout
+  timeout: 30000, // Increased timeout for payment processing (matches main ZBD client)
 });
 
 async function getPaymentStatus(
-  paymentId: string
+  paymentId: string,
 ): Promise<ZBDSendPaymentResponse> {
   try {
     const res = await client.get(`/payments/${paymentId}`);
@@ -48,7 +48,7 @@ async function getProductionIps(): Promise<
     }
     return handleZbdApiError(
       "zbd prod-ips not properly formatted",
-      "battery-getProductionIps()"
+      "battery-getProductionIps()",
     );
   } catch (err) {
     return handleZbdApiError(err, "battery-getProductionIps()");
@@ -58,7 +58,7 @@ async function getProductionIps(): Promise<
 async function isSupportedRegion(ipAddress: string): Promise<boolean> {
   try {
     const res = await client.get<ZBDIsSupportedRegionResponse>(
-      `/is-supported-region/${ipAddress}`
+      `/is-supported-region/${ipAddress}`,
     );
 
     // Check if response is successful and has expected format
@@ -69,8 +69,8 @@ async function isSupportedRegion(ipAddress: string): Promise<boolean> {
 
     log.warn(
       `Unexpected response format from battery-is-supported-region: ${JSON.stringify(
-        res.data
-      )}`
+        res.data,
+      )}`,
     );
     return false;
   } catch (err) {
@@ -80,7 +80,7 @@ async function isSupportedRegion(ipAddress: string): Promise<boolean> {
 }
 
 async function createCharge(
-  request: CreateInvoiceRequest
+  request: CreateInvoiceRequest,
 ): Promise<ZBDCreateChargeLightningResponse> {
   try {
     const res = await client.post(`/charges`, {
@@ -91,7 +91,7 @@ async function createCharge(
   } catch (err) {
     return handleZbdApiError(
       err,
-      `battery-createCharge(${JSON.stringify(request)})`
+      `battery-createCharge(${JSON.stringify(request)})`,
     );
   }
 }
@@ -106,7 +106,7 @@ async function getCharge(paymentId: string): Promise<ZBDGetChargeResponse> {
 }
 
 async function sendPayment(
-  request: SendPaymentRequest
+  request: SendPaymentRequest,
 ): Promise<ZBDSendPaymentResponse> {
   try {
     const res = await client.post(`/payments`, {
@@ -117,13 +117,13 @@ async function sendPayment(
   } catch (err) {
     return handleZbdApiError(
       err,
-      `battery-sendPayment(${JSON.stringify(request)})`
+      `battery-sendPayment(${JSON.stringify(request)})`,
     );
   }
 }
 
 async function payToLightningAddress(
-  request: LightningAddressPaymentRequest
+  request: LightningAddressPaymentRequest,
 ): Promise<ZBDSendPaymentResponse> {
   try {
     const res = await client.post(`/ln-address/send-payment`, {
@@ -134,13 +134,13 @@ async function payToLightningAddress(
   } catch (err) {
     return handleZbdApiError(
       err,
-      `battery-payToLightningAddress(${JSON.stringify(request)})`
+      `battery-payToLightningAddress(${JSON.stringify(request)})`,
     );
   }
 }
 
 async function validateLightningAddress(
-  lightningAddress: string
+  lightningAddress: string,
 ): Promise<boolean> {
   try {
     const res = await client.get(`/ln-address/validate/${lightningAddress}`);
@@ -149,8 +149,8 @@ async function validateLightningAddress(
     }
     log.warn(
       `Unexpected response format from battery-validate-lightning-address: ${JSON.stringify(
-        res.data
-      )}`
+        res.data,
+      )}`,
     );
     return false;
   } catch (err) {
@@ -180,7 +180,7 @@ interface CreateStaticChargeRequest {
 }
 
 async function createStaticCharge(
-  request: CreateStaticChargeRequest
+  request: CreateStaticChargeRequest,
 ): Promise<ZBDCreateStaticChargeResponse> {
   try {
     const res = await client.post(`/static-charges`, {
@@ -194,7 +194,7 @@ async function createStaticCharge(
 }
 
 async function getStaticCharge(
-  chargeId: string
+  chargeId: string,
 ): Promise<ZBDGetStaticChargeResponse> {
   try {
     const res = await client.get(`/static-charges/${chargeId}`);
@@ -205,7 +205,7 @@ async function getStaticCharge(
 }
 
 const createInvoice = async (
-  request: CreateInvoiceRequest
+  request: CreateInvoiceRequest,
 ): Promise<ZBDCreateChargeLightningResponse> => {
   try {
     const res = await client.post(`/charges`, {
@@ -216,7 +216,7 @@ const createInvoice = async (
   } catch (err) {
     return handleZbdApiError(
       err,
-      `battery-createInvoice(${JSON.stringify(request)})`
+      `battery-createInvoice(${JSON.stringify(request)})`,
     );
   }
 };
