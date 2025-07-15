@@ -6,6 +6,17 @@ import { ZBDSendPaymentResponse } from "./zbd/responseInterfaces";
 import { PaymentStatus } from "./zbd/constants";
 import { IncomingInvoiceType } from "./common";
 
+// AGGRESSIVE WITHDRAWAL SECURITY CONFIGURATION
+const WITHDRAWAL_SECURITY_CONFIG = {
+  MIN_TIME_BETWEEN_ATTEMPTS: 30000, // 30 seconds
+  MAX_ATTEMPTS_PER_MINUTE: 3,
+  DAILY_WITHDRAWAL_LIMIT: 400000000, // 400k sats = 400000000 msats
+  COOLDOWN_AFTER_RAPID_ATTEMPTS: 300000, // 5 minutes
+  SUSPICIOUS_ACTIVITY_THRESHOLD: 5, // Failed attempts in 1 hour
+  MAX_AMOUNT_PER_WITHDRAWAL: 100000000, // 100k sats = 100000000 msats
+  MIN_ACCOUNT_AGE_FOR_LARGE_WITHDRAWALS: 86400000, // 24 hours in milliseconds
+};
+
 async function checkUserHasPendingTx(userId: string): Promise<boolean> {
   return db
     .knex("transaction")
@@ -294,7 +305,7 @@ export const initiatePaymentAtomic = async (
 
     // Atomically check balance, pending transactions, and lock user
     const user = await trx("user")
-      .select("msat_balance", "is_locked")
+      .select("msat_balance", "is_locked", "created_at")
       .where("id", userId)
       .forUpdate()
       .first();
@@ -319,7 +330,7 @@ export const initiatePaymentAtomic = async (
 
     // Check for pending transactions
     const pendingTx = await trx("transaction")
-      .select("id")
+      .select("id", "created_at")
       .where("user_id", userId)
       .andWhere("withdraw", true)
       .andWhere("is_pending", true)
@@ -327,10 +338,161 @@ export const initiatePaymentAtomic = async (
 
     if (pendingTx) {
       await trx.rollback();
+      log.warn(
+        `User ${userId} attempted withdrawal with pending transaction ${pendingTx.id}`,
+      );
       return {
         success: false,
         error: {
           message: "Another transaction is pending, please try again later",
+        },
+      };
+    }
+
+    // AGGRESSIVE: Check for recent withdrawal attempts (rate limiting)
+    const recentWithdrawals = await trx("transaction")
+      .select("id", "created_at", "success")
+      .where("user_id", userId)
+      .andWhere("withdraw", true)
+      .andWhere("created_at", ">=", trx.raw("NOW() - INTERVAL '1 minute'"))
+      .orderBy("created_at", "desc");
+
+    if (recentWithdrawals.length > 0) {
+      const lastWithdrawal = recentWithdrawals[0];
+      const timeSinceLastAttempt =
+        Date.now() - new Date(lastWithdrawal.created_at).getTime();
+
+      // Require minimum time between withdrawal attempts
+      if (
+        timeSinceLastAttempt <
+        WITHDRAWAL_SECURITY_CONFIG.MIN_TIME_BETWEEN_ATTEMPTS
+      ) {
+        await trx.rollback();
+        log.warn(
+          `User ${userId} attempted withdrawal too quickly. Last attempt: ${timeSinceLastAttempt}ms ago`,
+        );
+        return {
+          success: false,
+          error: {
+            message: `Please wait at least ${
+              WITHDRAWAL_SECURITY_CONFIG.MIN_TIME_BETWEEN_ATTEMPTS / 1000
+            } seconds between withdrawal attempts`,
+          },
+        };
+      }
+
+      // AGGRESSIVE: Progressive delay for rapid attempts
+      if (
+        recentWithdrawals.length >=
+        WITHDRAWAL_SECURITY_CONFIG.MAX_ATTEMPTS_PER_MINUTE
+      ) {
+        await trx.rollback();
+        log.warn(
+          `User ${userId} made ${recentWithdrawals.length} withdrawal attempts in last minute - blocking`,
+        );
+        return {
+          success: false,
+          error: {
+            message: `Too many withdrawal attempts. Please wait ${
+              WITHDRAWAL_SECURITY_CONFIG.COOLDOWN_AFTER_RAPID_ATTEMPTS /
+              1000 /
+              60
+            } minutes before trying again`,
+          },
+        };
+      }
+    }
+
+    // AGGRESSIVE: Daily withdrawal limit check
+    const dailyWithdrawals = await trx("transaction")
+      .sum("msat_amount as totalWithdrawn")
+      .where("user_id", userId)
+      .andWhere("withdraw", true)
+      .andWhere("success", true)
+      .andWhere("created_at", ">=", trx.raw("NOW() - INTERVAL '24 hours'"))
+      .first();
+
+    const dailyWithdrawnAmount = parseInt(
+      dailyWithdrawals?.totalWithdrawn || 0,
+    );
+
+    if (
+      dailyWithdrawnAmount + totalAmount >
+      WITHDRAWAL_SECURITY_CONFIG.DAILY_WITHDRAWAL_LIMIT
+    ) {
+      await trx.rollback();
+      log.warn(
+        `User ${userId} exceeded daily withdrawal limit: ${
+          dailyWithdrawnAmount + totalAmount
+        } > ${WITHDRAWAL_SECURITY_CONFIG.DAILY_WITHDRAWAL_LIMIT}`,
+      );
+      return {
+        success: false,
+        error: {
+          message: "Daily withdrawal limit exceeded. Please try again tomorrow",
+        },
+      };
+    }
+
+    // AGGRESSIVE: Per-transaction amount limit
+    if (totalAmount > WITHDRAWAL_SECURITY_CONFIG.MAX_AMOUNT_PER_WITHDRAWAL) {
+      await trx.rollback();
+      log.warn(
+        `User ${userId} attempted withdrawal exceeding per-transaction limit: ${totalAmount} > ${WITHDRAWAL_SECURITY_CONFIG.MAX_AMOUNT_PER_WITHDRAWAL}`,
+      );
+      return {
+        success: false,
+        error: {
+          message: "Withdrawal amount exceeds maximum allowed per transaction",
+        },
+      };
+    }
+
+    // AGGRESSIVE: Account age check for large withdrawals
+    const LARGE_WITHDRAWAL_THRESHOLD = 10000000; // 10k sats
+    if (totalAmount > LARGE_WITHDRAWAL_THRESHOLD) {
+      const accountAge =
+        Date.now() - new Date(user.created_at || new Date()).getTime();
+      if (
+        accountAge <
+        WITHDRAWAL_SECURITY_CONFIG.MIN_ACCOUNT_AGE_FOR_LARGE_WITHDRAWALS
+      ) {
+        await trx.rollback();
+        log.warn(
+          `User ${userId} attempted large withdrawal with new account: age=${accountAge}ms, amount=${totalAmount}`,
+        );
+        return {
+          success: false,
+          error: {
+            message:
+              "Large withdrawals require account to be at least 24 hours old",
+          },
+        };
+      }
+    }
+
+    // AGGRESSIVE: Suspicious activity detection
+    const recentFailures = await trx("transaction")
+      .count("id as failureCount")
+      .where("user_id", userId)
+      .andWhere("withdraw", true)
+      .andWhere("success", false)
+      .andWhere("created_at", ">=", trx.raw("NOW() - INTERVAL '1 hour'"))
+      .first();
+
+    const failureCount = parseInt(String(recentFailures?.failureCount || 0));
+    if (
+      failureCount >= WITHDRAWAL_SECURITY_CONFIG.SUSPICIOUS_ACTIVITY_THRESHOLD
+    ) {
+      await trx.rollback();
+      log.error(
+        `User ${userId} flagged for suspicious activity: ${failureCount} failed withdrawals in past hour`,
+      );
+      return {
+        success: false,
+        error: {
+          message:
+            "Account temporarily restricted due to suspicious activity. Please contact support",
         },
       };
     }
@@ -357,14 +519,34 @@ export const initiatePaymentAtomic = async (
       parseInt(inflightTransactions?.totalAmount || 0) +
       parseInt(inflightTransactions?.totalFee || 0);
 
-    // Check if user has sufficient balance
-    const availableBalance = parseInt(user.msat_balance) - inFlightSats;
+    // Check if user has sufficient balance with detailed validation
+    const currentBalance = parseInt(user.msat_balance);
+    const availableBalance = currentBalance - inFlightSats;
+
     if (availableBalance < totalAmount) {
       await trx.rollback();
+      log.warn(
+        `Insufficient funds for user ${userId}: available=${availableBalance}, required=${totalAmount}, balance=${currentBalance}, inFlight=${inFlightSats}`,
+      );
       return {
         success: false,
         error: {
           message: "Insufficient funds to cover payment and transaction fees",
+        },
+      };
+    }
+
+    // Additional safety check: ensure transaction won't result in negative balance
+    const projectedBalance = currentBalance - totalAmount;
+    if (projectedBalance < 0) {
+      await trx.rollback();
+      log.error(
+        `Transaction would cause negative balance for user ${userId}: current=${currentBalance}, amount=${totalAmount}, projected=${projectedBalance}`,
+      );
+      return {
+        success: false,
+        error: {
+          message: "Transaction would result in negative balance",
         },
       };
     }
