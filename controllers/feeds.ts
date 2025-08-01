@@ -21,8 +21,8 @@ const get_external_rss_feeds = asyncHandler(async (req, res, next) => {
       .filter(isFulfilled)
       .map((feedRes) => feedRes.value);
 
-    // Cache for 5 minutes at CDN, allow stale for 10 minutes
-    res.set('Cache-Control', 's-maxage=300, stale-while-revalidate=600');
+    // Cache for 1 hour at CDN, allow stale for 6 hours
+    res.set('Cache-Control', 's-maxage=3600, stale-while-revalidate=21600');
     
     res.send({
       success: true,
@@ -59,8 +59,8 @@ const get_external_rss_feed = asyncHandler(async (req, res, next) => {
       return;
     }
 
-    // Cache individual feeds for 5 minutes at CDN, allow stale for 10 minutes
-    res.set('Cache-Control', 's-maxage=300, stale-while-revalidate=600');
+    // Cache individual feeds for 1 hour at CDN, allow stale for 6 hours
+    res.set('Cache-Control', 's-maxage=3600, stale-while-revalidate=21600');
 
     res.send({
       success: true,
